@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import type { Workout } from '@/lib/data'
 
 function formatDate(iso: string) {
@@ -29,9 +30,14 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
 
   return (
     <div className="pt-10 pb-4">
-      <div className="px-4 mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">Workout Library</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{visible.length} workouts · oldest first</p>
+      <div className="px-4 mb-4 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Workout Library</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{visible.length} workouts · oldest first</p>
+        </div>
+        <Link href="/library/add" className="w-9 h-9 flex items-center justify-center rounded-full bg-orange-500 text-white text-xl font-bold shadow-sm touch-manipulation">
+          +
+        </Link>
       </div>
 
       <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
