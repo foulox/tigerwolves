@@ -87,7 +87,7 @@ export default function MyWeekPage() {
             <button
               key={w.id}
               onClick={() => setSelectedId(w.id)}
-              className={`text-left bg-white rounded-2xl p-4 border shadow-sm transition-all active:scale-[0.99] ${selectedId === w.id ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
+              className={`text-left bg-white rounded-2xl p-4 border shadow-sm transition-colors touch-manipulation cursor-pointer ${selectedId === w.id ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
             >
               <div className="flex justify-between items-start gap-2">
                 <div className="font-semibold text-gray-900">{w.name}</div>
@@ -109,8 +109,8 @@ export default function MyWeekPage() {
             <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
             <button
               onClick={handleCopy}
-              className={`mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all ${
-                copied ? 'bg-green-500 text-white' : 'bg-orange-500 text-white active:bg-orange-600'
+              className={`mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-colors touch-manipulation cursor-pointer ${
+                copied ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'
               }`}
             >
               {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
