@@ -6,7 +6,7 @@ import { CalendarDays, User, BookOpen, Flag } from 'lucide-react'
 
 const tabs = [
   { href: '/', label: 'Schedule', icon: CalendarDays },
-  { href: '/my-week', label: 'My Week', icon: User },
+  { href: '/plan', label: 'Plan', icon: User },
   { href: '/library', label: 'Library', icon: BookOpen },
   { href: '/races', label: 'Races', icon: Flag },
 ]

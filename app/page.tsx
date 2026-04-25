@@ -36,7 +36,7 @@ export default async function SchedulePage() {
         {upcoming.map((entry, i) => (
           <Link
             key={entry.date}
-            href={`/my-week?week=${i}`}
+            href={`/plan?week=${i}`}
             className={`block bg-white rounded-2xl p-4 shadow-sm border active:bg-gray-50 touch-manipulation ${i === 0 ? 'border-orange-300' : 'border-gray-100'}`}
           >
             {i === 0 && <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">NEXT UP</div>}

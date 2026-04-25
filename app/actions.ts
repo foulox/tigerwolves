@@ -3,6 +3,17 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
+export async function setPlanWorkout(date: string, workoutName: string) {
+  const res = await fetch(process.env.SHEETS_URL!, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'setScheduleWorkout', date, workoutName }),
+  })
+  const json = await res.json()
+  if (!json.ok) throw new Error(json.error ?? 'Save failed')
+  revalidatePath('/')
+}
+
 export async function addWorkout(formData: FormData) {
   const payload = {
     'Workout Name': formData.get('name') as string,
