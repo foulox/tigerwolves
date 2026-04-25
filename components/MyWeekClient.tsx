@@ -41,8 +41,9 @@ export default function MyWeekClient({ upcoming, workouts }: Props) {
 
   const suggestions = useMemo(() => {
     if (!entry) return []
+    const types = entry.workoutType.split(' or ').map(t => t.trim())
     return workouts
-      .filter(w => w.type === entry.workoutType)
+      .filter(w => types.includes(w.type))
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
       .slice(0, 3)
   }, [entry, workouts])
