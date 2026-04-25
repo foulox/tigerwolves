@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { fetchData } from '@/lib/sheets'
 
 const TYPE_COLORS: Record<string, string> = {
@@ -33,9 +34,10 @@ export default async function SchedulePage() {
           <p className="text-gray-400 italic text-sm">No upcoming workouts scheduled yet.</p>
         )}
         {upcoming.map((entry, i) => (
-          <div
+          <Link
             key={entry.date}
-            className={`bg-white rounded-2xl p-4 shadow-sm border ${i === 0 ? 'border-orange-300' : 'border-gray-100'}`}
+            href={`/my-week?week=${i}`}
+            className={`block bg-white rounded-2xl p-4 shadow-sm border active:bg-gray-50 touch-manipulation ${i === 0 ? 'border-orange-300' : 'border-gray-100'}`}
           >
             {i === 0 && <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">NEXT UP</div>}
             <div className="flex items-start justify-between gap-3">
@@ -50,7 +52,7 @@ export default async function SchedulePage() {
                 {entry.workoutType}
               </span>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

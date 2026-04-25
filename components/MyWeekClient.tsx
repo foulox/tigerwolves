@@ -31,10 +31,11 @@ Led by ${entry.leader} — see you out there! 🔥`
 type Props = {
   upcoming: ScheduleEntry[]
   workouts: Workout[]
+  initialWeekIndex?: number
 }
 
-export default function MyWeekClient({ upcoming, workouts }: Props) {
-  const [weekIndex, setWeekIndex] = useState(0)
+export default function MyWeekClient({ upcoming, workouts, initialWeekIndex = 0 }: Props) {
+  const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
   const [copied, setCopied] = useState(false)
 
   const entry = upcoming[weekIndex]
