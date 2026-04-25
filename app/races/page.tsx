@@ -1,24 +1,21 @@
-import { RACES } from '@/lib/data'
+import { fetchData } from '@/lib/sheets'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
+    weekday: 'short', month: 'long', day: 'numeric', year: 'numeric',
   })
 }
 
 function daysUntil(iso: string) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const target = new Date(iso + 'T00:00:00')
-  return Math.ceil((target.getTime() - today.getTime()) / 86400000)
+  return Math.ceil((new Date(iso + 'T00:00:00').getTime() - today.getTime()) / 86400000)
 }
 
-export default function RacesPage() {
+export default async function RacesPage() {
+  const { races } = await fetchData()
   const today = new Date().toISOString().slice(0, 10)
-  const upcoming = RACES.filter(r => r.date >= today)
+  const upcoming = races.filter(r => r.date >= today)
 
   return (
     <div className="px-4 pt-10 pb-4">
@@ -28,6 +25,9 @@ export default function RacesPage() {
       </header>
 
       <div className="flex flex-col gap-3">
+        {upcoming.length === 0 && (
+          <p className="text-gray-400 italic text-sm">No upcoming races added yet.</p>
+        )}
         {upcoming.map(race => {
           const days = daysUntil(race.date)
           return (

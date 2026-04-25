@@ -1,4 +1,4 @@
-import { SCHEDULE } from '@/lib/data'
+import { fetchData } from '@/lib/sheets'
 
 const TYPE_COLORS: Record<string, string> = {
   Hills: 'bg-green-100 text-green-800',
@@ -12,15 +12,14 @@ const TYPE_COLORS: Record<string, string> = {
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
+    weekday: 'short', month: 'short', day: 'numeric',
   })
 }
 
-export default function SchedulePage() {
+export default async function SchedulePage() {
+  const { schedule } = await fetchData()
   const today = new Date().toISOString().slice(0, 10)
-  const upcoming = SCHEDULE.filter(e => e.date >= today)
+  const upcoming = schedule.filter(e => e.date >= today)
 
   return (
     <div>
@@ -30,14 +29,15 @@ export default function SchedulePage() {
       </header>
 
       <div className="px-4 flex flex-col gap-3">
+        {upcoming.length === 0 && (
+          <p className="text-gray-400 italic text-sm">No upcoming workouts scheduled yet.</p>
+        )}
         {upcoming.map((entry, i) => (
           <div
             key={entry.date}
             className={`bg-white rounded-2xl p-4 shadow-sm border ${i === 0 ? 'border-orange-300' : 'border-gray-100'}`}
           >
-            {i === 0 && (
-              <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">NEXT UP</div>
-            )}
+            {i === 0 && <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">NEXT UP</div>}
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-gray-500">{formatDate(entry.date)}</div>
