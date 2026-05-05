@@ -15,6 +15,8 @@ export type Workout = {
   lastRan: string | null
   coachingNotes: string | null
   mapLink: string | null
+  variation: string       // specific variation description (e.g. "2x(5-4-3-2-1 min) 1min easy rec"); blank = standalone
+  progression: number | null  // difficulty order 1-N within the family; null = standalone
 }
 
 export type ScheduleEntry = {

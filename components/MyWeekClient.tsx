@@ -15,10 +15,13 @@ function formatDateShort(iso: string) {
 }
 
 function buildPost(entry: ScheduleEntry, workout: Workout) {
+  const workoutLabel = workout.variation
+    ? `${workout.name}\n${workout.variation}`
+    : workout.name
   return `🐯🐺 TigerWolves Tuesday Workout
 
 📅 ${formatDateLong(entry.date)}
-🏃 ${entry.workoutType}: ${workout.name}
+🏃 ${entry.workoutType}: ${workoutLabel}
 
 ${workout.instructions}
 
@@ -37,29 +40,56 @@ type Props = {
 export default function MyWeekClient({ upcoming, workouts, initialWeekIndex = 0 }: Props) {
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
   const [copied, setCopied] = useState(false)
+  const [selectedName, setSelectedName] = useState<string>('')
+  const [selectedProgression, setSelectedProgression] = useState<number | null>(null)
 
   const entry = upcoming[weekIndex]
 
   const suggestions = useMemo(() => {
     if (!entry) return []
     const types = entry.workoutType.split(' or ').map(t => t.trim())
-    return workouts
+    const matching = workouts
       .filter(w => types.includes(w.type))
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
-      .slice(0, 3)
+    // Deduplicate by name so variation families appear once
+    const seen = new Set<string>()
+    return matching.filter(w => {
+      if (seen.has(w.name)) return false
+      seen.add(w.name)
+      return true
+    }).slice(0, 3)
   }, [entry, workouts])
 
-  const [selectedName, setSelectedName] = useState<string>('')
   const effectiveSelected = selectedName || suggestions[0]?.name || ''
+
+  // All progressions for the selected workout family (sorted)
+  const progressions = useMemo(() =>
+    workouts
+      .filter(w => w.name === effectiveSelected && w.variation)
+      .sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
+  , [workouts, effectiveSelected])
+
+  const effectiveProgression = selectedProgression ?? progressions[0]?.progression ?? null
+
+  // The specific workout object to use for the post
+  const selected = progressions.length > 0
+    ? progressions.find(w => w.progression === effectiveProgression) ?? progressions[0]
+    : suggestions.find(w => w.name === effectiveSelected) ?? null
+
+  const post = selected && entry ? buildPost(entry, selected) : ''
 
   function changeWeek(idx: number) {
     setWeekIndex(idx)
     setSelectedName('')
+    setSelectedProgression(null)
     setCopied(false)
   }
 
-  const selected = suggestions.find(w => w.name === effectiveSelected)
-  const post = selected && entry ? buildPost(entry, selected) : ''
+  function selectWorkout(name: string) {
+    setSelectedName(name)
+    setSelectedProgression(null)
+    setCopied(false)
+  }
 
   function handleCopy() {
     navigator.clipboard.writeText(post).then(() => {
@@ -119,22 +149,66 @@ export default function MyWeekClient({ upcoming, workouts, initialWeekIndex = 0 
             <div className="mb-6">
               <div className="text-sm font-bold text-gray-700 mb-2">Suggested — least recently used</div>
               <div className="flex flex-col gap-2">
-                {suggestions.map(w => (
-                  <button
-                    key={w.name}
-                    onClick={() => setSelectedName(w.name)}
-                    className={`text-left bg-white rounded-2xl p-4 border shadow-sm transition-colors touch-manipulation cursor-pointer ${effectiveSelected === w.name ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="font-semibold text-gray-900">{w.name}</div>
-                      <div className="text-xs text-gray-400 shrink-0">
-                        {w.lastRan ? formatDateShort(w.lastRan) : 'Never'}
-                      </div>
+                {suggestions.map(w => {
+                  const isSelected = effectiveSelected === w.name
+                  const wProgressions = workouts
+                    .filter(p => p.name === w.name && p.variation)
+                    .sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
+                  const hasProgressions = wProgressions.length > 0
+
+                  return (
+                    <div key={w.name}>
+                      <button
+                        onClick={() => selectWorkout(w.name)}
+                        className={`w-full text-left bg-white rounded-2xl p-4 border shadow-sm transition-colors touch-manipulation cursor-pointer ${isSelected ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="font-semibold text-gray-900">{w.name}</div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {hasProgressions && (
+                              <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
+                                {wProgressions.length} progressions
+                              </span>
+                            )}
+                            <div className="text-xs text-gray-400">
+                              {w.lastRan ? formatDateShort(w.lastRan) : 'Never'}
+                            </div>
+                          </div>
+                        </div>
+                        {!hasProgressions && (
+                          <>
+                            <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
+                            <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
+                          </>
+                        )}
+                        {hasProgressions && (
+                          <div className="text-xs text-gray-400 mt-1">{w.reason}</div>
+                        )}
+                      </button>
+
+                      {/* Progression picker — shown inline when this card is selected */}
+                      {isSelected && hasProgressions && (
+                        <div className="mt-1 ml-2 flex flex-col gap-1">
+                          {wProgressions.map(p => (
+                            <button
+                              key={p.progression}
+                              onClick={() => { setSelectedProgression(p.progression); setCopied(false) }}
+                              className={`text-left px-4 py-3 rounded-xl border transition-colors touch-manipulation ${
+                                effectiveProgression === p.progression
+                                  ? 'bg-orange-50 border-orange-300'
+                                  : 'bg-white border-gray-100'
+                              }`}
+                            >
+                              <div className="text-xs font-bold text-orange-500 mb-0.5">P{p.progression}</div>
+                              <div className="text-sm font-semibold text-gray-800">{p.variation}</div>
+                              {p.distTime && <div className="text-xs text-gray-400 mt-0.5">{p.distTime}</div>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
-                    <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
-                  </button>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}

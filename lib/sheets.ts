@@ -29,6 +29,8 @@ function mapWorkout(row: RawRow): Workout {
     lastRan: normalizeDate(row['Last Ran']),
     coachingNotes: str(row['Coaching Notes']) || null,
     mapLink: str(row['Map Link']) || null,
+    variation: str(row['Variation']),
+    progression: (() => { const n = parseInt(str(row['Progression'])); return isNaN(n) ? null : n })(),
   }
 }
 
