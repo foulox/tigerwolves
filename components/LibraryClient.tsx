@@ -194,6 +194,14 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
                 {w.variation && <p className="text-xs text-gray-400 mt-0.5">{w.variation}</p>}
                 <p className="text-sm text-gray-500 mt-1.5 leading-snug">{w.reason}</p>
                 <WorkoutMeta w={w} />
+                <div className="mt-3 pt-3 border-t border-gray-50">
+                  <Link
+                    href={`/library/add?parent=${encodeURIComponent(w.name)}`}
+                    className="text-xs font-semibold text-orange-500 touch-manipulation"
+                  >
+                    + Add variation
+                  </Link>
+                </div>
               </div>
             )
           }
@@ -237,6 +245,12 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
                       {p.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(p.lastRan)}</div>}
                     </div>
                   ))}
+                  <Link
+                    href={`/library/add?parent=${encodeURIComponent(row.name)}`}
+                    className="bg-white rounded-xl px-4 py-3 border border-dashed border-orange-200 text-xs font-semibold text-orange-500 touch-manipulation text-center"
+                  >
+                    + Add variation
+                  </Link>
                 </div>
               )}
             </div>
