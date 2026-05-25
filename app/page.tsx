@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { fetchData } from '@/lib/sheets'
+import FeedbackButton from '@/components/FeedbackButton'
 
 const TYPE_COLORS: Record<string, string> = {
   Hills: 'bg-green-100 text-green-800',
@@ -24,9 +25,12 @@ export default async function SchedulePage() {
 
   return (
     <div>
-      <header className="px-4 pt-10 pb-4">
-        <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Upcoming Tuesdays</p>
+      <header className="px-4 pt-10 pb-4 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Upcoming Tuesdays</p>
+        </div>
+        <FeedbackButton />
       </header>
 
       <div className="px-4 flex flex-col gap-3">
