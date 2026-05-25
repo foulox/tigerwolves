@@ -301,6 +301,9 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
       if (prev.some(s => workoutKey(s) === key)) {
         return prev.filter(s => workoutKey(s) !== key)
       }
+      if (prev.length === 2 && prev[0].name === w.name) {
+        return prev
+      }
       if (prev.length === 1 && prev[0].name === w.name) {
         return [prev[0], w]
       }
