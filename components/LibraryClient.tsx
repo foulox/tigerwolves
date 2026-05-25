@@ -22,7 +22,9 @@ type StandaloneRow = { kind: 'standalone'; workout: Workout }
 type FamilyRow = {
   kind: 'family'
   name: string; type: string; reason: string
+  base: Workout | null
   progressions: Workout[]
+  total: number
   lastRan: string | null
 }
 type DisplayRow = StandaloneRow | FamilyRow
@@ -45,22 +47,30 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
     .filter(w => !raceFilter || w.raceTypes.includes(raceFilter))
     .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
 
+  const familyNames = new Set<string>()
+  for (const w of workouts) {
+    if (w.variation) familyNames.add(w.name)
+  }
+
   const displayRows: DisplayRow[] = []
   const seenFamilies = new Set<string>()
   for (const w of filtered) {
-    if (!w.variation) {
+    if (!familyNames.has(w.name)) {
       displayRows.push({ kind: 'standalone', workout: w })
     } else if (!seenFamilies.has(w.name)) {
       seenFamilies.add(w.name)
-      const progressions = workouts
-        .filter(p => p.name === w.name && p.variation)
+      const allMembers = workouts.filter(p => p.name === w.name)
+      const base = allMembers.find(p => !p.variation) ?? null
+      const progressions = allMembers
+        .filter(p => p.variation)
         .sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
-      const lastRan = progressions.reduce<string | null>((best, p) => {
+      const total = (base ? 1 : 0) + progressions.length
+      const lastRan = allMembers.reduce<string | null>((best, p) => {
         if (!p.lastRan) return best
         if (!best) return p.lastRan
         return p.lastRan > best ? p.lastRan : best
       }, null)
-      displayRows.push({ kind: 'family', name: w.name, type: w.type, reason: w.reason, progressions, lastRan })
+      displayRows.push({ kind: 'family', name: w.name, type: w.type, reason: base?.reason ?? w.reason, base, progressions, total, lastRan })
     }
   }
 
@@ -181,6 +191,7 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
                   <div className="font-semibold text-gray-900">{w.name}</div>
                   <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full shrink-0">{w.type}</span>
                 </div>
+                {w.variation && <p className="text-xs text-gray-400 mt-0.5">{w.variation}</p>}
                 <p className="text-sm text-gray-500 mt-1.5 leading-snug">{w.reason}</p>
                 <WorkoutMeta w={w} />
               </div>
@@ -198,7 +209,7 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
                   <div className="font-semibold text-gray-900">{row.name}</div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
-                      {row.progressions.length} progressions
+                      {row.total} versions
                     </span>
                     <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{row.type}</span>
                   </div>
@@ -211,9 +222,16 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
 
               {isExpanded && (
                 <div className="mt-1 ml-2 flex flex-col gap-1">
+                  {row.base && (
+                    <div className="bg-white rounded-xl px-4 py-3 border border-gray-100">
+                      <div className="text-xs font-bold text-gray-500 mb-0.5">Standard</div>
+                      {row.base.distTime && <div className="text-xs text-gray-400">{row.base.distTime}</div>}
+                      {row.base.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(row.base.lastRan)}</div>}
+                    </div>
+                  )}
                   {row.progressions.map(p => (
                     <div key={p.progression} className="bg-white rounded-xl px-4 py-3 border border-gray-100">
-                      <div className="text-xs font-bold text-orange-500 mb-0.5">P{p.progression}</div>
+                      <div className="text-xs font-bold text-orange-500 mb-0.5">Variation {p.progression} of {row.total}</div>
                       <div className="text-sm font-semibold text-gray-800">{p.variation}</div>
                       {p.distTime && <div className="text-xs text-gray-400 mt-0.5">{p.distTime}</div>}
                       {p.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(p.lastRan)}</div>}
