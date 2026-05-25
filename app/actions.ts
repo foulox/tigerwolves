@@ -54,14 +54,6 @@ export async function addWorkout(formData: FormData) {
   redirect('/library')
 }
 
-export async function addWorkoutFamily(formData: FormData, variations: string[]) {
-  for (let i = 0; i < variations.length; i++) {
-    await postToSheet(buildPayload(formData, variations[i], String(i + 1)))
-  }
-  revalidatePath('/library')
-  redirect('/library')
-}
-
 export async function addVariation(
   parent: {
     name: string; category: string; type: string; reason: string;
