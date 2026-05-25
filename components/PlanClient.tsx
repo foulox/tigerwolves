@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { RUN_LEADERS } from '@/lib/data'
 import type { ScheduleEntry, Workout } from '@/lib/data'
 import { setPlanWorkout } from '@/app/actions'
 
@@ -15,18 +16,167 @@ function formatDateShort(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+function ordinal(n: number): string {
+  if (n === 1) return '1st'
+  if (n === 2) return '2nd'
+  if (n === 3) return '3rd'
+  return `${n}th`
+}
+
+function toSeconds(val: string, unit: string): number {
+  return parseInt(val) * (unit.toLowerCase().startsWith('min') ? 60 : 1)
+}
+
+function splitRespectParens(str: string, sep: string): string[] {
+  const result: string[] = []
+  let depth = 0, cur = '', i = 0
+  while (i < str.length) {
+    if (str[i] === '(') depth++
+    else if (str[i] === ')') depth--
+    if (depth === 0 && str.slice(i, i + sep.length) === sep) {
+      result.push(cur); cur = ''; i += sep.length; continue
+    }
+    cur += str[i++]
+  }
+  result.push(cur)
+  return result
+}
+
+type Rep = { seconds: number; repNum: number; groupSize: number; groupLabel: string }
+
+function expandToken(token: string): Rep[] | null {
+  const t = token.trim().replace(/\.$/, '')
+
+  const nested = t.match(/^(\d+)[×x]\((.+?)\)/)
+  if (nested) {
+    const n = parseInt(nested[1])
+    let perRep = 0
+    for (const p of nested[2].split('/')) {
+      const m = p.trim().match(/(\d+)\s*(min|s)/i)
+      if (!m) return null
+      perRep += toSeconds(m[1], m[2])
+    }
+    return Array.from({ length: n }, (_, i) => ({
+      seconds: perRep, repNum: i + 1, groupSize: n, groupLabel: nested[2].trim(),
+    }))
+  }
+
+  const sets = t.match(/^(\d+)\s+sets?\s+of\s*\((.+)\)/i)
+  if (sets) {
+    const n = parseInt(sets[1])
+    let perSet = 0
+    for (const p of sets[2].split('/')) {
+      const m = p.trim().match(/(\d+)\s*(min|s)/i)
+      if (m) perSet += toSeconds(m[1], m[2])
+    }
+    return Array.from({ length: n }, (_, i) => ({
+      seconds: perSet, repNum: i + 1, groupSize: n, groupLabel: `set ${i + 1}`,
+    }))
+  }
+
+  const multi = t.match(/^(\d+)\s*[×x]\s*(\d+)\s*(min|s)/i)
+  if (multi) {
+    const n = parseInt(multi[1])
+    const d = toSeconds(multi[2], multi[3])
+    return Array.from({ length: n }, (_, i) => ({
+      seconds: d, repNum: i + 1, groupSize: n, groupLabel: t,
+    }))
+  }
+
+  const single = t.match(/^(\d+)\s*(min|s)/i)
+  if (single) {
+    return [{ seconds: toSeconds(single[1], single[2]), repNum: 1, groupSize: 1, groupLabel: t }]
+  }
+
+  return null
+}
+
+function extractMain(instructions: string): string | null {
+  const mainIdx = instructions.indexOf('Main:')
+  if (mainIdx === -1) return null
+  const afterMain = instructions.slice(mainIdx + 5).trim()
+  const cdMatch = afterMain.match(/\.\s*CD:|\s+CD:/i)
+  return (cdMatch ? afterMain.slice(0, cdMatch.index) : afterMain).trim()
+}
+
+function computeTurnaround(instructions: string): string {
+  const mainPart = extractMain(instructions)
+  if (!mainPart) return '↩️ TURN AROUND: [add before posting]'
+
+  const tokens = mainPart.includes(' + ')
+    ? mainPart.split(' + ')
+    : splitRespectParens(mainPart, ' / ')
+
+  const allReps: Rep[] = []
+  for (const token of tokens) {
+    const reps = expandToken(token)
+    if (!reps) return '↩️ TURN AROUND: [add before posting]'
+    allReps.push(...reps)
+  }
+
+  const halfway = allReps.reduce((s, r) => s + r.seconds, 0) / 2
+  let cumulative = 0
+
+  for (const rep of allReps) {
+    cumulative += rep.seconds
+    if (cumulative >= halfway) {
+      if (rep.groupSize > 1 && rep.groupLabel.startsWith('set ')) {
+        return `↩️ TURN AROUND: After ${rep.groupLabel}`
+      } else if (rep.groupSize > 1) {
+        return `↩️ TURN AROUND: After the ${ordinal(rep.repNum)} rep of the ${rep.groupLabel}`
+      } else {
+        return `↩️ TURN AROUND: After the ${rep.groupLabel}`
+      }
+    }
+  }
+
+  return '↩️ TURN AROUND: [add before posting]'
+}
+
+function formatMainSection(instructions: string): string {
+  const mainPart = extractMain(instructions)
+  if (!mainPart) return `🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁\n${instructions}`
+
+  let formatted: string
+  if (mainPart.includes(' + ')) {
+    formatted = mainPart.replace(/\s*\+\s*/g, ' +\n')
+  } else {
+    formatted = splitRespectParens(mainPart, ' / ').join(' /\n')
+  }
+
+  return `🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁\n${formatted}`
+}
+
 function buildPost(entry: ScheduleEntry, workout: Workout) {
-  return `🐯🐺 TigerWolves Tuesday Workout
+  const lines = [
+    '🐯🐺 TigerWolves Tuesday Workout',
+    '',
+    `📅 ${formatDateLong(entry.date)}`,
+    `🏃🏻‍♂️‍➡️ ${entry.workoutType}: ${workout.name}`,
+  ]
 
-📅 ${formatDateLong(entry.date)}
-🏃 ${entry.workoutType}: ${workout.name}
+  if (workout.reason) {
+    lines.push('', workout.reason)
+  }
 
-${workout.instructions}
+  lines.push(
+    '',
+    '📍 Starting point and route: Tom Stofka Garden, aka "Da Bins."',
+    'We\'ll warm up by jogging to Marsha P. Johnson which is at the corner of North 8th and Kent',
+    'The run will be along the Kent Avenue Speedway',
+    'We\'ll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track',
+    '',
+    formatMainSection(workout.instructions),
+    '',
+    computeTurnaround(workout.instructions),
+    '',
+    'Bag Drop: Sorry, Not available',
+    '',
+    `Led by ${entry.leader} — see you out there! 🔥`,
+    `Run Leaders: ${RUN_LEADERS.join(', ')}`,
+  )
 
-📍 Meet at the usual spot, 6:30pm
-👟 ~${workout.distTime}
-
-Led by ${entry.leader} — see you out there! 🔥`
+  return lines.join('\n')
 }
 
 type Props = {
