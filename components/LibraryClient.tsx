@@ -33,9 +33,22 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [raceFilter, setRaceFilter] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
   const [expandedFamily, setExpandedFamily] = useState<string | null>(null)
   const [expandedNotes, setExpandedNotes] = useState<string | null>(null)
   const [showAbbrev, setShowAbbrev] = useState(false)
+
+  const q = search.toLowerCase()
+  function matchesSearch(w: Workout) {
+    if (!q) return true
+    return (
+      w.name.toLowerCase().includes(q) ||
+      w.type.toLowerCase().includes(q) ||
+      w.variation.toLowerCase().includes(q) ||
+      w.reason.toLowerCase().includes(q) ||
+      w.raceTypes.some(r => r.toLowerCase().includes(q))
+    )
+  }
 
   const types = Array.from(new Set(
     workouts.filter(w => !category || w.category === category).map(w => w.type)
@@ -45,6 +58,7 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
     .filter(w => !category || w.category === category)
     .filter(w => !typeFilter || w.type === typeFilter)
     .filter(w => !raceFilter || w.raceTypes.includes(raceFilter))
+    .filter(matchesSearch)
     .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
 
   const familyNames = new Set<string>()
@@ -152,6 +166,20 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
         </div>
       )}
 
+      {/* Search */}
+      <div className="px-4 mb-3">
+        <div className="relative">
+          <input
+            type="search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, type, race distance…"
+            className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-orange-400"
+          />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+        </div>
+      </div>
+
       {/* Category filter */}
       <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
         <button onClick={() => setcat(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!category ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All</button>
@@ -181,6 +209,9 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
       <div className="px-4 flex flex-col gap-3">
         {workouts.length === 0 && (
           <p className="text-gray-400 italic text-sm">No workouts in the library yet.</p>
+        )}
+        {workouts.length > 0 && displayRows.length === 0 && (
+          <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
         )}
         {displayRows.map(row => {
           if (row.kind === 'standalone') {

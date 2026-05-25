@@ -225,6 +225,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
   const [selectedWorkouts, setSelectedWorkouts] = useState<Workout[]>([])
   const [showCount, setShowCount] = useState(3)
+  const [pickerSearch, setPickerSearch] = useState('')
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -247,15 +248,29 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
   }, [entry, workouts])
 
+  const pickerSource = useMemo(() => {
+    const q = pickerSearch.toLowerCase()
+    if (!q) return allSuggestions
+    return workouts
+      .filter(w =>
+        w.name.toLowerCase().includes(q) ||
+        w.type.toLowerCase().includes(q) ||
+        w.variation.toLowerCase().includes(q) ||
+        w.reason.toLowerCase().includes(q) ||
+        w.raceTypes.some(r => r.toLowerCase().includes(q))
+      )
+      .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
+  }, [pickerSearch, allSuggestions, workouts])
+
   const displayRows = useMemo<PlanDisplayRow[]>(() => {
     const rows: PlanDisplayRow[] = []
     const seen = new Set<string>()
-    for (const w of allSuggestions) {
+    for (const w of pickerSource) {
       if (!familyNames.has(w.name)) {
         rows.push({ kind: 'standalone', workout: w })
       } else if (!seen.has(w.name)) {
         seen.add(w.name)
-        const allMembers = allSuggestions.filter(p => p.name === w.name)
+        const allMembers = pickerSource.filter(p => p.name === w.name)
         const base = allMembers.find(p => !p.variation) ?? null
         const progressions = allMembers
           .filter(p => p.variation)
@@ -264,10 +279,10 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
       }
     }
     return rows
-  }, [allSuggestions, familyNames])
+  }, [pickerSource, familyNames])
 
-  const visibleRows = displayRows.slice(0, showCount)
-  const remainingCount = displayRows.length - showCount
+  const visibleRows = pickerSearch ? displayRows : displayRows.slice(0, showCount)
+  const remainingCount = pickerSearch ? 0 : displayRows.length - showCount
 
   const effectiveSelections: Workout[] = selectedWorkouts.length > 0
     ? selectedWorkouts
@@ -291,6 +306,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
     setWeekIndex(idx)
     setSelectedWorkouts([])
     setShowCount(3)
+    setPickerSearch('')
     setCopied(false)
     setSaved(false)
   }
@@ -378,11 +394,26 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
             <div className="text-xs text-gray-400 mt-1">{formatDateLong(entry.date)}</div>
           </div>
 
-          {allSuggestions.length === 0 ? (
+          <div className="relative mb-4">
+            <input
+              type="search"
+              value={pickerSearch}
+              onChange={e => setPickerSearch(e.target.value)}
+              placeholder="Search all workouts by name, type, race…"
+              className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-orange-400"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+          </div>
+
+          {allSuggestions.length === 0 && !pickerSearch ? (
             <p className="text-gray-400 italic text-sm">No {entry.workoutType} workouts in the library yet.</p>
+          ) : displayRows.length === 0 ? (
+            <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
           ) : (
             <div className="mb-6">
-              <div className="text-sm font-bold text-gray-700 mb-2">Workouts — least recently used</div>
+              <div className="text-sm font-bold text-gray-700 mb-2">
+                {pickerSearch ? `All workouts matching "${pickerSearch}"` : 'Workouts — least recently used'}
+              </div>
               <div className="flex flex-col gap-2">
                 {visibleRows.map(row => {
                   if (row.kind === 'standalone') {
