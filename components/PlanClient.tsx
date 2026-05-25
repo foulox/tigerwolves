@@ -147,17 +147,25 @@ function formatMainSection(instructions: string): string {
   return `🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁\n${formatted}`
 }
 
-function buildPost(entry: ScheduleEntry, workout: Workout) {
+function formatMainContent(instructions: string): string {
+  const mainPart = extractMain(instructions)
+  if (!mainPart) return instructions
+  if (mainPart.includes(' + ')) return mainPart.replace(/\s*\+\s*/g, ' +\n')
+  return splitRespectParens(mainPart, ' / ').join(' /\n')
+}
+
+function buildPost(entry: ScheduleEntry, selections: Workout[]) {
+  const sorted = [...selections].sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
+  const primary = sorted[0]
+
   const lines = [
     '🐯🐺 TigerWolves Tuesday Workout',
     '',
     `📅 ${formatDateLong(entry.date)}`,
-    `🏃🏻‍♂️‍➡️ ${entry.workoutType}: ${workout.name}`,
+    `🏃🏻‍♂️‍➡️ ${entry.workoutType}: ${primary.name}`,
   ]
 
-  if (workout.reason) {
-    lines.push('', workout.reason)
-  }
+  if (primary.reason) lines.push('', primary.reason)
 
   lines.push(
     '',
@@ -166,9 +174,33 @@ function buildPost(entry: ScheduleEntry, workout: Workout) {
     'The run will be along the Kent Avenue Speedway',
     'We\'ll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track',
     '',
-    formatMainSection(workout.instructions),
-    '',
-    computeTurnaround(workout.instructions),
+  )
+
+  if (sorted.length === 2) {
+    const [standard, longer] = sorted
+    const stdContent = standard.variation || formatMainContent(standard.instructions)
+    const lngContent = longer.variation || formatMainContent(longer.instructions)
+    lines.push(
+      '🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁',
+      '',
+      'Standard',
+      stdContent,
+      computeTurnaround(standard.instructions),
+      '',
+      'Longer',
+      lngContent,
+      computeTurnaround(longer.instructions),
+    )
+  } else {
+    const w = sorted[0]
+    lines.push(
+      w.variation ? `🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁\n${w.variation}` : formatMainSection(w.instructions),
+      '',
+      computeTurnaround(w.instructions),
+    )
+  }
+
+  lines.push(
     '',
     'Bag Drop: Sorry, Not available',
     '',
@@ -179,6 +211,10 @@ function buildPost(entry: ScheduleEntry, workout: Workout) {
   return lines.join('\n')
 }
 
+type PlanStandaloneRow = { kind: 'standalone'; workout: Workout }
+type PlanFamilyRow = { kind: 'family'; name: string; base: Workout | null; progressions: Workout[]; total: number }
+type PlanDisplayRow = PlanStandaloneRow | PlanFamilyRow
+
 type Props = {
   upcoming: ScheduleEntry[]
   workouts: Workout[]
@@ -187,13 +223,21 @@ type Props = {
 
 export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }: Props) {
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
-  const [selectedName, setSelectedName] = useState<string>('')
+  const [selectedWorkouts, setSelectedWorkouts] = useState<Workout[]>([])
   const [showCount, setShowCount] = useState(3)
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const entry = upcoming[weekIndex]
+
+  const familyNames = useMemo(() => {
+    const s = new Set<string>()
+    for (const w of workouts) {
+      if (w.variation) s.add(w.name)
+    }
+    return s
+  }, [workouts])
 
   const allSuggestions = useMemo(() => {
     if (!entry) return []
@@ -203,26 +247,69 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
   }, [entry, workouts])
 
-  const visibleSuggestions = allSuggestions.slice(0, showCount)
-  const remainingCount = allSuggestions.length - showCount
+  const displayRows = useMemo<PlanDisplayRow[]>(() => {
+    const rows: PlanDisplayRow[] = []
+    const seen = new Set<string>()
+    for (const w of allSuggestions) {
+      if (!familyNames.has(w.name)) {
+        rows.push({ kind: 'standalone', workout: w })
+      } else if (!seen.has(w.name)) {
+        seen.add(w.name)
+        const allMembers = allSuggestions.filter(p => p.name === w.name)
+        const base = allMembers.find(p => !p.variation) ?? null
+        const progressions = allMembers
+          .filter(p => p.variation)
+          .sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
+        rows.push({ kind: 'family', name: w.name, base, progressions, total: (base ? 1 : 0) + progressions.length })
+      }
+    }
+    return rows
+  }, [allSuggestions, familyNames])
 
-  const effectiveSelected = selectedName || entry?.workoutName || allSuggestions[0]?.name || ''
+  const visibleRows = displayRows.slice(0, showCount)
+  const remainingCount = displayRows.length - showCount
+
+  const effectiveSelections: Workout[] = selectedWorkouts.length > 0
+    ? selectedWorkouts
+    : (() => {
+        const planned = entry?.workoutName
+          ? allSuggestions.find(w => w.name === entry.workoutName) ?? null
+          : null
+        const w = planned ?? allSuggestions[0] ?? null
+        return w ? [w] : []
+      })()
+
+  function workoutKey(w: Workout) {
+    return `${w.name}||${w.progression ?? ''}`
+  }
+
+  function isEffectivelySelected(w: Workout): boolean {
+    return effectiveSelections.some(s => workoutKey(s) === workoutKey(w))
+  }
 
   function changeWeek(idx: number) {
     setWeekIndex(idx)
-    setSelectedName('')
+    setSelectedWorkouts([])
     setShowCount(3)
     setCopied(false)
     setSaved(false)
   }
 
-  function handleSelect(name: string) {
-    setSelectedName(name)
+  function handleSelect(w: Workout) {
+    setSelectedWorkouts(prev => {
+      const key = workoutKey(w)
+      if (prev.some(s => workoutKey(s) === key)) {
+        return prev.filter(s => workoutKey(s) !== key)
+      }
+      if (prev.length === 1 && prev[0].name === w.name) {
+        return [prev[0], w]
+      }
+      return [w]
+    })
     setSaved(false)
   }
 
-  const selected = allSuggestions.find(w => w.name === effectiveSelected)
-  const post = selected && entry ? buildPost(entry, selected) : ''
+  const post = entry && effectiveSelections.length > 0 ? buildPost(entry, effectiveSelections) : ''
 
   function handleCopy() {
     navigator.clipboard.writeText(post).then(() => {
@@ -232,10 +319,11 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
   }
 
   async function handleSetPlan() {
-    if (!entry || !effectiveSelected) return
+    if (!entry || effectiveSelections.length === 0) return
+    const sorted = [...effectiveSelections].sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
     setSaving(true)
     try {
-      await setPlanWorkout(entry.date, effectiveSelected)
+      await setPlanWorkout(entry.date, sorted[0].name)
       setSaved(true)
     } finally {
       setSaving(false)
@@ -293,22 +381,79 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
             <div className="mb-6">
               <div className="text-sm font-bold text-gray-700 mb-2">Workouts — least recently used</div>
               <div className="flex flex-col gap-2">
-                {visibleSuggestions.map(w => (
-                  <button
-                    key={w.name}
-                    onClick={() => handleSelect(w.name)}
-                    className={`text-left bg-white rounded-2xl p-4 border shadow-sm transition-colors touch-manipulation cursor-pointer ${effectiveSelected === w.name ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="font-semibold text-gray-900">{w.name}</div>
-                      <div className="text-xs text-gray-400 shrink-0">
-                        {w.lastRan ? formatDateShort(w.lastRan) : 'Never'}
+                {visibleRows.map(row => {
+                  if (row.kind === 'standalone') {
+                    const w = row.workout
+                    const sel = isEffectivelySelected(w)
+                    return (
+                      <button
+                        key={`s-${w.name}`}
+                        onClick={() => handleSelect(w)}
+                        className={`text-left bg-white rounded-2xl p-4 border shadow-sm transition-colors touch-manipulation cursor-pointer ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="font-semibold text-gray-900">{w.name}</div>
+                          <div className="text-xs text-gray-400 shrink-0">
+                            {w.lastRan ? formatDateShort(w.lastRan) : 'Never'}
+                          </div>
+                        </div>
+                        {w.variation && <div className="text-xs text-gray-400 mt-0.5">{w.variation}</div>}
+                        <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
+                        <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
+                      </button>
+                    )
+                  }
+
+                  // Family row — all versions always visible, up to 2 selectable
+                  return (
+                    <div key={`f-${row.name}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="font-semibold text-gray-900">{row.name}</div>
+                          <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full shrink-0">
+                            {row.total} versions
+                          </span>
+                        </div>
                       </div>
+                      {row.base && (
+                        <button
+                          onClick={() => handleSelect(row.base!)}
+                          className={`w-full text-left px-4 py-3 border-b border-gray-50 transition-colors touch-manipulation ${isEffectivelySelected(row.base) ? 'bg-orange-50' : 'bg-white active:bg-gray-50'}`}
+                        >
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${isEffectivelySelected(row.base) ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
+                              <span className="text-xs font-bold text-gray-600">Standard</span>
+                            </div>
+                            <span className="text-xs text-gray-400">{row.base.lastRan ? formatDateShort(row.base.lastRan) : 'Never'}</span>
+                          </div>
+                          {row.base.distTime && <div className="text-xs text-gray-400 mt-1 ml-6">{row.base.distTime}</div>}
+                        </button>
+                      )}
+                      {row.progressions.map((p, i) => {
+                        const sel = isEffectivelySelected(p)
+                        const isLast = i === row.progressions.length - 1
+                        return (
+                          <button
+                            key={p.progression ?? i}
+                            onClick={() => handleSelect(p)}
+                            className={`w-full text-left px-4 py-3 transition-colors touch-manipulation ${!isLast ? 'border-b border-gray-50' : ''} ${sel ? 'bg-orange-50' : 'bg-white active:bg-gray-50'}`}
+                          >
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
+                                <span className="text-xs font-bold text-orange-500">Variation {p.progression} of {row.total}</span>
+                              </div>
+                              <span className="text-xs text-gray-400">{p.lastRan ? formatDateShort(p.lastRan) : 'Never'}</span>
+                            </div>
+                            {p.variation && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{p.variation}</div>}
+                            {p.distTime && <div className="text-xs text-gray-400 mt-0.5 ml-6">{p.distTime}</div>}
+                          </button>
+                        )
+                      })}
                     </div>
-                    <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
-                    <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
-                  </button>
-                ))}
+                  )
+                })}
               </div>
               {remainingCount > 0 && (
                 <button
@@ -321,7 +466,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
             </div>
           )}
 
-          {selected && (
+          {effectiveSelections.length > 0 && (
             <>
               <button
                 onClick={handleSetPlan}
