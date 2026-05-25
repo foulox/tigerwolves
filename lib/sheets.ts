@@ -31,6 +31,9 @@ function mapWorkout(row: RawRow): Workout {
     mapLink: str(row['Map Link']) || null,
     variation: str(row['Variation']),
     progression: (() => { const n = parseInt(str(row['Progression'])); return isNaN(n) ? null : n })(),
+    author: str(row['Author']) || null,
+    raceTypes: str(row['Race Type']).split(',').map(s => s.trim()).filter(Boolean),
+    trainingPhases: str(row['Training Phase']).split(',').map(s => s.trim()).filter(Boolean),
   }
 }
 
