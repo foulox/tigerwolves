@@ -244,7 +244,13 @@ export default function LibraryClient({ workouts, isLeader }: { workouts: Workou
                 <p className="text-sm text-gray-500 mt-1.5 leading-snug">{w.reason}</p>
                 <WorkoutMeta w={w} />
                 {isLeader && (
-                  <div className="mt-3 pt-3 border-t border-gray-50">
+                  <div className="mt-3 pt-3 border-t border-gray-50 flex gap-4">
+                    <Link
+                      href={`/library/edit?name=${encodeURIComponent(w.name)}`}
+                      className="text-xs font-semibold text-gray-400 touch-manipulation"
+                    >
+                      Edit
+                    </Link>
                     <Link
                       href={`/library/add?parent=${encodeURIComponent(w.name)}`}
                       className="text-xs font-semibold text-orange-500 touch-manipulation"

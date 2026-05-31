@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { updateWorkout } from '@/app/actions'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
 import { FORM_CATEGORIES, FORM_TYPES, chipBase, chipDark, chipOrange, chipOff, toggleItem } from '@/lib/workoutForm'
@@ -10,34 +11,23 @@ import type { InferredFields } from '@/app/api/workout/infer/route'
 type Step = 'entry' | 'loading' | 'review'
 
 export default function EditWorkoutForm({ workout }: { workout: Workout }) {
-  const original = { name: workout.name, variation: workout.variation }
+  const isVariation = !!workout.variation
+  const router = useRouter()
 
   const [step, setStep] = useState<Step>('entry')
-  const [entry, setEntry] = useState({
-    name: workout.name,
-    category: workout.category,
-    type: workout.type,
-    instructions: workout.instructions,
-    reason: workout.reason,
-    route: workout.mapLink ?? '',
-    variation: workout.variation,
-    progression: workout.progression != null ? String(workout.progression) : '',
-  })
-  const [review, setReview] = useState<InferredFields>({
-    distTime: workout.distTime,
-    lapStructure: workout.lapStructure,
-    energySystem: workout.energySystem,
-    hrZone: workout.hrZone,
-    rpe: workout.rpe,
-    raceTypes: workout.raceTypes,
-    trainingPhases: workout.trainingPhases,
-    author: workout.author ?? '',
-    coachingNotes: workout.coachingNotes ?? '',
-  })
+  const [name, setName] = useState(workout.name)
+  const [category, setCategory] = useState(workout.category)
+  const [type, setType] = useState(workout.type)
+  const [instructions, setInstructions] = useState(workout.instructions)
+  const [reason, setReason] = useState(workout.reason)
+  const [route, setRoute] = useState(workout.mapLink ?? '')
+  const [variationDesc, setVariationDesc] = useState(workout.variation)
+  const [progression, setProgression] = useState(String(workout.progression ?? ''))
+  const [review, setReview] = useState<InferredFields | null>(null)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
-  async function handleEntry(e: React.FormEvent<HTMLFormElement>) {
+  async function handleEntry(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setStep('loading')
@@ -45,7 +35,13 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
       const res = await fetch('/api/workout/infer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry),
+        body: JSON.stringify({
+          name: isVariation ? workout.name : name,
+          category,
+          type,
+          instructions,
+          reason,
+        }),
       })
       if (!res.ok) throw new Error('Inference failed')
       const inferred: InferredFields = await res.json()
@@ -59,31 +55,36 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
 
   function buildFormData() {
     const formData = new FormData()
-    formData.set('name', entry.name)
-    formData.set('category', entry.category)
-    formData.set('type', entry.type)
-    formData.set('instructions', entry.instructions)
-    formData.set('reason', entry.reason)
-    formData.set('mapLink', entry.route)
-    formData.set('variation', entry.variation)
-    formData.set('progression', entry.progression)
-    formData.set('distTime', review.distTime)
-    formData.set('lapStructure', review.lapStructure)
-    formData.set('energySystem', review.energySystem)
-    formData.set('hrZone', review.hrZone)
-    formData.set('rpe', review.rpe)
-    formData.set('raceTypes', review.raceTypes.join(', '))
-    formData.set('trainingPhases', review.trainingPhases.join(', '))
-    formData.set('author', review.author)
-    formData.set('coachingNotes', review.coachingNotes)
+    formData.set('name', isVariation ? workout.name : name)
+    formData.set('category', category)
+    formData.set('type', type)
+    formData.set('instructions', instructions)
+    formData.set('reason', reason)
+    formData.set('mapLink', route)
+    formData.set('lastRan', workout.lastRan ?? '')
+    formData.set('variation', isVariation ? variationDesc : '')
+    formData.set('progression', isVariation ? progression : '')
+    formData.set('distTime', review!.distTime)
+    formData.set('lapStructure', review!.lapStructure)
+    formData.set('energySystem', review!.energySystem)
+    formData.set('hrZone', review!.hrZone)
+    formData.set('rpe', review!.rpe)
+    formData.set('raceTypes', review!.raceTypes.join(', '))
+    formData.set('trainingPhases', review!.trainingPhases.join(', '))
+    formData.set('author', review!.author)
+    formData.set('coachingNotes', review!.coachingNotes)
     return formData
   }
 
   function handleSave() {
+    if (!review) return
     setError('')
     startTransition(async () => {
       try {
-        await updateWorkout(original, buildFormData())
+        await updateWorkout(
+          { name: workout.name, variation: workout.variation },
+          buildFormData(),
+        )
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Something went wrong')
       }
@@ -94,37 +95,38 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
     return (
       <div className="px-4 pt-10 flex flex-col items-center gap-4 text-center">
         <div className="w-10 h-10 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mt-8" />
-        <p className="text-sm text-gray-500">Re-analyzing workout...</p>
+        <p className="text-sm text-gray-500">Analyzing workout...</p>
       </div>
     )
   }
 
-  if (step === 'review') {
+  if (step === 'review' && review) {
     return (
       <div className="px-4 pt-10 pb-10">
         <header className="mb-1">
-          <h1 className="text-2xl font-bold text-gray-900">Review & Save</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Review & Confirm</h1>
         </header>
-        <p className="text-sm text-gray-500 mb-6">Fields re-inferred by AI — adjust anything before saving.</p>
+        <p className="text-sm text-gray-500 mb-6">Fields refreshed by AI — adjust anything before saving.</p>
 
         <div className="bg-gray-50 rounded-2xl p-4 mb-6 border border-gray-100">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Workout</p>
-          <p className="font-semibold text-gray-900">{entry.name}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{entry.category} · {entry.type}</p>
+          <p className="font-semibold text-gray-900">{isVariation ? workout.name : name}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{category} · {type}</p>
+          {isVariation && variationDesc && <p className="text-xs text-gray-400 mt-0.5">{variationDesc}</p>}
         </div>
 
         <Field label="Author / Source">
-          <input value={review.author} onChange={e => setReview(r => ({ ...r, author: e.target.value }))}
+          <input value={review.author} onChange={e => setReview(r => r && ({ ...r, author: e.target.value }))}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
         </Field>
 
         <Field label="Distance / Time">
-          <input value={review.distTime} onChange={e => setReview(r => ({ ...r, distTime: e.target.value }))}
+          <input value={review.distTime} onChange={e => setReview(r => r && ({ ...r, distTime: e.target.value }))}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
         </Field>
 
         <Field label="Lap Structure">
-          <input value={review.lapStructure} onChange={e => setReview(r => ({ ...r, lapStructure: e.target.value }))}
+          <input value={review.lapStructure} onChange={e => setReview(r => r && ({ ...r, lapStructure: e.target.value }))}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
             placeholder="e.g. 3×10min@tempo r2min jog" />
         </Field>
@@ -132,7 +134,7 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
         <Field label="Energy System">
           <div className="flex flex-wrap gap-2">
             {['Aerobic', 'Lactate Threshold', 'Anaerobic', 'Mixed'].map(s => (
-              <button key={s} type="button" onClick={() => setReview(r => ({ ...r, energySystem: s }))}
+              <button key={s} type="button" onClick={() => setReview(r => r && ({ ...r, energySystem: s }))}
                 className={`${chipBase} ${review.energySystem === s ? chipOrange : chipOff}`}>{s}</button>
             ))}
           </div>
@@ -141,7 +143,7 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
         <Field label="HR Zone">
           <div className="flex flex-wrap gap-2">
             {['Z2-Z3', 'Z3-Z4', 'Z4-Z5', 'Z2-Z4', 'Z3-Z5', 'Z2-Z5'].map(z => (
-              <button key={z} type="button" onClick={() => setReview(r => ({ ...r, hrZone: z }))}
+              <button key={z} type="button" onClick={() => setReview(r => r && ({ ...r, hrZone: z }))}
                 className={`${chipBase} ${review.hrZone === z ? chipOrange : chipOff}`}>{z}</button>
             ))}
           </div>
@@ -150,7 +152,7 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
         <Field label="RPE">
           <div className="flex gap-2">
             {['5', '6', '7', '8', '9', '10'].map(n => (
-              <button key={n} type="button" onClick={() => setReview(r => ({ ...r, rpe: n }))}
+              <button key={n} type="button" onClick={() => setReview(r => r && ({ ...r, rpe: n }))}
                 className={`${chipBase} ${review.rpe === n ? chipOrange : chipOff}`}>{n}</button>
             ))}
           </div>
@@ -160,7 +162,7 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
           <div className="flex flex-wrap gap-2">
             {RACE_TYPES.map(r => (
               <button key={r} type="button"
-                onClick={() => setReview(rv => ({ ...rv, raceTypes: toggleItem(rv.raceTypes, r) }))}
+                onClick={() => setReview(rv => rv && ({ ...rv, raceTypes: toggleItem(rv.raceTypes, r) }))}
                 className={`${chipBase} ${review.raceTypes.includes(r) ? chipDark : chipOff}`}>{r}</button>
             ))}
           </div>
@@ -170,7 +172,7 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
           <div className="flex flex-wrap gap-2">
             {TRAINING_PHASES.map(p => (
               <button key={p} type="button"
-                onClick={() => setReview(rv => ({ ...rv, trainingPhases: toggleItem(rv.trainingPhases, p) }))}
+                onClick={() => setReview(rv => rv && ({ ...rv, trainingPhases: toggleItem(rv.trainingPhases, p) }))}
                 className={`${chipBase} ${review.trainingPhases.includes(p) ? chipDark : chipOff}`}>{p}</button>
             ))}
           </div>
@@ -178,7 +180,7 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
 
         <Field label="Coach notes">
           <textarea value={review.coachingNotes}
-            onChange={e => setReview(r => ({ ...r, coachingNotes: e.target.value }))}
+            onChange={e => setReview(r => r && ({ ...r, coachingNotes: e.target.value }))}
             rows={2}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
             placeholder="Cues for the leader running this workout" />
@@ -205,18 +207,44 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
       <header className="mb-2">
         <h1 className="text-2xl font-bold text-gray-900">Edit Workout</h1>
       </header>
-      <p className="text-sm text-gray-500 mb-6">Update the basics — AI will re-suggest the rest.</p>
+      <p className="text-sm text-gray-500 mb-6">Update the details — AI will re-infer the rest.</p>
 
-      <Field label="Workout Name">
-        <input required value={entry.name} onChange={e => setEntry(v => ({ ...v, name: e.target.value }))}
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
-      </Field>
+      {isVariation && (
+        <div className="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-100">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Family</p>
+          <p className="font-semibold text-gray-900">{workout.name}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Parent name — use Regroup to restructure</p>
+        </div>
+      )}
+
+      {!isVariation && (
+        <Field label="Workout Name">
+          <input required value={name} onChange={e => setName(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
+            placeholder="e.g. Hills 10 × 60s" />
+        </Field>
+      )}
+
+      {isVariation && (
+        <>
+          <Field label="Variation Description">
+            <input value={variationDesc} onChange={e => setVariationDesc(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
+              placeholder="e.g. 3×2mi@HMP, r3min" />
+            <p className="text-xs text-gray-400 mt-1">Short label shown in the family card</p>
+          </Field>
+          <Field label="Progression (1 = easiest)">
+            <input type="number" min="1" value={progression} onChange={e => setProgression(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
+          </Field>
+        </>
+      )}
 
       <Field label="Category">
         <div className="flex gap-2">
           {FORM_CATEGORIES.map(c => (
-            <button type="button" key={c} onClick={() => setEntry(v => ({ ...v, category: c }))}
-              className={`${chipBase} ${entry.category === c ? chipDark : chipOff}`}>{c}</button>
+            <button type="button" key={c} onClick={() => setCategory(c)}
+              className={`${chipBase} ${category === c ? chipDark : chipOff}`}>{c}</button>
           ))}
         </div>
       </Field>
@@ -224,50 +252,44 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
       <Field label="Type">
         <div className="flex flex-wrap gap-2">
           {FORM_TYPES.map(t => (
-            <button type="button" key={t} onClick={() => setEntry(v => ({ ...v, type: t }))}
-              className={`${chipBase} ${entry.type === t ? chipOrange : chipOff}`}>{t}</button>
+            <button type="button" key={t} onClick={() => setType(t)}
+              className={`${chipBase} ${type === t ? chipOrange : chipOff}`}>{t}</button>
           ))}
         </div>
       </Field>
 
       <Field label="Instructions">
-        <textarea required value={entry.instructions} onChange={e => setEntry(v => ({ ...v, instructions: e.target.value }))}
+        <textarea required value={instructions} onChange={e => setInstructions(e.target.value)}
           rows={4}
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
+          placeholder="WU: 15 min easy. Main: 10×60s@5K, r=jog down. CD: 10 min easy." />
       </Field>
 
       <Field label="Why this workout?">
-        <textarea value={entry.reason} onChange={e => setEntry(v => ({ ...v, reason: e.target.value }))}
+        <textarea value={reason} onChange={e => setReason(e.target.value)}
           rows={2}
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
+          placeholder="Brief description of the purpose" />
       </Field>
 
-      {workout.variation && (
-        <Field label="Variation description">
-          <input value={entry.variation} onChange={e => setEntry(v => ({ ...v, variation: e.target.value }))}
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
-        </Field>
-      )}
-
-      {workout.variation && (
-        <Field label="Progression (1 = easiest)">
-          <input type="number" min="1" value={entry.progression} onChange={e => setEntry(v => ({ ...v, progression: e.target.value }))}
-            className="w-24 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
-        </Field>
-      )}
-
       <Field label="Route (optional)">
-        <input value={entry.route} onChange={e => setEntry(v => ({ ...v, route: e.target.value }))}
+        <input value={route} onChange={e => setRoute(e.target.value)}
           className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
-          placeholder="e.g. strava.com/routes/..." />
+          placeholder="e.g. strava.com/routes/... or mapmyrun.com/..." />
       </Field>
 
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-      <button type="submit" disabled={!entry.category || !entry.type}
-        className="w-full py-4 rounded-xl bg-orange-500 text-white font-semibold text-sm disabled:opacity-40 transition-colors touch-manipulation">
-        Next →
-      </button>
+      <div className="flex gap-3">
+        <button type="button" onClick={() => router.back()}
+          className="flex-1 py-4 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm touch-manipulation">
+          Cancel
+        </button>
+        <button type="submit" disabled={!category || !type}
+          className="flex-[2] py-4 rounded-xl bg-orange-500 text-white font-semibold text-sm disabled:opacity-40 transition-colors touch-manipulation">
+          Next →
+        </button>
+      </div>
     </form>
   )
 }

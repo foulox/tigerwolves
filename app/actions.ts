@@ -76,7 +76,7 @@ function buildPayload(formData: FormData, variation = '', progression = '') {
     'Energy System': formData.get('energySystem') as string,
     'HR Zone': formData.get('hrZone') as string,
     'RPE': formData.get('rpe') as string,
-    'Last Ran': '',
+    'Last Ran': (formData.get('lastRan') as string) || '',
     'Coaching Notes': formData.get('coachingNotes') as string,
     'Map Link': formData.get('mapLink') as string,
     'Author': formData.get('author') as string,
@@ -99,10 +99,6 @@ async function sheetsPost(body: Record<string, unknown>): Promise<Record<string,
   return json
 }
 
-async function postToSheet(payload: Record<string, unknown>) {
-  await sheetsPost(payload)
-}
-
 export async function regroupFamily(
   newName: string,
   workouts: Array<{
@@ -117,21 +113,6 @@ export async function regroupFamily(
   await sheetsPost({ action: 'regroupFamily', newName, workouts })
   revalidatePath('/library')
   redirect('/library')
-}
-
-export async function addWorkout(formData: FormData) {
-  const { userId } = await auth()
-  if (!userId) throw new Error('Unauthorized')
-  await postToSheet(buildPayload(formData))
-  revalidatePath('/library')
-  revalidatePath('/admin')
-  redirect('/library')
-}
-
-export async function deleteWorkout(name: string, variation: string) {
-  await sheetsPost({ action: 'deleteWorkout', name, variation })
-  revalidatePath('/library')
-  revalidatePath('/admin')
 }
 
 export async function updateWorkout(
@@ -153,6 +134,21 @@ export async function updateWorkout(
   redirect('/library')
 }
 
+export async function addWorkout(formData: FormData) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
+  await sheetsPost(buildPayload(formData))
+  revalidatePath('/library')
+  revalidatePath('/admin')
+  redirect('/library')
+}
+
+export async function deleteWorkout(name: string, variation: string) {
+  await sheetsPost({ action: 'deleteWorkout', name, variation })
+  revalidatePath('/library')
+  revalidatePath('/admin')
+}
+
 export async function addVariation(
   parent: {
     name: string; category: string; type: string; reason: string;
@@ -167,7 +163,7 @@ export async function addVariation(
 ) {
   const { userId } = await auth()
   if (!userId) throw new Error('Unauthorized')
-  await postToSheet({
+  await sheetsPost({
     'Workout Name': parent.name,
     'Sport': 'Running',
     'Category': parent.category,
