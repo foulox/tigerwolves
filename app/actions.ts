@@ -90,7 +90,7 @@ function buildPayload(formData: FormData, variation = '', progression = '') {
   }
 }
 
-async function postToSheet(payload: Record<string, string>) {
+async function postToSheet(payload: Record<string, unknown>) {
   const res = await fetch(process.env.SHEETS_URL!, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -98,6 +98,26 @@ async function postToSheet(payload: Record<string, string>) {
   })
   const json = await res.json()
   if (!json.ok) throw new Error(json.error ?? 'Save failed')
+}
+
+export async function regroupFamily(
+  newName: string,
+  workouts: Array<{
+    originalName: string
+    originalVariation: string
+    variation: string
+    progression: number
+  }>
+) {
+  const res = await fetch(process.env.SHEETS_URL!, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'regroupFamily', newName, workouts }),
+  })
+  const json = await res.json()
+  if (!json.ok) throw new Error(json.error ?? 'Save failed')
+  revalidatePath('/library')
+  redirect('/library')
 }
 
 export async function addWorkout(formData: FormData) {

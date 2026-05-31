@@ -146,6 +146,9 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
           >
             ?
           </button>
+          <Link href="/admin" className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs font-bold touch-manipulation" title="Manage library">
+            ⚙
+          </Link>
           <Link href="/library/add" className="w-9 h-9 flex items-center justify-center rounded-full bg-orange-500 text-white text-xl font-bold shadow-sm touch-manipulation">
             +
           </Link>
