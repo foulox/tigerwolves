@@ -79,7 +79,7 @@ function buildPayload(formData: FormData, variation = '', progression = '') {
     'Energy System': formData.get('energySystem') as string,
     'HR Zone': formData.get('hrZone') as string,
     'RPE': formData.get('rpe') as string,
-    'Last Ran': '',
+    'Last Ran': (formData.get('lastRan') as string) || '',
     'Coaching Notes': formData.get('coachingNotes') as string,
     'Map Link': formData.get('mapLink') as string,
     'Author': formData.get('author') as string,
@@ -90,7 +90,7 @@ function buildPayload(formData: FormData, variation = '', progression = '') {
   }
 }
 
-async function postToSheet(payload: Record<string, string>) {
+async function postToSheet(payload: Record<string, unknown>) {
   const res = await fetch(process.env.SHEETS_URL!, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -98,6 +98,23 @@ async function postToSheet(payload: Record<string, string>) {
   })
   const json = await res.json()
   if (!json.ok) throw new Error(json.error ?? 'Save failed')
+}
+
+export async function updateWorkout(
+  originalName: string,
+  originalVariation: string,
+  variation: string,
+  progression: string,
+  formData: FormData,
+) {
+  await postToSheet({
+    ...buildPayload(formData, variation, progression),
+    action: 'updateWorkout',
+    originalName,
+    originalVariation,
+  })
+  revalidatePath('/library')
+  redirect('/library')
 }
 
 export async function addWorkout(formData: FormData) {

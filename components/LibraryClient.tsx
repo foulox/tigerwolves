@@ -225,7 +225,13 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
                 {w.variation && <p className="text-xs text-gray-400 mt-0.5">{w.variation}</p>}
                 <p className="text-sm text-gray-500 mt-1.5 leading-snug">{w.reason}</p>
                 <WorkoutMeta w={w} />
-                <div className="mt-3 pt-3 border-t border-gray-50">
+                <div className="mt-3 pt-3 border-t border-gray-50 flex gap-4">
+                  <Link
+                    href={`/library/edit?name=${encodeURIComponent(w.name)}`}
+                    className="text-xs font-semibold text-gray-400 touch-manipulation"
+                  >
+                    Edit
+                  </Link>
                   <Link
                     href={`/library/add?parent=${encodeURIComponent(w.name)}`}
                     className="text-xs font-semibold text-orange-500 touch-manipulation"
@@ -263,14 +269,32 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
                 <div className="mt-1 ml-2 flex flex-col gap-1">
                   {row.base && (
                     <div className="bg-white rounded-xl px-4 py-3 border border-gray-100">
-                      <div className="text-xs font-bold text-gray-500 mb-0.5">Standard</div>
+                      <div className="flex justify-between items-center mb-0.5">
+                        <div className="text-xs font-bold text-gray-500">Standard</div>
+                        <Link
+                          href={`/library/edit?name=${encodeURIComponent(row.name)}`}
+                          onClick={e => e.stopPropagation()}
+                          className="text-xs font-semibold text-gray-400 touch-manipulation"
+                        >
+                          Edit
+                        </Link>
+                      </div>
                       {row.base.distTime && <div className="text-xs text-gray-400">{row.base.distTime}</div>}
                       {row.base.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(row.base.lastRan)}</div>}
                     </div>
                   )}
                   {row.progressions.map(p => (
                     <div key={p.progression} className="bg-white rounded-xl px-4 py-3 border border-gray-100">
-                      <div className="text-xs font-bold text-orange-500 mb-0.5">Variation {p.progression} of {row.total}</div>
+                      <div className="flex justify-between items-center mb-0.5">
+                        <div className="text-xs font-bold text-orange-500">Variation {p.progression} of {row.total}</div>
+                        <Link
+                          href={`/library/edit?name=${encodeURIComponent(row.name)}&variation=${encodeURIComponent(p.variation)}`}
+                          onClick={e => e.stopPropagation()}
+                          className="text-xs font-semibold text-gray-400 touch-manipulation"
+                        >
+                          Edit
+                        </Link>
+                      </div>
                       <div className="text-sm font-semibold text-gray-800">{p.variation}</div>
                       {p.distTime && <div className="text-xs text-gray-400 mt-0.5">{p.distTime}</div>}
                       {p.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(p.lastRan)}</div>}
