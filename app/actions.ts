@@ -123,6 +123,7 @@ export async function regroupFamily(
 export async function addWorkout(formData: FormData) {
   await postToSheet(buildPayload(formData))
   revalidatePath('/library')
+  revalidatePath('/admin')
   redirect('/library')
 }
 
