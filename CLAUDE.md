@@ -16,13 +16,15 @@ Live at: https://tigerwolves.vercel.app
 - **Frontend:** Next.js 16 (App Router) + Tailwind CSS v4
 - **Hosting:** Vercel (free, auto-deploys from `main`)
 - **Data source:** Google Sheets via Google Apps Script JSON endpoint
-- **Write-back:** Apps Script `doPost()` for adding new workouts
+- **Write-back:** Apps Script `doPost()` — add, edit, delete workouts; regroup families; set schedule
 
 ## Architecture
 - Server components fetch data and pass it to client components as props
 - `lib/sheets.ts` — fetches from Apps Script, normalizes data
 - `lib/data.ts` — TypeScript types and constants only
-- `app/actions.ts` — server actions (add workout → revalidate cache)
+- `lib/workoutForm.ts` — shared UI constants for add/edit forms (FORM_CATEGORIES, FORM_TYPES, chip styles, toggleItem)
+- `app/actions.ts` — server actions; all Sheets POSTs go through `sheetsPost()` helper which checks `res.ok` before parsing JSON
+- `scripts/apps-script.gs` — the full Apps Script source (doGet + doPost); keep in sync when adding new actions
 - 5-minute cache revalidation (`next: { revalidate: 300 }`); on-demand revalidation after writes
 
 ## Google Sheets Setup
@@ -40,11 +42,14 @@ Two spreadsheets:
 
 The Apps Script web app URL is stored in `SHEETS_URL` env var (Vercel + `.env.local`).
 
+**Updating the Apps Script:** Edit `scripts/apps-script.gs`, paste into the Apps Script editor, then Deploy → Manage deployments → New version. The SHEETS_URL does not change between versions.
+
 ## Core Screens
 1. **Schedule** (`/`) — upcoming Tuesdays: leader, workout type, workout name
 2. **Plan** (`/plan`) — pick a workout for the week; generates Heylo post draft with one-tap copy
-3. **Workout Library** (`/library`) — browse/filter by Category then Type; "+" button opens add-workout form
+3. **Workout Library** (`/library`) — browse/filter by Category then Type; "+" add, ✎ edit, 🗑 delete on every card
 4. **Races** (`/races`) — upcoming races with day countdown; red highlight if ≤30 days out
+5. **Admin** (`/admin`) — Regroup standalone workouts into a family (structural changes only)
 
 ## Heylo Post Format
 `buildPost` in `components/PlanClient.tsx` generates the post. Key details:
@@ -87,7 +92,7 @@ Every story ships as a PR, not a direct commit to `main`:
 4. **Self-review** before opening the PR (see checklist below)
 5. **Open PR** with `closes #N` in the body
 6. **Vercel builds a preview URL** — Lou tests on mobile before anything hits production
-7. **Prompt Lou to run `/ultrareview`** on any PR touching more than one file
+7. **Prompt Lou to run `/review`** on any PR touching more than one file
 8. **Lou reviews and merges** — production deploys automatically
 
 ### Self-review checklist (mandatory before every PR)
@@ -102,9 +107,9 @@ Every story ships as a PR, not a direct commit to `main`:
 UI components: no unit tests — verify by running the app.
 `lib/*.ts` changes: TDD required.
 
-### `/ultrareview` rule
+### `/review` rule
 After opening a PR touching more than one file, always tell Lou:
-> "This PR touches X files. Run `/ultrareview <PR number>` before merging."
+> "This PR touches X files. Run `/review` before merging."
 
 ### GitHub label ownership
 `ready-to-build` is Lou's label to apply — it means Lou has reviewed and cleared the story to build. Claude must never add it.
