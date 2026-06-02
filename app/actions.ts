@@ -56,13 +56,7 @@ export async function createFeedbackIssue(data: {
 }
 
 export async function setPlanWorkout(date: string, workoutName: string) {
-  const res = await fetch(process.env.SHEETS_URL!, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'setScheduleWorkout', date, workoutName }),
-  })
-  const json = await res.json()
-  if (!json.ok) throw new Error(json.error ?? 'Save failed')
+  await sheetsPost({ action: 'setScheduleWorkout', date, workoutName })
   revalidatePath('/')
 }
 
@@ -90,19 +84,65 @@ function buildPayload(formData: FormData, variation = '', progression = '') {
   }
 }
 
-async function postToSheet(payload: Record<string, string>) {
+async function sheetsPost(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const res = await fetch(process.env.SHEETS_URL!, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   })
+  if (!res.ok) throw new Error(`Sheets request failed (${res.status})`)
   const json = await res.json()
   if (!json.ok) throw new Error(json.error ?? 'Save failed')
+  return json
+}
+
+async function postToSheet(payload: Record<string, unknown>) {
+  await sheetsPost(payload)
+}
+
+export async function regroupFamily(
+  newName: string,
+  workouts: Array<{
+    originalName: string
+    originalVariation: string
+    variation: string
+    progression: number
+  }>
+) {
+  await sheetsPost({ action: 'regroupFamily', newName, workouts })
+  revalidatePath('/library')
+  redirect('/library')
 }
 
 export async function addWorkout(formData: FormData) {
   await postToSheet(buildPayload(formData))
   revalidatePath('/library')
+  revalidatePath('/admin')
+  redirect('/library')
+}
+
+export async function deleteWorkout(name: string, variation: string) {
+  await sheetsPost({ action: 'deleteWorkout', name, variation })
+  revalidatePath('/library')
+  revalidatePath('/admin')
+}
+
+// Workout name+variation is the composite key. Apps Script must match exactly one row;
+// if duplicates exist it should throw rather than silently update multiple rows.
+export async function updateWorkout(
+  original: { name: string; variation: string },
+  formData: FormData,
+) {
+  const variation = (formData.get('variation') as string) ?? ''
+  const progression = (formData.get('progression') as string) ?? ''
+  await sheetsPost({
+    action: 'updateWorkout',
+    originalName: original.name,
+    originalVariation: original.variation,
+    ...buildPayload(formData, variation, progression),
+  })
+  revalidatePath('/library')
+  revalidatePath('/admin')
   redirect('/library')
 }
 
