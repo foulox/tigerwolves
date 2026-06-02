@@ -121,6 +121,12 @@ export async function addWorkout(formData: FormData) {
   redirect('/library')
 }
 
+export async function deleteWorkout(name: string, variation: string) {
+  await sheetsPost({ action: 'deleteWorkout', name, variation })
+  revalidatePath('/library')
+  revalidatePath('/admin')
+}
+
 // Workout name+variation is the composite key. Apps Script must match exactly one row;
 // if duplicates exist it should throw rather than silently update multiple rows.
 export async function updateWorkout(

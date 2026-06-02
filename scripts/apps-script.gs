@@ -89,6 +89,30 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON)
     }
 
+    if (payload.action === 'deleteWorkout') {
+      const nameCol = headers.indexOf('Workout Name')
+      const variationCol = headers.indexOf('Variation')
+      const data = librarySheet.getDataRange().getValues()
+      const matches = []
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][nameCol]).trim() === payload.name &&
+            String(data[i][variationCol]).trim() === payload.variation) {
+          matches.push(i + 1) // 1-indexed row number
+        }
+      }
+      if (matches.length === 0) {
+        return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'Workout not found' }))
+          .setMimeType(ContentService.MimeType.JSON)
+      }
+      if (matches.length > 1) {
+        return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'Duplicate workouts found — cannot delete safely' }))
+          .setMimeType(ContentService.MimeType.JSON)
+      }
+      librarySheet.deleteRow(matches[0])
+      return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+        .setMimeType(ContentService.MimeType.JSON)
+    }
+
     // Default: add new workout row
     const row = headers.map(h => payload[h] ?? '')
     librarySheet.appendRow(row)
