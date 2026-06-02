@@ -56,13 +56,7 @@ export async function createFeedbackIssue(data: {
 }
 
 export async function setPlanWorkout(date: string, workoutName: string) {
-  const res = await fetch(process.env.SHEETS_URL!, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'setScheduleWorkout', date, workoutName }),
-  })
-  const json = await res.json()
-  if (!json.ok) throw new Error(json.error ?? 'Save failed')
+  await sheetsPost({ action: 'setScheduleWorkout', date, workoutName })
   revalidatePath('/')
 }
 
@@ -90,14 +84,20 @@ function buildPayload(formData: FormData, variation = '', progression = '') {
   }
 }
 
-async function postToSheet(payload: Record<string, unknown>) {
+async function sheetsPost(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const res = await fetch(process.env.SHEETS_URL!, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   })
+  if (!res.ok) throw new Error(`Sheets request failed (${res.status})`)
   const json = await res.json()
   if (!json.ok) throw new Error(json.error ?? 'Save failed')
+  return json
+}
+
+async function postToSheet(payload: Record<string, unknown>) {
+  await sheetsPost(payload)
 }
 
 export async function regroupFamily(
@@ -109,13 +109,7 @@ export async function regroupFamily(
     progression: number
   }>
 ) {
-  const res = await fetch(process.env.SHEETS_URL!, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'regroupFamily', newName, workouts }),
-  })
-  const json = await res.json()
-  if (!json.ok) throw new Error(json.error ?? 'Save failed')
+  await sheetsPost({ action: 'regroupFamily', newName, workouts })
   revalidatePath('/library')
   redirect('/library')
 }
@@ -127,22 +121,20 @@ export async function addWorkout(formData: FormData) {
   redirect('/library')
 }
 
+// Workout name+variation is the composite key. Apps Script must match exactly one row;
+// if duplicates exist it should throw rather than silently update multiple rows.
 export async function updateWorkout(
   original: { name: string; variation: string },
   formData: FormData,
 ) {
-  const res = await fetch(process.env.SHEETS_URL!, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: 'updateWorkout',
-      originalName: original.name,
-      originalVariation: original.variation,
-      ...buildPayload(formData, formData.get('variation') as string ?? '', formData.get('progression') as string ?? ''),
-    }),
+  const variation = (formData.get('variation') as string) ?? ''
+  const progression = (formData.get('progression') as string) ?? ''
+  await sheetsPost({
+    action: 'updateWorkout',
+    originalName: original.name,
+    originalVariation: original.variation,
+    ...buildPayload(formData, variation, progression),
   })
-  const json = await res.json()
-  if (!json.ok) throw new Error(json.error ?? 'Save failed')
   revalidatePath('/library')
   revalidatePath('/admin')
   redirect('/library')

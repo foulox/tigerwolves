@@ -3,10 +3,8 @@
 import { useState, useTransition } from 'react'
 import { addWorkout } from '@/app/actions'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
+import { FORM_CATEGORIES, FORM_TYPES, chipBase, chipDark, chipOrange, chipOff, toggleItem } from '@/lib/workoutForm'
 import type { InferredFields } from '@/app/api/workout/infer/route'
-
-const CATEGORIES = ['Easy', 'Long', 'Quality']
-const TYPES = ['Hills', 'Broken Tempo', 'Intervals', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold']
 
 type Step = 'entry' | 'loading' | 'review'
 
@@ -17,15 +15,6 @@ type EntryData = {
   instructions: string
   reason: string
   route: string
-}
-
-const chipBase = 'px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors touch-manipulation'
-const chipDark = 'bg-gray-900 text-white border-gray-900'
-const chipOrange = 'bg-orange-500 text-white border-orange-500'
-const chipOff = 'bg-white text-gray-600 border-gray-200'
-
-function toggle(list: string[], item: string) {
-  return list.includes(item) ? list.filter(x => x !== item) : [...list, item]
 }
 
 export default function AddWorkoutForm() {
@@ -157,7 +146,7 @@ export default function AddWorkoutForm() {
           <div className="flex flex-wrap gap-2">
             {RACE_TYPES.map(r => (
               <button key={r} type="button"
-                onClick={() => setReview(rv => rv && ({ ...rv, raceTypes: toggle(rv.raceTypes, r) }))}
+                onClick={() => setReview(rv => rv && ({ ...rv, raceTypes: toggleItem(rv.raceTypes, r) }))}
                 className={`${chipBase} ${review.raceTypes.includes(r) ? chipDark : chipOff}`}>{r}</button>
             ))}
           </div>
@@ -167,7 +156,7 @@ export default function AddWorkoutForm() {
           <div className="flex flex-wrap gap-2">
             {TRAINING_PHASES.map(p => (
               <button key={p} type="button"
-                onClick={() => setReview(rv => rv && ({ ...rv, trainingPhases: toggle(rv.trainingPhases, p) }))}
+                onClick={() => setReview(rv => rv && ({ ...rv, trainingPhases: toggleItem(rv.trainingPhases, p) }))}
                 className={`${chipBase} ${review.trainingPhases.includes(p) ? chipDark : chipOff}`}>{p}</button>
             ))}
           </div>
@@ -212,7 +201,7 @@ export default function AddWorkoutForm() {
 
       <Field label="Category">
         <div className="flex gap-2">
-          {CATEGORIES.map(c => (
+          {FORM_CATEGORIES.map(c => (
             <button type="button" key={c} onClick={() => setEntry(v => ({ ...v, category: c }))}
               className={`${chipBase} ${entry.category === c ? chipDark : chipOff}`}>{c}</button>
           ))}
@@ -221,7 +210,7 @@ export default function AddWorkoutForm() {
 
       <Field label="Type">
         <div className="flex flex-wrap gap-2">
-          {TYPES.map(t => (
+          {FORM_TYPES.map(t => (
             <button type="button" key={t} onClick={() => setEntry(v => ({ ...v, type: t }))}
               className={`${chipBase} ${entry.type === t ? chipOrange : chipOff}`}>{t}</button>
           ))}
