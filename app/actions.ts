@@ -127,6 +127,27 @@ export async function addWorkout(formData: FormData) {
   redirect('/library')
 }
 
+export async function updateWorkout(
+  original: { name: string; variation: string },
+  formData: FormData,
+) {
+  const res = await fetch(process.env.SHEETS_URL!, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'updateWorkout',
+      originalName: original.name,
+      originalVariation: original.variation,
+      ...buildPayload(formData, formData.get('variation') as string ?? '', formData.get('progression') as string ?? ''),
+    }),
+  })
+  const json = await res.json()
+  if (!json.ok) throw new Error(json.error ?? 'Save failed')
+  revalidatePath('/library')
+  revalidatePath('/admin')
+  redirect('/library')
+}
+
 export async function addVariation(
   parent: {
     name: string; category: string; type: string; reason: string;

@@ -223,7 +223,14 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
               <div key={`s-${w.name}`} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                 <div className="flex justify-between items-start gap-2">
                   <div className="font-semibold text-gray-900">{w.name}</div>
-                  <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full shrink-0">{w.type}</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Link
+                      href={`/library/edit?name=${encodeURIComponent(w.name)}&variation=${encodeURIComponent(w.variation)}`}
+                      className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                      title="Edit workout"
+                    >✎</Link>
+                    <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{w.type}</span>
+                  </div>
                 </div>
                 {w.variation && <p className="text-xs text-gray-400 mt-0.5">{w.variation}</p>}
                 <p className="text-sm text-gray-500 mt-1.5 leading-snug">{w.reason}</p>
@@ -266,14 +273,28 @@ export default function LibraryClient({ workouts }: { workouts: Workout[] }) {
                 <div className="mt-1 ml-2 flex flex-col gap-1">
                   {row.base && (
                     <div className="bg-white rounded-xl px-4 py-3 border border-gray-100">
-                      <div className="text-xs font-bold text-gray-500 mb-0.5">Standard</div>
+                      <div className="flex justify-between items-start">
+                        <div className="text-xs font-bold text-gray-500 mb-0.5">Standard</div>
+                        <Link
+                          href={`/library/edit?name=${encodeURIComponent(row.base.name)}&variation=`}
+                          className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                          title="Edit"
+                        >✎</Link>
+                      </div>
                       {row.base.distTime && <div className="text-xs text-gray-400">{row.base.distTime}</div>}
                       {row.base.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(row.base.lastRan)}</div>}
                     </div>
                   )}
                   {row.progressions.map(p => (
                     <div key={p.progression} className="bg-white rounded-xl px-4 py-3 border border-gray-100">
-                      <div className="text-xs font-bold text-orange-500 mb-0.5">Variation {p.progression} of {row.total}</div>
+                      <div className="flex justify-between items-start">
+                        <div className="text-xs font-bold text-orange-500 mb-0.5">Variation {p.progression} of {row.total}</div>
+                        <Link
+                          href={`/library/edit?name=${encodeURIComponent(p.name)}&variation=${encodeURIComponent(p.variation)}`}
+                          className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                          title="Edit"
+                        >✎</Link>
+                      </div>
                       <div className="text-sm font-semibold text-gray-800">{p.variation}</div>
                       {p.distTime && <div className="text-xs text-gray-400 mt-0.5">{p.distTime}</div>}
                       {p.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(p.lastRan)}</div>}
