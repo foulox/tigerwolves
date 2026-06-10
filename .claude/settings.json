@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/lou.fox/personal/tigerwolves *)",
+      "Bash(cd /Users/lou.fox/personal/tigerwolves *)",
+      "Bash(cd /Users/lou.fox/personal/tigerwolves && *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run lint *)",
+      "Bash(npm run build *)",
+      "Bash(npm run test *)",
+      "Bash(npm test *)",
+      "Bash(gh issue view *)",
+      "Bash(gh pr create *)",
+      "Bash(gh project item-add *)",
+      "Bash(gh pr list *)",
+      "Bash(gh label *)",
+      "Edit(/Users/lou.fox/personal/tigerwolves/**)",
+      "Write(/Users/lou.fox/personal/tigerwolves/**)",
+      "Read(/Users/lou.fox/personal/tigerwolves/**)"
+    ]
+  }
+}
