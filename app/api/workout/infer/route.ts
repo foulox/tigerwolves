@@ -1,3 +1,4 @@
+import { auth } from '@clerk/nextjs/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { NextResponse } from 'next/server'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
@@ -17,6 +18,8 @@ export type InferredFields = {
 }
 
 export async function POST(req: Request) {
+  const { userId } = await auth()
+  if (!userId) return new Response('Unauthorized', { status: 401 })
   const { name, category, type, instructions, reason } = await req.json()
 
   const message = await client.messages.create({
