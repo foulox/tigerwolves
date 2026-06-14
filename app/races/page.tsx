@@ -1,4 +1,6 @@
+import { auth } from '@clerk/nextjs/server'
 import { fetchData } from '@/lib/sheets'
+import LeaderBadge from '@/components/LeaderBadge'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
@@ -13,12 +15,14 @@ function daysUntil(iso: string) {
 }
 
 export default async function RacesPage() {
+  const { userId } = await auth()
   const { races } = await fetchData()
   const today = new Date().toISOString().slice(0, 10)
   const upcoming = races.filter(r => r.date >= today)
 
   return (
-    <div className="px-4 pt-10 pb-4">
+    <div className="relative px-4 pt-10 pb-4">
+      <LeaderBadge isLeader={!!userId} />
       <header className="mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Races</h1>
         <p className="text-sm text-gray-500 mt-0.5">Plan your training around these</p>
