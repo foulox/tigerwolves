@@ -604,6 +604,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                   <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
                   <button
                     onClick={handleCopy}
+                    data-tour="heylo-copy"
                     className={`mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-colors touch-manipulation cursor-pointer ${
                       copied ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'
                     }`}
