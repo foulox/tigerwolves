@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
 import { fetchData } from '@/lib/sheets'
 import FeedbackButton from '@/components/FeedbackButton'
-import LeaderBadge from '@/components/LeaderBadge'
+import HeaderAuth from '@/components/HeaderAuth'
 import TourWrapper from '@/components/TourWrapper'
 
 const TYPE_COLORS: Record<string, string> = {
@@ -28,8 +28,7 @@ export default async function SchedulePage() {
   const upcoming = schedule.filter(e => e.date >= today)
 
   return (
-    <div className="relative">
-      <LeaderBadge isLeader={!!userId} />
+    <div>
       <header className="px-4 pt-10 pb-4 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
@@ -37,6 +36,7 @@ export default async function SchedulePage() {
         </div>
         <div className="flex items-center gap-3">
           <TourWrapper isLeader={!!userId} />
+          <HeaderAuth isLeader={!!userId} />
           <FeedbackButton />
         </div>
       </header>
