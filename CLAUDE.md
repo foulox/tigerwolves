@@ -14,6 +14,7 @@ Live at: https://tigerwolves.vercel.app
 
 ## Stack
 - **Frontend:** Next.js 16 (App Router) + Tailwind CSS v4
+- **Auth:** Clerk v7 (`@clerk/nextjs` v7.5.2) — leaders sign in, visitors get read-only
 - **Hosting:** Vercel (free, auto-deploys from `main`)
 - **Data source:** Google Sheets via Google Apps Script JSON endpoint
 - **Write-back:** Apps Script `doPost()` — add, edit, delete workouts; regroup families; set schedule
@@ -23,9 +24,21 @@ Live at: https://tigerwolves.vercel.app
 - `lib/sheets.ts` — fetches from Apps Script, normalizes data
 - `lib/data.ts` — TypeScript types and constants only
 - `lib/workoutForm.ts` — shared UI constants for add/edit forms (FORM_CATEGORIES, FORM_TYPES, chip styles, toggleItem)
-- `app/actions.ts` — server actions; all Sheets POSTs go through `sheetsPost()` helper which checks `res.ok` before parsing JSON
+- `app/actions.ts` — server actions; all Sheets POSTs go through `sheetsPost()` helper which checks `res.ok` before parsing JSON; all write actions check `auth()` first and throw `Unauthorized` if no userId
 - `scripts/apps-script.gs` — the full Apps Script source (doGet + doPost); keep in sync when adding new actions
+- `proxy.ts` — Clerk middleware (NOT `middleware.ts` — renamed to avoid Next.js 16 deprecation warning)
 - 5-minute cache revalidation (`next: { revalidate: 300 }`); on-demand revalidation after writes
+
+## Auth Architecture (Clerk)
+- **Visitors** — read-only: Schedule, Library, Races. No sign-in required.
+- **Leaders** — sign in via `/sign-in` (Clerk-hosted UI). Plan tab appears after sign-in.
+- `proxy.ts` uses `clerkMiddleware` + `createRouteMatcher`; public routes: `/`, `/library`, `/races`, `/sign-in(.*)`, `/sign-up(.*)`
+- Server components call `auth()` from `@clerk/nextjs/server`, pass `isLeader={!!userId}` to client children
+- Client components use `useAuth()` for reactive auth state (e.g. `BottomNav` shows/hides Plan tab)
+- `HeaderAuth` component on Schedule page: shows "Sign in" link for visitors, `<UserButton />` for leaders
+- `LeaderBadge` (UserButton) appears top-right on Library and Races pages when signed in
+- `/api/workout/infer` route returns 401 if unauthenticated
+- Clerk keys in `.env.local` (not committed) and Vercel environment variables
 
 ## Google Sheets Setup
 Two spreadsheets:
@@ -74,6 +87,7 @@ Schedule entries use compound types ("Ladder or Superset"); the library tags ind
 
 ## Run Leaders (TigerWolves Tuesday)
 Luis, Lou (creator/user), Kostas, Matthew, Joelle, Kelsey, Obi, Jared
+Note: Matthew is being removed in UX Sprint story #67 — `RUN_LEADERS` in `lib/data.ts` is the source of truth
 
 ## Key Constraints
 - Volunteer club, no budget — keep hosting and services free/cheap
@@ -94,6 +108,14 @@ Every story ships as a PR, not a direct commit to `main`:
 6. **Vercel builds a preview URL** — Lou tests on mobile before anything hits production
 7. **Prompt Lou to run `/review`** on any PR touching more than one file
 8. **Lou reviews and merges** — production deploys automatically
+
+### Stacked PRs and rebasing
+When stories are code-dependent (e.g. story B needs story A's package installed), branch each story from the previous: `main ← A ← B ← C`. After merging with squash merge, remaining branches need rebasing:
+```bash
+git checkout story/B && git rebase origin/main
+git push --force-with-lease origin story/B
+```
+Do this for all remaining branches after each merge. Also check for duplicate files after rebase — squash merges can cause `middleware.ts` / `proxy.ts`-style conflicts where both versions appear.
 
 ### Self-review checklist (mandatory before every PR)
 - [ ] Does the implementation match every AC in the story?
