@@ -215,13 +215,54 @@ type PlanStandaloneRow = { kind: 'standalone'; workout: Workout }
 type PlanFamilyRow = { kind: 'family'; name: string; base: Workout | null; progressions: Workout[]; total: number }
 type PlanDisplayRow = PlanStandaloneRow | PlanFamilyRow
 
+function WorkoutDetail({ w, isLeader }: { w: Workout; isLeader: boolean }) {
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm text-gray-600">
+      {w.instructions && (
+        <p className="whitespace-pre-wrap leading-snug">{w.instructions}</p>
+      )}
+      {w.lapStructure && (
+        <p className="text-xs text-gray-500"><span className="font-semibold">Laps:</span> {w.lapStructure}</p>
+      )}
+      {w.energySystem && (
+        <p className="text-xs text-gray-500"><span className="font-semibold">Energy:</span> {w.energySystem}</p>
+      )}
+      {w.hrZone && (
+        <p className="text-xs text-gray-500"><span className="font-semibold">HR:</span> {w.hrZone}</p>
+      )}
+      {w.rpe && (
+        <p className="text-xs text-gray-500"><span className="font-semibold">RPE:</span> {w.rpe}</p>
+      )}
+      {w.coachingNotes && (
+        <p className="text-xs text-gray-500 italic">{w.coachingNotes}</p>
+      )}
+      <div className="flex items-center justify-between pt-1">
+        {w.mapLink ? (
+          <a href={w.mapLink} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-500 touch-manipulation">
+            Map ↗
+          </a>
+        ) : <span />}
+        {isLeader && (
+          <a
+            href={`/library/edit?name=${encodeURIComponent(w.name)}&variation=${encodeURIComponent(w.variation)}`}
+            className="text-xs font-semibold text-orange-500 touch-manipulation"
+          >
+            Edit
+          </a>
+        )}
+      </div>
+    </div>
+  )
+}
+
 type Props = {
   upcoming: ScheduleEntry[]
   workouts: Workout[]
   initialWeekIndex?: number
+  isLeader: boolean
 }
 
-export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }: Props) {
+export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, isLeader }: Props) {
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
   const [selectedWorkouts, setSelectedWorkouts] = useState<Workout[]>([])
   const [showCount, setShowCount] = useState(3)
@@ -229,6 +270,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const entry = upcoming[weekIndex]
 
@@ -309,6 +351,11 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
     setPickerSearch('')
     setCopied(false)
     setSaved(false)
+    setExpandedId(null)
+  }
+
+  function toggleExpand(id: string) {
+    setExpandedId(prev => prev === id ? null : id)
   }
 
   function handleSelect(w: Workout) {
@@ -419,22 +466,40 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
                   if (row.kind === 'standalone') {
                     const w = row.workout
                     const sel = isEffectivelySelected(w)
+                    const eid = `s-${w.name}-${w.variation}`
+                    const expanded = expandedId === eid
                     return (
-                      <button
+                      <div
                         key={`s-${w.name}`}
-                        onClick={() => handleSelect(w)}
-                        className={`text-left bg-white rounded-2xl p-4 border shadow-sm transition-colors touch-manipulation cursor-pointer ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
+                        className={`bg-white rounded-2xl border shadow-sm transition-colors ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
                       >
-                        <div className="flex justify-between items-start gap-2">
-                          <div className="font-semibold text-gray-900">{w.name}</div>
-                          <div className="text-xs text-gray-400 shrink-0">
-                            {w.lastRan ? formatDateShort(w.lastRan) : 'Never'}
+                        <button
+                          onClick={() => handleSelect(w)}
+                          className="w-full text-left p-4 touch-manipulation cursor-pointer"
+                        >
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="font-semibold text-gray-900">{w.name}</div>
+                            <div className="text-xs text-gray-400 shrink-0">
+                              {w.lastRan ? formatDateShort(w.lastRan) : 'Never'}
+                            </div>
                           </div>
-                        </div>
-                        {w.variation && <div className="text-xs text-gray-400 mt-0.5">{w.variation}</div>}
-                        <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
-                        <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
-                      </button>
+                          {w.variation && <div className="text-xs text-gray-400 mt-0.5">{w.variation}</div>}
+                          <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
+                          <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
+                        </button>
+                        <button
+                          onClick={() => toggleExpand(eid)}
+                          className="w-full px-4 pb-3 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1"
+                        >
+                          <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+                          {expanded ? 'Hide details' : 'Show details'}
+                        </button>
+                        {expanded && (
+                          <div className="px-4 pb-4">
+                            <WorkoutDetail w={w} isLeader={isLeader} />
+                          </div>
+                        )}
+                      </div>
                     )
                   }
 
@@ -449,40 +514,59 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0 }:
                           </span>
                         </div>
                       </div>
-                      {row.base && (
-                        <button
-                          onClick={() => handleSelect(row.base!)}
-                          className={`w-full text-left px-4 py-3 border-b border-gray-50 transition-colors touch-manipulation ${isEffectivelySelected(row.base) ? 'bg-orange-50' : 'bg-white active:bg-gray-50'}`}
-                        >
-                          <div className="flex justify-between items-start gap-2">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${isEffectivelySelected(row.base) ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
-                              <span className="text-xs font-bold text-gray-600">Standard</span>
-                            </div>
-                            <span className="text-xs text-gray-400">{row.base.lastRan ? formatDateShort(row.base.lastRan) : 'Never'}</span>
+                      {row.base && (() => {
+                        const eid = `f-base-${row.name}`
+                        const expanded = expandedId === eid
+                        return (
+                          <div className={`border-b border-gray-50 ${isEffectivelySelected(row.base) ? 'bg-orange-50' : 'bg-white'}`}>
+                            <button
+                              onClick={() => handleSelect(row.base!)}
+                              className="w-full text-left px-4 pt-3 pb-1 touch-manipulation"
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${isEffectivelySelected(row.base) ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
+                                  <span className="text-xs font-bold text-gray-600">Standard</span>
+                                </div>
+                                <span className="text-xs text-gray-400">{row.base.lastRan ? formatDateShort(row.base.lastRan) : 'Never'}</span>
+                              </div>
+                              {row.base.distTime && <div className="text-xs text-gray-400 mt-1 ml-6">{row.base.distTime}</div>}
+                            </button>
+                            <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1 ml-6">
+                              <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+                              {expanded ? 'Hide' : 'Details'}
+                            </button>
+                            {expanded && <div className="px-4 pb-3"><WorkoutDetail w={row.base} isLeader={isLeader} /></div>}
                           </div>
-                          {row.base.distTime && <div className="text-xs text-gray-400 mt-1 ml-6">{row.base.distTime}</div>}
-                        </button>
-                      )}
+                        )
+                      })()}
                       {row.progressions.map((p, i) => {
                         const sel = isEffectivelySelected(p)
                         const isLast = i === row.progressions.length - 1
+                        const eid = `f-prog-${row.name}-${p.progression}`
+                        const expanded = expandedId === eid
                         return (
-                          <button
-                            key={p.progression ?? i}
-                            onClick={() => handleSelect(p)}
-                            className={`w-full text-left px-4 py-3 transition-colors touch-manipulation ${!isLast ? 'border-b border-gray-50' : ''} ${sel ? 'bg-orange-50' : 'bg-white active:bg-gray-50'}`}
-                          >
-                            <div className="flex justify-between items-start gap-2">
-                              <div className="flex items-center gap-2">
-                                <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
-                                <span className="text-xs font-bold text-orange-500">Variation {p.progression} of {row.total}</span>
+                          <div key={p.progression ?? i} className={`${!isLast ? 'border-b border-gray-50' : ''} ${sel ? 'bg-orange-50' : 'bg-white'}`}>
+                            <button
+                              onClick={() => handleSelect(p)}
+                              className="w-full text-left px-4 pt-3 pb-1 touch-manipulation"
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
+                                  <span className="text-xs font-bold text-orange-500">Variation {p.progression} of {row.total}</span>
+                                </div>
+                                <span className="text-xs text-gray-400">{p.lastRan ? formatDateShort(p.lastRan) : 'Never'}</span>
                               </div>
-                              <span className="text-xs text-gray-400">{p.lastRan ? formatDateShort(p.lastRan) : 'Never'}</span>
-                            </div>
-                            {p.variation && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{p.variation}</div>}
-                            {p.distTime && <div className="text-xs text-gray-400 mt-0.5 ml-6">{p.distTime}</div>}
-                          </button>
+                              {p.variation && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{p.variation}</div>}
+                              {p.distTime && <div className="text-xs text-gray-400 mt-0.5 ml-6">{p.distTime}</div>}
+                            </button>
+                            <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1 ml-6">
+                              <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+                              {expanded ? 'Hide' : 'Details'}
+                            </button>
+                            {expanded && <div className="px-4 pb-3"><WorkoutDetail w={p} isLeader={isLeader} /></div>}
+                          </div>
                         )
                       })}
                     </div>
