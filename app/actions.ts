@@ -1,5 +1,6 @@
 'use server'
 
+import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -56,6 +57,8 @@ export async function createFeedbackIssue(data: {
 }
 
 export async function setPlanWorkout(date: string, workoutName: string) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
   await sheetsPost({ action: 'setScheduleWorkout', date, workoutName })
   revalidatePath('/')
 }
@@ -109,12 +112,16 @@ export async function regroupFamily(
     progression: number
   }>
 ) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
   await sheetsPost({ action: 'regroupFamily', newName, workouts })
   revalidatePath('/library')
   redirect('/library')
 }
 
 export async function addWorkout(formData: FormData) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
   await postToSheet(buildPayload(formData))
   revalidatePath('/library')
   revalidatePath('/admin')
@@ -127,12 +134,12 @@ export async function deleteWorkout(name: string, variation: string) {
   revalidatePath('/admin')
 }
 
-// Workout name+variation is the composite key. Apps Script must match exactly one row;
-// if duplicates exist it should throw rather than silently update multiple rows.
 export async function updateWorkout(
   original: { name: string; variation: string },
   formData: FormData,
 ) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
   const variation = (formData.get('variation') as string) ?? ''
   const progression = (formData.get('progression') as string) ?? ''
   await sheetsPost({
@@ -158,6 +165,8 @@ export async function addVariation(
   instructions: string,
   distTime: string,
 ) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
   await postToSheet({
     'Workout Name': parent.name,
     'Sport': 'Running',
