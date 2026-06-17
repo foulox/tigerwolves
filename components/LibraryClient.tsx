@@ -246,7 +246,7 @@ export default function LibraryClient({ workouts, isLeader }: { workouts: Workou
                 {isLeader && (
                   <div className="mt-3 pt-3 border-t border-gray-50 flex gap-4">
                     <Link
-                      href={`/library/edit?name=${encodeURIComponent(w.name)}`}
+                      href={`/library/edit?name=${encodeURIComponent(w.name)}&variation=`}
                       className="text-xs font-semibold text-gray-400 touch-manipulation"
                     >
                       Edit

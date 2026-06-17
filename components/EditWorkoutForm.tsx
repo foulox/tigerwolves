@@ -234,7 +234,7 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
             <p className="text-xs text-gray-400 mt-1">Short label shown in the family card</p>
           </Field>
           <Field label="Progression (1 = easiest)">
-            <input type="number" min="1" value={progression} onChange={e => setProgression(e.target.value)}
+            <input type="number" min="1" max="10" value={progression} onChange={e => setProgression(e.target.value)}
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
           </Field>
         </>
