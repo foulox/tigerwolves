@@ -292,10 +292,16 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
 
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-      <button type="submit" disabled={!entry.category || !entry.type}
-        className="w-full py-4 rounded-xl bg-orange-500 text-white font-semibold text-sm disabled:opacity-40 transition-colors touch-manipulation">
-        Next →
-      </button>
+      <div className="flex gap-3">
+        <a href="/library"
+          className="flex-1 py-4 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm text-center touch-manipulation">
+          Cancel
+        </a>
+        <button type="submit" disabled={!entry.category || !entry.type}
+          className="flex-[2] py-4 rounded-xl bg-orange-500 text-white font-semibold text-sm disabled:opacity-40 transition-colors touch-manipulation">
+          Next →
+        </button>
+      </div>
     </form>
   )
 }
