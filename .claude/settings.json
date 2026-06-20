@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "Bash(git *)",
       "Bash(git -C /Users/lou.fox/personal/tigerwolves *)",
       "Bash(cd /Users/lou.fox/personal/tigerwolves *)",
       "Bash(cd /Users/lou.fox/personal/tigerwolves && *)",
