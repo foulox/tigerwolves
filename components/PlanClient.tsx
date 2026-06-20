@@ -17,13 +17,6 @@ function formatDateShort(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function ordinal(n: number): string {
-  if (n === 1) return '1st'
-  if (n === 2) return '2nd'
-  if (n === 3) return '3rd'
-  return `${n}th`
-}
-
 function formatMainSection(instructions: string): string {
   const mainPart = extractMain(instructions)
   if (!mainPart) return `🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁\n${instructions}`
@@ -258,7 +251,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
         return prev.filter(s => workoutKey(s) !== key)
       }
       if (prev.length === 2 && prev[0].name === w.name) {
-        return prev
+        return [prev[0], w]
       }
       if (prev.length === 1 && prev[0].name === w.name) {
         return [prev[0], w]
@@ -438,6 +431,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                         const isLast = i === row.progressions.length - 1
                         const eid = `f-prog-${row.name}-${p.progression}`
                         const expanded = expandedId === eid
+                        const label = i === 0 ? 'Standard' : `Variation ${i + 1} of ${row.progressions.length}`
                         return (
                           <div key={p.progression ?? i} className={`${!isLast ? 'border-b border-gray-50' : ''} ${sel ? 'bg-orange-50' : 'bg-white'}`}>
                             <button
@@ -447,7 +441,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                               <div className="flex justify-between items-start gap-2">
                                 <div className="flex items-center gap-2">
                                   <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
-                                  <span className="text-xs font-bold text-orange-500">Variation {p.progression} of {row.total}</span>
+                                  <span className={`text-xs font-bold ${i === 0 ? 'text-gray-600' : 'text-orange-500'}`}>{label}</span>
                                 </div>
                                 <span className="text-xs text-gray-400">{p.lastRan ? formatDateShort(p.lastRan) : 'Never'}</span>
                               </div>
