@@ -15,9 +15,10 @@ setup('authenticate as test leader', async ({ page }) => {
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
 
   // Step 2: password (Clerk shows it after email step)
-  await page.getByLabel(/password/i).waitFor({ timeout: 10000 })
-  await page.getByLabel(/password/i).fill(password)
-  await page.getByRole('button', { name: /continue|sign in/i }).click()
+  const passwordInput = page.getByPlaceholder('Enter your password')
+  await passwordInput.waitFor({ timeout: 10000 })
+  await passwordInput.fill(password)
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
 
   await page.waitForURL(url => !url.pathname.startsWith('/sign-in'), { timeout: 15000 })
   await page.context().storageState({ path: authFile })
