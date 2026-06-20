@@ -431,7 +431,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                         const isLast = i === row.progressions.length - 1
                         const eid = `f-prog-${row.name}-${p.progression}`
                         const expanded = expandedId === eid
-                        const label = i === 0 ? 'Standard' : `Variation ${i + 1} of ${row.progressions.length}`
+                        const label = i === 0 ? 'Standard' : `Variation ${i + 1} of ${row.total}`
                         return (
                           <div key={p.progression ?? i} className={`${!isLast ? 'border-b border-gray-50' : ''} ${sel ? 'bg-orange-50' : 'bg-white'}`}>
                             <button
