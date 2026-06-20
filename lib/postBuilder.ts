@@ -114,3 +114,85 @@ export function computeTurnaround(instructions: string): string {
 
   return '↩️ TURN AROUND: [add before posting]'
 }
+
+export function formatDateLong(iso: string): string {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
+  })
+}
+
+export function formatMainSection(instructions: string): string {
+  const mainPart = extractMain(instructions)
+  if (!mainPart) return `🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁\n${instructions}`
+  const formatted = mainPart.includes(' + ')
+    ? mainPart.replace(/\s*\+\s*/g, ' +\n')
+    : splitRespectParens(mainPart, ' / ').join(' /\n')
+  return `🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁\n${formatted}`
+}
+
+export function formatMainContent(instructions: string): string {
+  const mainPart = extractMain(instructions)
+  if (!mainPart) return instructions
+  if (mainPart.includes(' + ')) return mainPart.replace(/\s*\+\s*/g, ' +\n')
+  return splitRespectParens(mainPart, ' / ').join(' /\n')
+}
+
+import type { ScheduleEntry, Workout } from './data'
+import { RUN_LEADERS } from './data'
+
+export function buildPost(entry: ScheduleEntry, selections: Workout[]): string {
+  const sorted = [...selections].sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
+  const primary = sorted[0]
+
+  const lines = [
+    '🐯🐺 TigerWolves Tuesday Workout',
+    '',
+    `📅 ${formatDateLong(entry.date)}`,
+    `🏃🏻‍♂️‍➡️ ${entry.workoutType}: ${primary.name}`,
+  ]
+
+  if (primary.reason) lines.push('', primary.reason)
+
+  lines.push(
+    '',
+    '📍 Starting point and route: Tom Stofka Garden, aka "Da Bins."',
+    'We\'ll warm up by jogging to Marsha P. Johnson which is at the corner of North 8th and Kent',
+    'The run will be along the Kent Avenue Speedway',
+    'We\'ll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track',
+    '',
+  )
+
+  if (sorted.length === 2) {
+    const [standard, longer] = sorted
+    const stdContent = standard.variation || formatMainContent(standard.instructions)
+    const lngContent = longer.variation || formatMainContent(longer.instructions)
+    const stdTa = standard.hasTurnaround ? (standard.turnaroundDistance ? `↩️ TURN AROUND: ${standard.turnaroundDistance}` : '↩️ TURN AROUND: [add before posting]') : null
+    const lngTa = longer.hasTurnaround ? (longer.turnaroundDistance ? `↩️ TURN AROUND: ${longer.turnaroundDistance}` : '↩️ TURN AROUND: [add before posting]') : null
+    lines.push(
+      '🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁',
+      '',
+      'Standard',
+      stdContent,
+      ...(stdTa ? [stdTa] : []),
+      '',
+      'Longer',
+      lngContent,
+      ...(lngTa ? [lngTa] : []),
+    )
+  } else {
+    const w = sorted[0]
+    const ta = w.hasTurnaround ? (w.turnaroundDistance ? `↩️ TURN AROUND: ${w.turnaroundDistance}` : '↩️ TURN AROUND: [add before posting]') : null
+    lines.push(w.variation ? `🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁\n${w.variation}` : formatMainSection(w.instructions))
+    if (ta) lines.push('', ta)
+  }
+
+  lines.push(
+    '',
+    'Bag Drop: Sorry, Not available',
+    '',
+    `Led by ${entry.leader} — see you out there! 🔥`,
+    `Run Leaders: ${RUN_LEADERS.join(', ')}`,
+  )
+
+  return lines.join('\n')
+}
