@@ -34,6 +34,8 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
     author: workout.author ?? '',
     coachingNotes: workout.coachingNotes ?? '',
   })
+  const [hasTurnaround, setHasTurnaround] = useState(workout.hasTurnaround)
+  const [turnaroundDistance, setTurnaroundDistance] = useState(workout.turnaroundDistance)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
@@ -76,6 +78,8 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
     formData.set('trainingPhases', review.trainingPhases.join(', '))
     formData.set('author', review.author)
     formData.set('coachingNotes', review.coachingNotes)
+    formData.set('hasTurnaround', String(hasTurnaround))
+    formData.set('turnaroundDistance', turnaroundDistance)
     return formData
   }
 
@@ -182,6 +186,20 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
             rows={2}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
             placeholder="Cues for the leader running this workout" />
+        </Field>
+
+        <Field label="Needs turnaround?">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setHasTurnaround(true)}
+              className={`${chipBase} ${hasTurnaround ? chipOrange : chipOff}`}>Yes</button>
+            <button type="button" onClick={() => setHasTurnaround(false)}
+              className={`${chipBase} ${!hasTurnaround ? chipDark : chipOff}`}>No</button>
+          </div>
+          {hasTurnaround && (
+            <input value={turnaroundDistance} onChange={e => setTurnaroundDistance(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400 mt-2"
+              placeholder="e.g. After the 3rd rep of 4×5min" />
+          )}
         </Field>
 
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}

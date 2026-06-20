@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { RUN_LEADERS } from '@/lib/data'
 import type { ScheduleEntry, Workout } from '@/lib/data'
+import { splitRespectParens, extractMain } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
 
 function formatDateLong(iso: string) {
@@ -21,116 +22,6 @@ function ordinal(n: number): string {
   if (n === 2) return '2nd'
   if (n === 3) return '3rd'
   return `${n}th`
-}
-
-function toSeconds(val: string, unit: string): number {
-  return parseInt(val) * (unit.toLowerCase().startsWith('min') ? 60 : 1)
-}
-
-function splitRespectParens(str: string, sep: string): string[] {
-  const result: string[] = []
-  let depth = 0, cur = '', i = 0
-  while (i < str.length) {
-    if (str[i] === '(') depth++
-    else if (str[i] === ')') depth--
-    if (depth === 0 && str.slice(i, i + sep.length) === sep) {
-      result.push(cur); cur = ''; i += sep.length; continue
-    }
-    cur += str[i++]
-  }
-  result.push(cur)
-  return result
-}
-
-type Rep = { seconds: number; repNum: number; groupSize: number; groupLabel: string }
-
-function expandToken(token: string): Rep[] | null {
-  const t = token.trim().replace(/\.$/, '')
-
-  const nested = t.match(/^(\d+)[×x]\((.+?)\)/)
-  if (nested) {
-    const n = parseInt(nested[1])
-    let perRep = 0
-    for (const p of nested[2].split('/')) {
-      const m = p.trim().match(/(\d+)\s*(min|s)/i)
-      if (!m) return null
-      perRep += toSeconds(m[1], m[2])
-    }
-    return Array.from({ length: n }, (_, i) => ({
-      seconds: perRep, repNum: i + 1, groupSize: n, groupLabel: nested[2].trim(),
-    }))
-  }
-
-  const sets = t.match(/^(\d+)\s+sets?\s+of\s*\((.+)\)/i)
-  if (sets) {
-    const n = parseInt(sets[1])
-    let perSet = 0
-    for (const p of sets[2].split('/')) {
-      const m = p.trim().match(/(\d+)\s*(min|s)/i)
-      if (m) perSet += toSeconds(m[1], m[2])
-    }
-    return Array.from({ length: n }, (_, i) => ({
-      seconds: perSet, repNum: i + 1, groupSize: n, groupLabel: `set ${i + 1}`,
-    }))
-  }
-
-  const multi = t.match(/^(\d+)\s*[×x]\s*(\d+)\s*(min|s)/i)
-  if (multi) {
-    const n = parseInt(multi[1])
-    const d = toSeconds(multi[2], multi[3])
-    return Array.from({ length: n }, (_, i) => ({
-      seconds: d, repNum: i + 1, groupSize: n, groupLabel: t,
-    }))
-  }
-
-  const single = t.match(/^(\d+)\s*(min|s)/i)
-  if (single) {
-    return [{ seconds: toSeconds(single[1], single[2]), repNum: 1, groupSize: 1, groupLabel: t }]
-  }
-
-  return null
-}
-
-function extractMain(instructions: string): string | null {
-  const mainIdx = instructions.indexOf('Main:')
-  if (mainIdx === -1) return null
-  const afterMain = instructions.slice(mainIdx + 5).trim()
-  const cdMatch = afterMain.match(/\.\s*CD:|\s+CD:/i)
-  return (cdMatch ? afterMain.slice(0, cdMatch.index) : afterMain).trim()
-}
-
-function computeTurnaround(instructions: string): string {
-  const mainPart = extractMain(instructions)
-  if (!mainPart) return '↩️ TURN AROUND: [add before posting]'
-
-  const tokens = mainPart.includes(' + ')
-    ? mainPart.split(' + ')
-    : splitRespectParens(mainPart, ' / ')
-
-  const allReps: Rep[] = []
-  for (const token of tokens) {
-    const reps = expandToken(token)
-    if (!reps) return '↩️ TURN AROUND: [add before posting]'
-    allReps.push(...reps)
-  }
-
-  const halfway = allReps.reduce((s, r) => s + r.seconds, 0) / 2
-  let cumulative = 0
-
-  for (const rep of allReps) {
-    cumulative += rep.seconds
-    if (cumulative >= halfway) {
-      if (rep.groupSize > 1 && rep.groupLabel.startsWith('set ')) {
-        return `↩️ TURN AROUND: After ${rep.groupLabel}`
-      } else if (rep.groupSize > 1) {
-        return `↩️ TURN AROUND: After the ${ordinal(rep.repNum)} rep of the ${rep.groupLabel}`
-      } else {
-        return `↩️ TURN AROUND: After the ${rep.groupLabel}`
-      }
-    }
-  }
-
-  return '↩️ TURN AROUND: [add before posting]'
 }
 
 function formatMainSection(instructions: string): string {
@@ -180,24 +71,26 @@ function buildPost(entry: ScheduleEntry, selections: Workout[]) {
     const [standard, longer] = sorted
     const stdContent = standard.variation || formatMainContent(standard.instructions)
     const lngContent = longer.variation || formatMainContent(longer.instructions)
+    const stdTa = standard.hasTurnaround ? (standard.turnaroundDistance ? `↩️ TURN AROUND: ${standard.turnaroundDistance}` : '↩️ TURN AROUND: [add before posting]') : null
+    const lngTa = longer.hasTurnaround ? (longer.turnaroundDistance ? `↩️ TURN AROUND: ${longer.turnaroundDistance}` : '↩️ TURN AROUND: [add before posting]') : null
     lines.push(
       '🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁',
       '',
       'Standard',
       stdContent,
-      computeTurnaround(standard.instructions),
+      ...(stdTa ? [stdTa] : []),
       '',
       'Longer',
       lngContent,
-      computeTurnaround(longer.instructions),
+      ...(lngTa ? [lngTa] : []),
     )
   } else {
     const w = sorted[0]
+    const ta = w.hasTurnaround ? (w.turnaroundDistance ? `↩️ TURN AROUND: ${w.turnaroundDistance}` : '↩️ TURN AROUND: [add before posting]') : null
     lines.push(
       w.variation ? `🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁\n${w.variation}` : formatMainSection(w.instructions),
-      '',
-      computeTurnaround(w.instructions),
     )
+    if (ta) lines.push('', ta)
   }
 
   lines.push(
