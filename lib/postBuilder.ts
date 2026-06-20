@@ -140,7 +140,7 @@ export function formatMainContent(instructions: string): string {
 import type { ScheduleEntry, Workout } from './data'
 import { RUN_LEADERS } from './data'
 
-export function buildPost(entry: ScheduleEntry, selections: Workout[]): string {
+export function buildPost(entry: ScheduleEntry, selections: Workout[], activeType: string | null = null): string {
   const sorted = [...selections].sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
   const primary = sorted[0]
 
@@ -148,7 +148,7 @@ export function buildPost(entry: ScheduleEntry, selections: Workout[]): string {
     '🐯🐺 TigerWolves Tuesday Workout',
     '',
     `📅 ${formatDateLong(entry.date)}`,
-    `🏃🏻‍♂️‍➡️ ${entry.workoutType}: ${primary.name}`,
+    `🏃🏻‍♂️‍➡️ ${activeType ?? entry.workoutType}: ${primary.name}`,
   ]
 
   if (primary.reason) lines.push('', primary.reason)

@@ -71,8 +71,16 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [activeType, setActiveType] = useState<string | null>(null)
 
   const entry = upcoming[weekIndex]
+
+  const scheduledTypes = entry ? entry.workoutType.split(' or ').map(t => t.trim()) : []
+  const effectiveType = activeType ?? scheduledTypes[0] ?? ''
+
+  const availableTypes = useMemo(() =>
+    [...new Set(workouts.filter(w => w.category === 'Quality').map(w => w.type))].sort()
+  , [workouts])
 
   const familyNames = useMemo(() => {
     const s = new Set<string>()
@@ -84,11 +92,11 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
 
   const allSuggestions = useMemo(() => {
     if (!entry) return []
-    const types = entry.workoutType.split(' or ').map(t => t.trim())
+    const types = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
     return workouts
       .filter(w => types.includes(w.type))
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
-  }, [entry, workouts])
+  }, [entry, workouts, activeType])
 
   const pickerSource = useMemo(() => {
     const q = pickerSearch.toLowerCase()
@@ -152,6 +160,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
     setCopied(false)
     setSaved(false)
     setExpandedId(null)
+    setActiveType(null)
   }
 
   function toggleExpand(id: string) {
@@ -175,7 +184,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
     setSaved(false)
   }
 
-  const post = entry && effectiveSelections.length > 0 ? buildPost(entry, effectiveSelections) : ''
+  const post = entry && effectiveSelections.length > 0 ? buildPost(entry, effectiveSelections, activeType) : ''
 
   function handleCopy() {
     navigator.clipboard.writeText(post).then(() => {
@@ -237,8 +246,26 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
         <>
           <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6">
             <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">WORKOUT TYPE</div>
-            <div className="text-2xl font-bold text-gray-900">{entry.workoutType}</div>
+            <div className="text-2xl font-bold text-gray-900">{effectiveType || entry.workoutType}</div>
+            {activeType && (
+              <div className="text-xs text-gray-500 mt-0.5">Scheduled: {entry.workoutType}</div>
+            )}
             <div className="text-xs text-gray-400 mt-1">{formatDateLong(entry.date)}</div>
+            <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 -mx-1 px-1">
+              {availableTypes.map(t => {
+                const isActive = activeType === null ? scheduledTypes.includes(t) : t === activeType
+                return (
+                  <button key={t} type="button"
+                    onClick={() => setActiveType(scheduledTypes.includes(t) ? null : t)}
+                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
+                      isActive ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border border-gray-200'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           <div className="relative mb-4">
