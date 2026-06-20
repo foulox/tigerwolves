@@ -58,9 +58,7 @@ export type Race = {
   location: string
 }
 
-export const CURRENT_LEADER = 'Lou'
-
-export const RUN_LEADERS = ['Luis', 'Lou', 'Kostas', 'Matthew', 'Joelle', 'Kelsey', 'Obi', 'Jared']
+export const RUN_LEADERS = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']
 
 export const TW_WORKOUT_TYPES: WorkoutType[] = [
   'Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold',
