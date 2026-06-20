@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:log": "playwright test 2>&1 | tee /tmp/tw-e2e.log"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
@@ -19,6 +21,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
