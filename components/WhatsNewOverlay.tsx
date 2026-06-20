@@ -26,7 +26,7 @@ export default function WhatsNewOverlay({ tourRef }: Props) {
 
     const stored = storedVersion ? Number(storedVersion) : 0
     if (stored < CURRENT_VERSION) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reading localStorage on mount to show overlay; no external subscription, safe to setState synchronously
       setOpen(true)
     }
   }, [])
