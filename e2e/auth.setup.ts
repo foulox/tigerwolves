@@ -12,7 +12,7 @@ setup('authenticate as test leader', async ({ page }) => {
 
   // Step 1: email
   await page.getByLabel(/email address/i).or(page.getByPlaceholder(/email/i)).fill(email)
-  await page.getByRole('button', { name: /continue/i }).click()
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
 
   // Step 2: password (Clerk shows it after email step)
   await page.getByLabel(/password/i).waitFor({ timeout: 10000 })
