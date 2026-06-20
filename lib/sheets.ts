@@ -34,6 +34,8 @@ function mapWorkout(row: RawRow): Workout {
     author: str(row['Author']) || null,
     raceTypes: str(row['Race Type']).split(',').map(s => s.trim()).filter(Boolean),
     trainingPhases: str(row['Training Phase']).split(',').map(s => s.trim()).filter(Boolean),
+    hasTurnaround: str(row['hasTurnaround']) === 'TRUE',
+    turnaroundDistance: str(row['turnaroundDistance']),
   }
 }
 

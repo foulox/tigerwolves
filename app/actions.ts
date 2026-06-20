@@ -82,6 +82,8 @@ function buildPayload(formData: FormData, variation = '', progression = '') {
     'Author': formData.get('author') as string,
     'Race Type': formData.get('raceTypes') as string,
     'Training Phase': formData.get('trainingPhases') as string,
+    'hasTurnaround': (formData.get('hasTurnaround') as string) === 'true' ? 'TRUE' : 'FALSE',
+    'turnaroundDistance': (formData.get('turnaroundDistance') as string) || '',
     'Variation': variation,
     'Progression': progression,
   }

@@ -20,6 +20,8 @@ export type Workout = {
   author: string | null       // credit — individual name or "TigerWolves"
   raceTypes: string[]         // e.g. ['Half', 'Full']
   trainingPhases: string[]    // e.g. ['Build', 'Peak']
+  hasTurnaround: boolean
+  turnaroundDistance: string
 }
 
 export const RACE_TYPES = ['Mile', '5K', '10K', 'Half', 'Full'] as const
