@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:log": "playwright test 2>&1 | tee /tmp/tw-e2e.log"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
