@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { updateWorkout } from '@/app/actions'
+import { computeTurnaround } from '@/lib/postBuilder'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
 import { FORM_CATEGORIES, FORM_TYPES, chipBase, chipDark, chipOrange, chipOff, toggleItem } from '@/lib/workoutForm'
 import type { Workout } from '@/lib/data'
@@ -52,6 +53,12 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
       if (!res.ok) throw new Error('Inference failed')
       const inferred: InferredFields = await res.json()
       setReview(inferred)
+      if (hasTurnaround && !turnaroundDistance) {
+        const computed = computeTurnaround(entry.instructions)
+        const prefix = '↩️ TURN AROUND: '
+        const desc = computed.startsWith(prefix) ? computed.slice(prefix.length) : ''
+        if (desc && desc !== '[add before posting]') setTurnaroundDistance(desc)
+      }
       setStep('review')
     } catch (err) {
       setError(`Could not infer fields: ${err instanceof Error ? err.message : String(err)}`)
@@ -188,19 +195,13 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
             placeholder="Cues for the leader running this workout" />
         </Field>
 
-        <Field label="Needs turnaround?">
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setHasTurnaround(true)}
-              className={`${chipBase} ${hasTurnaround ? chipOrange : chipOff}`}>Yes</button>
-            <button type="button" onClick={() => setHasTurnaround(false)}
-              className={`${chipBase} ${!hasTurnaround ? chipDark : chipOff}`}>No</button>
-          </div>
-          {hasTurnaround && (
+        {hasTurnaround && (
+          <Field label="Turnaround point">
             <input value={turnaroundDistance} onChange={e => setTurnaroundDistance(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400 mt-2"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
               placeholder="e.g. After the 3rd rep of 4×5min" />
-          )}
-        </Field>
+          </Field>
+        )}
 
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
@@ -278,6 +279,15 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
         <input value={entry.route} onChange={e => setEntry(v => ({ ...v, route: e.target.value }))}
           className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
           placeholder="e.g. strava.com/routes/..." />
+      </Field>
+
+      <Field label="Needs turnaround?">
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setHasTurnaround(true)}
+            className={`${chipBase} ${hasTurnaround ? chipOrange : chipOff}`}>Yes</button>
+          <button type="button" onClick={() => setHasTurnaround(false)}
+            className={`${chipBase} ${!hasTurnaround ? chipDark : chipOff}`}>No</button>
+        </div>
       </Field>
 
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
