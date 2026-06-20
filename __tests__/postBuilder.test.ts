@@ -137,4 +137,46 @@ describe('buildPost', () => {
     const post = buildPost(entry, [w])
     expect(post).toContain('2×(5-4-3-2-1 min) 1min easy')
   })
+
+  test('two-variation post uses variation field for each subsection', () => {
+    const standard = { ...baseWorkout, variation: '3×5min@tempo', progression: 1 }
+    const longer = { ...baseWorkout, variation: '4×5min@tempo', progression: 2 }
+    const post = buildPost(entry, [standard, longer])
+    expect(post).toContain('3×5min@tempo')
+    expect(post).toContain('4×5min@tempo')
+  })
+
+  test('two-variation post falls back to formatted instructions when variation is empty', () => {
+    const standard = { ...baseWorkout, variation: '', progression: 1 }
+    const longer = { ...baseWorkout, variation: '', progression: 2 }
+    const post = buildPost(entry, [standard, longer])
+    expect(post).toContain('Standard')
+    expect(post).toContain('Longer')
+    expect(post).toContain('🏁🏃🏻‍♂️‍➡️ WORKOUT')
+  })
+
+  test('two-variation post header and footer are shared (not per-variation)', () => {
+    const standard = { ...baseWorkout, variation: '3×5min', progression: 1 }
+    const longer = { ...baseWorkout, variation: '4×5min', progression: 2 }
+    const post = buildPost(entry, [standard, longer])
+    // Header appears once
+    expect(post.split('🐯🐺 TigerWolves Tuesday Workout').length).toBe(2)
+    // Footer appears once
+    expect(post.split('Run Leaders:').length).toBe(2)
+  })
+
+  test('two-variation post shows independent turnaround per variation', () => {
+    const standard = { ...baseWorkout, variation: '3×5min', progression: 1, hasTurnaround: true, turnaroundDistance: 'After the 2nd rep' }
+    const longer = { ...baseWorkout, variation: '4×5min', progression: 2, hasTurnaround: true, turnaroundDistance: 'After the 3rd rep' }
+    const post = buildPost(entry, [standard, longer])
+    expect(post).toContain('After the 2nd rep')
+    expect(post).toContain('After the 3rd rep')
+  })
+
+  test('two-variation post omits turnaround when hasTurnaround is false', () => {
+    const standard = { ...baseWorkout, variation: '3×5min', progression: 1, hasTurnaround: false }
+    const longer = { ...baseWorkout, variation: '4×5min', progression: 2, hasTurnaround: false }
+    const post = buildPost(entry, [standard, longer])
+    expect(post).not.toContain('TURN AROUND')
+  })
 })
