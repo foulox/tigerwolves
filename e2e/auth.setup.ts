@@ -1,4 +1,5 @@
 import { test as setup } from '@playwright/test'
+import fs from 'fs'
 import path from 'path'
 
 const authFile = path.join(__dirname, '.auth/user.json')
@@ -21,5 +22,6 @@ setup('authenticate as test leader', async ({ page }) => {
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
 
   await page.waitForURL(url => !url.pathname.startsWith('/sign-in'), { timeout: 15000 })
+  fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
 })
