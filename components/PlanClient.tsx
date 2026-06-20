@@ -17,13 +17,6 @@ function formatDateShort(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function ordinal(n: number): string {
-  if (n === 1) return '1st'
-  if (n === 2) return '2nd'
-  if (n === 3) return '3rd'
-  return `${n}th`
-}
-
 function formatMainSection(instructions: string): string {
   const mainPart = extractMain(instructions)
   if (!mainPart) return `🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁\n${instructions}`
