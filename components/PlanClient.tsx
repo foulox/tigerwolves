@@ -246,7 +246,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
         <>
           <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6">
             <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">WORKOUT TYPE</div>
-            <div className="text-2xl font-bold text-gray-900">{effectiveType || entry.workoutType}</div>
+            <div className="text-2xl font-bold text-gray-900">{activeType ?? entry.workoutType}</div>
             {activeType && (
               <div className="text-xs text-gray-500 mt-0.5">Scheduled: {entry.workoutType}</div>
             )}
