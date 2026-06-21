@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { regroupFamily } from '@/app/actions'
 import type { Workout } from '@/lib/data'
 
@@ -73,6 +74,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
           }))
         )
       } catch (err) {
+        if (isRedirectError(err)) throw err
         setError(err instanceof Error ? err.message : 'Something went wrong')
       }
     })
@@ -82,7 +84,8 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
     const warnings = configs.filter(c => familyNames.has(c.workout.name))
 
     return (
-      <div className="px-4 pt-10 pb-10">
+      <>
+      <div className="px-4 pt-10 pb-44">
         <header className="mb-2">
           <h1 className="text-2xl font-bold text-gray-900">Configure Family</h1>
         </header>
@@ -113,7 +116,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
 
         <div className="flex flex-col gap-4 mb-6">
           {configs.map((c, i) => (
-            <div key={`${c.workout.name}||${c.workout.variation}`} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+            <div key={`${i}-${c.workout.name}||${c.workout.variation}`} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <p className="font-semibold text-gray-900 text-sm">{c.workout.name}</p>
@@ -151,23 +154,24 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
         </div>
 
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-
-        <div className="flex gap-3">
-          <button type="button" onClick={() => setStep('select')}
-            className="flex-1 py-4 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm touch-manipulation">
-            Back
-          </button>
-          <button type="button" onClick={handleSave} disabled={isPending}
-            className="flex-[2] py-4 rounded-xl bg-orange-500 text-white font-semibold text-sm disabled:opacity-40 transition-colors touch-manipulation">
-            {isPending ? 'Saving...' : `Create Family (${configs.length})`}
-          </button>
-        </div>
       </div>
+
+      <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 flex gap-3">
+        <button type="button" onClick={() => setStep('select')}
+          className="flex-1 py-4 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm touch-manipulation">
+          Back
+        </button>
+        <button type="button" onClick={handleSave} disabled={isPending}
+          className="flex-[2] py-4 rounded-xl bg-orange-500 text-white font-semibold text-sm disabled:opacity-40 transition-colors touch-manipulation">
+          {isPending ? 'Saving...' : `Create Family (${configs.length})`}
+        </button>
+      </div>
+      </>
     )
   }
 
   return (
-    <div className="px-4 pt-10 pb-10">
+    <div className="px-4 pt-10 pb-44">
       <header className="mb-2">
         <h1 className="text-2xl font-bold text-gray-900">Regroup Workouts</h1>
       </header>
@@ -192,12 +196,12 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
       )}
 
       <div className="flex flex-col gap-2 mb-6">
-        {filtered.map(w => {
+        {filtered.map((w, i) => {
           const inFamily = familyNames.has(w.name)
           const sel = isSelected(w)
           return (
             <button
-              key={`${w.name}||${w.variation}`}
+              key={`${i}-${w.name}||${w.variation}`}
               type="button"
               onClick={() => toggleSelect(w)}
               className={`text-left rounded-xl px-4 py-3 border transition-colors touch-manipulation ${
@@ -234,7 +238,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
         )}
       </div>
 
-      <div className="flex gap-3">
+      <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 flex gap-3">
         <button type="button" onClick={() => router.back()}
           className="flex-1 py-4 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm touch-manipulation">
           Cancel
