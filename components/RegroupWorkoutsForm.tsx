@@ -82,7 +82,8 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
     const warnings = configs.filter(c => familyNames.has(c.workout.name))
 
     return (
-      <div className="px-4 pt-10 pb-10">
+      <>
+      <div className="px-4 pt-10 pb-28">
         <header className="mb-2">
           <h1 className="text-2xl font-bold text-gray-900">Configure Family</h1>
         </header>
@@ -151,23 +152,24 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
         </div>
 
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-
-        <div className="flex gap-3">
-          <button type="button" onClick={() => setStep('select')}
-            className="flex-1 py-4 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm touch-manipulation">
-            Back
-          </button>
-          <button type="button" onClick={handleSave} disabled={isPending}
-            className="flex-[2] py-4 rounded-xl bg-orange-500 text-white font-semibold text-sm disabled:opacity-40 transition-colors touch-manipulation">
-            {isPending ? 'Saving...' : `Create Family (${configs.length})`}
-          </button>
-        </div>
       </div>
+
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 flex gap-3">
+        <button type="button" onClick={() => setStep('select')}
+          className="flex-1 py-4 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm touch-manipulation">
+          Back
+        </button>
+        <button type="button" onClick={handleSave} disabled={isPending}
+          className="flex-[2] py-4 rounded-xl bg-orange-500 text-white font-semibold text-sm disabled:opacity-40 transition-colors touch-manipulation">
+          {isPending ? 'Saving...' : `Create Family (${configs.length})`}
+        </button>
+      </div>
+      </>
     )
   }
 
   return (
-    <div className="px-4 pt-10 pb-10">
+    <div className="px-4 pt-10 pb-28">
       <header className="mb-2">
         <h1 className="text-2xl font-bold text-gray-900">Regroup Workouts</h1>
       </header>
@@ -234,7 +236,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
         )}
       </div>
 
-      <div className="flex gap-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 flex gap-3">
         <button type="button" onClick={() => router.back()}
           className="flex-1 py-4 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm touch-manipulation">
           Cancel
