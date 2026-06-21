@@ -83,7 +83,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
 
     return (
       <>
-      <div className="px-4 pt-10 pb-28">
+      <div className="px-4 pt-10 pb-44">
         <header className="mb-2">
           <h1 className="text-2xl font-bold text-gray-900">Configure Family</h1>
         </header>
@@ -154,7 +154,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 flex gap-3">
+      <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 flex gap-3">
         <button type="button" onClick={() => setStep('select')}
           className="flex-1 py-4 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm touch-manipulation">
           Back
@@ -169,7 +169,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
   }
 
   return (
-    <div className="px-4 pt-10 pb-28">
+    <div className="px-4 pt-10 pb-44">
       <header className="mb-2">
         <h1 className="text-2xl font-bold text-gray-900">Regroup Workouts</h1>
       </header>
@@ -236,7 +236,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 flex gap-3">
+      <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 flex gap-3">
         <button type="button" onClick={() => router.back()}
           className="flex-1 py-4 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm touch-manipulation">
           Cancel
