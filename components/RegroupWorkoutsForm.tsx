@@ -116,7 +116,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
 
         <div className="flex flex-col gap-4 mb-6">
           {configs.map((c, i) => (
-            <div key={`${c.workout.name}||${c.workout.variation}`} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+            <div key={`${i}-${c.workout.name}||${c.workout.variation}`} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <p className="font-semibold text-gray-900 text-sm">{c.workout.name}</p>
@@ -196,12 +196,12 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
       )}
 
       <div className="flex flex-col gap-2 mb-6">
-        {filtered.map(w => {
+        {filtered.map((w, i) => {
           const inFamily = familyNames.has(w.name)
           const sel = isSelected(w)
           return (
             <button
-              key={`${w.name}||${w.variation}`}
+              key={`${i}-${w.name}||${w.variation}`}
               type="button"
               onClick={() => toggleSelect(w)}
               className={`text-left rounded-xl px-4 py-3 border transition-colors touch-manipulation ${
