@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { regroupFamily } from '@/app/actions'
 import type { Workout } from '@/lib/data'
 
@@ -73,6 +74,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
           }))
         )
       } catch (err) {
+        if (isRedirectError(err)) throw err
         setError(err instanceof Error ? err.message : 'Something went wrong')
       }
     })
