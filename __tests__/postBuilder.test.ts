@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { computeTurnaround, buildPost } from '../lib/postBuilder'
+import { computeTurnaround, buildPost, formatMainContent } from '../lib/postBuilder'
 import type { ScheduleEntry, Workout } from '../lib/data'
 
 // ── computeTurnaround ────────────────────────────────────────────────────────
@@ -152,7 +152,8 @@ describe('buildPost', () => {
     const post = buildPost(entry, [standard, longer])
     expect(post).toContain('Standard')
     expect(post).toContain('Longer')
-    expect(post).toContain('🏁🏃🏻‍♂️‍➡️ WORKOUT')
+    expect(post).toContain(formatMainContent(standard.instructions))
+    expect(post).toContain(formatMainContent(longer.instructions))
   })
 
   test('two-variation post header and footer are shared (not per-variation)', () => {
