@@ -148,12 +148,19 @@ describe('buildPost', () => {
 
   test('two-variation post falls back to formatted instructions when variation is empty', () => {
     const standard = { ...baseWorkout, variation: '', progression: 1 }
-    const longer = { ...baseWorkout, variation: '', progression: 2 }
+    const longer = { ...baseWorkout, instructions: 'WU: 10min. Main: 4×5min@tempo. CD: 5min.', variation: '', progression: 2 }
     const post = buildPost(entry, [standard, longer])
     expect(post).toContain('Standard')
     expect(post).toContain('Longer')
     expect(post).toContain(formatMainContent(standard.instructions))
     expect(post).toContain(formatMainContent(longer.instructions))
+  })
+
+  test('two-variation post shows placeholder when hasTurnaround is true but distance is empty', () => {
+    const standard = { ...baseWorkout, variation: '3×5min@tempo', progression: 1, hasTurnaround: true, turnaroundDistance: '' }
+    const longer = { ...baseWorkout, variation: '4×5min@tempo', progression: 2, hasTurnaround: true, turnaroundDistance: '' }
+    const post = buildPost(entry, [standard, longer])
+    expect(post.match(/↩️ TURN AROUND: \[add before posting\]/g)?.length).toBe(2)
   })
 
   test('two-variation post header and footer are shared (not per-variation)', () => {
