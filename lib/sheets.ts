@@ -1,5 +1,7 @@
+import { unstable_cache } from 'next/cache'
 import type { Workout, ScheduleEntry, Race } from './data'
 import { weekOfMonth } from './data'
+import { fetchWorkouts, fetchSchedule, fetchRaces } from './db'
 
 type RawRow = Record<string, unknown>
 
@@ -59,16 +61,15 @@ export function mapRace(row: RawRow): Race {
   }
 }
 
-export async function fetchData() {
-  try {
-    const res = await fetch(process.env.SHEETS_URL!, { next: { revalidate: 300 } })
-    const json = await res.json() as { schedule: RawRow[], races: RawRow[], workouts: RawRow[] }
-    return {
-      schedule: json.schedule.map(mapScheduleEntry).filter(e => e.date),
-      races: json.races.map(mapRace).filter(r => r.date),
-      workouts: json.workouts.map(mapWorkout).filter(w => w.name),
-    }
-  } catch {
-    return { schedule: [], races: [], workouts: [] }
-  }
-}
+export const fetchData = unstable_cache(
+  async () => {
+    const [schedule, races, workouts] = await Promise.all([
+      fetchSchedule(),
+      fetchRaces(),
+      fetchWorkouts(),
+    ])
+    return { schedule, races, workouts }
+  },
+  ['fetchData'],
+  { revalidate: 300 },
+)
