@@ -126,6 +126,8 @@ export async function addWorkout(formData: FormData) {
 }
 
 export async function deleteWorkout(name: string, variation: string) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
   await dbDeleteWorkout(name, variation)
   revalidateAll()
 }
