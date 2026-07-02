@@ -3,6 +3,14 @@
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import type { Workout } from '@/lib/data'
+import {
+  dbSetScheduleWorkout,
+  dbInsertWorkout,
+  dbUpdateWorkout,
+  dbDeleteWorkout,
+  dbRegroupFamily,
+} from '@/lib/db'
 
 export async function createFeedbackIssue(data: {
   type: 'bug' | 'feature'
@@ -56,53 +64,41 @@ export async function createFeedbackIssue(data: {
   return { url: issue.html_url }
 }
 
-export async function setPlanWorkout(date: string, workoutName: string) {
-  const { userId } = await auth()
-  if (!userId) throw new Error('Unauthorized')
-  await sheetsPost({ action: 'setScheduleWorkout', date, workoutName })
-  revalidatePath('/')
-}
-
-function buildPayload(formData: FormData, variation = '', progression = '') {
+function buildWorkout(formData: FormData, variation = '', progression = ''): Omit<Workout, 'lastRan'> {
+  const progressionNum = parseInt(progression)
   return {
-    'Workout Name': formData.get('name') as string,
-    'Sport': 'Running',
-    'Category': formData.get('category') as string,
-    'Type': formData.get('type') as string,
-    'Reason / Purpose': formData.get('reason') as string,
-    'Instructions': formData.get('instructions') as string,
-    'Dist/Time': formData.get('distTime') as string,
-    'Lap Structure': formData.get('lapStructure') as string,
-    'Energy System': formData.get('energySystem') as string,
-    'HR Zone': formData.get('hrZone') as string,
-    'RPE': formData.get('rpe') as string,
-    'Last Ran': '',
-    'Coaching Notes': formData.get('coachingNotes') as string,
-    'Map Link': formData.get('mapLink') as string,
-    'Author': formData.get('author') as string,
-    'Race Type': formData.get('raceTypes') as string,
-    'Training Phase': formData.get('trainingPhases') as string,
-    'hasTurnaround': (formData.get('hasTurnaround') as string) === 'true' ? 'TRUE' : 'FALSE',
-    'turnaroundDistance': (formData.get('turnaroundDistance') as string) || '',
-    'Variation': variation,
-    'Progression': progression,
+    name: formData.get('name') as string,
+    sport: 'Running',
+    category: formData.get('category') as string,
+    type: formData.get('type') as string,
+    reason: formData.get('reason') as string,
+    instructions: formData.get('instructions') as string,
+    distTime: formData.get('distTime') as string,
+    lapStructure: formData.get('lapStructure') as string,
+    energySystem: formData.get('energySystem') as string,
+    hrZone: formData.get('hrZone') as string,
+    rpe: formData.get('rpe') as string,
+    coachingNotes: (formData.get('coachingNotes') as string) || null,
+    mapLink: (formData.get('mapLink') as string) || null,
+    variation,
+    progression: isNaN(progressionNum) ? null : progressionNum,
+    author: (formData.get('author') as string) || null,
+    raceTypes: ((formData.get('raceTypes') as string) || '').split(',').map(s => s.trim()).filter(Boolean),
+    trainingPhases: ((formData.get('trainingPhases') as string) || '').split(',').map(s => s.trim()).filter(Boolean),
+    hasTurnaround: (formData.get('hasTurnaround') as string) === 'true',
+    turnaroundDistance: (formData.get('turnaroundDistance') as string) || '',
   }
 }
 
-async function sheetsPost(body: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const res = await fetch(process.env.SHEETS_URL!, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`Sheets request failed (${res.status})`)
-  const json = await res.json()
-  if (!json.ok) throw new Error(json.error ?? 'Save failed')
-  return json
+function revalidateAll() {
+  revalidatePath('/', 'layout')
 }
 
-async function postToSheet(payload: Record<string, unknown>) {
-  await sheetsPost(payload)
+export async function setPlanWorkout(date: string, workoutName: string) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
+  await dbSetScheduleWorkout(date, workoutName)
+  revalidateAll()
 }
 
 export async function regroupFamily(
@@ -116,24 +112,24 @@ export async function regroupFamily(
 ) {
   const { userId } = await auth()
   if (!userId) throw new Error('Unauthorized')
-  await sheetsPost({ action: 'regroupFamily', newName, workouts })
-  revalidatePath('/library')
+  await dbRegroupFamily(newName, workouts)
+  revalidateAll()
   redirect('/library')
 }
 
 export async function addWorkout(formData: FormData) {
   const { userId } = await auth()
   if (!userId) throw new Error('Unauthorized')
-  await postToSheet(buildPayload(formData))
-  revalidatePath('/library')
-  revalidatePath('/admin')
+  await dbInsertWorkout(buildWorkout(formData))
+  revalidateAll()
   redirect('/library')
 }
 
 export async function deleteWorkout(name: string, variation: string) {
-  await sheetsPost({ action: 'deleteWorkout', name, variation })
-  revalidatePath('/library')
-  revalidatePath('/admin')
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
+  await dbDeleteWorkout(name, variation)
+  revalidateAll()
 }
 
 export async function updateWorkout(
@@ -144,14 +140,8 @@ export async function updateWorkout(
   if (!userId) throw new Error('Unauthorized')
   const variation = (formData.get('variation') as string) ?? ''
   const progression = (formData.get('progression') as string) ?? ''
-  await sheetsPost({
-    action: 'updateWorkout',
-    originalName: original.name,
-    originalVariation: original.variation,
-    ...buildPayload(formData, variation, progression),
-  })
-  revalidatePath('/library')
-  revalidatePath('/admin')
+  await dbUpdateWorkout(original.name, original.variation, buildWorkout(formData, variation, progression))
+  revalidateAll()
   redirect('/library')
 }
 
@@ -169,27 +159,28 @@ export async function addVariation(
 ) {
   const { userId } = await auth()
   if (!userId) throw new Error('Unauthorized')
-  await postToSheet({
-    'Workout Name': parent.name,
-    'Sport': 'Running',
-    'Category': parent.category,
-    'Type': parent.type,
-    'Reason / Purpose': parent.reason,
-    'Instructions': instructions,
-    'Dist/Time': distTime,
-    'Lap Structure': parent.lapStructure,
-    'Energy System': parent.energySystem,
-    'HR Zone': parent.hrZone,
-    'RPE': parent.rpe,
-    'Last Ran': '',
-    'Coaching Notes': parent.coachingNotes ?? '',
-    'Map Link': parent.mapLink ?? '',
-    'Author': parent.author ?? '',
-    'Race Type': parent.raceTypes.join(', '),
-    'Training Phase': parent.trainingPhases.join(', '),
-    'Variation': variation,
-    'Progression': String(progression),
+  await dbInsertWorkout({
+    name: parent.name,
+    sport: 'Running',
+    category: parent.category,
+    type: parent.type,
+    reason: parent.reason,
+    instructions,
+    distTime,
+    lapStructure: parent.lapStructure,
+    energySystem: parent.energySystem,
+    hrZone: parent.hrZone,
+    rpe: parent.rpe,
+    coachingNotes: parent.coachingNotes,
+    mapLink: parent.mapLink,
+    variation,
+    progression,
+    author: parent.author,
+    raceTypes: parent.raceTypes,
+    trainingPhases: parent.trainingPhases,
+    hasTurnaround: false,
+    turnaroundDistance: '',
   })
-  revalidatePath('/library')
+  revalidateAll()
   redirect('/library')
 }
