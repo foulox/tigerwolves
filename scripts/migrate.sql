@@ -47,5 +47,6 @@ CREATE TABLE IF NOT EXISTS run_leaders (
   run_id TEXT NOT NULL,
   name TEXT NOT NULL,
   sort_order INT,
-  active BOOLEAN NOT NULL DEFAULT true
+  active BOOLEAN NOT NULL DEFAULT true,
+  UNIQUE (run_id, name)
 );
