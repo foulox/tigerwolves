@@ -13,7 +13,7 @@ function normalizeDate(val: unknown): string | null {
   return s.length >= 10 ? s.slice(0, 10) : null
 }
 
-function mapWorkout(row: RawRow): Workout {
+export function mapWorkout(row: RawRow): Workout {
   return {
     name: str(row['Workout Name']),
     sport: str(row['Sport']),
@@ -39,7 +39,7 @@ function mapWorkout(row: RawRow): Workout {
   }
 }
 
-function mapScheduleEntry(row: RawRow): ScheduleEntry {
+export function mapScheduleEntry(row: RawRow): ScheduleEntry {
   const date = normalizeDate(row['Date']) ?? ''
   return {
     date,
@@ -50,7 +50,7 @@ function mapScheduleEntry(row: RawRow): ScheduleEntry {
   }
 }
 
-function mapRace(row: RawRow): Race {
+export function mapRace(row: RawRow): Race {
   return {
     date: normalizeDate(row['Date']) ?? '',
     name: str(row['Name']),
