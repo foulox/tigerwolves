@@ -194,12 +194,13 @@ describe('dbSetScheduleWorkout', () => {
     const target = rows[0]
     const original = target.workoutName
 
-    await dbSetScheduleWorkout(target.date, '__test_plan__')
-    const updated = await fetchSchedule()
-    const row = updated.find(e => e.date === target.date)
-    expect(row?.workoutName).toBe('__test_plan__')
-
-    // restore
-    await sql`UPDATE schedule SET workout_name = ${original} WHERE date = ${target.date}::date`
+    try {
+      await dbSetScheduleWorkout(target.date, '__test_plan__')
+      const updated = await fetchSchedule()
+      const row = updated.find(e => e.date === target.date)
+      expect(row?.workoutName).toBe('__test_plan__')
+    } finally {
+      await sql`UPDATE schedule SET workout_name = ${original} WHERE date = ${target.date}::date`
+    }
   })
 })

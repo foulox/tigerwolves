@@ -145,11 +145,18 @@ export async function dbRegroupFamily(
     progression: number
   }>,
 ): Promise<void> {
-  for (const w of workouts) {
-    await sql`
-      UPDATE workouts
-      SET name = ${newName}, variation = ${w.variation}, progression = ${w.progression}
-      WHERE name = ${w.originalName} AND variation = ${w.originalVariation}
-    `
+  await sql`BEGIN`
+  try {
+    for (const w of workouts) {
+      await sql`
+        UPDATE workouts
+        SET name = ${newName}, variation = ${w.variation}, progression = ${w.progression}
+        WHERE name = ${w.originalName} AND variation = ${w.originalVariation}
+      `
+    }
+    await sql`COMMIT`
+  } catch (e) {
+    await sql`ROLLBACK`
+    throw e
   }
 }
