@@ -4,6 +4,7 @@
 A mobile-first web app for **North Brooklyn Runners (NBR)**. Currently serves TigerWolves — the Tuesday morning quality workout run. The long-term vision is to expand to all NBR runs (MMER, Mourning Doves, Helkatz, and others), each with their own identity, meeting spot, leaders, and Heylo post format.
 
 Live at: https://tigerwolves.vercel.app
+Staging: https://tigerwolves-cpc3mdtlk-fouloxs-projects.vercel.app
 
 ## Club Context
 - **Club:** North Brooklyn Runners (NBR)
