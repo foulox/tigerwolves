@@ -1,7 +1,7 @@
 'use server'
 
 import { auth } from '@clerk/nextjs/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Workout } from '@/lib/data'
 import {
@@ -90,13 +90,18 @@ function buildWorkout(formData: FormData, variation = '', progression = ''): Omi
   }
 }
 
+async function requireAuth() {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
+}
+
 function revalidateAll() {
   revalidatePath('/', 'layout')
+  updateTag('tigerwolves-data')
 }
 
 export async function setPlanWorkout(date: string, workoutName: string) {
-  const { userId } = await auth()
-  if (!userId) throw new Error('Unauthorized')
+  await requireAuth()
   await dbSetScheduleWorkout(date, workoutName)
   revalidateAll()
 }
@@ -110,24 +115,21 @@ export async function regroupFamily(
     progression: number
   }>
 ) {
-  const { userId } = await auth()
-  if (!userId) throw new Error('Unauthorized')
+  await requireAuth()
   await dbRegroupFamily(newName, workouts)
   revalidateAll()
   redirect('/library')
 }
 
 export async function addWorkout(formData: FormData) {
-  const { userId } = await auth()
-  if (!userId) throw new Error('Unauthorized')
+  await requireAuth()
   await dbInsertWorkout(buildWorkout(formData))
   revalidateAll()
   redirect('/library')
 }
 
 export async function deleteWorkout(name: string, variation: string) {
-  const { userId } = await auth()
-  if (!userId) throw new Error('Unauthorized')
+  await requireAuth()
   await dbDeleteWorkout(name, variation)
   revalidateAll()
 }
@@ -136,8 +138,7 @@ export async function updateWorkout(
   original: { name: string; variation: string },
   formData: FormData,
 ) {
-  const { userId } = await auth()
-  if (!userId) throw new Error('Unauthorized')
+  await requireAuth()
   const variation = (formData.get('variation') as string) ?? ''
   const progression = (formData.get('progression') as string) ?? ''
   await dbUpdateWorkout(original.name, original.variation, buildWorkout(formData, variation, progression))
@@ -157,8 +158,7 @@ export async function addVariation(
   instructions: string,
   distTime: string,
 ) {
-  const { userId } = await auth()
-  if (!userId) throw new Error('Unauthorized')
+  await requireAuth()
   await dbInsertWorkout({
     name: parent.name,
     sport: 'Running',
