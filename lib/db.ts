@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless'
+import { unstable_cache } from 'next/cache'
 import type { Workout, ScheduleEntry, Race } from './data'
 import { weekOfMonth } from './data'
 
@@ -155,3 +156,22 @@ export async function dbRegroupFamily(
     ),
   )
 }
+
+// ── Aggregate read, cached ──────────────────────────────────────────────────
+
+export const fetchData = unstable_cache(
+  async () => {
+    try {
+      const [schedule, races, workouts] = await Promise.all([
+        fetchSchedule(),
+        fetchRaces(),
+        fetchWorkouts(),
+      ])
+      return { schedule, races, workouts }
+    } catch {
+      return { schedule: [], races: [], workouts: [] }
+    }
+  },
+  ['fetchData'],
+  { revalidate: 300, tags: ['tigerwolves-data'] },
+)

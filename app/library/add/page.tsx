@@ -1,4 +1,4 @@
-import { fetchData } from '@/lib/sheets'
+import { fetchData } from '@/lib/db'
 import AddWorkoutForm from '@/components/AddWorkoutForm'
 import AddVariationForm from '@/components/AddVariationForm'
 

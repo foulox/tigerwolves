@@ -17,19 +17,16 @@ Staging: https://tigerwolves-git-staging-fouloxs-projects.vercel.app (stable bra
 - **Frontend:** Next.js 16 (App Router) + Tailwind CSS v4
 - **Auth:** Clerk v7 (`@clerk/nextjs` v7.5.2) — leaders sign in, visitors get read-only
 - **Hosting:** Vercel (free, auto-deploys from `main`)
-- **Data source:** Neon Postgres, queried directly via `@neondatabase/serverless` (raw SQL, no ORM) — migrated off Google Sheets in #85 (2026-07-03)
-- **Legacy:** Google Sheets / Apps Script is no longer in the live read/write path. `scripts/apps-script.gs` and `SHEETS_URL` remain pending full removal in #86.
+- **Data source:** Neon Postgres, queried directly via `@neondatabase/serverless` (raw SQL, no ORM) — migrated off Google Sheets in #85 (2026-07-03), Apps Script/Sheets glue fully removed in #86
 
 ## Architecture
 - Server components fetch data and pass it to client components as props
-- `lib/db.ts` — raw SQL queries/mutations against Neon; row-to-type mapping
-- `lib/sheets.ts` — thin `unstable_cache` wrapper around `lib/db.ts`'s reads (tag: `tigerwolves-data`, `revalidate: 300`); name is legacy, kept so page imports didn't need to change during the migration
+- `lib/db.ts` — raw SQL queries/mutations against Neon; row-to-type mapping; also exports `fetchData`, an `unstable_cache`-wrapped aggregate read (tag: `tigerwolves-data`, `revalidate: 300`) that pages import directly
 - `lib/data.ts` — TypeScript types and constants only
 - `lib/postBuilder.ts` — `buildPost`, `computeTurnaround`, interval parsers (pure functions, imported by `PlanClient.tsx`)
 - `lib/workoutForm.ts` — shared UI constants for add/edit forms (FORM_CATEGORIES, FORM_TYPES, chip styles, toggleItem)
 - `app/actions.ts` — server actions; every write action calls `requireAuth()` (throws `Unauthorized` if no `userId`) then a `lib/db.ts` mutation, then `revalidateAll()` (`revalidatePath` + `updateTag('tigerwolves-data')` — not `revalidateTag`, which needs an extra profile arg in this Next.js version)
-- `scripts/migrate.sql` — Neon schema; `scripts/seed.ts` — one-time ETL from Sheets, owns the Sheets-column mapping functions now that `lib/sheets.ts` doesn't need them
-- `scripts/apps-script.gs` — legacy Apps Script source; no longer called by the live app, pending removal in #86
+- `scripts/migrate.sql` — Neon schema; `scripts/seed.ts` — one-time ETL from Sheets, kept as historical record of the migration, not part of the live app
 - `proxy.ts` — Clerk middleware (NOT `middleware.ts` — renamed to avoid Next.js 16 deprecation warning); hardcodes `signInUrl: '/sign-in'` as a `clerkMiddleware()` option — don't move this back to an env var, see Auth Architecture below
 - 5-minute cache TTL via `unstable_cache`; on-demand invalidation via `updateTag` after every write
 
@@ -45,23 +42,6 @@ Staging: https://tigerwolves-git-staging-fouloxs-projects.vercel.app (stable bra
 - Clerk keys in `.env.local` (not committed) and Vercel environment variables
 
 **Security note — `isLeader` has no independent role check.** It is literally `!!userId` everywhere it's used (`HeaderAuth`, `LibraryClient`, `requireAuth()` in `app/actions.ts`). Anyone with a valid Clerk session gets full write access — add/edit/delete workouts, regroup families, everything. This is only safe because the **Production Clerk instance has Restricted mode enabled** (Configure → Protect → Restrictions) — self sign-up is disabled, so a session can only exist for someone Lou explicitly invited. **Never disable Restricted mode on Production** without adding a real role/allowlist check first. Worth hardening properly if/when the app opens up to public participant accounts (Release 2 in the roadmap).
-
-## Google Sheets Setup (legacy — pending removal in #86)
-No longer part of the live read/write path as of the #85 DB migration (2026-07-03). Kept for reference until #86 removes it entirely. Two spreadsheets:
-
-**TigerWolves Schedule sheet** (contains the Apps Script):
-- `Schedule` tab — Date, Workout Type, Leader, Workout Name
-- `Races` tab — Date, Name, Distance, Location
-- Apps Script serves all data via `doGet()` and accepts new workouts via `doPost()`
-
-**Workout Library sheet** (standalone, shared across run groups):
-- `Workouts` tab — Workout Name, Sport, Category, Type, Reason / Purpose, Instructions, Dist/Time, Lap Structure, Energy System, HR Zone, RPE, Last Ran, Coaching Notes, Map Link, Variation, Progression, Author, Race Type, Training Phase
-- Accessed by the Apps Script using `SpreadsheetApp.openById(WORKOUT_LIBRARY_ID)`
-- Sheet ID: `1DqYt4POBIzdj1FbKzImN06CVocGFbgeB1UTOkz0pqpc`
-
-The Apps Script web app URL is stored in `SHEETS_URL` env var (Vercel + `.env.local`).
-
-**Updating the Apps Script:** Edit `scripts/apps-script.gs`, paste into the Apps Script editor, then Deploy → Manage deployments → New version. The SHEETS_URL does not change between versions.
 
 ## Core Screens
 1. **Schedule** (`/`) — upcoming Tuesdays: leader, workout type, workout name

@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server'
-import { fetchData } from '@/lib/sheets'
+import { fetchData } from '@/lib/db'
 import LibraryClient from '@/components/LibraryClient'
 import LeaderBadge from '@/components/LeaderBadge'
 

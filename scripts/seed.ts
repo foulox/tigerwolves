@@ -5,8 +5,11 @@ import type { Workout, ScheduleEntry, Race } from '../lib/data'
 const url = process.env.DATABASE_URL
 if (!url) throw new Error('DATABASE_URL is not set')
 
+// This script is retired: it was the one-time Sheets -> Neon migration (#84),
+// kept only as historical record of how the data was seeded. SHEETS_URL and the
+// Apps Script deployment it called were removed in #86. Do not run this again.
 const sheetsUrl = process.env.SHEETS_URL
-if (!sheetsUrl) throw new Error('SHEETS_URL is not set')
+if (!sheetsUrl) throw new Error('seed.ts is retired (see comment above) — SHEETS_URL no longer exists, do not run')
 
 const sql = neon(url)
 
