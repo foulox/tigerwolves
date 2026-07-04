@@ -3,8 +3,8 @@
 ## What This Is
 A mobile-first web app for **North Brooklyn Runners (NBR)**. Currently serves TigerWolves — the Tuesday morning quality workout run. The long-term vision is to expand to all NBR runs (MMER, Mourning Doves, Helkatz, and others), each with their own identity, meeting spot, leaders, and Heylo post format.
 
-Live at: https://tigerwolves.vercel.app
-Staging: https://tigerwolves-cpc3mdtlk-fouloxs-projects.vercel.app
+Live at: https://tigerwolves.foulox.me (custom domain, since the 2026-07-03 Clerk production cutover — `tigerwolves.vercel.app` still works as a fallback alias)
+Staging: https://tigerwolves-git-staging-fouloxs-projects.vercel.app (stable branch alias — don't use a specific deployment URL here, those change every deploy)
 
 ## Club Context
 - **Club:** North Brooklyn Runners (NBR)
@@ -17,23 +17,26 @@ Staging: https://tigerwolves-cpc3mdtlk-fouloxs-projects.vercel.app
 - **Frontend:** Next.js 16 (App Router) + Tailwind CSS v4
 - **Auth:** Clerk v7 (`@clerk/nextjs` v7.5.2) — leaders sign in, visitors get read-only
 - **Hosting:** Vercel (free, auto-deploys from `main`)
-- **Data source:** Google Sheets via Google Apps Script JSON endpoint
-- **Write-back:** Apps Script `doPost()` — add, edit, delete workouts; regroup families; set schedule
+- **Data source:** Neon Postgres, queried directly via `@neondatabase/serverless` (raw SQL, no ORM) — migrated off Google Sheets in #85 (2026-07-03)
+- **Legacy:** Google Sheets / Apps Script is no longer in the live read/write path. `scripts/apps-script.gs` and `SHEETS_URL` remain pending full removal in #86.
 
 ## Architecture
 - Server components fetch data and pass it to client components as props
-- `lib/sheets.ts` — fetches from Apps Script, normalizes data
+- `lib/db.ts` — raw SQL queries/mutations against Neon; row-to-type mapping
+- `lib/sheets.ts` — thin `unstable_cache` wrapper around `lib/db.ts`'s reads (tag: `tigerwolves-data`, `revalidate: 300`); name is legacy, kept so page imports didn't need to change during the migration
 - `lib/data.ts` — TypeScript types and constants only
+- `lib/postBuilder.ts` — `buildPost`, `computeTurnaround`, interval parsers (pure functions, imported by `PlanClient.tsx`)
 - `lib/workoutForm.ts` — shared UI constants for add/edit forms (FORM_CATEGORIES, FORM_TYPES, chip styles, toggleItem)
-- `app/actions.ts` — server actions; all Sheets POSTs go through `sheetsPost()` helper which checks `res.ok` before parsing JSON; all write actions check `auth()` first and throw `Unauthorized` if no userId
-- `scripts/apps-script.gs` — the full Apps Script source (doGet + doPost); keep in sync when adding new actions
-- `proxy.ts` — Clerk middleware (NOT `middleware.ts` — renamed to avoid Next.js 16 deprecation warning)
-- 5-minute cache revalidation (`next: { revalidate: 300 }`); on-demand revalidation after writes
+- `app/actions.ts` — server actions; every write action calls `requireAuth()` (throws `Unauthorized` if no `userId`) then a `lib/db.ts` mutation, then `revalidateAll()` (`revalidatePath` + `updateTag('tigerwolves-data')` — not `revalidateTag`, which needs an extra profile arg in this Next.js version)
+- `scripts/migrate.sql` — Neon schema; `scripts/seed.ts` — one-time ETL from Sheets, owns the Sheets-column mapping functions now that `lib/sheets.ts` doesn't need them
+- `scripts/apps-script.gs` — legacy Apps Script source; no longer called by the live app, pending removal in #86
+- `proxy.ts` — Clerk middleware (NOT `middleware.ts` — renamed to avoid Next.js 16 deprecation warning); hardcodes `signInUrl: '/sign-in'` as a `clerkMiddleware()` option — don't move this back to an env var, see Auth Architecture below
+- 5-minute cache TTL via `unstable_cache`; on-demand invalidation via `updateTag` after every write
 
 ## Auth Architecture (Clerk)
 - **Visitors** — read-only: Schedule, Library, Races. No sign-in required.
-- **Leaders** — sign in via `/sign-in` (Clerk-hosted UI). Plan tab appears after sign-in.
-- `proxy.ts` uses `clerkMiddleware` + `createRouteMatcher`; public routes: `/`, `/library`, `/races`, `/sign-in(.*)`, `/sign-up(.*)`
+- **Leaders** — sign in via `/sign-in` — the app's own custom page, not Clerk's hosted Account Portal. Plan tab appears after sign-in.
+- `proxy.ts` uses `clerkMiddleware` + `createRouteMatcher`; public routes: `/`, `/library`, `/races`, `/sign-in(.*)`, `/sign-up(.*)`. `signInUrl: '/sign-in'` is passed as a `clerkMiddleware()` option directly in code — without it, `auth.protect()` falls back to redirecting unauthenticated visits to Clerk's Account Portal instead, which caused a real production sign-in loop bug (#157, fixed 2026-07-03). Don't move this back to an env var.
 - Server components call `auth()` from `@clerk/nextjs/server`, pass `isLeader={!!userId}` to client children
 - Client components use `useAuth()` for reactive auth state (e.g. `BottomNav` shows/hides Plan tab)
 - `HeaderAuth` component on Schedule page: shows "Sign in" link for visitors, `<UserButton />` for leaders
@@ -41,8 +44,10 @@ Staging: https://tigerwolves-cpc3mdtlk-fouloxs-projects.vercel.app
 - `/api/workout/infer` route returns 401 if unauthenticated
 - Clerk keys in `.env.local` (not committed) and Vercel environment variables
 
-## Google Sheets Setup
-Two spreadsheets:
+**Security note — `isLeader` has no independent role check.** It is literally `!!userId` everywhere it's used (`HeaderAuth`, `LibraryClient`, `requireAuth()` in `app/actions.ts`). Anyone with a valid Clerk session gets full write access — add/edit/delete workouts, regroup families, everything. This is only safe because the **Production Clerk instance has Restricted mode enabled** (Configure → Protect → Restrictions) — self sign-up is disabled, so a session can only exist for someone Lou explicitly invited. **Never disable Restricted mode on Production** without adding a real role/allowlist check first. Worth hardening properly if/when the app opens up to public participant accounts (Release 2 in the roadmap).
+
+## Google Sheets Setup (legacy — pending removal in #86)
+No longer part of the live read/write path as of the #85 DB migration (2026-07-03). Kept for reference until #86 removes it entirely. Two spreadsheets:
 
 **TigerWolves Schedule sheet** (contains the Apps Script):
 - `Schedule` tab — Date, Workout Type, Leader, Workout Name
@@ -66,7 +71,7 @@ The Apps Script web app URL is stored in `SHEETS_URL` env var (Vercel + `.env.lo
 5. **Admin** (`/admin`) — Regroup standalone workouts into a family (structural changes only)
 
 ## Heylo Post Format
-`buildPost` in `components/PlanClient.tsx` generates the post. Key details:
+`buildPost` in `lib/postBuilder.ts` generates the post (extracted from `PlanClient.tsx` in story #121, with Vitest coverage). Key details:
 - Location block is TigerWolves-specific (Da Bins, Kent Ave Speedway, Marsha P. Johnson)
 - Turn-around is auto-computed from interval durations — handles `N×(Xs/Ys)`, `N×(Xmin/Ymin)`, `N sets of`, and `/`-separated formats; falls back to `[add before posting]`
 - `RUN_LEADERS` constant in `lib/data.ts` — update when the leader pool changes
@@ -87,14 +92,17 @@ Schedule entries use compound types ("Ladder or Superset"); the library tags ind
 - **Easy** — easy runs, recovery (Recovery is a Type within Easy)
 
 ## Run Leaders (TigerWolves Tuesday)
-Luis, Lou (creator/user), Kostas, Matthew, Joelle, Kelsey, Obi, Jared
-Note: Matthew is being removed in UX Sprint story #67 — `RUN_LEADERS` in `lib/data.ts` is the source of truth
+Luis, Lou (creator/user), Kostas, Joelle, Kelsey, Obi (Matthew removed via #67; Jared never signed in, status unclear) — `RUN_LEADERS` in `lib/data.ts` is the source of truth
 
 ## Key Constraints
 - Volunteer club, no budget — keep hosting and services free/cheap
 - Mobile-first: late posts happen because planning requires a computer
 - Non-technical users: UI must be simple enough that it can't be "broken"
 - `touch-manipulation` on all interactive elements to fix mobile Safari tap issues
+
+## Tooling Notes
+- **Vercel CLI must be v54+** for reliable non-interactive env var management — v52's `vercel env add <name> preview --value ... --yes` (no git-branch arg, meant to apply to all Preview branches) silently fails with a `git_branch_required` error even though the CLI's own suggested fix is the exact command you just ran. Use `npx vercel@latest` for env commands if the global install is older.
+- Vercel's Neon integration auto-provisions an isolated DB branch per git branch (`preview/<branch-name>`) for Preview deployments — `vercel env ls` showing one `DATABASE_URL` name for both Preview and Production does NOT mean they share a value; the integration resolves it differently per deployment. Verify actual isolation via `neonctl branches list` if this matters, don't infer from `env ls` alone.
 
 ## Development Workflow
 
@@ -125,6 +133,7 @@ Do this for all remaining branches after each merge. Also check for duplicate fi
 - [ ] Consistent with project conventions (server components, Tailwind, touch-manipulation)?
 - [ ] TypeScript clean — `npx tsc --noEmit` zero errors
 - [ ] No dead code, debug logs, or temporary hacks
+- [ ] Does this PR change anything CLAUDE.md documents (architecture, data flow, key files, URLs)? Update CLAUDE.md in the same PR — don't defer doc updates to session-end, they go stale fast (found during the #85 `/review` pass, 2026-07-03)
 
 ### Testing standard
 UI components: no unit tests — verify by running the app.
