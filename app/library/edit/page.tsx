@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { fetchData } from '@/lib/sheets'
+import { fetchData } from '@/lib/db'
 import EditWorkoutForm from '@/components/EditWorkoutForm'
 
 export default async function EditWorkoutPage({ searchParams }: { searchParams: Promise<{ name?: string; variation?: string }> }) {

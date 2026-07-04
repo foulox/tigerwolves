@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server'
-import { fetchData } from '@/lib/sheets'
+import { fetchData } from '@/lib/db'
 import PlanClient from '@/components/PlanClient'
 
 export default async function PlanPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {

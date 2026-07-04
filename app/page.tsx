@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
-import { fetchData } from '@/lib/sheets'
+import { fetchData } from '@/lib/db'
 import FeedbackButton from '@/components/FeedbackButton'
 import HeaderAuth from '@/components/HeaderAuth'
 import TourWrapper from '@/components/TourWrapper'
