@@ -126,6 +126,11 @@ After opening a PR touching more than one file, always tell Lou:
 ### GitHub label ownership
 `ready-to-build` is Lou's label to apply — it means Lou has reviewed and cleared the story to build. Claude must never add it.
 
+### Epic tracking (added 2026-07-04)
+- Epics track their stories via GitHub's native **sub-issues** (parent/child linking), not markdown checklists — checklists can't show real progress and silently drift from actual state. Link every story to its epic with `gh api repos/foulox/tigerwolves/issues/{epic}/sub_issues -F sub_issue_id={story's numeric id}` (note: the issue's internal `id`, not its `number`).
+- Whenever a story closes, check whether it was the last open sub-issue on its epic — if so, close the epic too. Found 3 epics this session (`#82`, `#23`, `#69`) that were 100% done but silently left open because nobody checked.
+- New releases get a matching GitHub milestone at creation, not retrofitted later — lets the Project board's milestone filter work for browsing by release from day one.
+
 ### Never commit directly to main
 All code changes go through a PR. CLAUDE.md updates are the only exception.
 
