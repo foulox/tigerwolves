@@ -5,7 +5,6 @@ import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Workout } from '@/lib/data'
 import {
-  fetchWorkouts,
   dbSetScheduleWorkout,
   dbInsertWorkout,
   dbUpdateWorkout,
@@ -129,7 +128,7 @@ export async function addWorkout(formData: FormData) {
   await requireAuth()
   await dbInsertWorkout(buildWorkout(formData))
   revalidateAll()
-  await captureServerEvent('workout_added')
+  await captureServerEvent('workout_added', { isVariation: false })
   redirect('/library')
 }
 
@@ -140,7 +139,7 @@ export async function deleteWorkout(name: string, variation: string) {
 }
 
 export async function updateWorkout(
-  original: { name: string; variation: string },
+  original: { name: string; variation: string; hasTurnaround: boolean; turnaroundDistance: string },
   formData: FormData,
 ) {
   await requireAuth()
@@ -148,12 +147,8 @@ export async function updateWorkout(
   const progression = (formData.get('progression') as string) ?? ''
   const updated = buildWorkout(formData, variation, progression)
 
-  const existing = (await fetchWorkouts()).find(
-    w => w.name === original.name && w.variation === original.variation
-  )
-  const turnaroundChanged = existing
-    ? existing.hasTurnaround !== updated.hasTurnaround || existing.turnaroundDistance !== updated.turnaroundDistance
-    : false
+  const turnaroundChanged =
+    original.hasTurnaround !== updated.hasTurnaround || original.turnaroundDistance !== updated.turnaroundDistance
 
   await dbUpdateWorkout(original.name, original.variation, updated)
   revalidateAll()
@@ -197,6 +192,6 @@ export async function addVariation(
     turnaroundDistance: '',
   })
   revalidateAll()
-  await captureServerEvent('workout_added')
+  await captureServerEvent('workout_added', { isVariation: true })
   redirect('/library')
 }

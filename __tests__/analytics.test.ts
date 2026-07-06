@@ -68,4 +68,12 @@ describe('captureServerEvent', () => {
 
     expect(PostHog).toHaveBeenCalledTimes(1)
   })
+
+  test('never throws when PostHog is unreachable, so a caller action can still redirect', async () => {
+    vi.stubEnv('NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN', 'phc_test_key')
+    flushMock.mockRejectedValueOnce(new Error('network error'))
+    const { captureServerEvent } = await import('../lib/analytics')
+
+    await expect(captureServerEvent('workout_edited')).resolves.toBeUndefined()
+  })
 })

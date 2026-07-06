@@ -11,7 +11,12 @@ import type { InferredFields } from '@/app/api/workout/infer/route'
 type Step = 'entry' | 'loading' | 'review'
 
 export default function EditWorkoutForm({ workout }: { workout: Workout }) {
-  const original = { name: workout.name, variation: workout.variation }
+  const original = {
+    name: workout.name,
+    variation: workout.variation,
+    hasTurnaround: workout.hasTurnaround,
+    turnaroundDistance: workout.turnaroundDistance,
+  }
 
   const [step, setStep] = useState<Step>('entry')
   const [entry, setEntry] = useState({
