@@ -18,6 +18,8 @@ Staging: https://tigerwolves-git-staging-fouloxs-projects.vercel.app (stable bra
 - **Auth:** Clerk v7 (`@clerk/nextjs` v7.5.2) — leaders sign in, visitors get read-only
 - **Hosting:** Vercel (free, auto-deploys from `main`)
 - **Data source:** Neon Postgres, queried directly via `@neondatabase/serverless` (raw SQL, no ORM) — migrated off Google Sheets in #85 (2026-07-03), Apps Script/Sheets glue fully removed in #86
+- **Analytics:** PostHog (`posthog-js` client-side, `posthog-node` server-side) — anonymous only, no PII, no `posthog.identify()` (#151, 2026-07-06). Both gracefully no-op if `NEXT_PUBLIC_POSTHOG_KEY` isn't set.
+- **Error tracking:** Sentry (`@sentry/nextjs`) — installed directly via sentry.io, not the Vercel Marketplace integration (that flow hit a `billingPlanId` bug on this account for both PostHog and Sentry). `SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN`/`NEXT_PUBLIC_SENTRY_DSN` are Vercel env vars (Preview + Production).
 
 ## Architecture
 - Server components fetch data and pass it to client components as props
@@ -25,10 +27,12 @@ Staging: https://tigerwolves-git-staging-fouloxs-projects.vercel.app (stable bra
 - `lib/data.ts` — TypeScript types and constants only
 - `lib/postBuilder.ts` — `buildPost`, `computeTurnaround`, interval parsers (pure functions, imported by `PlanClient.tsx`)
 - `lib/workoutForm.ts` — shared UI constants for add/edit forms (FORM_CATEGORIES, FORM_TYPES, chip styles, toggleItem)
-- `app/actions.ts` — server actions; every write action calls `requireAuth()` (throws `Unauthorized` if no `userId`) then a `lib/db.ts` mutation, then `revalidateAll()` (`revalidatePath` + `updateTag('tigerwolves-data')` — not `revalidateTag`, which needs an extra profile arg in this Next.js version)
+- `lib/analytics.ts` — server-side PostHog capture helper (`posthog-node`), used by `app/actions.ts` write actions; `lib/analyticsClient.ts` — client-side equivalent (`posthog-js`), used by `PostHogInit.tsx` and `PlanClient.tsx`. Split into two files (not the single helper originally sketched in #151) because `posthog-node` can't be bundled into client components without breaking the browser build.
+- `app/actions.ts` — server actions; every write action calls `requireAuth()` (throws `Unauthorized` if no `userId`) then a `lib/db.ts` mutation, then `revalidateAll()` (`revalidatePath` + `updateTag('tigerwolves-data')` — not `revalidateTag`, which needs an extra profile arg in this Next.js version); write actions also fire a named PostHog event via `lib/analytics.ts` after the mutation
 - `scripts/migrate.sql` — Neon schema; `scripts/seed.ts` — one-time ETL from Sheets, kept as historical record of the migration, not part of the live app
 - `proxy.ts` — Clerk middleware (NOT `middleware.ts` — renamed to avoid Next.js 16 deprecation warning); hardcodes `signInUrl: '/sign-in'` as a `clerkMiddleware()` option — don't move this back to an env var, see Auth Architecture below
 - 5-minute cache TTL via `unstable_cache`; on-demand invalidation via `updateTag` after every write
+- `instrumentation.ts` / `instrumentation-client.ts` / `sentry.server.config.ts` / `sentry.edge.config.ts` / `app/global-error.tsx` — Sentry wiring, scaffolded by hand (the `@sentry/wizard` CLI needs an interactive TTY/browser login, which isn't available in an agent-driven terminal session)
 
 ## Auth Architecture (Clerk)
 - **Visitors** — read-only: Schedule, Library, Races. No sign-in required.
