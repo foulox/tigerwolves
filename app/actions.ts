@@ -5,12 +5,14 @@ import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Workout } from '@/lib/data'
 import {
+  fetchWorkouts,
   dbSetScheduleWorkout,
   dbInsertWorkout,
   dbUpdateWorkout,
   dbDeleteWorkout,
   dbRegroupFamily,
 } from '@/lib/db'
+import { captureServerEvent } from '@/lib/analytics'
 
 export async function createFeedbackIssue(data: {
   type: 'bug' | 'feature'
@@ -104,6 +106,7 @@ export async function setPlanWorkout(date: string, workoutName: string) {
   await requireAuth()
   await dbSetScheduleWorkout(date, workoutName)
   revalidateAll()
+  await captureServerEvent('schedule_workout_set')
 }
 
 export async function regroupFamily(
@@ -118,6 +121,7 @@ export async function regroupFamily(
   await requireAuth()
   await dbRegroupFamily(newName, workouts)
   revalidateAll()
+  await captureServerEvent('workouts_combined')
   redirect('/library')
 }
 
@@ -125,6 +129,7 @@ export async function addWorkout(formData: FormData) {
   await requireAuth()
   await dbInsertWorkout(buildWorkout(formData))
   revalidateAll()
+  await captureServerEvent('workout_added')
   redirect('/library')
 }
 
@@ -141,8 +146,18 @@ export async function updateWorkout(
   await requireAuth()
   const variation = (formData.get('variation') as string) ?? ''
   const progression = (formData.get('progression') as string) ?? ''
-  await dbUpdateWorkout(original.name, original.variation, buildWorkout(formData, variation, progression))
+  const updated = buildWorkout(formData, variation, progression)
+
+  const existing = (await fetchWorkouts()).find(
+    w => w.name === original.name && w.variation === original.variation
+  )
+  const turnaroundChanged = existing
+    ? existing.hasTurnaround !== updated.hasTurnaround || existing.turnaroundDistance !== updated.turnaroundDistance
+    : false
+
+  await dbUpdateWorkout(original.name, original.variation, updated)
   revalidateAll()
+  await captureServerEvent('workout_edited', { turnaroundChanged })
   redirect('/library')
 }
 
@@ -182,5 +197,6 @@ export async function addVariation(
     turnaroundDistance: '',
   })
   revalidateAll()
+  await captureServerEvent('workout_added')
   redirect('/library')
 }
