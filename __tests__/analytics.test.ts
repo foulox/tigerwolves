@@ -22,8 +22,8 @@ describe('captureServerEvent', () => {
     vi.unstubAllEnvs()
   })
 
-  test('no-ops when NEXT_PUBLIC_POSTHOG_KEY is not set', async () => {
-    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', '')
+  test('no-ops when NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN is not set', async () => {
+    vi.stubEnv('NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN', '')
     const { captureServerEvent } = await import('../lib/analytics')
 
     await captureServerEvent('workout_edited')
@@ -33,7 +33,7 @@ describe('captureServerEvent', () => {
   })
 
   test('captures the event with isLeader=true and flushes when a key is configured', async () => {
-    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'phc_test_key')
+    vi.stubEnv('NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN', 'phc_test_key')
     const { captureServerEvent } = await import('../lib/analytics')
 
     await captureServerEvent('workout_edited', { turnaroundChanged: true })
@@ -47,7 +47,7 @@ describe('captureServerEvent', () => {
   })
 
   test('never lets a caller-supplied isLeader override the true default', async () => {
-    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'phc_test_key')
+    vi.stubEnv('NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN', 'phc_test_key')
     const { captureServerEvent } = await import('../lib/analytics')
 
     await captureServerEvent('workout_edited', { isLeader: false })
@@ -60,7 +60,7 @@ describe('captureServerEvent', () => {
   })
 
   test('reuses the same client across multiple calls instead of reconnecting each time', async () => {
-    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'phc_test_key')
+    vi.stubEnv('NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN', 'phc_test_key')
     const { captureServerEvent } = await import('../lib/analytics')
 
     await captureServerEvent('workout_edited')

@@ -18,8 +18,8 @@ Staging: https://tigerwolves-git-staging-fouloxs-projects.vercel.app (stable bra
 - **Auth:** Clerk v7 (`@clerk/nextjs` v7.5.2) — leaders sign in, visitors get read-only
 - **Hosting:** Vercel (free, auto-deploys from `main`)
 - **Data source:** Neon Postgres, queried directly via `@neondatabase/serverless` (raw SQL, no ORM) — migrated off Google Sheets in #85 (2026-07-03), Apps Script/Sheets glue fully removed in #86
-- **Analytics:** PostHog (`posthog-js` client-side, `posthog-node` server-side) — anonymous only, no PII, no `posthog.identify()` (#151, 2026-07-06). Both gracefully no-op if `NEXT_PUBLIC_POSTHOG_KEY` isn't set.
-- **Error tracking:** Sentry (`@sentry/nextjs`) — installed directly via sentry.io, not the Vercel Marketplace integration (that flow hit a `billingPlanId` bug on this account for both PostHog and Sentry). `SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN`/`NEXT_PUBLIC_SENTRY_DSN` are Vercel env vars (Preview + Production).
+- **Analytics:** PostHog (`posthog-js` client-side, `posthog-node` server-side) — anonymous only, no PII, no `posthog.identify()` (#151, 2026-07-06). Both gracefully no-op if the key isn't set. Installed via the Vercel Marketplace integration ("Feature Flags and A/B tests" listing — we only use its core analytics/replay product, not flags). Env vars are `NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN` / `NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_HOST` — doubled prefix because the integration's own variable names already started with `NEXT_PUBLIC_POSTHOG_` before our custom prefix was applied on top. Cosmetic only, not worth fixing.
+- **Error tracking:** Sentry (`@sentry/nextjs`) — installed via the Vercel Marketplace integration (an initial `billingPlanId` error on this account was transient and resolved on retry). `SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN`/`NEXT_PUBLIC_SENTRY_DSN` are Vercel env vars (Preview + Production).
 
 ## Architecture
 - Server components fetch data and pass it to client components as props
