@@ -5,6 +5,7 @@ import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ScheduleEntry, Workout } from '@/lib/data'
 import { buildPost, formatDateLong } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
+import { captureClientEvent } from '@/lib/analyticsClient'
 
 function formatDateShort(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -189,6 +190,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
   function handleCopy() {
     navigator.clipboard.writeText(post).then(() => {
       setCopied(true)
+      captureClientEvent('heylo_post_copied')
       setTimeout(() => setCopied(false), 2000)
     })
   }
