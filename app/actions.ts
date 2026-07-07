@@ -1,6 +1,6 @@
 'use server'
 
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Workout } from '@/lib/data'
@@ -17,11 +17,26 @@ export async function createFeedbackIssue(data: {
   type: 'bug' | 'feature'
   description: string
   screenshotBase64?: string
+  name?: string
+  email?: string
 }): Promise<{ url: string } | { error: string }> {
   const token = process.env.GITHUB_TOKEN
   if (!token) return { error: 'GitHub token not configured' }
 
-  let body = data.description
+  const { userId } = await auth()
+  let submittedBy: string
+  if (userId) {
+    const user = await currentUser()
+    const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ')
+    const email = user?.primaryEmailAddress?.emailAddress
+    submittedBy = [fullName || 'Leader', email ? `(${email})` : ''].filter(Boolean).join(' ')
+  } else if (data.name || data.email) {
+    submittedBy = [data.name || 'someone', data.email ? `(${data.email})` : ''].filter(Boolean).join(' ')
+  } else {
+    submittedBy = 'Anonymous visitor'
+  }
+
+  let body = `Submitted by: ${submittedBy}\n\n${data.description}`
 
   if (data.screenshotBase64) {
     try {
