@@ -80,8 +80,9 @@ export async function createFeedbackIssue(data: {
 
   // Best-effort: link the new issue to the Running Apps project board so it isn't a
   // floating orphan. Never let this block the feedback submission itself.
+  // TEMP DIAGNOSTIC (2026-07-07): logging response details to debug intermittent failures.
   try {
-    await fetch('https://api.github.com/graphql', {
+    const gqlRes = await fetch('https://api.github.com/graphql', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -96,8 +97,10 @@ export async function createFeedbackIssue(data: {
         variables: { projectId: 'PVT_kwHOAAJdzs4BYmPr', contentId: issue.node_id },
       }),
     })
-  } catch {
-    // Project board linking failed — issue is still created, just not on the board
+    const gqlJson = await gqlRes.json()
+    console.log('[feedback-project-link]', JSON.stringify({ status: gqlRes.status, body: gqlJson }))
+  } catch (err) {
+    console.log('[feedback-project-link] threw', String(err))
   }
 
   return { url: issue.html_url }
