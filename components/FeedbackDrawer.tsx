@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useTransition } from 'react'
+import { useAuth } from '@clerk/nextjs'
 import { X, Bug, Lightbulb, Image, ExternalLink, Loader2 } from 'lucide-react'
 import { createFeedbackIssue } from '@/app/actions'
 
@@ -10,8 +11,11 @@ type Props = {
 }
 
 export default function FeedbackDrawer({ open, onClose }: Props) {
+  const { isSignedIn } = useAuth()
   const [type, setType] = useState<'bug' | 'feature'>('bug')
   const [description, setDescription] = useState('')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [screenshotBase64, setScreenshotBase64] = useState<string | undefined>()
   const [screenshotName, setScreenshotName] = useState<string | undefined>()
   const [issueUrl, setIssueUrl] = useState<string | undefined>()
@@ -22,6 +26,8 @@ export default function FeedbackDrawer({ open, onClose }: Props) {
   function reset() {
     setType('bug')
     setDescription('')
+    setName('')
+    setEmail('')
     setScreenshotBase64(undefined)
     setScreenshotName(undefined)
     setIssueUrl(undefined)
@@ -49,7 +55,13 @@ export default function FeedbackDrawer({ open, onClose }: Props) {
     if (!description.trim()) return
     setErrorMsg(undefined)
     startTransition(async () => {
-      const result = await createFeedbackIssue({ type, description: description.trim(), screenshotBase64 })
+      const result = await createFeedbackIssue({
+        type,
+        description: description.trim(),
+        screenshotBase64,
+        name: name.trim() || undefined,
+        email: email.trim() || undefined,
+      })
       if ('error' in result) {
         setErrorMsg(result.error)
       } else {
@@ -133,6 +145,25 @@ export default function FeedbackDrawer({ open, onClose }: Props) {
               value={description}
               onChange={e => setDescription(e.target.value)}
             />
+
+            {!isSignedIn && (
+              <div className="flex flex-col gap-2">
+                <input
+                  type="text"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+                  placeholder="Name (optional)"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                />
+                <input
+                  type="email"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+                  placeholder="Email (optional)"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                />
+              </div>
+            )}
 
             <div>
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
