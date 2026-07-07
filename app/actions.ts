@@ -79,10 +79,12 @@ export async function createFeedbackIssue(data: {
   const issue = await res.json() as { html_url: string; node_id: string }
 
   // Best-effort: link the new issue to the Running Apps project board so it isn't a
-  // floating orphan. Never let this block the feedback submission itself.
-  // TEMP DIAGNOSTIC (2026-07-07): logging response details to debug intermittent failures.
-  try {
-    const gqlRes = await fetch('https://api.github.com/graphql', {
+  // floating orphan. Never let this block the feedback submission itself. One retry
+  // absorbs occasional transient GitHub API failures (observed empirically, ~1 in 18
+  // attempts while diagnosing #179 — retest showed no reproducible error, so this is
+  // treated as transient rather than a logic bug).
+  async function linkToProject() {
+    const r = await fetch('https://api.github.com/graphql', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -97,10 +99,19 @@ export async function createFeedbackIssue(data: {
         variables: { projectId: 'PVT_kwHOAAJdzs4BYmPr', contentId: issue.node_id },
       }),
     })
-    const gqlJson = await gqlRes.json()
-    console.log('[feedback-project-link]', JSON.stringify({ status: gqlRes.status, body: gqlJson }))
-  } catch (err) {
-    console.log('[feedback-project-link] threw', String(err))
+    const json = await r.json() as { errors?: unknown[] }
+    if (!r.ok || json.errors) throw new Error('project link failed')
+  }
+
+  try {
+    await linkToProject()
+  } catch {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      await linkToProject()
+    } catch {
+      // Failed even after one retry — issue is still created, just not on the board
+    }
   }
 
   return { url: issue.html_url }
