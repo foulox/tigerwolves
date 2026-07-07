@@ -76,7 +76,30 @@ export async function createFeedbackIssue(data: {
   })
 
   if (!res.ok) return { error: `GitHub API error: ${res.status}` }
-  const issue = await res.json() as { html_url: string }
+  const issue = await res.json() as { html_url: string; node_id: string }
+
+  // Best-effort: link the new issue to the Running Apps project board so it isn't a
+  // floating orphan. Never let this block the feedback submission itself.
+  try {
+    await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `mutation($projectId: ID!, $contentId: ID!) {
+          addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+            item { id }
+          }
+        }`,
+        variables: { projectId: 'PVT_kwHOAAJdzs4BYmPr', contentId: issue.node_id },
+      }),
+    })
+  } catch {
+    // Project board linking failed — issue is still created, just not on the board
+  }
+
   return { url: issue.html_url }
 }
 
