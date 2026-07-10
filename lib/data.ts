@@ -49,6 +49,7 @@ export type ScheduleEntry = {
   workoutType: WorkoutType
   leader: string
   workoutName: string | null
+  selectedVariations: string[]
 }
 
 export type Race = {

@@ -31,8 +31,12 @@ CREATE TABLE IF NOT EXISTS schedule (
   date DATE PRIMARY KEY,
   workout_type TEXT NOT NULL DEFAULT '',
   leader TEXT NOT NULL DEFAULT '',
-  workout_name TEXT
+  workout_name TEXT,
+  selected_variations TEXT[] NOT NULL DEFAULT '{""}'
 );
+
+-- #201: add selected_variations to existing schedule tables
+ALTER TABLE schedule ADD COLUMN IF NOT EXISTS selected_variations TEXT[] NOT NULL DEFAULT '{""}';
 
 CREATE TABLE IF NOT EXISTS races (
   date DATE NOT NULL,

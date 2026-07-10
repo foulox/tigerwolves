@@ -171,9 +171,9 @@ function revalidateAll() {
   updateTag('tigerwolves-data')
 }
 
-export async function setPlanWorkout(date: string, workoutName: string) {
+export async function setPlanWorkout(date: string, workoutName: string, selectedVariations: string[]) {
   await requireAuth()
-  await dbSetScheduleWorkout(date, workoutName)
+  await dbSetScheduleWorkout(date, workoutName, selectedVariations)
   revalidateAll()
   await captureServerEvent('schedule_workout_set')
 }

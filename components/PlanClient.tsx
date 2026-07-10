@@ -200,7 +200,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
     const sorted = [...effectiveSelections].sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
     setSaving(true)
     try {
-      await setPlanWorkout(entry.date, sorted[0].name)
+      await setPlanWorkout(entry.date, sorted[0].name, sorted.map(w => w.variation))
       setSaved(true)
     } finally {
       setSaving(false)
