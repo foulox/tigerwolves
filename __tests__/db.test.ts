@@ -194,6 +194,7 @@ describe('workout mutations', () => {
 describe('dbSetScheduleWorkout', () => {
   it('saves workout_name and a single variation (standalone)', async () => {
     const rows = await fetchSchedule()
+    expect(rows.length).toBeGreaterThan(0)
     const target = rows[0]
     const originalName = target.workoutName
     const originalVariations = target.selectedVariations
@@ -211,6 +212,7 @@ describe('dbSetScheduleWorkout', () => {
 
   it('saves two variations when Standard + Longer are both selected', async () => {
     const rows = await fetchSchedule()
+    expect(rows.length).toBeGreaterThan(0)
     const target = rows[0]
     const originalName = target.workoutName
     const originalVariations = target.selectedVariations
@@ -228,6 +230,7 @@ describe('dbSetScheduleWorkout', () => {
 
   it('overwrites to a single variation after previously saving two', async () => {
     const rows = await fetchSchedule()
+    expect(rows.length).toBeGreaterThan(0)
     const target = rows[0]
     const originalName = target.workoutName
     const originalVariations = target.selectedVariations
