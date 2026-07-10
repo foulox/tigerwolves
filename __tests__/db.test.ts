@@ -23,11 +23,14 @@ describe('database connection and schema', () => {
     expect(cols).toContain('training_phases')
   })
 
-  it('schedule table exists', async () => {
+  it('schedule table has expected columns including selected_variations', async () => {
     const rows = await sql`
       SELECT column_name FROM information_schema.columns WHERE table_name = 'schedule'
     `
-    expect(rows.length).toBeGreaterThan(0)
+    const cols = rows.map((r) => r.column_name as string)
+    expect(cols).toContain('date')
+    expect(cols).toContain('workout_name')
+    expect(cols).toContain('selected_variations')
   })
 
   it('races table exists', async () => {
@@ -189,18 +192,57 @@ describe('workout mutations', () => {
 })
 
 describe('dbSetScheduleWorkout', () => {
-  it('updates workout_name for an existing schedule row', async () => {
+  it('saves workout_name and a single variation (standalone)', async () => {
     const rows = await fetchSchedule()
+    expect(rows.length).toBeGreaterThan(0)
     const target = rows[0]
-    const original = target.workoutName
+    const originalName = target.workoutName
+    const originalVariations = target.selectedVariations
 
     try {
-      await dbSetScheduleWorkout(target.date, '__test_plan__')
+      await dbSetScheduleWorkout(target.date, '__test_plan__', [''])
       const updated = await fetchSchedule()
       const row = updated.find(e => e.date === target.date)
       expect(row?.workoutName).toBe('__test_plan__')
+      expect(row?.selectedVariations).toEqual([''])
     } finally {
-      await sql`UPDATE schedule SET workout_name = ${original} WHERE date = ${target.date}::date`
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date`
+    }
+  })
+
+  it('saves two variations when Standard + Longer are both selected', async () => {
+    const rows = await fetchSchedule()
+    expect(rows.length).toBeGreaterThan(0)
+    const target = rows[0]
+    const originalName = target.workoutName
+    const originalVariations = target.selectedVariations
+
+    try {
+      await dbSetScheduleWorkout(target.date, '__test_family__', ['', 'Longer — 6×4min @ LT'])
+      const updated = await fetchSchedule()
+      const row = updated.find(e => e.date === target.date)
+      expect(row?.workoutName).toBe('__test_family__')
+      expect(row?.selectedVariations).toEqual(['', 'Longer — 6×4min @ LT'])
+    } finally {
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date`
+    }
+  })
+
+  it('overwrites to a single variation after previously saving two', async () => {
+    const rows = await fetchSchedule()
+    expect(rows.length).toBeGreaterThan(0)
+    const target = rows[0]
+    const originalName = target.workoutName
+    const originalVariations = target.selectedVariations
+
+    try {
+      await dbSetScheduleWorkout(target.date, '__test_family__', ['', 'Longer'])
+      await dbSetScheduleWorkout(target.date, '__test_standalone__', [''])
+      const updated = await fetchSchedule()
+      const row = updated.find(e => e.date === target.date)
+      expect(row?.selectedVariations).toEqual([''])
+    } finally {
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date`
     }
   })
 })

@@ -52,6 +52,7 @@ const entry: ScheduleEntry = {
   workoutType: 'Ladder',
   leader: 'Lou',
   workoutName: 'Tempo Ladder',
+  selectedVariations: [''],
 }
 
 const baseWorkout: Workout = {

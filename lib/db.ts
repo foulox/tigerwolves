@@ -58,6 +58,7 @@ export async function fetchSchedule(): Promise<ScheduleEntry[]> {
       workoutType: r.workout_type as string,
       leader: r.leader as string,
       workoutName: (r.workout_name as string | null) ?? null,
+      selectedVariations: (r.selected_variations as string[]) ?? [''],
     }
   })
 }
@@ -76,9 +77,9 @@ export async function fetchRaces(): Promise<Race[]> {
 
 // ── Writes ────────────────────────────────────────────────────────────────────
 
-export async function dbSetScheduleWorkout(date: string, workoutName: string): Promise<void> {
+export async function dbSetScheduleWorkout(date: string, workoutName: string, selectedVariations: string[]): Promise<void> {
   await sql`
-    UPDATE schedule SET workout_name = ${workoutName} WHERE date = ${date}::date
+    UPDATE schedule SET workout_name = ${workoutName}, selected_variations = ${selectedVariations} WHERE date = ${date}::date
   `
 }
 

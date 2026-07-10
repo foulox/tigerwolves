@@ -59,6 +59,7 @@ function mapScheduleEntry(row: RawRow): ScheduleEntry {
     workoutType: str(row['Workout Type']),
     leader: str(row['Leader']),
     workoutName: str(row['Workout Name']) || null,
+    selectedVariations: [''],
   }
 }
 
