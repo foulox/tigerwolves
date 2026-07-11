@@ -60,11 +60,25 @@ describe('resolveWorkout', () => {
     expect(resolveWorkout(workouts, null)).toBeNull()
   })
 
-  test('family with no base variation — returns null when all entries have named variations', () => {
-    const workouts = [
-      makeWorkout({ name: 'Hills', variation: 'Short' }),
-      makeWorkout({ name: 'Hills', variation: 'Long' }),
-    ]
-    expect(resolveWorkout(workouts, 'Hills')).toBeNull()
+  test('no base row, no selected variation — falls back to lowest progression member', () => {
+    const v1 = makeWorkout({ name: 'Hills', variation: '12x45s', progression: 1 })
+    const v2 = makeWorkout({ name: 'Hills', variation: '8x90s', progression: 2 })
+    // v2 listed first to confirm sort by progression, not array order
+    const result = resolveWorkout([v2, v1], 'Hills', [''])
+    expect(result).toBe(v1)
+  })
+
+  test('no base row, selected variation present — returns the selected variation row', () => {
+    const v1 = makeWorkout({ name: 'Hills', variation: '12x45s', progression: 1 })
+    const v2 = makeWorkout({ name: 'Hills', variation: '8x90s', progression: 2 })
+    const result = resolveWorkout([v1, v2], 'Hills', ['8x90s'])
+    expect(result).toBe(v2)
+  })
+
+  test('base row present — always prefers base even when selected variation is named', () => {
+    const base = makeWorkout({ name: 'Broken Tempo', variation: '', progression: null })
+    const longer = makeWorkout({ name: 'Broken Tempo', variation: 'Longer', progression: 2 })
+    const result = resolveWorkout([longer, base], 'Broken Tempo', ['Longer'])
+    expect(result).toBe(base)
   })
 })

@@ -34,7 +34,7 @@ export default async function SchedulePage() {
           <ScheduleCard
             key={entry.date}
             entry={entry}
-            workout={resolveWorkout(workouts, entry.workoutName)}
+            workout={resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)}
             index={i}
           />
         ))}
