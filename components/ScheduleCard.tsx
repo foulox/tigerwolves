@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { ScheduleEntry, Workout } from '@/lib/data'
+import { formatDateMedium } from '@/lib/postBuilder'
 
 const TYPE_COLORS: Record<string, string> = {
   Hills: 'bg-green-100 text-green-800',
@@ -12,12 +13,6 @@ const TYPE_COLORS: Record<string, string> = {
   Superset: 'bg-red-100 text-red-800',
   'Straight Tempo': 'bg-yellow-100 text-yellow-800',
   Threshold: 'bg-pink-100 text-pink-800',
-}
-
-function formatDate(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric',
-  })
 }
 
 interface Props {
@@ -33,18 +28,26 @@ export default function ScheduleCard({ entry, workout, index, isLeader }: Props)
   const hasWorkout = workout !== null
   const filteredVariations = entry.selectedVariations.filter(v => v !== '')
 
+  function toggleExpand() {
+    if (hasWorkout) setExpanded(e => !e)
+  }
+
   return (
-    <div className={`bg-white rounded-2xl shadow-sm border overflow-hidden ${isNext ? 'border-orange-300' : 'border-gray-100'}`}>
-      {/* Card header — tappable to expand if workout exists */}
+    <div className={`bg-white rounded-2xl shadow-sm border overflow-hidden touch-manipulation ${isNext ? 'border-orange-300' : 'border-gray-100'}`}>
+      {/* Card header — interactive when workout exists */}
       <div
-        className={`p-4 ${hasWorkout ? 'cursor-pointer active:bg-gray-50 touch-manipulation' : ''}`}
-        onClick={hasWorkout ? () => setExpanded(e => !e) : undefined}
+        role={hasWorkout ? 'button' : undefined}
+        tabIndex={hasWorkout ? 0 : undefined}
+        aria-expanded={hasWorkout ? expanded : undefined}
+        className={`p-4 ${hasWorkout ? 'cursor-pointer active:bg-gray-50' : ''}`}
+        onClick={toggleExpand}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand() } }}
         data-testid={`schedule-card-${index}`}
       >
         {isNext && <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">NEXT UP</div>}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-gray-500">{formatDate(entry.date)}</div>
+            <div className="text-sm font-semibold text-gray-500">{formatDateMedium(entry.date)}</div>
             <div className="text-base font-bold text-gray-900 mt-0.5 truncate">
               {entry.workoutName ?? <span className="text-gray-400 font-normal italic">Not planned yet</span>}
             </div>

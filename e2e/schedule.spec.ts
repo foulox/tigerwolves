@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 test('Schedule page loads with upcoming Tuesday entries', async ({ page }) => {
   await page.goto('/')
@@ -8,7 +8,7 @@ test('Schedule page loads with upcoming Tuesday entries', async ({ page }) => {
   await expect(body).toContainText(/led by|no upcoming workouts/i)
 })
 
-test('"Plan week →" buttons appear on all schedule cards', async ({ page }) => {
+test('"Plan week →" button appears on all cards for signed-in leaders', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
 
@@ -16,7 +16,7 @@ test('"Plan week →" buttons appear on all schedule cards', async ({ page }) =>
   const count = await cards.count()
   if (count === 0) return // no upcoming entries, nothing to verify
 
-  // Every card should have a "Plan week →" link
+  // Plan button is leader-only; this suite runs as a signed-in leader
   for (let i = 0; i < count; i++) {
     const btn = page.locator(`[data-testid="plan-week-${i}"]`)
     await expect(btn).toBeVisible()
@@ -38,63 +38,47 @@ test('"Plan week →" navigates to /plan?week=N', async ({ page }) => {
   expect(page.url()).toContain('/plan?week=0')
 })
 
+/** Returns the index of the first card with a planned workout, or -1. Does not change expand state. */
+async function findFirstPlannedCardIdx(page: Page): Promise<number> {
+  const cards = page.locator('[data-testid^="schedule-card-"]')
+  const count = await cards.count()
+  for (let i = 0; i < count; i++) {
+    const text = await page.locator(`[data-testid="schedule-card-${i}"]`).textContent()
+    if (!text?.includes('Not planned yet')) return i
+  }
+  return -1
+}
+
 test('card with planned workout expands to show detail on tap', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
 
-  // Find the first card that has a workout (has a detail panel available)
-  const cards = page.locator('[data-testid^="schedule-card-"]')
-  const count = await cards.count()
-
-  let expandedIdx = -1
-  for (let i = 0; i < count; i++) {
-    const card = page.locator(`[data-testid="schedule-card-${i}"]`)
-    const cardText = await card.textContent()
-    // Cards without workout show "Not planned yet"; skip those
-    if (cardText?.includes('Not planned yet')) continue
-
-    await card.click()
-    const detail = page.locator(`[data-testid="schedule-detail-${i}"]`)
-    const visible = await detail.isVisible()
-    if (visible) {
-      expandedIdx = i
-      break
-    }
+  const idx = await findFirstPlannedCardIdx(page)
+  if (idx === -1) {
+    console.warn('No cards with planned workouts found — expand test ran vacuously')
+    return
   }
 
-  // If no card with a workout was found, skip rather than fail
-  if (expandedIdx === -1) return
-
-  await expect(page.locator(`[data-testid="schedule-detail-${expandedIdx}"]`)).toBeVisible()
+  await page.locator(`[data-testid="schedule-card-${idx}"]`).click()
+  await expect(page.locator(`[data-testid="schedule-detail-${idx}"]`)).toBeVisible()
 })
 
 test('expanded card collapses on second tap', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
 
-  const cards = page.locator('[data-testid^="schedule-card-"]')
-  const count = await cards.count()
-
-  let expandedIdx = -1
-  for (let i = 0; i < count; i++) {
-    const card = page.locator(`[data-testid="schedule-card-${i}"]`)
-    const cardText = await card.textContent()
-    if (cardText?.includes('Not planned yet')) continue
-
-    await card.click()
-    const detail = page.locator(`[data-testid="schedule-detail-${i}"]`)
-    if (await detail.isVisible()) {
-      expandedIdx = i
-      break
-    }
+  const idx = await findFirstPlannedCardIdx(page)
+  if (idx === -1) {
+    console.warn('No cards with planned workouts found — collapse test ran vacuously')
+    return
   }
 
-  if (expandedIdx === -1) return
+  const card = page.locator(`[data-testid="schedule-card-${idx}"]`)
+  const detail = page.locator(`[data-testid="schedule-detail-${idx}"]`)
 
-  const detail = page.locator(`[data-testid="schedule-detail-${expandedIdx}"]`)
+  await card.click()
   await expect(detail).toBeVisible()
 
-  // Second tap collapses
-  await page.locator(`[data-testid="schedule-card-${expandedIdx}"]`).click()
+  await card.click()
   await expect(detail).not.toBeVisible()
 })

@@ -121,6 +121,12 @@ export function formatDateLong(iso: string): string {
   })
 }
 
+export function formatDateMedium(iso: string): string {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+  })
+}
+
 export function formatMainSection(instructions: string): string {
   const mainPart = extractMain(instructions)
   if (!mainPart) return `🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁\n${instructions}`

@@ -10,7 +10,9 @@ export default async function SchedulePage() {
   const { userId } = await auth()
   const { schedule, workouts } = await fetchData()
   const today = new Date().toISOString().slice(0, 10)
-  const upcoming = schedule.filter(e => e.date >= today)
+  const upcoming = schedule
+    .filter(e => e.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
 
   return (
     <div>
@@ -32,7 +34,7 @@ export default async function SchedulePage() {
         )}
         {upcoming.map((entry, i) => (
           <ScheduleCard
-            key={entry.date}
+            key={`${entry.date}-${entry.workoutName ?? ''}`}
             entry={entry}
             workout={resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)}
             index={i}

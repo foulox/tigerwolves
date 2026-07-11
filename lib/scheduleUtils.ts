@@ -14,10 +14,12 @@ export function resolveWorkout(
   if (picked) {
     const match = workouts.find(w => w.name === workoutName && w.variation === picked)
     if (match) return match
+    // Selected variation no longer exists in the library (renamed or deleted)
+    console.error(`[resolveWorkout] Selected variation "${picked}" not found for workout "${workoutName}" — falling back to first progression member`)
   }
-  // 3. First progression member (lowest progression number)
+  // 3. First progression member (lowest progression number; nulls sort last)
   const family = workouts
     .filter(w => w.name === workoutName)
-    .sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
+    .sort((a, b) => (a.progression ?? Infinity) - (b.progression ?? Infinity))
   return family[0] ?? null
 }
