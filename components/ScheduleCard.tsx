@@ -24,9 +24,10 @@ interface Props {
   entry: ScheduleEntry
   workout: Workout | null
   index: number
+  isLeader: boolean
 }
 
-export default function ScheduleCard({ entry, workout, index }: Props) {
+export default function ScheduleCard({ entry, workout, index, isLeader }: Props) {
   const [expanded, setExpanded] = useState(false)
   const isNext = index === 0
   const hasWorkout = workout !== null
@@ -53,14 +54,16 @@ export default function ScheduleCard({ entry, workout, index }: Props) {
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${TYPE_COLORS[entry.workoutType] ?? 'bg-gray-100 text-gray-600'}`}>
               {entry.workoutType}
             </span>
-            <Link
-              href={`/plan?week=${index}`}
-              className="text-xs font-semibold text-orange-600 border border-orange-300 rounded-full px-3 py-1 active:bg-orange-50 touch-manipulation whitespace-nowrap"
-              onClick={(e) => e.stopPropagation()}
-              data-testid={`plan-week-${index}`}
-            >
-              Plan week →
-            </Link>
+            {isLeader && (
+              <Link
+                href={`/plan?week=${index}`}
+                className="text-xs font-semibold text-orange-600 border border-orange-300 rounded-full px-3 py-1 active:bg-orange-50 touch-manipulation whitespace-nowrap"
+                onClick={(e) => e.stopPropagation()}
+                data-testid={`plan-week-${index}`}
+              >
+                Plan week →
+              </Link>
+            )}
           </div>
         </div>
       </div>

@@ -36,6 +36,7 @@ export default async function SchedulePage() {
             entry={entry}
             workout={resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)}
             index={i}
+            isLeader={!!userId}
           />
         ))}
       </div>
