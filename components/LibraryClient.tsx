@@ -5,6 +5,9 @@ import Link from 'next/link'
 import type { Workout } from '@/lib/data'
 import { ABBREVIATIONS, RACE_TYPES } from '@/lib/data'
 import DeleteWorkoutButton from '@/components/DeleteWorkoutButton'
+import ReactionPicker from '@/components/ReactionPicker'
+import { workoutVoteId } from '@/lib/votes'
+import type { VoteData } from '@/lib/votes'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -30,7 +33,7 @@ type FamilyRow = {
 }
 type DisplayRow = StandaloneRow | FamilyRow
 
-export default function LibraryClient({ workouts, isLeader }: { workouts: Workout[]; isLeader: boolean }) {
+export default function LibraryClient({ workouts, isLeader, voteData = {} }: { workouts: Workout[]; isLeader: boolean; voteData?: Record<string, VoteData | null> }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [raceFilter, setRaceFilter] = useState<string | null>(null)
@@ -243,6 +246,11 @@ export default function LibraryClient({ workouts, isLeader }: { workouts: Workou
                 {w.variation && <p className="text-xs text-gray-400 mt-0.5">{w.variation}</p>}
                 <p className="text-sm text-gray-500 mt-1.5 leading-snug">{w.reason}</p>
                 <WorkoutMeta w={w} />
+                <ReactionPicker
+                  workoutId={workoutVoteId(w.name, w.variation)}
+                  workoutName={w.name}
+                  initialVoteData={voteData[workoutVoteId(w.name, w.variation)] ?? null}
+                />
                 {isLeader && (
                   <div className="mt-3 pt-3 border-t border-gray-50">
                     <Link
@@ -298,6 +306,11 @@ export default function LibraryClient({ workouts, isLeader }: { workouts: Workou
                       </div>
                       {row.base.distTime && <div className="text-xs text-gray-400">{row.base.distTime}</div>}
                       {row.base.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(row.base.lastRan)}</div>}
+                      <ReactionPicker
+                        workoutId={workoutVoteId(row.base.name, row.base.variation)}
+                        workoutName={row.base.name}
+                        initialVoteData={voteData[workoutVoteId(row.base.name, row.base.variation)] ?? null}
+                      />
                     </div>
                   )}
                   {row.progressions.map(p => (
@@ -318,6 +331,11 @@ export default function LibraryClient({ workouts, isLeader }: { workouts: Workou
                       <div className="text-sm font-semibold text-gray-800">{p.variation}</div>
                       {p.distTime && <div className="text-xs text-gray-400 mt-0.5">{p.distTime}</div>}
                       {p.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(p.lastRan)}</div>}
+                      <ReactionPicker
+                        workoutId={workoutVoteId(p.name, p.variation)}
+                        workoutName={p.name}
+                        initialVoteData={voteData[workoutVoteId(p.name, p.variation)] ?? null}
+                      />
                     </div>
                   ))}
                   {isLeader && (

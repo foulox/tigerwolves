@@ -4,6 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { ScheduleEntry, Workout } from '@/lib/data'
 import { formatDateMedium } from '@/lib/postBuilder'
+import { ratingToEmoji, workoutVoteId } from '@/lib/votes'
+import type { VoteData } from '@/lib/votes'
+import ReactionPicker from '@/components/ReactionPicker'
+import { captureClientEvent } from '@/lib/analyticsClient'
 
 const TYPE_COLORS: Record<string, string> = {
   Hills: 'bg-green-100 text-green-800',
@@ -20,16 +24,37 @@ interface Props {
   workout: Workout | null
   index: number
   isLeader: boolean
+  voteData?: VoteData | null
 }
 
-export default function ScheduleCard({ entry, workout, index, isLeader }: Props) {
+export default function ScheduleCard({ entry, workout, index, isLeader, voteData }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const isNext = index === 0
   const hasWorkout = workout !== null
   const filteredVariations = entry.selectedVariations.filter(v => v !== '')
 
   function toggleExpand() {
-    if (hasWorkout) setExpanded(e => !e)
+    if (!hasWorkout) return
+    const next = !expanded
+    setExpanded(next)
+    if (next) {
+      setPickerOpen(false)
+      captureClientEvent('schedule_card_expanded', {
+        workoutName: workout?.name ?? entry.workoutName ?? '',
+        workoutType: entry.workoutType,
+        card_index: index,
+      })
+    }
+  }
+
+  function togglePicker(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (expanded) {
+      // Card is already open — no-op, picker is visible inside the detail panel
+      return
+    }
+    setPickerOpen(v => !v)
   }
 
   return (
@@ -57,6 +82,15 @@ export default function ScheduleCard({ entry, workout, index, isLeader }: Props)
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${TYPE_COLORS[entry.workoutType] ?? 'bg-gray-100 text-gray-600'}`}>
               {entry.workoutType}
             </span>
+            {voteData && voteData.count > 0 && (
+              <button
+                onClick={togglePicker}
+                className="text-sm tabular-nums touch-manipulation"
+                aria-label="Open reaction picker"
+              >
+                {ratingToEmoji(voteData.avg)} {voteData.count}
+              </button>
+            )}
             {isLeader && (
               <Link
                 href={`/plan?week=${index}`}
@@ -70,6 +104,17 @@ export default function ScheduleCard({ entry, workout, index, isLeader }: Props)
           </div>
         </div>
       </div>
+
+      {/* Inline picker — visible when emoji badge is tapped on a collapsed card */}
+      {hasWorkout && !expanded && pickerOpen && workout && (
+        <div className="border-t border-gray-100 px-4 pb-3">
+          <ReactionPicker
+            workoutId={workoutVoteId(workout.name, workout.variation)}
+            workoutName={workout.name}
+            initialVoteData={voteData ?? null}
+          />
+        </div>
+      )}
 
       {/* Detail panel */}
       {hasWorkout && expanded && (
@@ -95,6 +140,11 @@ export default function ScheduleCard({ entry, workout, index, isLeader }: Props)
           {filteredVariations.length > 0 && (
             <ChipRow label="Variations" chips={filteredVariations} />
           )}
+          <ReactionPicker
+            workoutId={workoutVoteId(workout.name, workout.variation)}
+            workoutName={workout.name}
+            initialVoteData={voteData ?? null}
+          />
         </div>
       )}
     </div>
