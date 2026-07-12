@@ -246,11 +246,13 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                 {w.variation && <p className="text-xs text-gray-400 mt-0.5">{w.variation}</p>}
                 <p className="text-sm text-gray-500 mt-1.5 leading-snug">{w.reason}</p>
                 <WorkoutMeta w={w} />
-                <ReactionPicker
-                  workoutId={workoutVoteId(w.name, w.variation)}
-                  workoutName={w.name}
-                  initialVoteData={voteData[workoutVoteId(w.name, w.variation)] ?? null}
-                />
+                <div className="flex justify-end mt-2">
+                  <ReactionPicker
+                    workoutId={workoutVoteId(w.name, w.variation)}
+                    workoutName={w.name}
+                    initialVoteData={voteData[workoutVoteId(w.name, w.variation)] ?? null}
+                  />
+                </div>
                 {isLeader && (
                   <div className="mt-3 pt-3 border-t border-gray-50">
                     <Link
@@ -306,11 +308,13 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                       </div>
                       {row.base.distTime && <div className="text-xs text-gray-400">{row.base.distTime}</div>}
                       {row.base.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(row.base.lastRan)}</div>}
-                      <ReactionPicker
-                        workoutId={workoutVoteId(row.base.name, row.base.variation)}
-                        workoutName={row.base.name}
-                        initialVoteData={voteData[workoutVoteId(row.base.name, row.base.variation)] ?? null}
-                      />
+                      <div className="flex justify-end mt-2">
+                        <ReactionPicker
+                          workoutId={workoutVoteId(row.base.name, row.base.variation)}
+                          workoutName={row.base.name}
+                          initialVoteData={voteData[workoutVoteId(row.base.name, row.base.variation)] ?? null}
+                        />
+                      </div>
                     </div>
                   )}
                   {row.progressions.map(p => (
@@ -331,11 +335,13 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                       <div className="text-sm font-semibold text-gray-800">{p.variation}</div>
                       {p.distTime && <div className="text-xs text-gray-400 mt-0.5">{p.distTime}</div>}
                       {p.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(p.lastRan)}</div>}
-                      <ReactionPicker
-                        workoutId={workoutVoteId(p.name, p.variation)}
-                        workoutName={p.name}
-                        initialVoteData={voteData[workoutVoteId(p.name, p.variation)] ?? null}
-                      />
+                      <div className="flex justify-end mt-2">
+                        <ReactionPicker
+                          workoutId={workoutVoteId(p.name, p.variation)}
+                          workoutName={p.name}
+                          initialVoteData={voteData[workoutVoteId(p.name, p.variation)] ?? null}
+                        />
+                      </div>
                     </div>
                   ))}
                   {isLeader && (

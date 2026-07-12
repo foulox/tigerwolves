@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { ScheduleEntry, Workout } from '@/lib/data'
 import { formatDateMedium } from '@/lib/postBuilder'
-import { ratingToEmoji, workoutVoteId } from '@/lib/votes'
+import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import ReactionPicker from '@/components/ReactionPicker'
 import { captureClientEvent } from '@/lib/analyticsClient'
@@ -29,7 +29,6 @@ interface Props {
 
 export default function ScheduleCard({ entry, workout, index, isLeader, voteData }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const [pickerOpen, setPickerOpen] = useState(false)
   const isNext = index === 0
   const hasWorkout = workout !== null
   const filteredVariations = entry.selectedVariations.filter(v => v !== '')
@@ -39,7 +38,6 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
     const next = !expanded
     setExpanded(next)
     if (next) {
-      setPickerOpen(false)
       captureClientEvent('schedule_card_expanded', {
         workoutName: workout?.name ?? entry.workoutName ?? '',
         workoutType: entry.workoutType,
@@ -48,17 +46,8 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
     }
   }
 
-  function togglePicker(e: React.MouseEvent) {
-    e.stopPropagation()
-    if (expanded) {
-      // Card is already open — no-op, picker is visible inside the detail panel
-      return
-    }
-    setPickerOpen(v => !v)
-  }
-
   return (
-    <div className={`bg-white rounded-2xl shadow-sm border overflow-hidden touch-manipulation ${isNext ? 'border-orange-300' : 'border-gray-100'}`}>
+    <div className={`bg-white rounded-2xl shadow-sm border touch-manipulation ${isNext ? 'border-orange-300' : 'border-gray-100'}`}>
       {/* Card header — interactive when workout exists */}
       <div
         role={hasWorkout ? 'button' : undefined}
@@ -76,21 +65,11 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
             <div className="text-base font-bold text-gray-900 mt-0.5 truncate">
               {entry.workoutName ?? <span className="text-gray-400 font-normal italic">Not planned yet</span>}
             </div>
-            <div className="text-sm text-gray-500 mt-0.5">Led by {entry.leader}</div>
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${TYPE_COLORS[entry.workoutType] ?? 'bg-gray-100 text-gray-600'}`}>
               {entry.workoutType}
             </span>
-            {voteData && voteData.count > 0 && (
-              <button
-                onClick={togglePicker}
-                className="text-sm tabular-nums touch-manipulation"
-                aria-label="Open reaction picker"
-              >
-                {ratingToEmoji(voteData.avg)} {voteData.count}
-              </button>
-            )}
             {isLeader && (
               <Link
                 href={`/plan?week=${index}`}
@@ -103,18 +82,19 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
             )}
           </div>
         </div>
-      </div>
-
-      {/* Inline picker — visible when emoji badge is tapped on a collapsed card */}
-      {hasWorkout && !expanded && pickerOpen && workout && (
-        <div className="border-t border-gray-100 px-4 pb-3">
-          <ReactionPicker
-            workoutId={workoutVoteId(workout.name, workout.variation)}
-            workoutName={workout.name}
-            initialVoteData={voteData ?? null}
-          />
+        <div className="flex items-center justify-between gap-2 mt-2">
+          <div className="text-sm text-gray-500 min-w-0 truncate">Led by {entry.leader}</div>
+          {hasWorkout && workout && (
+            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+              <ReactionPicker
+                workoutId={workoutVoteId(workout.name, workout.variation)}
+                workoutName={workout.name}
+                initialVoteData={voteData ?? null}
+              />
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Detail panel */}
       {hasWorkout && expanded && (
