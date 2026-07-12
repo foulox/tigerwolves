@@ -24,11 +24,13 @@ export function parseRoadmap(markdown: string): RoadmapCard[] {
   const cards: RoadmapCard[] = []
 
   for (const section of sections) {
-    const newlineIdx = section.indexOf('\n')
+    // Stop at --- so trailing developer content doesn't bleed into card descriptions
+    const trimmed = section.split(/^---\s*$/m)[0]
+    const newlineIdx = trimmed.indexOf('\n')
     const headingText =
-      newlineIdx >= 0 ? section.slice(0, newlineIdx).trim() : section.trim()
+      newlineIdx >= 0 ? trimmed.slice(0, newlineIdx).trim() : trimmed.trim()
     const description =
-      newlineIdx >= 0 ? section.slice(newlineIdx + 1).trim() : ''
+      newlineIdx >= 0 ? trimmed.slice(newlineIdx + 1).trim() : ''
 
     const match = headingText.match(STATUS_TAG)
     cards.push(

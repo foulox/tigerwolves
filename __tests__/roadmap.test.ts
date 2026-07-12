@@ -64,4 +64,11 @@ Longer term: more running clubs.
     const cards = parseRoadmap(md)
     expect(cards[0].description).toBe('First paragraph.\n\nSecond paragraph.')
   })
+
+  it('stops at --- so developer content below does not bleed into descriptions', () => {
+    const md = `## [vision] Horizon\nLonger term goals.\n\n---\n\n### Shipped\n#### Sprint 1\nAll the details.`
+    const cards = parseRoadmap(md)
+    expect(cards).toHaveLength(1)
+    expect(cards[0].description).toBe('Longer term goals.')
+  })
 })
