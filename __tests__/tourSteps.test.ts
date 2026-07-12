@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { VISITOR_STEPS, LEADER_STEPS } from '@/lib/tourSteps'
 
 describe('tourSteps', () => {
-  it('VISITOR_STEPS has 8 entries', () => {
-    expect(VISITOR_STEPS).toHaveLength(8)
+  it('VISITOR_STEPS has 9 entries', () => {
+    expect(VISITOR_STEPS).toHaveLength(9)
   })
 
   it('LEADER_STEPS has 3 entries', () => {
@@ -34,6 +34,7 @@ describe('tourSteps', () => {
     expect(elements).toContain('[data-tour="library"]')
     expect(elements).toContain('[data-tour="library-variations"]')
     expect(elements).toContain('[data-tour="races"]')
+    expect(elements).toContain('[data-tour="roadmap"]')
     expect(elements).toContain('[data-tour="feedback"]')
     expect(elements).toContain('[data-tour="how-to-use"]')
   })

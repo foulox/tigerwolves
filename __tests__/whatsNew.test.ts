@@ -6,9 +6,9 @@ describe('whatsNew', () => {
     expect(CURRENT_VERSION).toBe(2)
   })
 
-  it('has exactly 6 version-2 items', () => {
+  it('has exactly 7 version-2 items', () => {
     const v2 = WHATS_NEW.filter(item => item.version === 2)
-    expect(v2).toHaveLength(6)
+    expect(v2).toHaveLength(7)
   })
 
   it('version-2 items cover the expected features', () => {
@@ -17,6 +17,7 @@ describe('whatsNew', () => {
     expect(v2Titles).toContain('Expandable workout details on Schedule')
     expect(v2Titles).toContain('Workout variations in the Library')
     expect(v2Titles).toContain('Feedback button')
+    expect(v2Titles).toContain('Roadmap')
     expect(v2Titles).toContain('Library management')
     expect(v2Titles).toContain('Tour updated')
   })
