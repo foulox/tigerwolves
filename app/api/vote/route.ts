@@ -4,6 +4,10 @@ import { captureServerEvent } from '@/lib/analytics'
 import type { Rating } from '@/lib/votes'
 
 export async function POST(req: NextRequest) {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
+    return NextResponse.json({ avg: 4, count: 1 })
+  }
+
   let body: unknown
   try {
     body = await req.json()
