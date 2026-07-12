@@ -5,6 +5,7 @@ A mobile-first web app for **North Brooklyn Runners (NBR)**. Currently serves Ti
 
 Live at: https://tigerwolves.foulox.me (custom domain, since the 2026-07-03 Clerk production cutover — `tigerwolves.vercel.app` still works as a fallback alias)
 Staging: https://tigerwolves-git-staging-fouloxs-projects.vercel.app (stable branch alias — don't use a specific deployment URL here, those change every deploy)
+Demo: https://tigerwolves-git-demo-fouloxs-projects.vercel.app (long-lived `demo` branch; env var `NEXT_PUBLIC_DEMO_MODE=true` + `NEXT_PUBLIC_DEMO_LEADER_EMAIL`; no auth required for participant routes)
 
 ## Club Context
 - **Club:** North Brooklyn Runners (NBR)
@@ -34,6 +35,7 @@ Staging: https://tigerwolves-git-staging-fouloxs-projects.vercel.app (stable bra
 - `proxy.ts` — Clerk middleware (NOT `middleware.ts` — renamed to avoid Next.js 16 deprecation warning); hardcodes `signInUrl: '/sign-in'` as a `clerkMiddleware()` option — don't move this back to an env var, see Auth Architecture below
 - 5-minute cache TTL via `unstable_cache`; on-demand invalidation via `updateTag` after every write
 - `instrumentation.ts` / `instrumentation-client.ts` / `sentry.server.config.ts` / `sentry.edge.config.ts` / `app/global-error.tsx` — Sentry wiring, scaffolded by hand (the `@sentry/wizard` CLI needs an interactive TTY/browser login, which isn't available in an agent-driven terminal session)
+- `lib/demo.ts` — exports `isDemoMode` (`NEXT_PUBLIC_DEMO_MODE === 'true'`) and `demoVoteData(workoutId)` (deterministic fake vote data for the demo environment). `isDemoMode` is used in `components/DemoBanner.tsx` (server) and `components/ReactionPicker.tsx` (client) to suppress DB writes. In demo mode, `/api/vote` is also a no-op server-side. Reactions write to localStorage only.
 
 ## Auth Architecture (Clerk)
 - **Visitors** — read-only: Schedule, Library, Races. No sign-in required.

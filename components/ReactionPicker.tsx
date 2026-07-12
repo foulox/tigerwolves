@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { EMOJIS, ratingToEmoji } from '@/lib/votes'
 import type { Rating, VoteData } from '@/lib/votes'
+import { isDemoMode, demoVoteData } from '@/lib/demo'
 
 const STORAGE_KEY = 'tw_reactions'
 
@@ -37,7 +38,9 @@ interface Props {
 
 export default function ReactionPicker({ workoutId, workoutName, initialVoteData }: Props) {
   const [isOpen, setIsOpen] = useState(false)
-  const [voteData, setVoteData] = useState<VoteData | null>(initialVoteData)
+  const [voteData, setVoteData] = useState<VoteData | null>(
+    initialVoteData ?? (isDemoMode ? demoVoteData(workoutId) : null)
+  )
   const [myRating, setMyRating] = useState<Rating | undefined>(undefined)
   const [pending, setPending] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -67,8 +70,10 @@ export default function ReactionPicker({ workoutId, workoutName, initialVoteData
     setMyRating(rating)
     writeStoredRating(workoutId, rating)
     setIsOpen(false)
-    setPending(true)
 
+    if (isDemoMode) return
+
+    setPending(true)
     try {
       const res = await fetch('/api/vote', {
         method: 'POST',
