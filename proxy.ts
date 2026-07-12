@@ -4,6 +4,7 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/library',
   '/races',
+  '/roadmap',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/vote',
