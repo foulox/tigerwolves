@@ -61,7 +61,7 @@ export default function WhatsNewOverlay({ tourRef }: Props) {
           <h2 className="text-lg font-bold text-gray-900 mb-1">What&apos;s New</h2>
           <p className="text-xs text-gray-400 mb-4">Recent updates to TigerWolves</p>
         </div>
-        <ul className="overflow-y-auto px-6 space-y-3 flex-1">
+        <ul className="overflow-y-auto px-6 pb-2 space-y-3 flex-1">
           {newItems.map((item, i) => (
             <li key={i}>
               <p className="text-sm font-semibold text-gray-800">{item.title}</p>

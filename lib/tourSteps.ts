@@ -14,7 +14,7 @@ export const VISITOR_STEPS: DriveStep[] = [
     element: '[data-tour="schedule-detail"]',
     popover: {
       title: 'Tap any card to expand',
-      description: 'Tap a workout card to see the full details ��� instructions, lap structure, HR zone, training phases, and more.',
+      description: 'Tap a workout card to see the full details — instructions, lap structure, HR zone, training phases, and more.',
       side: 'bottom',
       align: 'start',
     },
