@@ -2,13 +2,23 @@ import { describe, it, expect } from 'vitest'
 import { CURRENT_VERSION, WHATS_NEW } from '@/lib/whatsNew'
 
 describe('whatsNew', () => {
-  it('CURRENT_VERSION is 2', () => {
-    expect(CURRENT_VERSION).toBe(2)
+  it('CURRENT_VERSION is 3', () => {
+    expect(CURRENT_VERSION).toBe(3)
   })
 
   it('has exactly 7 version-2 items', () => {
     const v2 = WHATS_NEW.filter(item => item.version === 2)
     expect(v2).toHaveLength(7)
+  })
+
+  it('has exactly 1 version-3 item', () => {
+    const v3 = WHATS_NEW.filter(item => item.version === 3)
+    expect(v3).toHaveLength(1)
+  })
+
+  it('version-3 items cover the expected features', () => {
+    const v3Titles = WHATS_NEW.filter(i => i.version === 3).map(i => i.title)
+    expect(v3Titles).toContain('Flag a workout issue')
   })
 
   it('version-2 items cover the expected features', () => {

@@ -130,6 +130,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
           />
           <button
             onClick={e => { e.stopPropagation(); setFeedbackOpen(true) }}
+            data-tour={index === 0 ? 'schedule-flag' : undefined}
             className="w-full flex items-center justify-center gap-1.5 py-2 rounded-full border border-dashed border-gray-300 text-xs text-gray-400 hover:text-gray-600 hover:border-gray-400 touch-manipulation transition-colors"
           >
             🚩 Flag an issue with this workout
