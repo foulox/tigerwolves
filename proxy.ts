@@ -6,6 +6,7 @@ const isPublicRoute = createRouteMatcher([
   '/races',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/api/vote',
 ])
 
 export default clerkMiddleware(

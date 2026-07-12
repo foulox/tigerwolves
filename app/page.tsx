@@ -5,6 +5,7 @@ import FeedbackButton from '@/components/FeedbackButton'
 import HeaderAuth from '@/components/HeaderAuth'
 import TourWrapper from '@/components/TourWrapper'
 import ScheduleCard from '@/components/ScheduleCard'
+import { getVoteData, workoutVoteId } from '@/lib/votes'
 
 export default async function SchedulePage() {
   const { userId } = await auth()
@@ -13,6 +14,14 @@ export default async function SchedulePage() {
   const upcoming = schedule
     .filter(e => e.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))
+
+  const resolvedWorkouts = upcoming.map(entry =>
+    resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)
+  )
+  const workoutIds = resolvedWorkouts
+    .filter(w => w !== null)
+    .map(w => workoutVoteId(w!.name, w!.variation))
+  const voteData = await getVoteData(workoutIds)
 
   return (
     <div>
@@ -32,15 +41,19 @@ export default async function SchedulePage() {
         {upcoming.length === 0 && (
           <p className="text-gray-400 italic text-sm">No upcoming workouts scheduled yet.</p>
         )}
-        {upcoming.map((entry, i) => (
-          <ScheduleCard
-            key={`${entry.date}-${entry.workoutName ?? ''}`}
-            entry={entry}
-            workout={resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)}
-            index={i}
-            isLeader={!!userId}
-          />
-        ))}
+        {upcoming.map((entry, i) => {
+          const workout = resolvedWorkouts[i]
+          return (
+            <ScheduleCard
+              key={`${entry.date}-${entry.workoutName ?? ''}`}
+              entry={entry}
+              workout={workout}
+              index={i}
+              isLeader={!!userId}
+              voteData={workout ? (voteData[workoutVoteId(workout.name, workout.variation)] ?? null) : null}
+            />
+          )
+        })}
       </div>
     </div>
   )

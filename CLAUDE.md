@@ -95,6 +95,8 @@ Luis, Lou (creator/user), Kostas, Joelle, Kelsey, Obi (Matthew removed via #67; 
 - **In agent sessions, use the Neon REST API directly instead of `neonctl` or `npx neonctl`** — `neonctl` requires an interactive browser OAuth on first use, and `npx neonctl` still prompts for org selection interactively even with a cached credential. Neither works in a non-TTY agent session. Use the curl pattern above.
 - **Always `git fetch origin main` before reading files at the start of a new branch session** — read key files from `git show origin/main:{file}` rather than the local checkout; the local branch may be stale from a previous session on a different machine.
 - **`chromium-cli` is not available in this environment.** For browser-driven verification, write a throwaway Playwright script instead — `@playwright/test` is already a devDependency, and Chromium is typically already installed locally. Suppress the onboarding tour's auto-launch in fresh browser contexts by setting `localStorage` (`tw_tour_seen`, `tw_version`) via `page.addInitScript()` before navigating, or it'll intercept clicks.
+- **`@vercel/kv` is deprecated** — Vercel KV migrated to Upstash Redis. The package API is unchanged (`kv.mget`, `kv.pipeline`, etc.) and `KV_REST_API_URL` / `KV_REST_API_TOKEN` env vars are still the right names. Install via Vercel Marketplace → Upstash for Redis, prefix `KV`, Production + Preview environments. Don't use the "Official Redis Cloud" integration — that's a different product with no free tier and incompatible env vars.
+- **vitest `@/` path alias** — `vitest.config.ts` has `resolve.alias: { '@': path.resolve(__dirname, '.') }` so route handler tests can use `@/` imports. Already in place; don't remove it.
 
 ## Development Workflow
 

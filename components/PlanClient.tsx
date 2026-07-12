@@ -6,6 +6,8 @@ import type { ScheduleEntry, Workout } from '@/lib/data'
 import { buildPost, formatDateLong } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
+import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
+import type { VoteData } from '@/lib/votes'
 
 function formatDateShort(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -15,6 +17,13 @@ function formatDateShort(iso: string) {
 type PlanStandaloneRow = { kind: 'standalone'; workout: Workout }
 type PlanFamilyRow = { kind: 'family'; name: string; base: Workout | null; progressions: Workout[]; total: number }
 type PlanDisplayRow = PlanStandaloneRow | PlanFamilyRow
+
+function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined }) {
+  if (v && v.count > 0) {
+    return <span className="text-xs text-gray-400 tabular-nums">{ratingToEmoji(v.avg)} {v.count}</span>
+  }
+  return <span className="text-xs text-gray-300">🙂</span>
+}
 
 function WorkoutDetail({ w, isLeader }: { w: Workout; isLeader: boolean }) {
   return (
@@ -61,9 +70,10 @@ type Props = {
   workouts: Workout[]
   initialWeekIndex?: number
   isLeader: boolean
+  voteData?: Record<string, VoteData | null>
 }
 
-export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, isLeader }: Props) {
+export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, isLeader, voteData = {} }: Props) {
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
   const [selectedWorkouts, setSelectedWorkouts] = useState<Workout[]>([])
   const [showCount, setShowCount] = useState(3)
@@ -96,7 +106,13 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
     const types = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
     return workouts
       .filter(w => types.includes(w.type))
-      .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
+      .sort((a, b) => {
+        const aPlanned = entry.workoutName != null && a.name === entry.workoutName
+        const bPlanned = entry.workoutName != null && b.name === entry.workoutName
+        if (aPlanned && !bPlanned) return -1
+        if (!aPlanned && bPlanned) return 1
+        return (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1
+      })
   }, [entry, workouts, activeType])
 
   const pickerSource = useMemo(() => {
@@ -308,8 +324,9 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                         >
                           <div className="flex justify-between items-start gap-2">
                             <div className="font-semibold text-gray-900">{w.name}</div>
-                            <div className="text-xs text-gray-400 shrink-0">
-                              {w.lastRan ? formatDateShort(w.lastRan) : 'Never'}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <VoteBadge v={voteData[workoutVoteId(w.name, w.variation)]} />
+                              <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(w.lastRan) : 'Never'}</span>
                             </div>
                           </div>
                           {w.variation && <div className="text-xs text-gray-400 mt-0.5">{w.variation}</div>}
@@ -357,7 +374,10 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                                   <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${isEffectivelySelected(row.base) ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
                                   <span className="text-xs font-bold text-gray-600">Standard</span>
                                 </div>
-                                <span className="text-xs text-gray-400">{row.base.lastRan ? formatDateShort(row.base.lastRan) : 'Never'}</span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <VoteBadge v={voteData[workoutVoteId(row.base!.name, row.base!.variation)]} />
+                                  <span className="text-xs text-gray-400">{row.base.lastRan ? formatDateShort(row.base.lastRan) : 'Never'}</span>
+                                </div>
                               </div>
                               {row.base.distTime && <div className="text-xs text-gray-400 mt-1 ml-6">{row.base.distTime}</div>}
                             </button>
@@ -386,7 +406,10 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                                   <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
                                   <span className={`text-xs font-bold ${i === 0 ? 'text-gray-600' : 'text-orange-500'}`}>{label}</span>
                                 </div>
-                                <span className="text-xs text-gray-400">{p.lastRan ? formatDateShort(p.lastRan) : 'Never'}</span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <VoteBadge v={voteData[workoutVoteId(p.name, p.variation)]} />
+                                  <span className="text-xs text-gray-400">{p.lastRan ? formatDateShort(p.lastRan) : 'Never'}</span>
+                                </div>
                               </div>
                               {p.variation && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{p.variation}</div>}
                               {p.distTime && <div className="text-xs text-gray-400 mt-0.5 ml-6">{p.distTime}</div>}
