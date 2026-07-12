@@ -64,4 +64,11 @@ describe('feedbackBody', () => {
     expect(body).toContain('Submitted by: Anonymous visitor')
     expect(body).not.toContain('**Workout:**')
   })
+
+  it('uses plain body for run-leader type', () => {
+    const body = feedbackBody('run-leader', 'need more warmup time', 'Anonymous visitor')
+    expect(body).toContain('Submitted by: Anonymous visitor')
+    expect(body).toContain('need more warmup time')
+    expect(body).not.toContain('**Workout:**')
+  })
 })

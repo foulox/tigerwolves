@@ -2,7 +2,7 @@
 
 import { useState, useRef, useTransition } from 'react'
 import { useAuth } from '@clerk/nextjs'
-import { X, ExternalLink, Loader2 } from 'lucide-react'
+import { X, ExternalLink, Loader2, Image as ImageIcon } from 'lucide-react'
 import { createFeedbackIssue } from '@/app/actions'
 import type { FeedbackType } from '@/lib/feedbackUtils'
 
@@ -199,7 +199,7 @@ export default function FeedbackDrawer({ open, onClose, defaultType, workoutCont
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
               {screenshotName ? (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <span className="text-gray-400">🖼</span>
+                  <ImageIcon size={15} className="text-gray-400" />
                   <span className="flex-1 truncate">{screenshotName}</span>
                   <button
                     onClick={() => { setScreenshotBase64(undefined); setScreenshotName(undefined) }}
@@ -213,7 +213,7 @@ export default function FeedbackDrawer({ open, onClose, defaultType, workoutCont
                   onClick={() => fileRef.current?.click()}
                   className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
                 >
-                  <span>🖼</span>
+                  <ImageIcon size={15} />
                   Attach screenshot (optional)
                 </button>
               )}

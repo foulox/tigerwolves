@@ -133,13 +133,17 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
           >
             🚩 Flag an issue with this workout
           </button>
-          <FeedbackDrawer
-            open={feedbackOpen}
-            onClose={() => setFeedbackOpen(false)}
-            defaultType="workout-data"
-            workoutContext={`${workout.name} (${entry.workoutType}) — ${formatDateMedium(entry.date)}`}
-          />
         </div>
+      )}
+      {/* FeedbackDrawer lives outside the expanded block so feedbackOpen state
+          doesn't persist across collapse/re-expand cycles */}
+      {workout && (
+        <FeedbackDrawer
+          open={feedbackOpen}
+          onClose={() => setFeedbackOpen(false)}
+          defaultType="workout-data"
+          workoutContext={`${workout.name} (${entry.workoutType}) — ${formatDateMedium(entry.date)}`}
+        />
       )}
     </div>
   )
