@@ -2,17 +2,41 @@
 
 import { useState, useRef, useTransition } from 'react'
 import { useAuth } from '@clerk/nextjs'
-import { X, Bug, Lightbulb, Image, ExternalLink, Loader2 } from 'lucide-react'
+import { X, ExternalLink, Loader2 } from 'lucide-react'
 import { createFeedbackIssue } from '@/app/actions'
+import type { FeedbackType } from '@/lib/feedbackUtils'
 
 type Props = {
   open: boolean
   onClose: () => void
+  defaultType?: FeedbackType
+  workoutContext?: string
 }
 
-export default function FeedbackDrawer({ open, onClose }: Props) {
+const TYPE_OPTIONS: { type: FeedbackType; emoji: string; label: string }[] = [
+  { type: 'bug', emoji: '🐛', label: 'Bug report' },
+  { type: 'feature', emoji: '💡', label: 'Feature request' },
+  { type: 'workout-data', emoji: '📊', label: 'Workout data issue' },
+  { type: 'run-leader', emoji: '🗣️', label: 'Run leader feedback' },
+]
+
+const TYPE_ACTIVE: Record<FeedbackType, string> = {
+  bug: 'bg-red-50 border-red-300 text-red-700',
+  feature: 'bg-blue-50 border-blue-300 text-blue-700',
+  'workout-data': 'bg-amber-50 border-amber-300 text-amber-700',
+  'run-leader': 'bg-purple-50 border-purple-300 text-purple-700',
+}
+
+const TYPE_PLACEHOLDER: Record<FeedbackType, string> = {
+  bug: 'What happened? What did you expect?',
+  feature: 'What would you like to see?',
+  'workout-data': 'What did you notice is wrong?',
+  'run-leader': 'What would you like to tell the run leaders?',
+}
+
+export default function FeedbackDrawer({ open, onClose, defaultType, workoutContext }: Props) {
   const { isSignedIn } = useAuth()
-  const [type, setType] = useState<'bug' | 'feature'>('bug')
+  const [type, setType] = useState<FeedbackType>(defaultType ?? 'bug')
   const [description, setDescription] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -24,7 +48,7 @@ export default function FeedbackDrawer({ open, onClose }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
 
   function reset() {
-    setType('bug')
+    setType(defaultType ?? 'bug')
     setDescription('')
     setName('')
     setEmail('')
@@ -58,6 +82,7 @@ export default function FeedbackDrawer({ open, onClose }: Props) {
       const result = await createFeedbackIssue({
         type,
         description: description.trim(),
+        workoutContext,
         screenshotBase64,
         name: name.trim() || undefined,
         email: email.trim() || undefined,
@@ -117,31 +142,36 @@ export default function FeedbackDrawer({ open, onClose }: Props) {
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setType('bug')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
-                  type === 'bug' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-gray-50 border-gray-200 text-gray-500'
-                }`}
-              >
-                <Bug size={16} />
-                Bug report
-              </button>
-              <button
-                onClick={() => setType('feature')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
-                  type === 'feature' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500'
-                }`}
-              >
-                <Lightbulb size={16} />
-                Feature request
-              </button>
+            {/* 2×2 type grid */}
+            <div className="grid grid-cols-2 gap-2">
+              {TYPE_OPTIONS.map(opt => (
+                <button
+                  key={opt.type}
+                  onClick={() => setType(opt.type)}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium border transition-colors text-left ${
+                    type === opt.type
+                      ? TYPE_ACTIVE[opt.type]
+                      : 'bg-gray-50 border-gray-200 text-gray-500'
+                  }`}
+                >
+                  <span>{opt.emoji}</span>
+                  <span>{opt.label}</span>
+                </button>
+              ))}
             </div>
+
+            {/* Attached workout context banner */}
+            {workoutContext && (
+              <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+                <p className="text-xs font-bold tracking-wide text-amber-600 uppercase mb-1">Attached to workout</p>
+                <p className="text-sm font-semibold text-amber-900">{workoutContext}</p>
+              </div>
+            )}
 
             <textarea
               className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
               rows={5}
-              placeholder={type === 'bug' ? 'What happened? What did you expect?' : 'What would you like to see?'}
+              placeholder={TYPE_PLACEHOLDER[type]}
               value={description}
               onChange={e => setDescription(e.target.value)}
             />
@@ -169,7 +199,7 @@ export default function FeedbackDrawer({ open, onClose }: Props) {
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
               {screenshotName ? (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Image size={15} className="text-gray-400" />
+                  <span className="text-gray-400">🖼</span>
                   <span className="flex-1 truncate">{screenshotName}</span>
                   <button
                     onClick={() => { setScreenshotBase64(undefined); setScreenshotName(undefined) }}
@@ -183,7 +213,7 @@ export default function FeedbackDrawer({ open, onClose }: Props) {
                   onClick={() => fileRef.current?.click()}
                   className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
                 >
-                  <Image size={15} />
+                  <span>🖼</span>
                   Attach screenshot (optional)
                 </button>
               )}
