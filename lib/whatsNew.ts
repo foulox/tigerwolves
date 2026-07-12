@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 2
+export const CURRENT_VERSION = 3
 
 export const WHATS_NEW: { version: number; title: string; description: string }[] = [
   { version: 1, title: 'Sign in as a leader', description: 'Leaders can now sign in with Clerk to access write features. Visitors still browse freely.' },
@@ -13,4 +13,5 @@ export const WHATS_NEW: { version: number; title: string; description: string }[
   { version: 2, title: 'Library management', description: 'As a leader: use the edit button to fix a workout, delete to remove it, or the regroup tool in Settings to build workout families.' },
   { version: 2, title: 'Roadmap', description: 'See where TigerWolves is headed — what\'s live now, what\'s coming next, and what\'s on the horizon.' },
   { version: 2, title: 'Tour updated', description: 'New tour steps for reactions, workout details, variations, roadmap, feedback, and leader library tools. Relaunch anytime with "How to use this".' },
+  { version: 3, title: 'Flag a workout issue', description: 'Expand any Schedule card and tap "Flag an issue with this workout" to report bad data, unclear instructions, or anything off. We read every one.' },
 ]

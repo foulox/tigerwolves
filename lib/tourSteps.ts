@@ -29,6 +29,15 @@ export const VISITOR_STEPS: DriveStep[] = [
     },
   },
   {
+    element: '[data-tour="schedule-flag"]',
+    popover: {
+      title: 'Flag an issue',
+      description: 'Something off with a workout — bad distance, unclear instructions? Tap here to flag it and we\'ll fix it.',
+      side: 'top',
+      align: 'start',
+    },
+  },
+  {
     element: '[data-tour="library"]',
     popover: {
       title: 'Workout Library',
