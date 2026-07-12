@@ -14,6 +14,7 @@ export default function HowToUseButton({ tourRef }: { tourRef: React.RefObject<T
     <button
       onClick={handleClick}
       className="text-xs text-gray-400 underline touch-manipulation"
+      data-tour="how-to-use"
     >
       How to use this
     </button>

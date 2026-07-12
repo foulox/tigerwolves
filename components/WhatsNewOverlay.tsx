@@ -52,20 +52,24 @@ export default function WhatsNewOverlay({ tourRef }: Props) {
     )
   }
 
+  const newItems = WHATS_NEW.filter(item => item.version === CURRENT_VERSION)
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-1">What&apos;s New</h2>
-        <p className="text-xs text-gray-400 mb-4">Recent updates to TigerWolves</p>
-        <ul className="space-y-3 mb-6">
-          {WHATS_NEW.map((item, i) => (
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[85vh]">
+        <div className="px-6 pt-6 pb-0 shrink-0">
+          <h2 className="text-lg font-bold text-gray-900 mb-1">What&apos;s New</h2>
+          <p className="text-xs text-gray-400 mb-4">Recent updates to TigerWolves</p>
+        </div>
+        <ul className="overflow-y-auto px-6 pb-2 space-y-3 flex-1">
+          {newItems.map((item, i) => (
             <li key={i}>
               <p className="text-sm font-semibold text-gray-800">{item.title}</p>
               <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
             </li>
           ))}
         </ul>
-        <div className="flex flex-col gap-2">
+        <div className="px-6 pt-4 pb-6 shrink-0 flex flex-col gap-2">
           <button
             onClick={dismiss}
             className="w-full py-3 rounded-xl bg-orange-500 text-white font-semibold text-sm touch-manipulation"

@@ -59,6 +59,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
         onClick={toggleExpand}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand() } }}
         data-testid={`schedule-card-${index}`}
+        data-tour={index === 0 ? 'schedule-detail' : undefined}
       >
         {isNext && <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">NEXT UP</div>}
         <div className="flex items-start justify-between gap-3">
@@ -87,7 +88,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
         <div className="flex items-center justify-between gap-2 mt-2">
           <div className="text-sm text-gray-500 min-w-0 truncate">Led by {entry.leader}</div>
           {workout && (
-            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+            <div className="shrink-0" onClick={(e) => e.stopPropagation()} data-tour={index === 0 ? 'schedule-reactions' : undefined}>
               <ReactionPicker
                 workoutId={workoutVoteId(workout.name, workout.variation)}
                 workoutName={workout.name}
