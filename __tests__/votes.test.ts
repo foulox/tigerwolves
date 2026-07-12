@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-
 process.env.VERCEL_ENV = 'test'
+
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 // Hoist the in-memory store and mocks so vi.mock factories can reference them
