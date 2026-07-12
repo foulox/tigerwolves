@@ -45,7 +45,10 @@ export function parseRoadmap(markdown: string): RoadmapCard[] {
 
 export async function fetchRoadmap(): Promise<RoadmapCard[]> {
   try {
-    const res = await fetch(WIKI_URL, { next: { revalidate: 86400 } } as RequestInit)
+    const res = await fetch(WIKI_URL, {
+      signal: AbortSignal.timeout(5000),
+      next: { revalidate: 86400 },
+    } as RequestInit & { next: { revalidate: number } })
     if (!res.ok) return []
     return parseRoadmap(await res.text())
   } catch {
