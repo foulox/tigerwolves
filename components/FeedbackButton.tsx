@@ -12,6 +12,7 @@ export default function FeedbackButton() {
         onClick={() => setOpen(true)}
         className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 touch-manipulation"
         title="Send feedback"
+        data-tour="feedback"
       >
         <MessageSquare size={15} />
       </button>

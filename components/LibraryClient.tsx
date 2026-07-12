@@ -142,7 +142,7 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
           <h1 className="text-2xl font-bold text-gray-900">Workout Library</h1>
           <p className="text-sm text-gray-500 mt-0.5">{filtered.length} workouts · oldest first</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-tour="library-manage">
           <button
             onClick={() => setShowAbbrev(v => !v)}
             className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs font-bold touch-manipulation"
@@ -269,7 +269,7 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
 
           const isExpanded = expandedFamily === row.name
           return (
-            <div key={`f-${row.name}`}>
+            <div key={`f-${row.name}`} data-tour="library-variations">
               <button
                 onClick={() => setExpandedFamily(isExpanded ? null : row.name)}
                 className="w-full text-left bg-white rounded-2xl p-4 border border-gray-100 shadow-sm touch-manipulation"
