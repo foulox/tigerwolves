@@ -84,7 +84,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
         </div>
         <div className="flex items-center justify-between gap-2 mt-2">
           <div className="text-sm text-gray-500 min-w-0 truncate">Led by {entry.leader}</div>
-          {hasWorkout && workout && (
+          {workout && (
             <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
               <ReactionPicker
                 workoutId={workoutVoteId(workout.name, workout.variation)}

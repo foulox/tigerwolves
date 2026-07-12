@@ -26,7 +26,7 @@ function computeVoteData(counts: (number | null)[]): VoteData | null {
   let total = 0
   let weightedSum = 0
   for (let i = 0; i < 5; i++) {
-    const c = counts[i] ?? 0
+    const c = Math.max(0, counts[i] ?? 0)
     total += c
     weightedSum += c * (i + 1)
   }

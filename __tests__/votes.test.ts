@@ -118,6 +118,24 @@ describe('POST /api/vote', () => {
       is_change: true,
     }))
   })
+
+  it('uses workoutId as workoutName in analytics when workoutName is omitted', async () => {
+    await POST(makeRequest({ workoutId: 'w1', rating: 3 }))
+    expect(captureServerEventMock).toHaveBeenCalledWith('reaction_cast', expect.objectContaining({
+      workoutName: 'w1',
+    }))
+  })
+
+  it('does not return a negative count when previousRating bucket is already zero', async () => {
+    // Stale previousRating — the bucket is already empty (e.g. user cleared localStorage)
+    const res = await POST(makeRequest({ workoutId: 'w1', workoutName: 'Hills', rating: 4, previousRating: 2 }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    // count must be positive; the clamped decrement of an empty bucket should not drag it below 1
+    expect(body.count).toBeGreaterThan(0)
+    expect(body.avg).toBeGreaterThanOrEqual(1)
+    expect(body.avg).toBeLessThanOrEqual(5)
+  })
 })
 
 describe('getVoteData', () => {

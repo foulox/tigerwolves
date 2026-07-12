@@ -39,5 +39,8 @@ export async function POST(req: NextRequest) {
     is_change: !!prevRating,
   })
 
+  // voteData is null only if all buckets sum to zero after the pipeline (e.g. negative counts
+  // clamped out by computeVoteData). Fall back to the just-cast vote so the client always
+  // gets a valid { avg, count } rather than a null/empty response.
   return NextResponse.json(voteData ?? { avg: rating, count: 1 })
 }
