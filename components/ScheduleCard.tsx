@@ -7,6 +7,7 @@ import { formatDateMedium } from '@/lib/postBuilder'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import ReactionPicker from '@/components/ReactionPicker'
+import FeedbackDrawer from '@/components/FeedbackDrawer'
 import { captureClientEvent } from '@/lib/analyticsClient'
 
 const TYPE_COLORS: Record<string, string> = {
@@ -29,6 +30,7 @@ interface Props {
 
 export default function ScheduleCard({ entry, workout, index, isLeader, voteData }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const isNext = index === 0
   const hasWorkout = workout !== null
   const filteredVariations = entry.selectedVariations.filter(v => v !== '')
@@ -125,7 +127,23 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
             workoutName={workout.name}
             initialVoteData={voteData ?? null}
           />
+          <button
+            onClick={e => { e.stopPropagation(); setFeedbackOpen(true) }}
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-full border border-dashed border-gray-300 text-xs text-gray-400 hover:text-gray-600 hover:border-gray-400 touch-manipulation transition-colors"
+          >
+            🚩 Flag an issue with this workout
+          </button>
         </div>
+      )}
+      {/* FeedbackDrawer lives outside the expanded block so feedbackOpen state
+          doesn't persist across collapse/re-expand cycles */}
+      {workout && (
+        <FeedbackDrawer
+          open={feedbackOpen}
+          onClose={() => setFeedbackOpen(false)}
+          defaultType="workout-data"
+          workoutContext={`${workout.name} (${entry.workoutType}) — ${formatDateMedium(entry.date)}`}
+        />
       )}
     </div>
   )

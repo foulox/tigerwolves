@@ -14,14 +14,16 @@ import {
   dbRegroupFamily,
 } from '@/lib/db'
 import { captureServerEvent } from '@/lib/analytics'
+import { feedbackLabel, feedbackTitle, feedbackBody, type FeedbackType } from '@/lib/feedbackUtils'
 
 // GitHub Projects v2 node ID for "Running Apps" — every feedback-created issue gets
 // linked here so it isn't a floating orphan (see CLAUDE.md "GitHub Project").
 const RUNNING_APPS_PROJECT_ID = 'PVT_kwHOAAJdzs4BYmPr'
 
 export async function createFeedbackIssue(data: {
-  type: 'bug' | 'feature'
+  type: FeedbackType
   description: string
+  workoutContext?: string
   screenshotBase64?: string
   name?: string
   email?: string
@@ -42,7 +44,7 @@ export async function createFeedbackIssue(data: {
     submittedBy = 'Anonymous visitor'
   }
 
-  let body = `Submitted by: ${submittedBy}\n\n${data.description}`
+  let body = feedbackBody(data.type, data.description, submittedBy, data.workoutContext)
 
   if (data.screenshotBase64) {
     try {
@@ -60,16 +62,14 @@ export async function createFeedbackIssue(data: {
         }],
       })
       const screenshotDesc = visionReply.content[0].type === 'text' ? visionReply.content[0].text : ''
-      body = `${data.description}\n\n**Screenshot:** ${screenshotDesc}`
+      body = `${body}\n\n**Screenshot:** ${screenshotDesc}`
     } catch {
       // Vision analysis failed — submit without screenshot context
     }
   }
 
-  const label = data.type === 'bug' ? 'bug' : 'enhancement'
-  const maxTitleLen = 60
-  const rawTitle = `${data.type === 'bug' ? 'Bug' : 'Feature'}: ${data.description}`
-  const title = rawTitle.length > maxTitleLen ? rawTitle.slice(0, maxTitleLen) + '…' : rawTitle
+  const label = feedbackLabel(data.type)
+  const title = feedbackTitle(data.type, data.description, data.workoutContext)
 
   const res = await fetch('https://api.github.com/repos/foulox/tigerwolves/issues', {
     method: 'POST',
