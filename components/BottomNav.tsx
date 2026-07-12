@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
-import { CalendarDays, User, BookOpen, Flag } from 'lucide-react'
+import { CalendarDays, User, BookOpen, Flag, Map } from 'lucide-react'
 
 const allTabs = [
   { href: '/', label: 'Schedule', icon: CalendarDays, tour: 'schedule', leaderOnly: false },
   { href: '/plan', label: 'Plan', icon: User, tour: 'plan', leaderOnly: true },
   { href: '/library', label: 'Library', icon: BookOpen, tour: 'library', leaderOnly: false },
   { href: '/races', label: 'Races', icon: Flag, tour: 'races', leaderOnly: false },
+  { href: '/roadmap', label: 'Roadmap', icon: Map, tour: 'roadmap', leaderOnly: false },
 ]
 
 export default function BottomNav() {
