@@ -1,3 +1,5 @@
+process.env.VERCEL_ENV = 'test'
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
@@ -67,17 +69,17 @@ describe('POST /api/vote', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body).toEqual({ avg: 4, count: 1 })
-    expect(store['vote:w1:4']).toBe(1)
+    expect(store['vote:test:w1:4']).toBe(1)
   })
 
   it('decrements vote:{id}:2 and increments vote:{id}:4 when changing from rating=2 to rating=4', async () => {
-    store['vote:w1:2'] = 1
+    store['vote:test:w1:2'] = 1
     const res = await POST(makeRequest({ workoutId: 'w1', workoutName: 'Hills', rating: 4, previousRating: 2 }))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body).toEqual({ avg: 4, count: 1 })
-    expect(store['vote:w1:2']).toBe(0)
-    expect(store['vote:w1:4']).toBe(1)
+    expect(store['vote:test:w1:2']).toBe(0)
+    expect(store['vote:test:w1:4']).toBe(1)
   })
 
   it('returns 400 when workoutId is missing', async () => {
@@ -112,7 +114,7 @@ describe('POST /api/vote', () => {
   })
 
   it('fires reaction_cast with is_change=true when previousRating is set', async () => {
-    store['vote:w1:3'] = 1
+    store['vote:test:w1:3'] = 1
     await POST(makeRequest({ workoutId: 'w1', workoutName: 'Ladder', rating: 4, previousRating: 3 }))
     expect(captureServerEventMock).toHaveBeenCalledWith('reaction_cast', expect.objectContaining({
       is_change: true,
@@ -146,16 +148,16 @@ describe('getVoteData', () => {
 
   it('correctly computes weighted average across all 5 rating keys', async () => {
     // 1×😡(1) + 1×😐(3) + 2×😃(4) = total 4, weighted sum=1+3+8=12, avg=3
-    store['vote:w1||:1'] = 1
-    store['vote:w1||:3'] = 1
-    store['vote:w1||:4'] = 2
+    store['vote:test:w1||:1'] = 1
+    store['vote:test:w1||:3'] = 1
+    store['vote:test:w1||:4'] = 2
     const result = await getVoteData(['w1||'])
     expect(result['w1||']).toEqual({ avg: 3, count: 4 })
   })
 
   it('returns null for a workout with all zero counts', async () => {
-    store['vote:w2||:1'] = 0
-    store['vote:w2||:2'] = 0
+    store['vote:test:w2||:1'] = 0
+    store['vote:test:w2||:2'] = 0
     const result = await getVoteData(['w2||'])
     expect(result['w2||']).toBeNull()
   })

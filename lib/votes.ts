@@ -11,7 +11,8 @@ export function workoutVoteId(name: string, variation: string): string {
 }
 
 function ratingKey(workoutId: string, rating: Rating): string {
-  return `vote:${workoutId}:${rating}`
+  const env = process.env.VERCEL_ENV ?? 'development'
+  return `vote:${env}:${workoutId}:${rating}`
 }
 
 function allRatingKeys(workoutId: string): string[] {
