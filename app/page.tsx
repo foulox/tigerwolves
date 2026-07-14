@@ -3,7 +3,8 @@ import { fetchData } from '@/lib/db'
 import { resolveWorkout } from '@/lib/scheduleUtils'
 import FeedbackButton from '@/components/FeedbackButton'
 import HeaderAuth from '@/components/HeaderAuth'
-import TourWrapper from '@/components/TourWrapper'
+import HowToUseButton from '@/components/HowToUseButton'
+import WhatsNewOverlay from '@/components/WhatsNewOverlay'
 import ScheduleCard from '@/components/ScheduleCard'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 
@@ -31,7 +32,8 @@ export default async function SchedulePage() {
           <p className="text-sm text-gray-500 mt-0.5">Upcoming Tuesdays</p>
         </div>
         <div className="flex items-center gap-3">
-          <TourWrapper isLeader={!!userId} />
+          <WhatsNewOverlay />
+          <HowToUseButton />
           <HeaderAuth isLeader={!!userId} />
           <FeedbackButton />
         </div>
