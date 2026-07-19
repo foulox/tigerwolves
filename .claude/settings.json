@@ -36,5 +36,20 @@
       "Write(/Users/lou.fox/personal/tigerwolves/**)",
       "Read(/Users/lou.fox/personal/tigerwolves/**)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -n --arg arch \"$(curl -s --max-time 8 https://raw.githubusercontent.com/wiki/foulox/tigerwolves/Architecture-Overview.md || echo 'fetch failed')\" --arg contrib \"$(curl -s --max-time 8 https://raw.githubusercontent.com/wiki/foulox/tigerwolves/Contributing.md || echo 'fetch failed')\" '{hookSpecificOutput: {hookEventName: \"SessionStart\", additionalContext: (\"# tigerwolves wiki (auto-loaded at session start)\\n\\n## Architecture Overview\\n\" + $arch + \"\\n\\n## Contributing\\n\" + $contrib)}}'",
+            "timeout": 15,
+            "statusMessage": "Fetching tigerwolves wiki context..."
+          }
+        ]
+      }
+    ]
   }
 }
