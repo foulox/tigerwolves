@@ -8,16 +8,20 @@ Staging: https://tigerwolves-git-staging-fouloxs-projects.vercel.app (stable bra
 Demo: https://tigerwolves-git-demo-fouloxs-projects.vercel.app (long-lived `demo` branch; env var `NEXT_PUBLIC_DEMO_MODE=true` + `NEXT_PUBLIC_DEMO_LEADER_EMAIL`; no auth required for participant routes)
 
 ## Where to look
-This file holds only what must never be missed regardless of task — guardrails against reintroducing fixed bugs, and hazards specific to working as an agent in this environment. Everything else (stack, architecture, club context, screen-by-screen behavior, Heylo post format, dev workflow, workout categories) lives in the wiki, organized so you read only the part you need instead of one long file top to bottom:
+This file holds only what must never be missed regardless of task — guardrails against reintroducing fixed bugs, and hazards specific to working as an agent in this environment. Everything else (stack, architecture, club context, screen-by-screen behavior, Heylo post format, dev workflow, workout categories) lives in the wiki, organized so you read only the part you need instead of one long file top to bottom.
 
-- **[Wiki Home](https://github.com/foulox/tigerwolves/wiki)** — start here
-- **[Architecture Overview](https://github.com/foulox/tigerwolves/wiki/Architecture-Overview)** — stack, data flow, key files, auth model, observability, AI-assist feature, Heylo post generation — read before any non-trivial architecture change
-- **[Contributing](https://github.com/foulox/tigerwolves/wiki/Contributing)** — branching, PR workflow, self-review checklist, testing standard, epic tracking, labels — read before opening a PR
+**This is a required step, not a reference list to skim.** Before starting any non-trivial task, actually fetch and read the specific page(s) below that match what you're about to touch — don't rely on already knowing this from a prior session, and don't treat the presence of a link as equivalent to having read it:
+
+- **[Wiki Home](https://github.com/foulox/tigerwolves/wiki)** — start here if nothing else below obviously matches
+- **[Architecture Overview](https://github.com/foulox/tigerwolves/wiki/Architecture-Overview)** — stack, data flow, key files, auth model, observability, AI-assist feature, Heylo post generation — **read this before any non-trivial architecture change, full stop**
+- **[Contributing](https://github.com/foulox/tigerwolves/wiki/Contributing)** — branching, PR workflow, self-review checklist, testing standard, epic tracking, labels — **read this before opening a PR, every time**
 - **[Leader Guide](https://github.com/foulox/tigerwolves/wiki/Leader-Guide)** — what the app does screen-by-screen, workout categories/types, rotation
 - **[Architecture Decisions](https://github.com/foulox/tigerwolves/wiki/Architecture-Decisions)** — ADRs, the "why" behind non-obvious choices
 - **[Local Setup](https://github.com/foulox/tigerwolves/wiki/Local-Setup)** — clone, env vars, running locally
 - **[Running Apps project board](https://github.com/users/foulox/projects/2)** — shared with trainer_v1
 - **[Issues](https://github.com/foulox/tigerwolves/issues)** — stories, bugs, epics
+
+This is the only enforcement mechanism that actually works: Claude Code plugin skills (like `/agent-session-start`) can't be overridden per-project, so there's no way to force a skill to auto-fetch these pages. This file, by contrast, is always loaded — so the instruction has to live here, as an action to take, not a link to notice.
 
 ## Key Constraints
 - Volunteer club, no budget — keep hosting and services free/cheap
@@ -40,7 +44,7 @@ This file holds only what must never be missed regardless of task — guardrails
 - **`.env.local`'s `DATABASE_URL` points at production** — if `.env.local` has a `DATABASE_URL` value at all, it is the production Neon branch. Treat it as production when running migrations.
 - **In agent sessions, use the Neon REST API directly instead of `neonctl` or `npx neonctl`** — `neonctl` requires an interactive browser OAuth on first use, and `npx neonctl` still prompts for org selection interactively even with a cached credential. Neither works in a non-TTY agent session. Use the curl pattern above.
 - **Always `git fetch origin main` before reading files at the start of a new branch session** — read key files from `git show origin/main:{file}` rather than the local checkout; the local branch may be stale from a previous session on a different machine.
-- **`chromium-cli` is not available in this environment.** For browser-driven verification, write a throwaway Playwright script instead — `@playwright/test` is already a devDependency, and Chromium is typically already installed locally. Suppress the onboarding tour's auto-launch in fresh browser contexts by setting `localStorage` (`tw_tour_seen`, `tw_version`) via `page.addInitScript()` before navigating, or it'll intercept clicks.
+- **There is no tool called `chromium-cli`** — checked npm and Homebrew (2026-07-19), neither has a package by that name; Homebrew's closest match, `chrome-cli`, is a different tool (drives an already-open Chrome window via macOS scripting, not a clean isolated session) and doesn't fit this use case anyway. For browser-driven verification, write a throwaway Playwright script instead — `@playwright/test` is already a devDependency, and Chromium is typically already installed locally (`~/Library/Caches/ms-playwright/`). Suppress the onboarding tour's auto-launch in fresh browser contexts by setting `localStorage` (`tw_tour_seen`, `tw_version`) via `page.addInitScript()` before navigating, or it'll intercept clicks.
 - **`@vercel/kv` is deprecated** — Vercel KV migrated to Upstash Redis. The package API is unchanged (`kv.mget`, `kv.pipeline`, etc.) and `KV_REST_API_URL` / `KV_REST_API_TOKEN` env vars are still the right names. Install via Vercel Marketplace → Upstash for Redis, prefix `KV`, Production + Preview environments. Don't use the "Official Redis Cloud" integration — that's a different product with no free tier and incompatible env vars.
 - **vitest `@/` path alias** — `vitest.config.ts` has `resolve.alias: { '@': path.resolve(__dirname, '.') }` so route handler tests can use `@/` imports. Already in place; don't remove it.
 - **Sentry was scaffolded by hand, not via `@sentry/wizard`** — the wizard CLI needs an interactive TTY/browser login, unavailable in an agent-driven terminal session. If Sentry setup ever needs redoing, expect to hand-write `instrumentation.ts`/`sentry.*.config.ts`/`app/global-error.tsx` again rather than running the wizard.
