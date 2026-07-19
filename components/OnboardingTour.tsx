@@ -6,6 +6,22 @@ import { VISITOR_STEPS, LEADER_STEPS } from '@/lib/tourSteps'
 
 const SEEN_KEY = 'tw_tour_seen'
 
+// Step index that needs the first schedule card auto-expanded before it can highlight.
+const EXPAND_CARD_STEP = 1
+
+// Step index that expands the first family card so a variation is visible once navigated.
+const LIBRARY_VARIATIONS_STEP = 5
+
+// Steps that live on a route other than the one the tour started on — single
+// source of truth for both triggering the navigation and finding the target
+// once the new page has rendered.
+const NAV_STEPS: Record<number, { path: string; selector: string }> = {
+  [LIBRARY_VARIATIONS_STEP]: { path: '/library', selector: '[data-tour="library-variations"]' },
+  8: { path: '/', selector: '[data-tour="feedback"]' },
+  11: { path: '/plan', selector: '[data-tour="heylo-area"]' },
+  12: { path: '/library', selector: '[data-tour="library-manage"]' },
+}
+
 export type TourRef = { launch: () => void }
 
 interface Props {
@@ -52,7 +68,7 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
         const idx = state.activeIndex ?? 0
 
         // Expand first schedule card so the flag button (step 3) is in DOM
-        if (idx === 1) {
+        if (idx === EXPAND_CARD_STEP) {
           const card = document.querySelector('[data-tour="schedule-detail"]')
           if (card && card.getAttribute('aria-expanded') !== 'true') {
             (card as HTMLElement).click()
@@ -61,16 +77,12 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
         }
 
         // Navigate to the correct page for steps that live on other routes
-        const navigateTo = (path: string, step: number) => {
-          pendingStep.current = step
-          router.push(path)
+        const nav = NAV_STEPS[idx]
+        if (nav && pathnameRef.current !== nav.path) {
+          pendingStep.current = idx
+          router.push(nav.path)
           setTimeout(() => driverObj.destroy(), 0)
         }
-
-        if (idx === 5 && pathnameRef.current !== '/library') return navigateTo('/library', 5)
-        if (idx === 8 && pathnameRef.current !== '/') return navigateTo('/', 8)
-        if (idx === 11 && pathnameRef.current !== '/plan') return navigateTo('/plan', 11)
-        if (idx === 12 && pathnameRef.current !== '/library') return navigateTo('/library', 12)
       },
       onDestroyStarted: (_el, _step, { driver: d }) => {
         if (pendingStep.current === null) {
@@ -87,21 +99,14 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
   useEffect(() => {
     if (pendingStep.current === null) return
     const step = pendingStep.current
+    const nav = NAV_STEPS[step]
 
-    const targetPath: Record<number, string> = { 5: '/library', 8: '/', 11: '/plan', 12: '/library' }
-    const targetSelector: Record<number, string> = {
-      5: '[data-tour="library-variations"]',
-      8: '[data-tour="feedback"]',
-      11: '[data-tour="heylo-area"]',
-      12: '[data-tour="library-manage"]',
-    }
-
-    if (pathname !== targetPath[step]) return
+    if (!nav || pathname !== nav.path) return
     pendingStep.current = null
 
-    waitForElement(targetSelector[step], 3000).then(el => {
+    waitForElement(nav.selector, 3000).then(el => {
       if (!el) return
-      if (step === 5) {
+      if (step === LIBRARY_VARIATIONS_STEP) {
         // Expand the first family card so a variation is visible when highlighted
         const btn = el.querySelector('button') as HTMLButtonElement | null
         btn?.click()
