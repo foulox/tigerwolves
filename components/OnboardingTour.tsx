@@ -117,12 +117,16 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
     if (tourRef) {
       tourRef.current = { launch: () => launchTour(0) }
     }
-    if (!launched.current && !localStorage.getItem(SEEN_KEY)) {
+    // Only the entry page auto-launches — a manual relaunch (which clears SEEN_KEY)
+    // must not cause this effect to fire again on a later re-render, e.g. the
+    // pathname change from a mid-tour navigation step.
+    if (pathname === '/' && !launched.current && !localStorage.getItem(SEEN_KEY)) {
       launched.current = true
       const t = setTimeout(() => launchTour(0), 500)
       return () => clearTimeout(t)
     }
-  })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount only, capturing the entry pathname; must not re-run on later pathname changes
+  }, [])
 
   return null
 }
