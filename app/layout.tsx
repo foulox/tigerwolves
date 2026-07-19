@@ -6,6 +6,7 @@ import './globals.css'
 import BottomNav from '@/components/BottomNav'
 import DemoBanner from '@/components/DemoBanner'
 import PostHogInit from '@/components/PostHogInit'
+import TourMount from '@/components/TourMount'
 
 const geist = Geist({ subsets: ['latin'] })
 
@@ -28,6 +29,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <html lang="en" className="h-full">
         <body className={`${geist.className} bg-gray-50 h-full antialiased`}>
           <PostHogInit isLeader={!!userId} />
+          <TourMount isLeader={!!userId} />
           <main className="max-w-lg mx-auto pb-20 min-h-full">
             <DemoBanner />
             {children}

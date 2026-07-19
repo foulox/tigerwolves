@@ -225,7 +225,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
 
   if (upcoming.length === 0) {
     return (
-      <div className="px-4 pt-10">
+      <div className="px-4 pt-10" data-tour="heylo-area">
         <h1 className="text-2xl font-bold text-gray-900">Plan</h1>
         <p className="text-gray-500 mt-4">No upcoming weeks on the schedule.</p>
       </div>
@@ -233,7 +233,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
   }
 
   return (
-    <div className="px-4 pt-10 pb-4">
+    <div className="px-4 pt-10 pb-4" data-tour="heylo-area">
       <header className="mb-5">
         <h1 className="text-2xl font-bold text-gray-900">Plan</h1>
       </header>

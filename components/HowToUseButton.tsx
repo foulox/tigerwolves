@@ -1,13 +1,8 @@
 'use client'
 
-import type { TourRef } from './OnboardingTour'
-
-const SEEN_KEY = 'tw_tour_seen'
-
-export default function HowToUseButton({ tourRef }: { tourRef: React.RefObject<TourRef | null> }) {
+export default function HowToUseButton() {
   function handleClick() {
-    localStorage.removeItem(SEEN_KEY)
-    tourRef.current?.launch()
+    document.dispatchEvent(new CustomEvent('tw:launch-tour'))
   }
 
   return (

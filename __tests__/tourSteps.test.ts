@@ -40,15 +40,32 @@ describe('tourSteps', () => {
     expect(elements).toContain('[data-tour="how-to-use"]')
   })
 
+  it('visitor step at index 1 targets schedule-detail (card expand trigger)', () => {
+    expect(VISITOR_STEPS[1].element).toBe('[data-tour="schedule-detail"]')
+  })
+
+  it('visitor step at index 5 targets library-variations', () => {
+    expect(VISITOR_STEPS[5].element).toBe('[data-tour="library-variations"]')
+  })
+
   it('leader steps cover the expected data-tour targets', () => {
     const elements = LEADER_STEPS.map(s => s.element)
     expect(elements).toContain('[data-tour="plan"]')
-    expect(elements).toContain('[data-tour="heylo-copy"]')
+    expect(elements).toContain('[data-tour="heylo-area"]')
     expect(elements).toContain('[data-tour="library-manage"]')
   })
 
+  it('leader step at index 1 targets heylo-area (not heylo-copy)', () => {
+    expect(LEADER_STEPS[1].element).toBe('[data-tour="heylo-area"]')
+    expect(LEADER_STEPS[1].element).not.toBe('[data-tour="heylo-copy"]')
+  })
+
+  it('leader step at index 2 targets library-manage', () => {
+    expect(LEADER_STEPS[2].element).toBe('[data-tour="library-manage"]')
+  })
+
   it('Heylo Post step description contains the turnaround warning', () => {
-    const heyloStep = LEADER_STEPS.find(s => s.element === '[data-tour="heylo-copy"]')
+    const heyloStep = LEADER_STEPS.find(s => s.element === '[data-tour="heylo-area"]')
     expect(heyloStep?.popover?.description).toMatch(/turnaround/i)
   })
 })

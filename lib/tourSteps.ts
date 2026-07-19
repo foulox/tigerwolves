@@ -104,7 +104,7 @@ export const LEADER_STEPS: DriveStep[] = [
     },
   },
   {
-    element: '[data-tour="heylo-copy"]',
+    element: '[data-tour="heylo-area"]',
     popover: {
       title: 'Heylo Post',
       description: 'Once you pick a workout, a Heylo post draft is generated automatically. Tap "Copy to clipboard" and paste it directly into Heylo. ⚠️ Before you copy, double-check the turnaround distance — it may not be accurate yet. A fix is on the way.',
@@ -116,7 +116,7 @@ export const LEADER_STEPS: DriveStep[] = [
     element: '[data-tour="library-manage"]',
     popover: {
       title: 'Manage the library',
-      description: 'Use the edit button (✎) to fix a workout, the delete button to remove it, or the regroup tool in Settings (⚙) to combine related workouts into a family with numbered variations.',
+      description: 'Edit or delete individual workouts using the controls on each card. Tap ⚙ in the header to open the regroup tool — use it to combine related workouts into a family with numbered variations.',
       side: 'bottom',
       align: 'end',
     },

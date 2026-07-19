@@ -2,16 +2,11 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { CURRENT_VERSION, WHATS_NEW } from '@/lib/whatsNew'
-import type { TourRef } from './OnboardingTour'
 
 const VERSION_KEY = 'tw_version'
 const SEEN_KEY = 'tw_tour_seen'
 
-interface Props {
-  tourRef: React.RefObject<TourRef | null>
-}
-
-export default function WhatsNewOverlay({ tourRef }: Props) {
+export default function WhatsNewOverlay() {
   const [open, setOpen] = useState(false)
   const initialized = useRef(false)
 
@@ -79,7 +74,7 @@ export default function WhatsNewOverlay({ tourRef }: Props) {
           <button
             onClick={() => {
               dismiss()
-              tourRef.current?.launch()
+              document.dispatchEvent(new CustomEvent('tw:launch-tour'))
             }}
             className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm touch-manipulation"
           >
