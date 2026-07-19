@@ -21,6 +21,7 @@ Demo: https://tigerwolves-git-demo-fouloxs-projects.vercel.app (long-lived `demo
 - **Data source:** Neon Postgres, queried directly via `@neondatabase/serverless` (raw SQL, no ORM) — migrated off Google Sheets in #85 (2026-07-03), Apps Script/Sheets glue fully removed in #86
 - **Analytics:** PostHog (`posthog-js` client-side, `posthog-node` server-side) — anonymous only, no PII, no `posthog.identify()` (#151, 2026-07-06). Both gracefully no-op if the key isn't set. Installed via the Vercel Marketplace integration ("Feature Flags and A/B tests" listing — we only use its core analytics/replay product, not flags). Env vars are `NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN` / `NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_HOST` — doubled prefix because the integration's own variable names already started with `NEXT_PUBLIC_POSTHOG_` before our custom prefix was applied on top. Cosmetic only, not worth fixing.
 - **Error tracking:** Sentry (`@sentry/nextjs`) — installed via the Vercel Marketplace integration (an initial `billingPlanId` error on this account was transient and resolved on retry). `SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN`/`NEXT_PUBLIC_SENTRY_DSN` are Vercel env vars (Preview + Production).
+- **AI-assisted workout metadata:** `@anthropic-ai/sdk` — used by `app/api/workout/infer/route.ts` only, not the general app. `ANTHROPIC_API_KEY` is a Vercel env var (Preview + Production, same as the other secrets — not set for Development).
 
 ## Architecture
 - Server components fetch data and pass it to client components as props
@@ -33,6 +34,7 @@ Demo: https://tigerwolves-git-demo-fouloxs-projects.vercel.app (long-lived `demo
 - `createFeedbackIssue` (`app/actions.ts`) is the odd one out in that file — unauthenticated (visitors can submit feedback), and its own GitHub side effect rather than a DB mutation. After creating the issue via REST, it links it to the **Running Apps GitHub Project board** (`RUNNING_APPS_PROJECT_ID` constant, GraphQL `addProjectV2ItemById`) via `after()` from `next/server`, so linking never delays the response the user is waiting on. One retry, then reports to Sentry on failure (not swallowed) — see #179 for why: every feedback issue was a floating orphan on the project board until this was added.
 - `lib/feedbackUtils.ts` — pure helpers for the flag-a-workout flow: `feedbackLabel` (maps UI type → GitHub label), `feedbackTitle` (formats issue title with prefix + 80-char truncation), `feedbackBody` (formats issue body with submitter identity and optional workout context). Used by `createFeedbackIssue`. Four feedback types: `bug`, `feature`, `workout-data` (flags a specific workout for data correction — includes workout name/date context), `run-leader`.
 - `components/FeedbackButton.tsx` / `components/FeedbackDrawer.tsx` — the flag-a-workout UI. `FeedbackButton` is the trigger (flag icon on expanded `ScheduleCard`); `FeedbackDrawer` is a bottom sheet with type selector and optional description. Workout context (name + date) is passed in as a prop and appended to the GitHub issue body via `feedbackUtils.ts`.
+- `app/api/workout/infer/route.ts` — AI-assisted workout metadata. Given a workout's name/category/type/instructions, calls Claude (`claude-sonnet-4-6` via `@anthropic-ai/sdk`) to infer the harder-to-fill fields (distance/time, energy system, HR zone, RPE, race types, training phases, coaching notes) for the leader to review/edit before saving. Auth-gated, 401 if unauthenticated. Nothing is auto-saved — inferred values only pre-fill the add-workout form.
 - `scripts/migrate.sql` — Neon schema; `scripts/seed.ts` — one-time ETL from Sheets, kept as historical record of the migration, not part of the live app
 - `proxy.ts` — Clerk middleware (NOT `middleware.ts` — renamed to avoid Next.js 16 deprecation warning); hardcodes `signInUrl: '/sign-in'` as a `clerkMiddleware()` option — don't move this back to an env var, see Auth Architecture below
 - 5-minute cache TTL via `unstable_cache`; on-demand invalidation via `updateTag` after every write
@@ -136,6 +138,9 @@ Do this for all remaining branches after each merge. Also check for duplicate fi
 ### Testing standard
 UI components: no unit tests — verify by running the app.
 `lib/*.ts` changes: TDD required.
+
+### Active learning: quiz before summarizing
+After any meaningful change — a PR, a bug fix, a new architectural piece — Claude asks Lou 2-4 short questions about what changed and why *before* giving a summary, so Lou reconstructs the understanding via active recall instead of passively reading a wrap-up. Applies especially to Next.js, Clerk, Neon, and the Redis/KV votes store, since Lou wants to be able to lead future developers on this stack, not just approve their output. Kept here rather than in Claude's private memory specifically so it survives machine/session switches — an equivalent preference had previously been saved under the wrong project's memory scope and was silently never applied (found 2026-07-19).
 
 ### `/review` rule
 After opening a PR touching more than one file, always tell Lou:
