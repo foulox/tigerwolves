@@ -153,6 +153,10 @@ export function buildPost(entry: ScheduleEntry, selections: Workout[], activeTyp
   const lines = [
     '🐯🐺 TigerWolves Tuesday Workout',
     '',
+    '👉 https://tigerwolves.foulox.me 👈',
+    '📅 See every workout between now and the NYC Marathon in the app',
+    '🗳️ React to let us know what you like — and what you don\'t',
+    '',
     `📅 ${formatDateLong(entry.date)}`,
     `🏃🏻‍♂️‍➡️ ${activeType ?? entry.workoutType}: ${primary.name}`,
   ]

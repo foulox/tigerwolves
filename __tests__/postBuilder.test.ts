@@ -85,6 +85,18 @@ describe('buildPost', () => {
     expect(post).toContain('🐯🐺 TigerWolves Tuesday Workout')
   })
 
+  test('app-usage CTA appears immediately after the opening line', () => {
+    const post = buildPost(entry, [baseWorkout])
+    const lines = post.split('\n')
+    expect(lines[0]).toBe('🐯🐺 TigerWolves Tuesday Workout')
+    expect(lines[1]).toBe('')
+    expect(lines[2]).toBe('👉 https://tigerwolves.foulox.me 👈')
+    expect(lines[3]).toBe('📅 See every workout between now and the NYC Marathon in the app')
+    expect(lines[4]).toBe('🗳️ React to let us know what you like — and what you don\'t')
+    expect(lines[5]).toBe('')
+    expect(lines[6]).toContain('📅')
+  })
+
   test('single-workout post has type: name line', () => {
     const post = buildPost(entry, [baseWorkout])
     expect(post).toContain('Ladder: Tempo Ladder')
