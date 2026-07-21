@@ -91,7 +91,7 @@ describe('buildPost', () => {
     expect(lines[0]).toBe('🐯🐺 TigerWolves Tuesday Workout')
     expect(lines[1]).toBe('')
     expect(lines[2]).toBe('👉 https://tigerwolves.foulox.me 👈')
-    expect(lines[3]).toBe('📅 See every workout between now and the NYC Marathon in the app')
+    expect(lines[3]).toBe('👀 See every workout between now and the NYC Marathon in the app')
     expect(lines[4]).toBe('🗳️ React to let us know what you like — and what you don\'t')
     expect(lines[5]).toBe('')
     expect(lines[6]).toContain('📅')

@@ -154,7 +154,7 @@ export function buildPost(entry: ScheduleEntry, selections: Workout[], activeTyp
     '🐯🐺 TigerWolves Tuesday Workout',
     '',
     '👉 https://tigerwolves.foulox.me 👈',
-    '📅 See every workout between now and the NYC Marathon in the app',
+    '👀 See every workout between now and the NYC Marathon in the app',
     '🗳️ React to let us know what you like — and what you don\'t',
     '',
     `📅 ${formatDateLong(entry.date)}`,
