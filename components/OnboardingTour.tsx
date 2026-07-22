@@ -46,7 +46,6 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const pathnameRef = useRef(pathname)
-  const launched = useRef(false)
   const pendingStep = useRef<number | null>(null)
 
   useEffect(() => { pathnameRef.current = pathname }, [pathname])
@@ -122,16 +121,8 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
     if (tourRef) {
       tourRef.current = { launch: () => launchTour(0) }
     }
-    // Only the entry page auto-launches — a manual relaunch (which clears SEEN_KEY)
-    // must not cause this effect to fire again on a later re-render, e.g. the
-    // pathname change from a mid-tour navigation step.
-    if (pathname === '/' && !launched.current && !localStorage.getItem(SEEN_KEY)) {
-      launched.current = true
-      const t = setTimeout(() => launchTour(0), 500)
-      return () => clearTimeout(t)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount only, capturing the entry pathname; must not re-run on later pathname changes
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- launchTour intentionally not listed; it's stable per render and captured correctly via the effect's closure
+  }, [tourRef])
 
   return null
 }
