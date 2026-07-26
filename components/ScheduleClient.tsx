@@ -44,23 +44,43 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
   // Land on NEXT UP (with a sliver of the last past card peeking above) before paint,
   // so the user never sees the page start at the very top and jump.
   useLayoutEffect(() => {
-    const headerHeight = document.querySelector('header')?.getBoundingClientRect().height ?? 0
-    const pillHeight = pillRef.current?.getBoundingClientRect().height ?? 0
-    if (pillRef.current) pillRef.current.style.top = `${headerHeight + PILL_GAP}px`
+    function landOnNextUp() {
+      const headerHeight = document.querySelector('header')?.getBoundingClientRect().height ?? 0
+      const pillHeight = pillRef.current?.getBoundingClientRect().height ?? 0
+      if (pillRef.current) pillRef.current.style.top = `${headerHeight + PILL_GAP}px`
 
-    const nextUpEl = nextUpRef.current
-    if (!nextUpEl) return
-    const rect = nextUpEl.getBoundingClientRect()
-    // The header (sticky) and pill (fixed) both float over the top of the viewport
-    // regardless of scroll position — landing NEXT UP's top based on a flat offset
-    // from the viewport edge (ignoring them) put it right underneath both. Clear
-    // their combined height first, then leave the intended sliver of the last
-    // past card peeking above that.
-    const topClearance = headerHeight + pillHeight + PILL_GAP + NEXT_UP_PAST_SLIVER
-    const target = Math.max(0, rect.top + window.scrollY - topClearance)
-    landingTargetRef.current = target
-    window.scrollTo(0, target)
-    updateScrollState()
+      const nextUpEl = nextUpRef.current
+      if (!nextUpEl) return
+      const rect = nextUpEl.getBoundingClientRect()
+      // The header (sticky) and pill (fixed) both float over the top of the viewport
+      // regardless of scroll position — landing NEXT UP's top based on a flat offset
+      // from the viewport edge (ignoring them) put it right underneath both. Clear
+      // their combined height first, then leave the intended sliver of the last
+      // past card peeking above that.
+      const topClearance = headerHeight + pillHeight + PILL_GAP + NEXT_UP_PAST_SLIVER
+      const target = Math.max(0, rect.top + window.scrollY - topClearance)
+      landingTargetRef.current = target
+      window.scrollTo(0, target)
+      updateScrollState()
+    }
+
+    landOnNextUp()
+
+    // Client-only widgets in the header (Clerk's <UserButton /> for signed-in
+    // leaders) hydrate and can change the header's real height shortly after
+    // this first paint — the page's true scrollable height isn't settled yet
+    // at this exact instant, so the scrollTo above can silently clamp short of
+    // the intended target (confirmed: signed-out landed correctly, signed-in
+    // stayed near the very top). Re-run while layout is still settling, for a
+    // bounded window, instead of leaving the user stranded once it shifts.
+    const observer = new ResizeObserver(() => landOnNextUp())
+    observer.observe(document.body)
+    const stopObserving = setTimeout(() => observer.disconnect(), 2000)
+
+    return () => {
+      observer.disconnect()
+      clearTimeout(stopObserving)
+    }
   }, [])
 
   useEffect(() => {
