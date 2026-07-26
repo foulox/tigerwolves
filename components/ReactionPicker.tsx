@@ -34,9 +34,10 @@ interface Props {
   workoutId: string
   workoutName: string
   initialVoteData: VoteData | null
+  muted?: boolean
 }
 
-export default function ReactionPicker({ workoutId, workoutName, initialVoteData }: Props) {
+export default function ReactionPicker({ workoutId, workoutName, initialVoteData, muted = false }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [voteData, setVoteData] = useState<VoteData | null>(
     initialVoteData ?? (isDemoMode ? demoVoteData(workoutId) : null)
@@ -121,9 +122,11 @@ export default function ReactionPicker({ workoutId, workoutName, initialVoteData
         onClick={(e) => { e.stopPropagation(); setIsOpen(v => !v) }}
         disabled={pending}
         className={`touch-manipulation whitespace-nowrap text-sm px-2.5 py-1 rounded-full ${
-          hasVotes
-            ? 'bg-orange-50 border border-orange-200 text-orange-700'
-            : 'border border-dashed border-gray-300 text-gray-400'
+          muted
+            ? 'border border-dashed border-[#d5d5d8] text-[#a3a7ad]'
+            : hasVotes
+              ? 'bg-orange-50 border border-orange-200 text-orange-700'
+              : 'border border-dashed border-gray-300 text-gray-400'
         }`}
         aria-label={hasVotes ? 'Open reaction picker' : 'Add a reaction'}
       >

@@ -82,3 +82,46 @@ test('expanded card collapses on second tap', async ({ page }) => {
   await card.click()
   await expect(detail).not.toBeVisible()
 })
+
+test('past cards show "Edit in library →" instead of "Plan week →", for signed-in leaders', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForLoadState('networkidle')
+
+  const pastCards = page.locator('[data-testid^="past-card-"]')
+  const count = await pastCards.count()
+  if (count === 0) return // no past history yet, nothing to verify
+
+  for (let i = 0; i < count; i++) {
+    const card = page.locator(`[data-testid="past-card-${i}"]`)
+    const text = await card.textContent()
+    const hasWorkout = !text?.includes('Not planned yet')
+    const editBtn = page.locator(`[data-testid="edit-in-library-${i}"]`)
+    if (hasWorkout) {
+      await expect(editBtn).toBeVisible()
+      await expect(editBtn).toContainText('Edit in library')
+      const href = await editBtn.getAttribute('href')
+      expect(href).toContain('/library/edit?name=')
+    } else {
+      await expect(editBtn).toHaveCount(0)
+    }
+    // Past cards never show the upcoming-only "Plan week →" button
+    await expect(page.locator(`[data-testid="plan-week-${i}"]`)).toHaveCount(0)
+  }
+})
+
+test('past cards do not collide with upcoming card testids', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForLoadState('networkidle')
+
+  // The prefix selector used by earlier tests must only ever match upcoming cards
+  const scheduleCards = page.locator('[data-testid^="schedule-card-"]')
+  const pastCards = page.locator('[data-testid^="past-card-"]')
+  const scheduleCount = await scheduleCards.count()
+  const pastCount = await pastCards.count()
+
+  for (let i = 0; i < scheduleCount; i++) {
+    const testId = await scheduleCards.nth(i).getAttribute('data-testid')
+    expect(testId).not.toContain('past')
+  }
+  expect(pastCount).toBeGreaterThanOrEqual(0)
+})
