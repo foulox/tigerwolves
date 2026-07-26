@@ -39,7 +39,7 @@ export default async function SchedulePage() {
 
   return (
     <div>
-      <header className="px-4 pt-10 pb-4 flex items-start justify-between">
+      <header className="sticky top-0 z-30 bg-gray-50 px-4 pt-10 pb-4 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
           <p className="text-sm text-gray-500 mt-0.5">Upcoming Tuesdays</p>
