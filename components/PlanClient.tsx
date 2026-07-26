@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ScheduleEntry, Workout } from '@/lib/data'
+import { resolveWorkout } from '@/lib/scheduleUtils'
 import { buildPost, formatDateLong } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
@@ -151,15 +152,28 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
   const visibleRows = pickerSearch ? displayRows : displayRows.slice(0, showCount)
   const remainingCount = pickerSearch ? 0 : displayRows.length - showCount
 
+  // Look up the already-scheduled workout across the FULL library, not the
+  // type-filtered allSuggestions — a leader can deliberately schedule a workout
+  // whose type doesn't match the week's nominal type (a real override, not bad
+  // data), and that should still be recognized rather than silently swapped
+  // for an unrelated suggestion.
+  const plannedWorkout = useMemo(() => {
+    if (!entry?.workoutName) return null
+    return resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)
+  }, [entry, workouts])
+
+  const plannedNotFound = !!entry?.workoutName && plannedWorkout === null
+
   const effectiveSelections: Workout[] = selectedWorkouts.length > 0
     ? selectedWorkouts
-    : (() => {
-        const planned = entry?.workoutName
-          ? allSuggestions.find(w => w.name === entry.workoutName) ?? null
-          : null
-        const w = planned ?? allSuggestions[0] ?? null
-        return w ? [w] : []
-      })()
+    : plannedWorkout
+      ? [plannedWorkout]
+      : entry?.workoutName
+        ? []
+        : (() => {
+            const w = allSuggestions[0] ?? null
+            return w ? [w] : []
+          })()
 
   function workoutKey(w: Workout) {
     return `${w.name}||${w.progression ?? ''}`
@@ -285,6 +299,12 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
               })}
             </div>
           </div>
+
+          {plannedNotFound && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-3 mb-4 text-sm text-red-700">
+              ⚠️ &ldquo;{entry.workoutName}&rdquo; is no longer in the workout library — pick a replacement below.
+            </div>
+          )}
 
           <div className="relative mb-4">
             <input
