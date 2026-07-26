@@ -6,8 +6,6 @@ import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import ScheduleCard from '@/components/ScheduleCard'
 
-const PAST_INITIAL_COUNT = 8
-const PAST_LOAD_MORE_COUNT = 4
 const NEXT_UP_SCROLL_OFFSET = 50
 const NEAR_TOP_THRESHOLD = 40
 
@@ -21,7 +19,6 @@ interface Props {
 }
 
 export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingWorkouts, isLeader, voteData }: Props) {
-  const [pastVisibleCount, setPastVisibleCount] = useState(PAST_INITIAL_COUNT)
   // Boolean, not raw scrollY — updated only when the near-top boundary is actually
   // crossed, so a scroll listener firing every frame doesn't force a re-render
   // (and a re-map of every visible card) on every pixel of scroll on mobile.
@@ -51,11 +48,6 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
     return () => window.removeEventListener('scroll', updateNearTop)
   }, [])
 
-  const startIdx = Math.max(0, past.length - pastVisibleCount)
-  const visiblePast = past.slice(startIdx)
-  const visiblePastWorkouts = pastWorkouts.slice(startIdx)
-  const hasMorePast = pastVisibleCount < past.length
-
   function scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -74,17 +66,8 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
         </button>
       )}
 
-      {hasMorePast && (
-        <button
-          onClick={() => setPastVisibleCount(c => Math.min(past.length, c + PAST_LOAD_MORE_COUNT))}
-          className="self-center my-1 px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-500 text-sm font-semibold touch-manipulation"
-        >
-          Load more history
-        </button>
-      )}
-
-      {visiblePast.map((entry, i) => {
-        const workout = visiblePastWorkouts[i]
+      {past.map((entry, i) => {
+        const workout = pastWorkouts[i]
         return (
           <ScheduleCard
             key={`past-${entry.date}-${entry.workoutName ?? ''}`}

@@ -13,12 +13,17 @@ export default async function SchedulePage() {
   const { schedule, workouts } = await fetchData()
   const today = new Date().toISOString().slice(0, 10)
 
+  const PAST_WEEKS_SHOWN = 8
+
   const upcoming = schedule
     .filter(e => e.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))
-  const past = schedule
+  const allPast = schedule
     .filter(e => e.date < today)
     .sort((a, b) => a.date.localeCompare(b.date))
+  // Bounded to a fixed window — no "load more" — so resolveWorkout/vote-data cost
+  // stays flat regardless of how much schedule history accumulates over time.
+  const past = allPast.slice(Math.max(0, allPast.length - PAST_WEEKS_SHOWN))
 
   const upcomingWorkouts = upcoming.map(entry =>
     resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)
