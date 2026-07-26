@@ -6,7 +6,8 @@ import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import ScheduleCard from '@/components/ScheduleCard'
 
-const NEXT_UP_SCROLL_OFFSET = 50
+const NEXT_UP_PAST_SLIVER = 50
+const PILL_GAP = 8
 const NEXT_UP_BUTTON_MARGIN = 20
 
 interface Props {
@@ -44,12 +45,19 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
   // so the user never sees the page start at the very top and jump.
   useLayoutEffect(() => {
     const headerHeight = document.querySelector('header')?.getBoundingClientRect().height ?? 0
-    if (pillRef.current) pillRef.current.style.top = `${headerHeight + 8}px`
+    const pillHeight = pillRef.current?.getBoundingClientRect().height ?? 0
+    if (pillRef.current) pillRef.current.style.top = `${headerHeight + PILL_GAP}px`
 
     const nextUpEl = nextUpRef.current
     if (!nextUpEl) return
     const rect = nextUpEl.getBoundingClientRect()
-    const target = Math.max(0, rect.top + window.scrollY - NEXT_UP_SCROLL_OFFSET)
+    // The header (sticky) and pill (fixed) both float over the top of the viewport
+    // regardless of scroll position — landing NEXT UP's top based on a flat offset
+    // from the viewport edge (ignoring them) put it right underneath both. Clear
+    // their combined height first, then leave the intended sliver of the last
+    // past card peeking above that.
+    const topClearance = headerHeight + pillHeight + PILL_GAP + NEXT_UP_PAST_SLIVER
+    const target = Math.max(0, rect.top + window.scrollY - topClearance)
     landingTargetRef.current = target
     window.scrollTo(0, target)
     updateScrollState()
