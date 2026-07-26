@@ -102,19 +102,26 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
     return s
   }, [workouts])
 
+  // Look up the already-scheduled workout across the FULL library, not the
+  // type-filtered allSuggestions — a leader can deliberately schedule a workout
+  // whose type doesn't match the week's nominal type (a real override, not bad
+  // data), and that should still be recognized rather than silently swapped
+  // for an unrelated suggestion.
+  const plannedWorkout = useMemo(() => {
+    if (!entry?.workoutName) return null
+    return resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)
+  }, [entry, workouts])
+
+  const plannedNotFound = !!entry?.workoutName && plannedWorkout === null
+
   const allSuggestions = useMemo(() => {
     if (!entry) return []
     const types = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
     return workouts
       .filter(w => types.includes(w.type))
-      .sort((a, b) => {
-        const aPlanned = entry.workoutName != null && a.name === entry.workoutName
-        const bPlanned = entry.workoutName != null && b.name === entry.workoutName
-        if (aPlanned && !bPlanned) return -1
-        if (!aPlanned && bPlanned) return 1
-        return (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1
-      })
-  }, [entry, workouts, activeType])
+      .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
+      .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
+  }, [entry, workouts, activeType, plannedWorkout])
 
   const pickerSource = useMemo(() => {
     const q = pickerSearch.toLowerCase()
@@ -127,8 +134,9 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
         w.reason.toLowerCase().includes(q) ||
         w.raceTypes.some(r => r.toLowerCase().includes(q))
       )
+      .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
-  }, [pickerSearch, allSuggestions, workouts])
+  }, [pickerSearch, allSuggestions, workouts, plannedWorkout])
 
   const displayRows = useMemo<PlanDisplayRow[]>(() => {
     const rows: PlanDisplayRow[] = []
@@ -151,18 +159,6 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
 
   const visibleRows = pickerSearch ? displayRows : displayRows.slice(0, showCount)
   const remainingCount = pickerSearch ? 0 : displayRows.length - showCount
-
-  // Look up the already-scheduled workout across the FULL library, not the
-  // type-filtered allSuggestions — a leader can deliberately schedule a workout
-  // whose type doesn't match the week's nominal type (a real override, not bad
-  // data), and that should still be recognized rather than silently swapped
-  // for an unrelated suggestion.
-  const plannedWorkout = useMemo(() => {
-    if (!entry?.workoutName) return null
-    return resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)
-  }, [entry, workouts])
-
-  const plannedNotFound = !!entry?.workoutName && plannedWorkout === null
 
   const effectiveSelections: Workout[] = selectedWorkouts.length > 0
     ? selectedWorkouts
@@ -306,6 +302,49 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
             </div>
           )}
 
+          {plannedWorkout && (() => {
+            const w = plannedWorkout
+            const sel = isEffectivelySelected(w)
+            const eid = `planned-${w.name}-${w.variation}`
+            const expanded = expandedId === eid
+            return (
+              <div className="mb-4">
+                <div className="text-sm font-bold text-gray-700 mb-2">Currently planned</div>
+                <div
+                  className={`bg-white rounded-2xl border shadow-sm transition-colors ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
+                >
+                  <button
+                    onClick={() => handleSelect(w)}
+                    className="w-full text-left p-4 touch-manipulation cursor-pointer"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="font-semibold text-gray-900">{w.name}</div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <VoteBadge v={voteData[workoutVoteId(w.name, w.variation)]} />
+                        <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(w.lastRan) : 'Never'}</span>
+                      </div>
+                    </div>
+                    {w.variation && <div className="text-xs text-gray-400 mt-0.5">{w.variation}</div>}
+                    <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
+                    <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
+                  </button>
+                  <button
+                    onClick={() => toggleExpand(eid)}
+                    className="w-full px-4 pb-3 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1"
+                  >
+                    <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+                    {expanded ? 'Hide details' : 'Show details'}
+                  </button>
+                  {expanded && (
+                    <div className="px-4 pb-4">
+                      <WorkoutDetail w={w} isLeader={isLeader} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+
           <div className="relative mb-4">
             <input
               type="search"
@@ -318,7 +357,11 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
           </div>
 
           {allSuggestions.length === 0 && !pickerSearch ? (
-            <p className="text-gray-400 italic text-sm">No {entry.workoutType} workouts in the library yet.</p>
+            <p className="text-gray-400 italic text-sm">
+              {plannedWorkout
+                ? `No other ${entry.workoutType} workouts to switch to yet.`
+                : `No ${entry.workoutType} workouts in the library yet.`}
+            </p>
           ) : displayRows.length === 0 ? (
             <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
           ) : (
