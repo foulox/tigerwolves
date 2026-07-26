@@ -22,8 +22,18 @@ interface Props {
 
 export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingWorkouts, isLeader, voteData }: Props) {
   const [pastVisibleCount, setPastVisibleCount] = useState(PAST_INITIAL_COUNT)
-  const [scrollY, setScrollY] = useState(0)
+  // Boolean, not raw scrollY — updated only when the near-top boundary is actually
+  // crossed, so a scroll listener firing every frame doesn't force a re-render
+  // (and a re-map of every visible card) on every pixel of scroll on mobile.
+  const [nearTop, setNearTop] = useState(false)
   const nextUpRef = useRef<HTMLDivElement>(null)
+
+  function updateNearTop() {
+    setNearTop(prev => {
+      const next = window.scrollY < NEAR_TOP_THRESHOLD
+      return prev === next ? prev : next
+    })
+  }
 
   // Land on NEXT UP (with a sliver of the last past card peeking above) before paint,
   // so the user never sees the page start at the very top and jump.
@@ -33,20 +43,18 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
     const rect = nextUpEl.getBoundingClientRect()
     const target = Math.max(0, rect.top + window.scrollY - NEXT_UP_SCROLL_OFFSET)
     window.scrollTo(0, target)
-    setScrollY(window.scrollY)
+    updateNearTop()
   }, [])
 
   useEffect(() => {
-    const onScroll = () => setScrollY(window.scrollY)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    window.addEventListener('scroll', updateNearTop, { passive: true })
+    return () => window.removeEventListener('scroll', updateNearTop)
   }, [])
 
   const startIdx = Math.max(0, past.length - pastVisibleCount)
   const visiblePast = past.slice(startIdx)
   const visiblePastWorkouts = pastWorkouts.slice(startIdx)
   const hasMorePast = pastVisibleCount < past.length
-  const nearTop = scrollY < NEAR_TOP_THRESHOLD
 
   function scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -57,6 +65,8 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
       {past.length > 0 && (
         <button
           onClick={scrollToTop}
+          aria-hidden={nearTop}
+          tabIndex={nearTop ? -1 : 0}
           style={{ opacity: nearTop ? 0 : 1, pointerEvents: nearTop ? 'none' : 'auto' }}
           className="sticky top-1.5 self-center z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-900/70 text-white text-xs font-semibold touch-manipulation transition-opacity duration-200"
         >

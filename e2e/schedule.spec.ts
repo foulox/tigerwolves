@@ -115,13 +115,18 @@ test('past cards do not collide with upcoming card testids', async ({ page }) =>
 
   // The prefix selector used by earlier tests must only ever match upcoming cards
   const scheduleCards = page.locator('[data-testid^="schedule-card-"]')
-  const pastCards = page.locator('[data-testid^="past-card-"]')
   const scheduleCount = await scheduleCards.count()
-  const pastCount = await pastCards.count()
 
   for (let i = 0; i < scheduleCount; i++) {
     const testId = await scheduleCards.nth(i).getAttribute('data-testid')
     expect(testId).not.toContain('past')
   }
-  expect(pastCount).toBeGreaterThanOrEqual(0)
+
+  // And past cards must never be picked up by the "plan-week-" locator either
+  const pastCards = page.locator('[data-testid^="past-card-"]')
+  const pastCount = await pastCards.count()
+  for (let i = 0; i < pastCount; i++) {
+    const testId = await pastCards.nth(i).getAttribute('data-testid')
+    expect(testId).not.toContain('schedule-card')
+  }
 })
