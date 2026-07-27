@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 // Hoist the in-memory store and mocks so vi.mock factories can reference them
-const { store, mgetMock, incrMock, decrMock, execMock, pipelineMock, captureServerEventMock } = vi.hoisted(() => {
+const { store, mgetMock, incrMock, decrMock, execMock, pipelineMock, captureServerEventMock, authMock } = vi.hoisted(() => {
   const store: Record<string, number> = {}
 
   const incrMock = vi.fn((key: string) => {
@@ -21,8 +21,9 @@ const { store, mgetMock, incrMock, decrMock, execMock, pipelineMock, captureServ
     Promise.resolve(keys.map(k => store[k] ?? null))
   )
   const captureServerEventMock = vi.fn().mockResolvedValue(undefined)
+  const authMock = vi.fn().mockResolvedValue({ userId: null })
 
-  return { store, mgetMock, incrMock, decrMock, execMock, pipelineMock, captureServerEventMock }
+  return { store, mgetMock, incrMock, decrMock, execMock, pipelineMock, captureServerEventMock, authMock }
 })
 
 vi.mock('@vercel/kv', () => ({
@@ -31,6 +32,10 @@ vi.mock('@vercel/kv', () => ({
 
 vi.mock('../lib/analytics', () => ({
   captureServerEvent: captureServerEventMock,
+}))
+
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: authMock,
 }))
 
 import { getVoteData } from '../lib/votes'
@@ -61,6 +66,7 @@ beforeEach(() => {
   pipelineMock.mockImplementation(() => ({ incr: incrMock, decr: decrMock, exec: execMock }))
   execMock.mockResolvedValue([])
   captureServerEventMock.mockResolvedValue(undefined)
+  authMock.mockResolvedValue({ userId: null })
 })
 
 describe('POST /api/vote', () => {
@@ -102,29 +108,38 @@ describe('POST /api/vote', () => {
     expect(res.status).toBe(400)
   })
 
-  it('fires reaction_cast PostHog event with correct properties for a new vote', async () => {
+  it('fires reaction_cast PostHog event with correct properties for a new vote, anonymous by default', async () => {
     await POST(makeRequest({ workoutId: 'w1', workoutName: 'Ladder', rating: 5 }))
-    expect(captureServerEventMock).toHaveBeenCalledWith('reaction_cast', {
+    expect(captureServerEventMock).toHaveBeenCalledWith('reaction_cast', 'anonymous-runner', {
       workoutId: 'w1',
       workoutName: 'Ladder',
       rating: 5,
       emoji: '🥳',
       is_change: false,
+      isLeader: false,
     })
   })
 
   it('fires reaction_cast with is_change=true when previousRating is set', async () => {
     store['vote:test:w1:3'] = 1
     await POST(makeRequest({ workoutId: 'w1', workoutName: 'Ladder', rating: 4, previousRating: 3 }))
-    expect(captureServerEventMock).toHaveBeenCalledWith('reaction_cast', expect.objectContaining({
+    expect(captureServerEventMock).toHaveBeenCalledWith('reaction_cast', 'anonymous-runner', expect.objectContaining({
       is_change: true,
     }))
   })
 
   it('uses workoutId as workoutName in analytics when workoutName is omitted', async () => {
     await POST(makeRequest({ workoutId: 'w1', rating: 3 }))
-    expect(captureServerEventMock).toHaveBeenCalledWith('reaction_cast', expect.objectContaining({
+    expect(captureServerEventMock).toHaveBeenCalledWith('reaction_cast', 'anonymous-runner', expect.objectContaining({
       workoutName: 'w1',
+    }))
+  })
+
+  it('fires reaction_cast with the real userId and isLeader=true when a signed-in leader casts a reaction', async () => {
+    authMock.mockResolvedValue({ userId: 'user_leader_123' })
+    await POST(makeRequest({ workoutId: 'w1', workoutName: 'Ladder', rating: 5 }))
+    expect(captureServerEventMock).toHaveBeenCalledWith('reaction_cast', 'user_leader_123', expect.objectContaining({
+      isLeader: true,
     }))
   })
 

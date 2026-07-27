@@ -161,9 +161,10 @@ function buildWorkout(formData: FormData, variation = '', progression = ''): Omi
   }
 }
 
-async function requireAuth() {
+async function requireAuth(): Promise<string> {
   const { userId } = await auth()
   if (!userId) throw new Error('Unauthorized')
+  return userId
 }
 
 function revalidateAll() {
@@ -172,10 +173,10 @@ function revalidateAll() {
 }
 
 export async function setPlanWorkout(date: string, workoutName: string, selectedVariations: string[]) {
-  await requireAuth()
+  const userId = await requireAuth()
   await dbSetScheduleWorkout(date, workoutName, selectedVariations)
   revalidateAll()
-  await captureServerEvent('schedule_workout_set')
+  await captureServerEvent('schedule_workout_set', userId, { isLeader: true })
 }
 
 export async function regroupFamily(
@@ -187,18 +188,18 @@ export async function regroupFamily(
     progression: number
   }>
 ) {
-  await requireAuth()
+  const userId = await requireAuth()
   await dbRegroupFamily(newName, workouts)
   revalidateAll()
-  await captureServerEvent('workouts_combined')
+  await captureServerEvent('workouts_combined', userId, { isLeader: true })
   redirect('/library')
 }
 
 export async function addWorkout(formData: FormData) {
-  await requireAuth()
+  const userId = await requireAuth()
   await dbInsertWorkout(buildWorkout(formData))
   revalidateAll()
-  await captureServerEvent('workout_added', { isVariation: false })
+  await captureServerEvent('workout_added', userId, { isVariation: false, isLeader: true })
   redirect('/library')
 }
 
@@ -212,7 +213,7 @@ export async function updateWorkout(
   original: { name: string; variation: string; hasTurnaround: boolean; turnaroundDistance: string },
   formData: FormData,
 ) {
-  await requireAuth()
+  const userId = await requireAuth()
   const variation = (formData.get('variation') as string) ?? ''
   const progression = (formData.get('progression') as string) ?? ''
   const updated = buildWorkout(formData, variation, progression)
@@ -222,7 +223,7 @@ export async function updateWorkout(
 
   await dbUpdateWorkout(original.name, original.variation, updated)
   revalidateAll()
-  await captureServerEvent('workout_edited', { turnaroundChanged })
+  await captureServerEvent('workout_edited', userId, { turnaroundChanged, isLeader: true })
   redirect('/library')
 }
 
@@ -238,7 +239,7 @@ export async function addVariation(
   instructions: string,
   distTime: string,
 ) {
-  await requireAuth()
+  const userId = await requireAuth()
   await dbInsertWorkout({
     name: parent.name,
     sport: 'Running',
@@ -262,6 +263,6 @@ export async function addVariation(
     turnaroundDistance: '',
   })
   revalidateAll()
-  await captureServerEvent('workout_added', { isVariation: true })
+  await captureServerEvent('workout_added', userId, { isVariation: true, isLeader: true })
   redirect('/library')
 }

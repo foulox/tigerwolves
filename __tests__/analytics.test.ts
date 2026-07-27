@@ -26,36 +26,36 @@ describe('captureServerEvent', () => {
     vi.stubEnv('NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN', '')
     const { captureServerEvent } = await import('../lib/analytics')
 
-    await captureServerEvent('workout_edited')
+    await captureServerEvent('workout_edited', 'user_123')
 
     expect(captureMock).not.toHaveBeenCalled()
     expect(flushMock).not.toHaveBeenCalled()
   })
 
-  test('captures the event with isLeader=true and flushes when a key is configured', async () => {
+  test('captures the event with the caller-supplied distinctId and properties, and flushes when a key is configured', async () => {
     vi.stubEnv('NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN', 'phc_test_key')
     const { captureServerEvent } = await import('../lib/analytics')
 
-    await captureServerEvent('workout_edited', { turnaroundChanged: true })
+    await captureServerEvent('workout_edited', 'user_123', { isLeader: true, turnaroundChanged: true })
 
     expect(captureMock).toHaveBeenCalledWith({
-      distinctId: 'server-actions',
+      distinctId: 'user_123',
       event: 'workout_edited',
       properties: { isLeader: true, turnaroundChanged: true },
     })
     expect(flushMock).toHaveBeenCalledTimes(1)
   })
 
-  test('never lets a caller-supplied isLeader override the true default', async () => {
+  test('passes through a caller-supplied isLeader=false as-is (no longer forced to true)', async () => {
     vi.stubEnv('NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN', 'phc_test_key')
     const { captureServerEvent } = await import('../lib/analytics')
 
-    await captureServerEvent('workout_edited', { isLeader: false })
+    await captureServerEvent('reaction_cast', 'anonymous-runner', { isLeader: false })
 
     expect(captureMock).toHaveBeenCalledWith({
-      distinctId: 'server-actions',
-      event: 'workout_edited',
-      properties: { isLeader: true },
+      distinctId: 'anonymous-runner',
+      event: 'reaction_cast',
+      properties: { isLeader: false },
     })
   })
 
@@ -63,8 +63,8 @@ describe('captureServerEvent', () => {
     vi.stubEnv('NEXT_PUBLIC_NEXT_PUBLIC_POSTHOG_POSTHOG_PROJECT_TOKEN', 'phc_test_key')
     const { captureServerEvent } = await import('../lib/analytics')
 
-    await captureServerEvent('workout_edited')
-    await captureServerEvent('workouts_combined')
+    await captureServerEvent('workout_edited', 'user_123')
+    await captureServerEvent('workouts_combined', 'user_123')
 
     expect(PostHog).toHaveBeenCalledTimes(1)
   })
@@ -74,6 +74,6 @@ describe('captureServerEvent', () => {
     flushMock.mockRejectedValueOnce(new Error('network error'))
     const { captureServerEvent } = await import('../lib/analytics')
 
-    await expect(captureServerEvent('workout_edited')).resolves.toBeUndefined()
+    await expect(captureServerEvent('workout_edited', 'user_123')).resolves.toBeUndefined()
   })
 })
