@@ -13,12 +13,13 @@ function getClient(): PostHog | null {
 // unreachable, swallow the error rather than let it block the caller's redirect.
 export async function captureServerEvent(
   event: string,
+  distinctId: string,
   properties?: Record<string, string | number | boolean>
 ): Promise<void> {
   const client = getClient()
   if (!client) return
   try {
-    client.capture({ distinctId: 'server-actions', event, properties: { ...properties, isLeader: true } })
+    client.capture({ distinctId, event, properties })
     await client.flush()
   } catch {
     // Best-effort only - a PostHog outage should never surface as an app error.
