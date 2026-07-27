@@ -70,17 +70,21 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
     // leaders) hydrate and can change the header's real height shortly after
     // this first paint — the page's true scrollable height isn't settled yet
     // at this exact instant, so the scrollTo above can silently clamp short of
-    // the intended target (confirmed: signed-out landed correctly, signed-in
-    // stayed near the very top). Re-run while layout is still settling, for a
-    // bounded window, instead of leaving the user stranded once it shifts.
-    const observer = new ResizeObserver(() => landOnNextUp())
-    observer.observe(document.body)
-    const stopObserving = setTimeout(() => observer.disconnect(), 2000)
+    // the intended target, and the pill's `top` (also set in landOnNextUp)
+    // is left stale too. Must observe the `header` element itself, not
+    // document.body: body has `h-full` (RootLayout), pinning its own box to
+    // the viewport height, so body's rendered size never reflects the header
+    // growing/shrinking — only `header` (and `main`, via min-h-full) actually
+    // changes size with content, so only observing one of those catches it
+    // (#246 — the earlier document.body version never fired for this, leaving
+    // signed-in leaders with a pill positioned under the sticky header).
+    const headerEl = document.querySelector('header')
+    if (!headerEl) return
 
-    return () => {
-      observer.disconnect()
-      clearTimeout(stopObserving)
-    }
+    const observer = new ResizeObserver(() => landOnNextUp())
+    observer.observe(headerEl)
+
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
