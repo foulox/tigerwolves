@@ -84,6 +84,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
   const [saved, setSaved] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [activeType, setActiveType] = useState<string | null>(null)
+  const [planTab, setPlanTab] = useState<'post' | 'browse'>('post')
 
   const entry = upcoming[weekIndex]
 
@@ -188,6 +189,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
     setSaved(false)
     setExpandedId(null)
     setActiveType(null)
+    setPlanTab('post')
   }
 
   function toggleExpand(id: string) {
@@ -228,6 +230,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
     try {
       await setPlanWorkout(entry.date, sorted[0].name, sorted.map(w => w.variation))
       setSaved(true)
+      setPlanTab('post')
     } finally {
       setSaving(false)
     }
@@ -345,6 +348,29 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
             )
           })()}
 
+          {plannedWorkout && (
+          <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4">
+            <button
+              onClick={() => setPlanTab('post')}
+              className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors ${
+                planTab === 'post' ? 'bg-white text-gray-900 shadow-sm' : 'bg-transparent text-gray-500'
+              }`}
+            >
+              Post draft
+            </button>
+            <button
+              onClick={() => setPlanTab('browse')}
+              className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors ${
+                planTab === 'browse' ? 'bg-white text-gray-900 shadow-sm' : 'bg-transparent text-gray-500'
+              }`}
+            >
+              Change workout
+            </button>
+          </div>
+          )}
+
+          {(!plannedWorkout || planTab === 'browse') && (
+          <>
           <div className="relative mb-4">
             <input
               type="search"
@@ -501,7 +527,6 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
           )}
 
           {effectiveSelections.length > 0 && (
-            <>
               <button
                 onClick={handleSetPlan}
                 disabled={saving || saved}
@@ -513,9 +538,12 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
               >
                 {saved ? <><Check size={16} /> Saved to plan</> : saving ? 'Saving…' : 'Set as plan'}
               </button>
+          )}
+          </>
+          )}
 
+          {(!plannedWorkout || planTab === 'post') && effectiveSelections.length > 0 && (
               <div>
-                <div className="text-sm font-bold text-gray-700 mb-2">Heylo post draft</div>
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
                   <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
                   <button
@@ -529,7 +557,6 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                   </button>
                 </div>
               </div>
-            </>
           )}
         </>
       )}
