@@ -12,6 +12,12 @@ const EXPAND_CARD_STEP = 1
 // Step index that expands the first family card so a variation is visible once navigated.
 const LIBRARY_VARIATIONS_STEP = 5
 
+// driver.js tears down and repositions the popover on every step transition. A tap that
+// lands in that gap (on the overlay, or on the outgoing/incoming highlighted element)
+// is a mistimed repeat tap, not a deliberate exit — ignore clicks for a beat after each
+// transition. Matches driver.js's own transition duration.
+const STEP_TRANSITION_GRACE_MS = 400
+
 // Steps that live on a route other than the one the tour started on — single
 // source of truth for both triggering the navigation and finding the target
 // once the new page has rendered.
@@ -47,6 +53,7 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
   const pathname = usePathname()
   const pathnameRef = useRef(pathname)
   const pendingStep = useRef<number | null>(null)
+  const lastHighlightAt = useRef(0)
 
   useEffect(() => { pathnameRef.current = pathname }, [pathname])
 
@@ -63,7 +70,14 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
       animate: true,
       overlayOpacity: 0.5,
       steps: getSteps(),
+      // driver.js only offers a hook for clicks on the overlay backdrop — clicking the
+      // highlighted element itself is left natively interactive with no hook at all. Disable
+      // driver.js's own overlay handling entirely and decide everything ourselves via a single
+      // document-level listener below, so both cases (backdrop and highlighted element) go
+      // through the same "anything but Next/Previous exits" rule.
+      overlayClickBehavior: () => {},
       onHighlightStarted: (_el, _step, { state }) => {
+        lastHighlightAt.current = Date.now()
         const idx = state.activeIndex ?? 0
 
         // Expand first schedule card so the flag button (step 3) is in DOM
@@ -84,12 +98,24 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
         }
       },
       onDestroyStarted: (_el, _step, { driver: d }) => {
+        document.removeEventListener('click', handleOutsideClick, true)
         if (pendingStep.current === null) {
           localStorage.setItem(SEEN_KEY, '1')
         }
         d.destroy()
       },
     })
+
+    // Next and Previous keep their normal behavior; a click anywhere else — including on
+    // the highlighted element, which driver.js otherwise leaves fully interactive — exits
+    // the tour and lets the click's own native behavior (e.g. a real nav) proceed untouched.
+    function handleOutsideClick(e: MouseEvent) {
+      if (Date.now() - lastHighlightAt.current < STEP_TRANSITION_GRACE_MS) return
+      const target = e.target instanceof Element ? e.target : null
+      if (target?.closest('.driver-popover-next-btn, .driver-popover-prev-btn')) return
+      driverObj.destroy()
+    }
+    document.addEventListener('click', handleOutsideClick, true)
 
     driverObj.drive(startAt)
   }
