@@ -24,3 +24,32 @@ test('Plan page shows workout picker and generates Heylo post', async ({ page })
     await expect(page.locator('body')).toContainText(/plan|no upcoming|workout/i)
   }
 })
+
+test('Plan page tab switch: Post draft is default, Change workout reveals the picker, and switching back preserves the post', async ({ page }) => {
+  await page.goto('/plan')
+  await page.waitForLoadState('networkidle')
+
+  const postTab = page.getByRole('button', { name: 'Post draft', exact: true })
+  const browseTab = page.getByRole('button', { name: 'Change workout', exact: true })
+
+  // Tabs only render once a workout is already planned for the week (State A) —
+  // if this week has nothing planned yet (State B), there's nothing to assert here.
+  if (!(await postTab.isVisible({ timeout: 5000 }).catch(() => false))) {
+    test.skip(true, 'No planned week available in this environment to exercise the tab switch')
+    return
+  }
+
+  // Default view: Post draft tab active, showing the post + Copy button, no search bar
+  await expect(page.getByRole('button', { name: /copy to clipboard/i })).toBeVisible()
+  await expect(page.locator('input[type="search"]')).not.toBeVisible()
+
+  // Switching to Change workout reveals the search bar and browse list, hides the post
+  await browseTab.click()
+  await expect(page.locator('input[type="search"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: /copy to clipboard/i })).not.toBeVisible()
+
+  // Switching back to Post draft restores the post view
+  await postTab.click()
+  await expect(page.getByRole('button', { name: /copy to clipboard/i })).toBeVisible()
+  await expect(page.locator('input[type="search"]')).not.toBeVisible()
+})
