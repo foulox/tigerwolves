@@ -4,8 +4,7 @@
 A mobile-first web app for **North Brooklyn Runners (NBR)**. Currently serves TigerWolves — the Tuesday morning quality workout run. The long-term vision is to expand to all NBR runs.
 
 Live at: https://tigerwolves.foulox.me (custom domain, since the 2026-07-03 Clerk production cutover — `tigerwolves.vercel.app` still works as a fallback alias)
-Staging: https://tigerwolves-git-staging-fouloxs-projects.vercel.app (stable branch alias — don't use a specific deployment URL here, those change every deploy)
-Demo: https://tigerwolves-git-demo-fouloxs-projects.vercel.app (long-lived `demo` branch; env var `NEXT_PUBLIC_DEMO_MODE=true` + `NEXT_PUBLIC_DEMO_LEADER_EMAIL`; no auth required for participant routes)
+Staging: https://tigerwolves-git-staging-fouloxs-projects.vercel.app (stable branch alias — don't use a specific deployment URL here, those change every deploy — also serves as the external demo path; the standalone `demo` branch/mode was removed, #229)
 
 ## Where to look
 This file holds only what must never be missed regardless of task — guardrails against reintroducing fixed bugs, and hazards specific to working as an agent in this environment. Everything else (stack, architecture, club context, screen-by-screen behavior, Heylo post format, dev workflow, workout categories) lives in the wiki, organized so you read only the part you need instead of one long file top to bottom.
