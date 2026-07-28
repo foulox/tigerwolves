@@ -12,6 +12,11 @@ const EXPAND_CARD_STEP = 1
 // Step index that expands the first family card so a variation is visible once navigated.
 const LIBRARY_VARIATIONS_STEP = 5
 
+// driver.js tears down and repositions the popover on every step transition. A tap that
+// lands in that gap falls through to the overlay — treat it as a mistimed repeat tap on
+// "Next" rather than a deliberate exit. Matches driver.js's own transition duration.
+const OVERLAY_CLICK_GRACE_MS = 400
+
 // Steps that live on a route other than the one the tour started on — single
 // source of truth for both triggering the navigation and finding the target
 // once the new page has rendered.
@@ -47,6 +52,7 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
   const pathname = usePathname()
   const pathnameRef = useRef(pathname)
   const pendingStep = useRef<number | null>(null)
+  const lastHighlightAt = useRef(0)
 
   useEffect(() => { pathnameRef.current = pathname }, [pathname])
 
@@ -63,7 +69,12 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
       animate: true,
       overlayOpacity: 0.5,
       steps: getSteps(),
+      overlayClickBehavior: (_el, _step, { driver: d }) => {
+        if (Date.now() - lastHighlightAt.current < OVERLAY_CLICK_GRACE_MS) return
+        d.destroy()
+      },
       onHighlightStarted: (_el, _step, { state }) => {
+        lastHighlightAt.current = Date.now()
         const idx = state.activeIndex ?? 0
 
         // Expand first schedule card so the flag button (step 3) is in DOM
