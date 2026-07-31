@@ -65,10 +65,15 @@ function mapScheduleEntry(row: RawRow): ScheduleEntry {
 
 function mapRace(row: RawRow): Race {
   return {
+    id: 0, // unused — the INSERT below only references date/name/distance/location
     date: normalizeDate(row['Date']) ?? '',
     name: str(row['Name']),
     distance: str(row['Distance']),
     location: str(row['Location']),
+    organizer: '',
+    verified: true,
+    flagged: false,
+    flagNote: '',
   }
 }
 

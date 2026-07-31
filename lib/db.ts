@@ -68,10 +68,15 @@ export async function fetchRaces(): Promise<Race[]> {
     SELECT * FROM races ORDER BY date ASC
   `
   return rows.map((r) => ({
+    id: r.id as number,
     date: toDateString(r.date),
     name: r.name as string,
     distance: r.distance as string,
     location: r.location as string,
+    organizer: r.organizer as string,
+    verified: r.verified as boolean,
+    flagged: r.flagged as boolean,
+    flagNote: r.flag_note as string,
   }))
 }
 
@@ -135,6 +140,44 @@ export async function dbUpdateWorkout(
 export async function dbDeleteWorkout(name: string, variation: string): Promise<void> {
   await sql`
     DELETE FROM workouts WHERE name = ${name} AND variation = ${variation}
+  `
+}
+
+export async function dbInsertRace(race: Omit<Race, 'id'>): Promise<number> {
+  const rows = await sql`
+    INSERT INTO races (date, name, distance, location, organizer, verified, flagged, flag_note)
+    VALUES (${race.date}::date, ${race.name}, ${race.distance}, ${race.location}, ${race.organizer}, ${race.verified}, ${race.flagged}, ${race.flagNote})
+    RETURNING id
+  `
+  return rows[0].id as number
+}
+
+export async function dbFlagRace(id: number, flagNote: string): Promise<void> {
+  await sql`
+    UPDATE races SET flagged = true, flag_note = ${flagNote} WHERE id = ${id}
+  `
+}
+
+export async function dbVerifyRace(id: number): Promise<void> {
+  await sql`
+    UPDATE races SET verified = true WHERE id = ${id}
+  `
+}
+
+export async function dbFixRace(
+  id: number,
+  fields: { name: string; date: string; distance: string; location: string },
+): Promise<void> {
+  await sql`
+    UPDATE races SET
+      name = ${fields.name},
+      date = ${fields.date}::date,
+      distance = ${fields.distance},
+      location = ${fields.location},
+      verified = true,
+      flagged = false,
+      flag_note = ''
+    WHERE id = ${id}
   `
 }
 

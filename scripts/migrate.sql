@@ -46,6 +46,19 @@ CREATE TABLE IF NOT EXISTS races (
   PRIMARY KEY (date, name)
 );
 
+-- #238: runner-added races need a real id — the existing (date, name) composite key
+-- breaks once runners can submit near-duplicate entries. Also adds organizer/verification/
+-- flag state for community-submitted races. verified defaults true so existing
+-- leader-seeded rows backfill as already-verified; new runner submissions explicitly
+-- insert verified=false.
+ALTER TABLE races ADD COLUMN IF NOT EXISTS id SERIAL;
+ALTER TABLE races ADD COLUMN IF NOT EXISTS organizer TEXT NOT NULL DEFAULT '';
+ALTER TABLE races ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE races ADD COLUMN IF NOT EXISTS flagged BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE races ADD COLUMN IF NOT EXISTS flag_note TEXT NOT NULL DEFAULT '';
+ALTER TABLE races DROP CONSTRAINT IF EXISTS races_pkey;
+ALTER TABLE races ADD PRIMARY KEY (id);
+
 CREATE TABLE IF NOT EXISTS run_leaders (
   id SERIAL PRIMARY KEY,
   run_id TEXT NOT NULL,

@@ -53,10 +53,15 @@ export type ScheduleEntry = {
 }
 
 export type Race = {
+  id: number
   date: string
   name: string
   distance: string
   location: string
+  organizer: string
+  verified: boolean
+  flagged: boolean
+  flagNote: string
 }
 
 export const RUN_LEADERS = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']

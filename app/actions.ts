@@ -12,6 +12,10 @@ import {
   dbUpdateWorkout,
   dbDeleteWorkout,
   dbRegroupFamily,
+  dbInsertRace,
+  dbFlagRace,
+  dbVerifyRace,
+  dbFixRace,
 } from '@/lib/db'
 import { captureServerEvent } from '@/lib/analytics'
 import { feedbackLabel, feedbackTitle, feedbackBody, type FeedbackType } from '@/lib/feedbackUtils'
@@ -225,6 +229,58 @@ export async function updateWorkout(
   revalidateAll()
   await captureServerEvent('workout_edited', userId, { turnaroundChanged, isLeader: true })
   redirect('/library')
+}
+
+export async function addRace(data: {
+  name: string
+  date: string
+  distance: string
+  location: string
+  organizer: string
+}): Promise<{ id: number } | { error: string }> {
+  const name = data.name.trim()
+  const date = data.date.trim()
+  if (!name) return { error: 'Race name is required' }
+  if (!date) return { error: 'Date is required' }
+
+  const id = await dbInsertRace({
+    date,
+    name,
+    distance: data.distance.trim(),
+    location: data.location.trim(),
+    organizer: data.organizer.trim() || 'a club member',
+    verified: false,
+    flagged: false,
+    flagNote: '',
+  })
+  revalidateAll()
+  await captureServerEvent('race_added', 'anonymous-runner', { isLeader: false })
+  return { id }
+}
+
+export async function flagRaceIssue(raceId: number, note: string): Promise<void | { error: string }> {
+  const trimmed = note.trim()
+  if (!trimmed) return { error: 'Description is required' }
+  await dbFlagRace(raceId, trimmed)
+  revalidateAll()
+  await captureServerEvent('race_flagged', 'anonymous-runner', { raceId })
+}
+
+export async function verifyRace(raceId: number) {
+  const userId = await requireAuth()
+  await dbVerifyRace(raceId)
+  revalidateAll()
+  await captureServerEvent('race_verified', userId, { raceId, isLeader: true })
+}
+
+export async function fixRaceAndClearFlag(
+  raceId: number,
+  fields: { name: string; date: string; distance: string; location: string },
+) {
+  const userId = await requireAuth()
+  await dbFixRace(raceId, fields)
+  revalidateAll()
+  await captureServerEvent('race_fixed', userId, { raceId, isLeader: true })
 }
 
 export async function addVariation(
