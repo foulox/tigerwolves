@@ -74,3 +74,16 @@ export function weekOfMonth(dateStr: string): number {
   const d = new Date(dateStr + 'T00:00:00')
   return Math.ceil(d.getDate() / 7)
 }
+
+// Rejects both malformed strings and rollover dates (e.g. "2026-02-30" parses
+// as March 2 in JS, which this catches by checking the parsed components
+// still match the input rather than just checking isNaN).
+export function isValidDateString(s: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (!m) return false
+  const year = Number(m[1])
+  const month = Number(m[2])
+  const day = Number(m[3])
+  const date = new Date(year, month - 1, day)
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+}

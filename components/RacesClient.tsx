@@ -88,6 +88,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
   const [flagText, setFlagText] = useState('')
   const [flagError, setFlagError] = useState<string | undefined>()
   const [fixForm, setFixForm] = useState({ name: '', date: '', distance: '', location: '' })
+  const [fixError, setFixError] = useState<string | undefined>()
 
   function myTagFor(raceId: number): RaceTier | null | undefined {
     if (raceId in myTags) return myTags[raceId]
@@ -121,6 +122,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
   function openIssue(raceId: number) {
     setSheet({ type: isLeader ? 'fix' : 'view', raceId })
     if (isLeader) {
+      setFixError(undefined)
       const r = races.find(r => r.id === raceId)
       if (r) setFixForm({ name: r.name, date: r.date, distance: r.distance, location: r.location })
     }
@@ -200,8 +202,13 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
   function submitFix() {
     if (sheet?.type !== 'fix') return
     const raceId = sheet.raceId
+    setFixError(undefined)
     startTransition(async () => {
-      await fixRaceAndClearFlag(raceId, fixForm)
+      const result = await fixRaceAndClearFlag(raceId, fixForm)
+      if (result && 'error' in result) {
+        setFixError(result.error)
+        return
+      }
       setRaces(prev => prev.map(r => r.id === raceId ? { ...r, ...fixForm, verified: true, flagged: false, flagNote: '' } : r))
       setSheet(null)
     })
@@ -501,6 +508,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                     <input value={fixForm.location} onChange={e => setFixForm(f => ({ ...f, location: e.target.value }))} className="w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm text-gray-900 font-normal" />
                   </label>
                 </div>
+                {fixError && <p className="text-sm text-red-600">{fixError}</p>}
                 <div className="flex gap-2.5">
                   <button type="button" onClick={closeSheet} className="touch-manipulation flex-1 bg-gray-100 text-gray-700 rounded-2xl py-3 font-bold text-sm">
                     Dismiss

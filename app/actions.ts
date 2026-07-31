@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { after } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import type { Workout } from '@/lib/data'
+import { isValidDateString } from '@/lib/data'
 import {
   dbSetScheduleWorkout,
   dbInsertWorkout,
@@ -242,6 +243,7 @@ export async function addRace(data: {
   const date = data.date.trim()
   if (!name) return { error: 'Race name is required' }
   if (!date) return { error: 'Date is required' }
+  if (!isValidDateString(date)) return { error: 'Enter a valid date' }
 
   const id = await dbInsertRace({
     date,
@@ -254,7 +256,8 @@ export async function addRace(data: {
     flagNote: '',
   })
   revalidateAll()
-  await captureServerEvent('race_added', 'anonymous-runner', { isLeader: false })
+  const { userId } = await auth()
+  await captureServerEvent('race_added', userId ?? 'anonymous-runner', { isLeader: !!userId })
   return { id }
 }
 
@@ -263,7 +266,8 @@ export async function flagRaceIssue(raceId: number, note: string): Promise<void 
   if (!trimmed) return { error: 'Description is required' }
   await dbFlagRace(raceId, trimmed)
   revalidateAll()
-  await captureServerEvent('race_flagged', 'anonymous-runner', { raceId })
+  const { userId } = await auth()
+  await captureServerEvent('race_flagged', userId ?? 'anonymous-runner', { raceId, isLeader: !!userId })
 }
 
 export async function verifyRace(raceId: number) {
@@ -276,9 +280,15 @@ export async function verifyRace(raceId: number) {
 export async function fixRaceAndClearFlag(
   raceId: number,
   fields: { name: string; date: string; distance: string; location: string },
-) {
+): Promise<void | { error: string }> {
   const userId = await requireAuth()
-  await dbFixRace(raceId, fields)
+  const name = fields.name.trim()
+  const date = fields.date.trim()
+  if (!name) return { error: 'Race name is required' }
+  if (!date) return { error: 'Date is required' }
+  if (!isValidDateString(date)) return { error: 'Enter a valid date' }
+
+  await dbFixRace(raceId, { name, date, distance: fields.distance.trim(), location: fields.location.trim() })
   revalidateAll()
   await captureServerEvent('race_fixed', userId, { raceId, isLeader: true })
 }

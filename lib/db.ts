@@ -153,22 +153,26 @@ export async function dbInsertRace(race: Omit<Race, 'id'>): Promise<number> {
 }
 
 export async function dbFlagRace(id: number, flagNote: string): Promise<void> {
-  await sql`
+  const rows = await sql`
     UPDATE races SET flagged = true, flag_note = ${flagNote} WHERE id = ${id}
+    RETURNING id
   `
+  if (rows.length === 0) throw new Error(`Race ${id} not found`)
 }
 
 export async function dbVerifyRace(id: number): Promise<void> {
-  await sql`
+  const rows = await sql`
     UPDATE races SET verified = true WHERE id = ${id}
+    RETURNING id
   `
+  if (rows.length === 0) throw new Error(`Race ${id} not found`)
 }
 
 export async function dbFixRace(
   id: number,
   fields: { name: string; date: string; distance: string; location: string },
 ): Promise<void> {
-  await sql`
+  const rows = await sql`
     UPDATE races SET
       name = ${fields.name},
       date = ${fields.date}::date,
@@ -178,7 +182,9 @@ export async function dbFixRace(
       flagged = false,
       flag_note = ''
     WHERE id = ${id}
+    RETURNING id
   `
+  if (rows.length === 0) throw new Error(`Race ${id} not found`)
 }
 
 export async function dbRegroupFamily(
