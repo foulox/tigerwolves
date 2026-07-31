@@ -6,12 +6,17 @@ import { redirect } from 'next/navigation'
 import { after } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import type { Workout } from '@/lib/data'
+import { isValidDateString } from '@/lib/data'
 import {
   dbSetScheduleWorkout,
   dbInsertWorkout,
   dbUpdateWorkout,
   dbDeleteWorkout,
   dbRegroupFamily,
+  dbInsertRace,
+  dbFlagRace,
+  dbVerifyRace,
+  dbFixRace,
 } from '@/lib/db'
 import { captureServerEvent } from '@/lib/analytics'
 import { feedbackLabel, feedbackTitle, feedbackBody, type FeedbackType } from '@/lib/feedbackUtils'
@@ -225,6 +230,67 @@ export async function updateWorkout(
   revalidateAll()
   await captureServerEvent('workout_edited', userId, { turnaroundChanged, isLeader: true })
   redirect('/library')
+}
+
+export async function addRace(data: {
+  name: string
+  date: string
+  distance: string
+  location: string
+  organizer: string
+}): Promise<{ id: number } | { error: string }> {
+  const name = data.name.trim()
+  const date = data.date.trim()
+  if (!name) return { error: 'Race name is required' }
+  if (!date) return { error: 'Date is required' }
+  if (!isValidDateString(date)) return { error: 'Enter a valid date' }
+
+  const id = await dbInsertRace({
+    date,
+    name,
+    distance: data.distance.trim(),
+    location: data.location.trim(),
+    organizer: data.organizer.trim() || 'a club member',
+    verified: false,
+    flagged: false,
+    flagNote: '',
+  })
+  revalidateAll()
+  const { userId } = await auth()
+  await captureServerEvent('race_added', userId ?? 'anonymous-runner', { isLeader: !!userId })
+  return { id }
+}
+
+export async function flagRaceIssue(raceId: number, note: string): Promise<void | { error: string }> {
+  const trimmed = note.trim()
+  if (!trimmed) return { error: 'Description is required' }
+  await dbFlagRace(raceId, trimmed)
+  revalidateAll()
+  const { userId } = await auth()
+  await captureServerEvent('race_flagged', userId ?? 'anonymous-runner', { raceId, isLeader: !!userId })
+}
+
+export async function verifyRace(raceId: number) {
+  const userId = await requireAuth()
+  await dbVerifyRace(raceId)
+  revalidateAll()
+  await captureServerEvent('race_verified', userId, { raceId, isLeader: true })
+}
+
+export async function fixRaceAndClearFlag(
+  raceId: number,
+  fields: { name: string; date: string; distance: string; location: string },
+): Promise<void | { error: string }> {
+  const userId = await requireAuth()
+  const name = fields.name.trim()
+  const date = fields.date.trim()
+  if (!name) return { error: 'Race name is required' }
+  if (!date) return { error: 'Date is required' }
+  if (!isValidDateString(date)) return { error: 'Enter a valid date' }
+
+  await dbFixRace(raceId, { name, date, distance: fields.distance.trim(), location: fields.location.trim() })
+  revalidateAll()
+  await captureServerEvent('race_fixed', userId, { raceId, isLeader: true })
 }
 
 export async function addVariation(

@@ -33,11 +33,17 @@ describe('database connection and schema', () => {
     expect(cols).toContain('selected_variations')
   })
 
-  it('races table exists', async () => {
+  it('races table exists with id, organizer, verified, flagged, flag_note columns', async () => {
     const rows = await sql`
       SELECT column_name FROM information_schema.columns WHERE table_name = 'races'
     `
-    expect(rows.length).toBeGreaterThan(0)
+    const cols = rows.map((r) => r.column_name as string)
+    expect(cols.length).toBeGreaterThan(0)
+    expect(cols).toContain('id')
+    expect(cols).toContain('organizer')
+    expect(cols).toContain('verified')
+    expect(cols).toContain('flagged')
+    expect(cols).toContain('flag_note')
   })
 
   it('run_leaders table exists', async () => {
@@ -92,9 +98,14 @@ describe('fetchRaces', () => {
     expect(Array.isArray(races)).toBe(true)
     expect(races.length).toBeGreaterThan(0)
     const r = races[0]
+    expect(typeof r.id).toBe('number')
     expect(r.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     expect(typeof r.name).toBe('string')
     expect(typeof r.distance).toBe('string')
+    expect(typeof r.organizer).toBe('string')
+    expect(typeof r.verified).toBe('boolean')
+    expect(typeof r.flagged).toBe('boolean')
+    expect(typeof r.flagNote).toBe('string')
   })
 })
 
