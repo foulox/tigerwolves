@@ -89,6 +89,12 @@ export async function createFeedbackIssue(data: {
   if (!res.ok) return { error: `GitHub API error: ${res.status}` }
   const issue = await res.json() as { html_url: string; node_id?: string }
 
+  await captureServerEvent('feedback_submitted', userId ?? 'anonymous-runner', {
+    type: data.type,
+    hasScreenshot: !!data.screenshotBase64,
+    isLeader: !!userId,
+  })
+
   // Best-effort: link the new issue to the Running Apps project board so it isn't a
   // floating orphan (#179). Runs via after() so it never delays the response the user
   // is waiting on — linking is a nice-to-have, not part of the feedback submission
@@ -209,9 +215,10 @@ export async function addWorkout(formData: FormData) {
 }
 
 export async function deleteWorkout(name: string, variation: string) {
-  await requireAuth()
+  const userId = await requireAuth()
   await dbDeleteWorkout(name, variation)
   revalidateAll()
+  await captureServerEvent('workout_deleted', userId, { isLeader: true })
 }
 
 export async function updateWorkout(
