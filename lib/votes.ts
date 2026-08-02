@@ -41,7 +41,16 @@ export async function getVoteData(
   if (workoutIds.length === 0) return {}
 
   const keys = workoutIds.flatMap(id => allRatingKeys(id))
-  const raw = await kv.mget<(number | null)[]>(...keys)
+  // Degrades to "no votes yet" rather than crashing the page, matching
+  // fetchData's own resilience pattern in lib/db.ts — a Redis outage (or a
+  // local/CI environment with no KV credentials at all, as in e2e) shouldn't
+  // take down every page that renders a ReactionPicker.
+  let raw: (number | null)[]
+  try {
+    raw = await kv.mget<(number | null)[]>(...keys)
+  } catch {
+    return {}
+  }
 
   const result: Record<string, VoteData | null> = {}
   workoutIds.forEach((id, i) => {

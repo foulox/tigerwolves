@@ -1,8 +1,27 @@
 import { test, expect } from '@playwright/test'
 
-test('Races page loads with race entries', async ({ page }) => {
+test('Races page shows both fixture races with correct verified/flagged state', async ({ page }) => {
   await page.goto('/races')
   await page.waitForLoadState('networkidle')
-  // Should show race names, distances, or the empty state
-  await expect(page.locator('body')).toContainText(/marathon|5k|10k|half|mile|no (upcoming )?races/i)
+
+  const verifiedCard = page.locator('[data-testid="race-card-Brooklyn Half Marathon"]')
+  await expect(verifiedCard.getByText('Verified', { exact: true })).toBeVisible()
+
+  const flaggedCard = page.locator('[data-testid="race-card-Prospect Park 5K Series #3"]')
+  await expect(flaggedCard.getByText('Unverified')).toBeVisible()
+  await expect(flaggedCard.getByRole('button', { name: 'Issue reported' })).toBeVisible()
+})
+
+test('Opening the reported issue on the flagged race shows its flag note — leader gets the Review & fix sheet', async ({ page }) => {
+  await page.goto('/races')
+  await page.waitForLoadState('networkidle')
+
+  const flaggedCard = page.locator('[data-testid="race-card-Prospect Park 5K Series #3"]')
+  await flaggedCard.getByRole('button', { name: 'Issue reported' }).click()
+
+  // openIssue() routes leaders to the editable 'fix' sheet ("Review & fix"),
+  // not the read-only 'view' sheet ("Reported issue") non-leaders would see —
+  // this suite always runs as a signed-in leader.
+  await expect(page.getByRole('heading', { name: 'Review & fix' })).toBeVisible()
+  await expect(page.getByText("Date TBD — organizer hasn't confirmed")).toBeVisible()
 })

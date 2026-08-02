@@ -239,7 +239,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
           const tally = tallies[race.id] ?? { target: 0, tuneup: 0, fun: 0 }
           const myTag = myTagFor(race.id)
           return (
-            <div key={race.id} className="relative bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+            <div key={race.id} data-testid={`race-card-${race.name}`} className="relative bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
               <div className="absolute top-3 right-3 w-[22px] h-[22px] rounded-full flex items-center justify-center shadow-sm">
                 {race.verified ? (
                   <div className="w-full h-full rounded-full bg-green-500 flex items-center justify-center">

@@ -8,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/vote',
+  '/api/e2e-revalidate',
 ])
 
 export default clerkMiddleware(
