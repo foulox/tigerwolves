@@ -9,6 +9,7 @@ import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
 import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
+import Header from '@/components/Header'
 
 function formatDateShort(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -238,18 +239,19 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
 
   if (upcoming.length === 0) {
     return (
-      <div className="px-4 pt-10" data-tour="heylo-area">
-        <h1 className="text-2xl font-bold text-gray-900">Plan</h1>
-        <p className="text-gray-500 mt-4">No upcoming weeks on the schedule.</p>
-      </div>
+      <>
+        <Header title="Plan" isLeader={isLeader} />
+        <div className="px-4" data-tour="heylo-area">
+          <p className="text-gray-500 mt-4">No upcoming weeks on the schedule.</p>
+        </div>
+      </>
     )
   }
 
   return (
-    <div className="px-4 pt-10 pb-4" data-tour="heylo-area">
-      <header className="mb-5">
-        <h1 className="text-2xl font-bold text-gray-900">Plan</h1>
-      </header>
+    <>
+      <Header title="Plan" isLeader={isLeader} />
+      <div className="px-4 pb-4" data-tour="heylo-area">
 
       {/* Week nav */}
       <div className="flex items-center justify-between mb-5 bg-white rounded-2xl border border-gray-100 shadow-sm px-2 py-2">
@@ -560,6 +562,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
           )}
         </>
       )}
-    </div>
+      </div>
+    </>
   )
 }

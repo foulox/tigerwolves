@@ -136,12 +136,9 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
   }
 
   return (
-    <div className="pt-10 pb-4">
+    <div className="pb-4">
       <div className="px-4 mb-4 flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Workout Library</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{filtered.length} workouts · oldest first</p>
-        </div>
+        <p className="text-sm text-gray-500">{filtered.length} workouts · oldest first</p>
         <div className="flex items-center gap-2" data-tour="library-manage">
           <button
             onClick={() => setShowAbbrev(v => !v)}
@@ -150,11 +147,6 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
           >
             ?
           </button>
-          {isLeader && (
-            <Link href="/admin" className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs font-bold touch-manipulation" title="Manage library">
-              ⚙
-            </Link>
-          )}
           {isLeader && (
             <Link href="/library/add" className="w-9 h-9 flex items-center justify-center rounded-full bg-orange-500 text-white text-xl font-bold shadow-sm touch-manipulation">
               +

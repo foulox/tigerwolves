@@ -1,10 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { fetchData } from '@/lib/db'
 import { resolveWorkout } from '@/lib/scheduleUtils'
-import FeedbackButton from '@/components/FeedbackButton'
-import HeaderAuth from '@/components/HeaderAuth'
-import HowToUseButton from '@/components/HowToUseButton'
-import WhatsNewOverlay from '@/components/WhatsNewOverlay'
+import Header from '@/components/Header'
 import ScheduleClient from '@/components/ScheduleClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 
@@ -39,18 +36,7 @@ export default async function SchedulePage() {
 
   return (
     <div>
-      <header className="sticky top-0 z-30 bg-gray-50 px-4 pt-10 pb-4 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Upcoming Tuesdays</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <WhatsNewOverlay />
-          <HowToUseButton />
-          <HeaderAuth isLeader={!!userId} />
-          <FeedbackButton />
-        </div>
-      </header>
+      <Header title="Schedule" subtitle="Upcoming Tuesdays" isLeader={!!userId} />
 
       <ScheduleClient
         past={past}

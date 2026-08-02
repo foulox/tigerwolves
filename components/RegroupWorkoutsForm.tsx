@@ -85,7 +85,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
 
     return (
       <>
-      <div className="px-4 pt-10 pb-44">
+      <div className="px-4 pb-44">
         <header className="mb-2">
           <h1 className="text-2xl font-bold text-gray-900">Configure Family</h1>
         </header>
@@ -171,7 +171,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
   }
 
   return (
-    <div className="px-4 pt-10 pb-44">
+    <div className="px-4 pb-44">
       <header className="mb-2">
         <h1 className="text-2xl font-bold text-gray-900">Regroup Workouts</h1>
       </header>
