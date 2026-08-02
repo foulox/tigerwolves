@@ -1,23 +1,27 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 
-test('Schedule page loads with upcoming Tuesday entries', async ({ page }) => {
+test('Schedule page shows the three seeded upcoming Tuesdays', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
-  // Page should show leader name (from "Led by X" lines) or the no-workouts fallback
-  const body = page.locator('body')
-  await expect(body).toContainText(/led by|no upcoming workouts/i)
+
+  await expect(page.locator('[data-testid="schedule-card-0"]')).toContainText('Yasso 800s')
+  await expect(page.locator('[data-testid="schedule-card-0"]')).toContainText('Led by Dana Kim')
+
+  await expect(page.locator('[data-testid="schedule-card-1"]')).toContainText('Fort Greene Hills')
+  await expect(page.locator('[data-testid="schedule-card-1"]')).toContainText('Led by Marcus Ade')
+
+  await expect(page.locator('[data-testid="schedule-card-2"]')).toContainText('Not planned yet')
+  await expect(page.locator('[data-testid="schedule-card-2"]')).toContainText('Led by Priya Shah')
 })
 
-test('"Plan week →" button appears on all cards for signed-in leaders', async ({ page }) => {
+test('"Plan week →" button appears on all three cards for signed-in leaders', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
 
   const cards = page.locator('[data-testid^="schedule-card-"]')
-  const count = await cards.count()
-  if (count === 0) return // no upcoming entries, nothing to verify
+  await expect(cards).toHaveCount(3)
 
-  // Plan button is leader-only; this suite runs as a signed-in leader
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < 3; i++) {
     const btn = page.locator(`[data-testid="plan-week-${i}"]`)
     await expect(btn).toBeVisible()
     await expect(btn).toContainText('Plan week')
@@ -28,53 +32,27 @@ test('"Plan week →" navigates to /plan?week=N', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
 
-  const firstCard = page.locator('[data-testid="schedule-card-0"]')
-  const hasCard = await firstCard.count() > 0
-  if (!hasCard) return
-
-  const planBtn = page.locator('[data-testid="plan-week-0"]')
-  await planBtn.click()
+  await page.locator('[data-testid="plan-week-0"]').click()
   await page.waitForURL(/\/plan\?week=0/)
   expect(page.url()).toContain('/plan?week=0')
 })
 
-/** Returns the index of the first card with a planned workout, or -1. Does not change expand state. */
-async function findFirstPlannedCardIdx(page: Page): Promise<number> {
-  const cards = page.locator('[data-testid^="schedule-card-"]')
-  const count = await cards.count()
-  for (let i = 0; i < count; i++) {
-    const text = await page.locator(`[data-testid="schedule-card-${i}"]`).textContent()
-    if (!text?.includes('Not planned yet')) return i
-  }
-  return -1
-}
-
-test('card with planned workout expands to show detail on tap', async ({ page }) => {
+test('card with planned workout expands to show fixture instructions on tap', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
 
-  const idx = await findFirstPlannedCardIdx(page)
-  if (idx === -1) {
-    console.warn('No cards with planned workouts found — expand test ran vacuously')
-    return
-  }
-
-  await page.locator(`[data-testid="schedule-card-${idx}"]`).click()
-  await expect(page.locator(`[data-testid="schedule-detail-${idx}"]`)).toBeVisible()
+  await page.locator('[data-testid="schedule-card-0"]').click()
+  const detail = page.locator('[data-testid="schedule-detail-0"]')
+  await expect(detail).toBeVisible()
+  await expect(detail).toContainText('10x800m @ 5K effort')
 })
 
 test('expanded card collapses on second tap', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
 
-  const idx = await findFirstPlannedCardIdx(page)
-  if (idx === -1) {
-    console.warn('No cards with planned workouts found — collapse test ran vacuously')
-    return
-  }
-
-  const card = page.locator(`[data-testid="schedule-card-${idx}"]`)
-  const detail = page.locator(`[data-testid="schedule-detail-${idx}"]`)
+  const card = page.locator('[data-testid="schedule-card-0"]')
+  const detail = page.locator('[data-testid="schedule-detail-0"]')
 
   await card.click()
   await expect(detail).toBeVisible()
@@ -83,50 +61,25 @@ test('expanded card collapses on second tap', async ({ page }) => {
   await expect(detail).not.toBeVisible()
 })
 
-test('past cards show "Edit in library →" instead of "Plan week →", for signed-in leaders', async ({ page }) => {
+test('unplanned card has no expand affordance', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
 
-  const pastCards = page.locator('[data-testid^="past-card-"]')
-  const count = await pastCards.count()
-  if (count === 0) return // no past history yet, nothing to verify
-
-  for (let i = 0; i < count; i++) {
-    const card = page.locator(`[data-testid="past-card-${i}"]`)
-    const text = await card.textContent()
-    const hasWorkout = !text?.includes('Not planned yet')
-    const editBtn = page.locator(`[data-testid="edit-in-library-${i}"]`)
-    if (hasWorkout) {
-      await expect(editBtn).toBeVisible()
-      await expect(editBtn).toContainText('Edit in library')
-      const href = await editBtn.getAttribute('href')
-      expect(href).toContain('/library/edit?name=')
-    } else {
-      await expect(editBtn).toHaveCount(0)
-    }
-    // Past cards never show the upcoming-only "Plan week →" button
-    await expect(page.locator(`[data-testid="plan-week-${i}"]`)).toHaveCount(0)
-  }
+  // Card 2 has no workout — clicking it must not reveal a detail panel
+  await page.locator('[data-testid="schedule-card-2"]').click()
+  await expect(page.locator('[data-testid="schedule-detail-2"]')).toHaveCount(0)
 })
 
-test('past cards do not collide with upcoming card testids', async ({ page }) => {
+test('fixture has no past history — past-card testids never appear, and upcoming testids never collide with them', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
 
-  // The prefix selector used by earlier tests must only ever match upcoming cards
-  const scheduleCards = page.locator('[data-testid^="schedule-card-"]')
-  const scheduleCount = await scheduleCards.count()
+  await expect(page.locator('[data-testid^="past-card-"]')).toHaveCount(0)
 
-  for (let i = 0; i < scheduleCount; i++) {
+  const scheduleCards = page.locator('[data-testid^="schedule-card-"]')
+  const count = await scheduleCards.count()
+  for (let i = 0; i < count; i++) {
     const testId = await scheduleCards.nth(i).getAttribute('data-testid')
     expect(testId).not.toContain('past')
-  }
-
-  // And past cards must never be picked up by the "plan-week-" locator either
-  const pastCards = page.locator('[data-testid^="past-card-"]')
-  const pastCount = await pastCards.count()
-  for (let i = 0; i < pastCount; i++) {
-    const testId = await pastCards.nth(i).getAttribute('data-testid')
-    expect(testId).not.toContain('schedule-card')
   }
 })

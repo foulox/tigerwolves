@@ -98,6 +98,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
           <input
             value={newName}
             onChange={e => setNewName(e.target.value)}
+            data-testid="regroup-family-name"
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
             placeholder="e.g. K Bridge Hills"
           />
@@ -134,6 +135,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
                 <input
                   value={c.variation}
                   onChange={e => updateConfig(i, 'variation', e.target.value)}
+                  data-testid={`regroup-variation-input-${i}`}
                   className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
                   placeholder="e.g. Shorter reps, higher volume"
                 />
@@ -162,6 +164,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
           Back
         </button>
         <button type="button" onClick={handleSave} disabled={isPending}
+          data-testid="regroup-save"
           className="flex-[2] py-4 rounded-xl bg-orange-500 text-white font-semibold text-sm disabled:opacity-40 transition-colors touch-manipulation">
           {isPending ? 'Saving...' : `Create Family (${configs.length})`}
         </button>
@@ -203,6 +206,7 @@ export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] 
             <button
               key={`${i}-${w.name}||${w.variation}`}
               type="button"
+              data-testid={`regroup-option-${w.name}||${w.variation}`}
               onClick={() => toggleSelect(w)}
               className={`text-left rounded-xl px-4 py-3 border transition-colors touch-manipulation ${
                 sel

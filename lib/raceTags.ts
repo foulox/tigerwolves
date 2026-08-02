@@ -25,7 +25,14 @@ export async function getRaceTallies(raceIds: number[]): Promise<Record<number, 
   if (raceIds.length === 0) return {}
 
   const keys = raceIds.flatMap(id => allTierKeys(id))
-  const raw = await kv.mget<(number | null)[]>(...keys)
+  // Degrades to all-zero tallies rather than crashing the page — same
+  // resilience pattern as getVoteData in lib/votes.ts.
+  let raw: (number | null)[]
+  try {
+    raw = await kv.mget<(number | null)[]>(...keys)
+  } catch {
+    raw = []
+  }
 
   const result: Record<number, RaceTally> = {}
   raceIds.forEach((id, i) => {

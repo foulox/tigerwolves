@@ -7,7 +7,7 @@ const authFile = path.join(__dirname, '.auth/user.json')
 setup('authenticate as test leader', async ({ page }) => {
   const email = process.env.PLAYWRIGHT_TEST_EMAIL
   const password = process.env.PLAYWRIGHT_TEST_PASSWORD
-  if (!email || !password) throw new Error('PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD must be set in .env.local')
+  if (!email || !password) throw new Error('PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD must be set in .env.test')
 
   await page.goto('/sign-in')
 
