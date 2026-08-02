@@ -13,7 +13,10 @@ test('Library page loads with all 8 fixture workout names', async ({ page }) => 
   await expect(page.getByText('Fort Greene Hills')).toBeVisible()
   await expect(page.getByText('Prospect Park Tempo')).toBeVisible()
   await expect(page.getByText('Track Ladder 400-800-1200')).toBeVisible()
-  await expect(page.getByText('McCarren Loop Repeats').first()).toBeVisible()
+  // The two McCarren Loop Repeats rows are reserved for admin.spec.ts's regroup
+  // test and asserted there — not here. admin.spec.ts renames them in place,
+  // and since these specs share one seeded suite run (not reset per test),
+  // asserting their original name here would be order-dependent.
 })
 
 test('Library category filter narrows to exactly the 6 Quality-category rows', async ({ page }) => {

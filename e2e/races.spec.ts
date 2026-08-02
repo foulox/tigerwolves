@@ -12,13 +12,16 @@ test('Races page shows both fixture races with correct verified/flagged state', 
   await expect(flaggedCard.getByRole('button', { name: 'Issue reported' })).toBeVisible()
 })
 
-test('Opening the reported issue on the flagged race shows its flag note', async ({ page }) => {
+test('Opening the reported issue on the flagged race shows its flag note — leader gets the Review & fix sheet', async ({ page }) => {
   await page.goto('/races')
   await page.waitForLoadState('networkidle')
 
   const flaggedCard = page.locator('[data-testid="race-card-Prospect Park 5K Series #3"]')
   await flaggedCard.getByRole('button', { name: 'Issue reported' }).click()
 
-  await expect(page.getByRole('heading', { name: 'Reported issue' })).toBeVisible()
+  // openIssue() routes leaders to the editable 'fix' sheet ("Review & fix"),
+  // not the read-only 'view' sheet ("Reported issue") non-leaders would see —
+  // this suite always runs as a signed-in leader.
+  await expect(page.getByRole('heading', { name: 'Review & fix' })).toBeVisible()
   await expect(page.getByText("Date TBD — organizer hasn't confirmed")).toBeVisible()
 })

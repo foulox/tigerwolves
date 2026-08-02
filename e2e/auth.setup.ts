@@ -1,4 +1,4 @@
-import { test as setup } from '@playwright/test'
+import { test as setup, expect } from '@playwright/test'
 import fs from 'fs'
 import path from 'path'
 
@@ -24,4 +24,11 @@ setup('authenticate as test leader', async ({ page }) => {
   await page.waitForURL(url => !url.pathname.startsWith('/sign-in'), { timeout: 15000 })
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
+
+  // scripts/seed-e2e.ts writes with raw SQL, which fetchData's unstable_cache
+  // (lib/db.ts) has no way to know about — without this, pages can keep
+  // serving a previous run's cached result for up to 5 minutes. See
+  // app/api/e2e-revalidate/route.ts.
+  const revalidateResponse = await page.request.post('/api/e2e-revalidate')
+  expect(revalidateResponse.ok(), `e2e-revalidate failed: ${revalidateResponse.status()}`).toBe(true)
 })
