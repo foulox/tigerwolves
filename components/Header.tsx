@@ -39,6 +39,7 @@ export default function Header({
           <Link
             href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
             title="Sign in"
+            aria-label="Sign in"
             className="w-10 h-10 flex-none rounded-full bg-[#e8eaef] flex items-center justify-center text-[#8b93a1] touch-manipulation"
           >
             <PersonIcon size={22} />

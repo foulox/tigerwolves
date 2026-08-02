@@ -41,6 +41,7 @@ export default function WhatsNewOverlay() {
       <button
         onClick={openOverlay}
         title="What's new"
+        aria-label="What's new"
         data-whats-new-trigger
         className="w-9 h-9 flex-none rounded-full border border-[#e8eaef] bg-white flex items-center justify-center text-[#8b93a1] touch-manipulation"
       >

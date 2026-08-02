@@ -11,6 +11,7 @@ export default function HowToUseButton() {
     <button
       onClick={handleClick}
       title="How to use this"
+      aria-label="How to use this"
       data-tour="how-to-use"
       className="w-9 h-9 flex-none rounded-full border border-[#e8eaef] bg-white flex items-center justify-center text-[#8b93a1] touch-manipulation"
     >

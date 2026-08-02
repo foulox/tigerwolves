@@ -253,315 +253,315 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
       <Header title="Plan" isLeader={isLeader} />
       <div className="px-4 pb-4" data-tour="heylo-area">
 
-      {/* Week nav */}
-      <div className="flex items-center justify-between mb-5 bg-white rounded-2xl border border-gray-100 shadow-sm px-2 py-2">
-        <button
-          onClick={() => changeWeek(weekIndex - 1)}
-          disabled={weekIndex === 0}
-          className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-gray-500 active:bg-gray-100"
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <div className="text-center">
-          <div className="text-sm font-semibold text-gray-900">{entry?.leader || '—'}</div>
-          <div className="text-xs text-gray-400">{entry ? formatDateShort(entry.date) : ''}</div>
-        </div>
-        <button
-          onClick={() => changeWeek(weekIndex + 1)}
-          disabled={weekIndex >= upcoming.length - 1}
-          className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-gray-500 active:bg-gray-100"
-        >
-          <ChevronRight size={20} />
-        </button>
-      </div>
-
-      {entry && (
-        <>
-          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6">
-            <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">WORKOUT TYPE</div>
-            <div className="text-2xl font-bold text-gray-900">{activeType ?? entry.workoutType}</div>
-            {activeType && (
-              <div className="text-xs text-gray-500 mt-0.5">Scheduled: {entry.workoutType}</div>
-            )}
-            <div className="text-xs text-gray-400 mt-1">{formatDateLong(entry.date)}</div>
-            <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 -mx-1 px-1">
-              {availableTypes.map(t => {
-                const isActive = activeType === null ? scheduledTypes.includes(t) : t === activeType
-                return (
-                  <button key={t} type="button"
-                    onClick={() => setActiveType(scheduledTypes.includes(t) ? null : t)}
-                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
-                      isActive ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border border-gray-200'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                )
-              })}
-            </div>
+        {/* Week nav */}
+        <div className="flex items-center justify-between mb-5 bg-white rounded-2xl border border-gray-100 shadow-sm px-2 py-2">
+          <button
+            onClick={() => changeWeek(weekIndex - 1)}
+            disabled={weekIndex === 0}
+            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-gray-500 active:bg-gray-100"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div className="text-center">
+            <div className="text-sm font-semibold text-gray-900">{entry?.leader || '—'}</div>
+            <div className="text-xs text-gray-400">{entry ? formatDateShort(entry.date) : ''}</div>
           </div>
+          <button
+            onClick={() => changeWeek(weekIndex + 1)}
+            disabled={weekIndex >= upcoming.length - 1}
+            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-gray-500 active:bg-gray-100"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
 
-          {plannedNotFound && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-3 mb-4 text-sm text-red-700">
-              ⚠️ &ldquo;{entry.workoutName}&rdquo; is no longer in the workout library — pick a replacement below.
+        {entry && (
+          <>
+            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6">
+              <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">WORKOUT TYPE</div>
+              <div className="text-2xl font-bold text-gray-900">{activeType ?? entry.workoutType}</div>
+              {activeType && (
+                <div className="text-xs text-gray-500 mt-0.5">Scheduled: {entry.workoutType}</div>
+              )}
+              <div className="text-xs text-gray-400 mt-1">{formatDateLong(entry.date)}</div>
+              <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 -mx-1 px-1">
+                {availableTypes.map(t => {
+                  const isActive = activeType === null ? scheduledTypes.includes(t) : t === activeType
+                  return (
+                    <button key={t} type="button"
+                      onClick={() => setActiveType(scheduledTypes.includes(t) ? null : t)}
+                      className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
+                        isActive ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border border-gray-200'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          )}
 
-          {plannedWorkout && (() => {
-            const w = plannedWorkout
-            const sel = isEffectivelySelected(w)
-            const eid = `planned-${w.name}-${w.variation}`
-            const expanded = expandedId === eid
-            return (
-              <div className="mb-4">
-                <div className="text-sm font-bold text-gray-700 mb-2">Currently planned</div>
-                <div
-                  className={`bg-white rounded-2xl border shadow-sm transition-colors ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
-                >
-                  <button
-                    onClick={() => handleSelect(w)}
-                    className="w-full text-left p-4 touch-manipulation cursor-pointer"
+            {plannedNotFound && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-3 mb-4 text-sm text-red-700">
+                ⚠️ &ldquo;{entry.workoutName}&rdquo; is no longer in the workout library — pick a replacement below.
+              </div>
+            )}
+
+            {plannedWorkout && (() => {
+              const w = plannedWorkout
+              const sel = isEffectivelySelected(w)
+              const eid = `planned-${w.name}-${w.variation}`
+              const expanded = expandedId === eid
+              return (
+                <div className="mb-4">
+                  <div className="text-sm font-bold text-gray-700 mb-2">Currently planned</div>
+                  <div
+                    className={`bg-white rounded-2xl border shadow-sm transition-colors ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
                   >
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="font-semibold text-gray-900">{w.name}</div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <VoteBadge v={voteData[workoutVoteId(w.name, w.variation)]} />
-                        <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(w.lastRan) : 'Never'}</span>
+                    <button
+                      onClick={() => handleSelect(w)}
+                      className="w-full text-left p-4 touch-manipulation cursor-pointer"
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="font-semibold text-gray-900">{w.name}</div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <VoteBadge v={voteData[workoutVoteId(w.name, w.variation)]} />
+                          <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(w.lastRan) : 'Never'}</span>
+                        </div>
                       </div>
-                    </div>
-                    {w.variation && <div className="text-xs text-gray-400 mt-0.5">{w.variation}</div>}
-                    <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
-                    <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
-                  </button>
-                  <button
-                    onClick={() => toggleExpand(eid)}
-                    className="w-full px-4 pb-3 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1"
-                  >
-                    <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
-                    {expanded ? 'Hide details' : 'Show details'}
-                  </button>
-                  {expanded && (
-                    <div className="px-4 pb-4">
-                      <WorkoutDetail w={w} isLeader={isLeader} />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })()}
-
-          {plannedWorkout && (
-            <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4">
-              <button
-                onClick={() => setPlanTab('post')}
-                className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
-                  planTab === 'post' ? 'bg-white text-gray-900 shadow-sm' : 'bg-transparent text-gray-500'
-                }`}
-              >
-                Post draft
-              </button>
-              <button
-                onClick={() => setPlanTab('browse')}
-                className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
-                  planTab === 'browse' ? 'bg-white text-gray-900 shadow-sm' : 'bg-transparent text-gray-500'
-                }`}
-              >
-                Change workout
-              </button>
-            </div>
-          )}
-
-          {(!plannedWorkout || planTab === 'browse') && (
-            <>
-              <div className="relative mb-4">
-                <input
-                  type="search"
-                  value={pickerSearch}
-                  onChange={e => setPickerSearch(e.target.value)}
-                  placeholder="Search all workouts by name, type, race…"
-                  className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-orange-400"
-                />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
-              </div>
-
-              {allSuggestions.length === 0 && !pickerSearch ? (
-                <p className="text-gray-400 italic text-sm">
-                  {plannedWorkout
-                    ? `No other ${entry.workoutType} workouts to switch to yet.`
-                    : `No ${entry.workoutType} workouts in the library yet.`}
-                </p>
-              ) : displayRows.length === 0 ? (
-                <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
-              ) : (
-                <div className="mb-6">
-                  <div className="text-sm font-bold text-gray-700 mb-2">
-                    {pickerSearch ? `All workouts matching "${pickerSearch}"` : 'Workouts — least recently used'}
+                      {w.variation && <div className="text-xs text-gray-400 mt-0.5">{w.variation}</div>}
+                      <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
+                      <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
+                    </button>
+                    <button
+                      onClick={() => toggleExpand(eid)}
+                      className="w-full px-4 pb-3 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1"
+                    >
+                      <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+                      {expanded ? 'Hide details' : 'Show details'}
+                    </button>
+                    {expanded && (
+                      <div className="px-4 pb-4">
+                        <WorkoutDetail w={w} isLeader={isLeader} />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {visibleRows.map(row => {
-                      if (row.kind === 'standalone') {
-                        const w = row.workout
-                        const sel = isEffectivelySelected(w)
-                        const eid = `s-${w.name}-${w.variation}`
-                        const expanded = expandedId === eid
-                        return (
-                          <div
-                            key={`s-${w.name}`}
-                            className={`bg-white rounded-2xl border shadow-sm transition-colors ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
-                          >
-                            <button
-                              onClick={() => handleSelect(w)}
-                              className="w-full text-left p-4 touch-manipulation cursor-pointer"
+                </div>
+              )
+            })()}
+
+            {plannedWorkout && (
+              <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4">
+                <button
+                  onClick={() => setPlanTab('post')}
+                  className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
+                    planTab === 'post' ? 'bg-white text-gray-900 shadow-sm' : 'bg-transparent text-gray-500'
+                  }`}
+                >
+                  Post draft
+                </button>
+                <button
+                  onClick={() => setPlanTab('browse')}
+                  className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
+                    planTab === 'browse' ? 'bg-white text-gray-900 shadow-sm' : 'bg-transparent text-gray-500'
+                  }`}
+                >
+                  Change workout
+                </button>
+              </div>
+            )}
+
+            {(!plannedWorkout || planTab === 'browse') && (
+              <>
+                <div className="relative mb-4">
+                  <input
+                    type="search"
+                    value={pickerSearch}
+                    onChange={e => setPickerSearch(e.target.value)}
+                    placeholder="Search all workouts by name, type, race…"
+                    className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-orange-400"
+                  />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+                </div>
+
+                {allSuggestions.length === 0 && !pickerSearch ? (
+                  <p className="text-gray-400 italic text-sm">
+                    {plannedWorkout
+                      ? `No other ${entry.workoutType} workouts to switch to yet.`
+                      : `No ${entry.workoutType} workouts in the library yet.`}
+                  </p>
+                ) : displayRows.length === 0 ? (
+                  <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
+                ) : (
+                  <div className="mb-6">
+                    <div className="text-sm font-bold text-gray-700 mb-2">
+                      {pickerSearch ? `All workouts matching "${pickerSearch}"` : 'Workouts — least recently used'}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {visibleRows.map(row => {
+                        if (row.kind === 'standalone') {
+                          const w = row.workout
+                          const sel = isEffectivelySelected(w)
+                          const eid = `s-${w.name}-${w.variation}`
+                          const expanded = expandedId === eid
+                          return (
+                            <div
+                              key={`s-${w.name}`}
+                              className={`bg-white rounded-2xl border shadow-sm transition-colors ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
                             >
-                              <div className="flex justify-between items-start gap-2">
-                                <div className="font-semibold text-gray-900">{w.name}</div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <VoteBadge v={voteData[workoutVoteId(w.name, w.variation)]} />
-                                  <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(w.lastRan) : 'Never'}</span>
+                              <button
+                                onClick={() => handleSelect(w)}
+                                className="w-full text-left p-4 touch-manipulation cursor-pointer"
+                              >
+                                <div className="flex justify-between items-start gap-2">
+                                  <div className="font-semibold text-gray-900">{w.name}</div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <VoteBadge v={voteData[workoutVoteId(w.name, w.variation)]} />
+                                    <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(w.lastRan) : 'Never'}</span>
+                                  </div>
                                 </div>
+                                {w.variation && <div className="text-xs text-gray-400 mt-0.5">{w.variation}</div>}
+                                <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
+                                <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
+                              </button>
+                              <button
+                                onClick={() => toggleExpand(eid)}
+                                className="w-full px-4 pb-3 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1"
+                              >
+                                <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+                                {expanded ? 'Hide details' : 'Show details'}
+                              </button>
+                              {expanded && (
+                                <div className="px-4 pb-4">
+                                  <WorkoutDetail w={w} isLeader={isLeader} />
+                                </div>
+                              )}
+                            </div>
+                          )
+                        }
+
+                        // Family row — all versions always visible, up to 2 selectable
+                        return (
+                          <div key={`f-${row.name}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="px-4 py-3 border-b border-gray-100">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="font-semibold text-gray-900">{row.name}</div>
+                                <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full shrink-0">
+                                  {row.total} versions
+                                </span>
                               </div>
-                              {w.variation && <div className="text-xs text-gray-400 mt-0.5">{w.variation}</div>}
-                              <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
-                              <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
-                            </button>
-                            <button
-                              onClick={() => toggleExpand(eid)}
-                              className="w-full px-4 pb-3 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1"
-                            >
-                              <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
-                              {expanded ? 'Hide details' : 'Show details'}
-                            </button>
-                            {expanded && (
-                              <div className="px-4 pb-4">
-                                <WorkoutDetail w={w} isLeader={isLeader} />
-                              </div>
-                            )}
+                            </div>
+                            {row.base && (() => {
+                              const eid = `f-base-${row.name}`
+                              const expanded = expandedId === eid
+                              return (
+                                <div className={`border-b border-gray-50 ${isEffectivelySelected(row.base) ? 'bg-orange-50' : 'bg-white'}`}>
+                                  <button
+                                    onClick={() => handleSelect(row.base!)}
+                                    className="w-full text-left px-4 pt-3 pb-1 touch-manipulation"
+                                  >
+                                    <div className="flex justify-between items-start gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${isEffectivelySelected(row.base) ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
+                                        <span className="text-xs font-bold text-gray-600">Standard</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <VoteBadge v={voteData[workoutVoteId(row.base!.name, row.base!.variation)]} />
+                                        <span className="text-xs text-gray-400">{row.base.lastRan ? formatDateShort(row.base.lastRan) : 'Never'}</span>
+                                      </div>
+                                    </div>
+                                    {row.base.distTime && <div className="text-xs text-gray-400 mt-1 ml-6">{row.base.distTime}</div>}
+                                  </button>
+                                  <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1 ml-6">
+                                    <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+                                    {expanded ? 'Hide' : 'Details'}
+                                  </button>
+                                  {expanded && <div className="px-4 pb-3"><WorkoutDetail w={row.base} isLeader={isLeader} /></div>}
+                                </div>
+                              )
+                            })()}
+                            {row.progressions.map((p, i) => {
+                              const sel = isEffectivelySelected(p)
+                              const isLast = i === row.progressions.length - 1
+                              const eid = `f-prog-${row.name}-${p.progression}`
+                              const expanded = expandedId === eid
+                              const label = (i === 0 && !row.base) ? 'Standard' : `Variation ${row.base ? i + 2 : i + 1} of ${row.total}`
+                              return (
+                                <div key={p.progression ?? i} className={`${!isLast ? 'border-b border-gray-50' : ''} ${sel ? 'bg-orange-50' : 'bg-white'}`}>
+                                  <button
+                                    onClick={() => handleSelect(p)}
+                                    className="w-full text-left px-4 pt-3 pb-1 touch-manipulation"
+                                  >
+                                    <div className="flex justify-between items-start gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
+                                        <span className={`text-xs font-bold ${i === 0 ? 'text-gray-600' : 'text-orange-500'}`}>{label}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <VoteBadge v={voteData[workoutVoteId(p.name, p.variation)]} />
+                                        <span className="text-xs text-gray-400">{p.lastRan ? formatDateShort(p.lastRan) : 'Never'}</span>
+                                      </div>
+                                    </div>
+                                    {p.variation && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{p.variation}</div>}
+                                    {p.distTime && <div className="text-xs text-gray-400 mt-0.5 ml-6">{p.distTime}</div>}
+                                  </button>
+                                  <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1 ml-6">
+                                    <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+                                    {expanded ? 'Hide' : 'Details'}
+                                  </button>
+                                  {expanded && <div className="px-4 pb-3"><WorkoutDetail w={p} isLeader={isLeader} /></div>}
+                                </div>
+                              )
+                            })}
                           </div>
                         )
-                      }
-
-                      // Family row — all versions always visible, up to 2 selectable
-                      return (
-                        <div key={`f-${row.name}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                          <div className="px-4 py-3 border-b border-gray-100">
-                            <div className="flex justify-between items-start gap-2">
-                              <div className="font-semibold text-gray-900">{row.name}</div>
-                              <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full shrink-0">
-                                {row.total} versions
-                              </span>
-                            </div>
-                          </div>
-                          {row.base && (() => {
-                            const eid = `f-base-${row.name}`
-                            const expanded = expandedId === eid
-                            return (
-                              <div className={`border-b border-gray-50 ${isEffectivelySelected(row.base) ? 'bg-orange-50' : 'bg-white'}`}>
-                                <button
-                                  onClick={() => handleSelect(row.base!)}
-                                  className="w-full text-left px-4 pt-3 pb-1 touch-manipulation"
-                                >
-                                  <div className="flex justify-between items-start gap-2">
-                                    <div className="flex items-center gap-2">
-                                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${isEffectivelySelected(row.base) ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
-                                      <span className="text-xs font-bold text-gray-600">Standard</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <VoteBadge v={voteData[workoutVoteId(row.base!.name, row.base!.variation)]} />
-                                      <span className="text-xs text-gray-400">{row.base.lastRan ? formatDateShort(row.base.lastRan) : 'Never'}</span>
-                                    </div>
-                                  </div>
-                                  {row.base.distTime && <div className="text-xs text-gray-400 mt-1 ml-6">{row.base.distTime}</div>}
-                                </button>
-                                <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1 ml-6">
-                                  <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
-                                  {expanded ? 'Hide' : 'Details'}
-                                </button>
-                                {expanded && <div className="px-4 pb-3"><WorkoutDetail w={row.base} isLeader={isLeader} /></div>}
-                              </div>
-                            )
-                          })()}
-                          {row.progressions.map((p, i) => {
-                            const sel = isEffectivelySelected(p)
-                            const isLast = i === row.progressions.length - 1
-                            const eid = `f-prog-${row.name}-${p.progression}`
-                            const expanded = expandedId === eid
-                            const label = (i === 0 && !row.base) ? 'Standard' : `Variation ${row.base ? i + 2 : i + 1} of ${row.total}`
-                            return (
-                              <div key={p.progression ?? i} className={`${!isLast ? 'border-b border-gray-50' : ''} ${sel ? 'bg-orange-50' : 'bg-white'}`}>
-                                <button
-                                  onClick={() => handleSelect(p)}
-                                  className="w-full text-left px-4 pt-3 pb-1 touch-manipulation"
-                                >
-                                  <div className="flex justify-between items-start gap-2">
-                                    <div className="flex items-center gap-2">
-                                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
-                                      <span className={`text-xs font-bold ${i === 0 ? 'text-gray-600' : 'text-orange-500'}`}>{label}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <VoteBadge v={voteData[workoutVoteId(p.name, p.variation)]} />
-                                      <span className="text-xs text-gray-400">{p.lastRan ? formatDateShort(p.lastRan) : 'Never'}</span>
-                                    </div>
-                                  </div>
-                                  {p.variation && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{p.variation}</div>}
-                                  {p.distTime && <div className="text-xs text-gray-400 mt-0.5 ml-6">{p.distTime}</div>}
-                                </button>
-                                <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1 ml-6">
-                                  <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
-                                  {expanded ? 'Hide' : 'Details'}
-                                </button>
-                                {expanded && <div className="px-4 pb-3"><WorkoutDetail w={p} isLeader={isLeader} /></div>}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )
-                    })}
+                      })}
+                    </div>
+                    {remainingCount > 0 && (
+                      <button
+                        onClick={() => setShowCount(showCount + 3)}
+                        className="mt-3 w-full py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-500 bg-white active:bg-gray-50 touch-manipulation"
+                      >
+                        Show {Math.min(remainingCount, 3)} more
+                      </button>
+                    )}
                   </div>
-                  {remainingCount > 0 && (
-                    <button
-                      onClick={() => setShowCount(showCount + 3)}
-                      className="mt-3 w-full py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-500 bg-white active:bg-gray-50 touch-manipulation"
-                    >
-                      Show {Math.min(remainingCount, 3)} more
-                    </button>
-                  )}
+                )}
+
+                {effectiveSelections.length > 0 && (
+                  <button
+                    onClick={handleSetPlan}
+                    disabled={saving || saved}
+                    className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm mb-6 touch-manipulation transition-colors ${
+                      saved
+                        ? 'bg-green-500 text-white'
+                        : 'bg-orange-500 text-white active:bg-orange-600 disabled:opacity-60'
+                    }`}
+                  >
+                    {saved ? <><Check size={16} /> Saved to plan</> : saving ? 'Saving…' : 'Set as plan'}
+                  </button>
+                )}
+              </>
+            )}
+
+            {(!plannedWorkout || planTab === 'post') && effectiveSelections.length > 0 && (
+              <div>
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+                  <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
+                  <button
+                    onClick={handleCopy}
+                    data-tour="heylo-copy"
+                    className={`mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-colors touch-manipulation cursor-pointer ${
+                      copied ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'
+                    }`}
+                  >
+                    {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
+                  </button>
                 </div>
-              )}
-
-              {effectiveSelections.length > 0 && (
-                <button
-                  onClick={handleSetPlan}
-                  disabled={saving || saved}
-                  className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm mb-6 touch-manipulation transition-colors ${
-                    saved
-                      ? 'bg-green-500 text-white'
-                      : 'bg-orange-500 text-white active:bg-orange-600 disabled:opacity-60'
-                  }`}
-                >
-                  {saved ? <><Check size={16} /> Saved to plan</> : saving ? 'Saving…' : 'Set as plan'}
-                </button>
-              )}
-            </>
-          )}
-
-          {(!plannedWorkout || planTab === 'post') && effectiveSelections.length > 0 && (
-            <div>
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
-                <button
-                  onClick={handleCopy}
-                  data-tour="heylo-copy"
-                  className={`mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-colors touch-manipulation cursor-pointer ${
-                    copied ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'
-                  }`}
-                >
-                  {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
-                </button>
               </div>
-            </div>
-          )}
-        </>
-      )}
+            )}
+          </>
+        )}
       </div>
     </>
   )

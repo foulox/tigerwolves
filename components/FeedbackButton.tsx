@@ -12,6 +12,7 @@ export default function FeedbackButton() {
         onClick={() => setOpen(true)}
         className="w-9 h-9 flex-none flex items-center justify-center rounded-full border border-[#e8eaef] bg-white text-[#8b93a1] touch-manipulation"
         title="Feedback"
+        aria-label="Feedback"
         data-tour="feedback"
       >
         <FeedbackIcon size={17} />
