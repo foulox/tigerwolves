@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { CURRENT_VERSION, WHATS_NEW } from '@/lib/whatsNew'
+import { BellIcon } from './icons'
 
 const VERSION_KEY = 'tw_version'
 const SEEN_KEY = 'tw_tour_seen'
@@ -39,10 +40,12 @@ export default function WhatsNewOverlay() {
     return (
       <button
         onClick={openOverlay}
-        className="text-xs text-gray-400 underline touch-manipulation"
+        title="What's new"
+        aria-label="What's new"
         data-whats-new-trigger
+        className="w-9 h-9 flex-none rounded-full border border-[#e8eaef] bg-white flex items-center justify-center text-[#8b93a1] touch-manipulation"
       >
-        What&apos;s New
+        <BellIcon size={17} />
       </button>
     )
   }
