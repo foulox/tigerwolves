@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MessageSquare } from 'lucide-react'
+import { FeedbackIcon } from './icons'
 import FeedbackDrawer from './FeedbackDrawer'
 
 export default function FeedbackButton() {
@@ -10,11 +10,11 @@ export default function FeedbackButton() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 touch-manipulation"
-        title="Send feedback"
+        className="w-9 h-9 flex-none flex items-center justify-center rounded-full border border-[#e8eaef] bg-white text-[#8b93a1] touch-manipulation"
+        title="Feedback"
         data-tour="feedback"
       >
-        <MessageSquare size={15} />
+        <FeedbackIcon size={17} />
       </button>
       <FeedbackDrawer open={open} onClose={() => setOpen(false)} />
     </>

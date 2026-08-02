@@ -1,5 +1,7 @@
 'use client'
 
+import { HelpCircleIcon } from './icons'
+
 export default function HowToUseButton() {
   function handleClick() {
     document.dispatchEvent(new CustomEvent('tw:launch-tour'))
@@ -8,10 +10,11 @@ export default function HowToUseButton() {
   return (
     <button
       onClick={handleClick}
-      className="text-xs text-gray-400 underline touch-manipulation"
+      title="How to use this"
       data-tour="how-to-use"
+      className="w-9 h-9 flex-none rounded-full border border-[#e8eaef] bg-white flex items-center justify-center text-[#8b93a1] touch-manipulation"
     >
-      How to use this
+      <HelpCircleIcon size={17} />
     </button>
   )
 }
