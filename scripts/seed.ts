@@ -48,6 +48,8 @@ function mapWorkout(row: RawRow): Workout {
     trainingPhases: str(row['Training Phase']).split(',').map(s => s.trim()).filter(Boolean),
     hasTurnaround: str(row['hasTurnaround']) === 'TRUE',
     turnaroundDistance: str(row['turnaroundDistance']),
+    flagged: false,
+    flagNote: '',
   }
 }
 

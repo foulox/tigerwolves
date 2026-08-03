@@ -59,6 +59,12 @@ ALTER TABLE races ADD COLUMN IF NOT EXISTS flag_note TEXT NOT NULL DEFAULT '';
 ALTER TABLE races DROP CONSTRAINT IF EXISTS races_pkey;
 ALTER TABLE races ADD PRIMARY KEY (id);
 
+-- #209: visible flag + inline fix for workouts, mirroring #238/#256's races flag
+-- state. Workouts are always leader-authored (addWorkout/updateWorkout require auth),
+-- so unlike races there's no "unverified" state — just flagged / not.
+ALTER TABLE workouts ADD COLUMN IF NOT EXISTS flagged BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE workouts ADD COLUMN IF NOT EXISTS flag_note TEXT NOT NULL DEFAULT '';
+
 CREATE TABLE IF NOT EXISTS run_leaders (
   id SERIAL PRIMARY KEY,
   run_id TEXT NOT NULL,

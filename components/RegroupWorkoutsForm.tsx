@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { regroupFamily } from '@/app/actions'
 import type { Workout } from '@/lib/data'
@@ -16,9 +16,18 @@ type WorkoutConfig = {
 
 export default function RegroupWorkoutsForm({ workouts }: { workouts: Workout[] }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [step, setStep] = useState<Step>('select')
   const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<Workout[]>([])
+  const [selected, setSelected] = useState<Workout[]>(() => {
+    // #209: a flagged workout's "combine" link routes here pre-selected,
+    // so the leader lands ready to pick the second workout to merge with.
+    const preselect = searchParams.get('preselect')
+    if (!preselect) return []
+    const [name, variation] = preselect.split('||')
+    const match = workouts.find(w => w.name === name && w.variation === (variation ?? ''))
+    return match ? [match] : []
+  })
   const [newName, setNewName] = useState('')
   const [configs, setConfigs] = useState<WorkoutConfig[]>([])
   const [error, setError] = useState('')

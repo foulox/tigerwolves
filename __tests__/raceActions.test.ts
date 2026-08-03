@@ -19,6 +19,8 @@ vi.mock('@/lib/db', () => ({
   dbFlagRace: dbFlagRaceMock,
   dbVerifyRace: dbVerifyRaceMock,
   dbFixRace: dbFixRaceMock,
+  dbFlagWorkout: vi.fn(),
+  dbFixWorkoutAndClearFlag: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({

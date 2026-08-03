@@ -22,6 +22,8 @@ export type Workout = {
   trainingPhases: string[]    // e.g. ['Build', 'Peak']
   hasTurnaround: boolean
   turnaroundDistance: string
+  flagged: boolean
+  flagNote: string
 }
 
 export const RACE_TYPES = ['Mile', '5K', '10K', 'Half', 'Full'] as const

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from 'vitest'
-import { sql, fetchWorkouts, fetchSchedule, fetchRaces, dbInsertWorkout, dbUpdateWorkout, dbDeleteWorkout, dbSetScheduleWorkout, dbRegroupFamily } from '../lib/db'
+import { sql, fetchWorkouts, fetchSchedule, fetchRaces, dbInsertWorkout, dbUpdateWorkout, dbDeleteWorkout, dbSetScheduleWorkout, dbRegroupFamily, dbFlagWorkout, dbFixWorkoutAndClearFlag } from '../lib/db'
 
 describe('database connection and schema', () => {
   it('connects to the database', async () => {
@@ -21,6 +21,8 @@ describe('database connection and schema', () => {
     expect(cols).toContain('has_turnaround')
     expect(cols).toContain('race_types')
     expect(cols).toContain('training_phases')
+    expect(cols).toContain('flagged')
+    expect(cols).toContain('flag_note')
   })
 
   it('schedule table has expected columns including selected_variations', async () => {
@@ -66,6 +68,8 @@ describe('fetchWorkouts', () => {
     expect(Array.isArray(w.raceTypes)).toBe(true)
     expect(Array.isArray(w.trainingPhases)).toBe(true)
     expect(typeof w.hasTurnaround).toBe('boolean')
+    expect(typeof w.flagged).toBe('boolean')
+    expect(typeof w.flagNote).toBe('string')
   })
 
   it('lastRan is null or a YYYY-MM-DD string', async () => {
@@ -139,6 +143,8 @@ describe('workout mutations', () => {
       trainingPhases: ['Build'],
       hasTurnaround: true,
       turnaroundDistance: '15min',
+      flagged: false,
+      flagNote: '',
     })
     const workouts = await fetchWorkouts()
     const inserted = workouts.find(w => w.name === TEST_NAME && w.variation === TEST_VARIATION)
@@ -146,6 +152,7 @@ describe('workout mutations', () => {
     expect(inserted?.raceTypes).toContain('5K')
     expect(inserted?.hasTurnaround).toBe(true)
     expect(inserted?.progression).toBe(1)
+    expect(inserted?.flagged).toBe(false)
   })
 
   it('updates a workout', async () => {
@@ -170,6 +177,8 @@ describe('workout mutations', () => {
       trainingPhases: ['Peak'],
       hasTurnaround: false,
       turnaroundDistance: '',
+      flagged: false,
+      flagNote: '',
     })
     const workouts = await fetchWorkouts()
     const updated = workouts.find(w => w.name === TEST_NAME && w.variation === TEST_VARIATION)
@@ -177,6 +186,29 @@ describe('workout mutations', () => {
     expect(updated?.rpe).toBe('8')
     expect(updated?.progression).toBe(2)
     expect(updated?.hasTurnaround).toBe(false)
+  })
+
+  it('flags a workout via dbFlagWorkout', async () => {
+    await dbFlagWorkout(TEST_NAME, TEST_VARIATION, 'the distance looks wrong')
+    const workouts = await fetchWorkouts()
+    const flagged = workouts.find(w => w.name === TEST_NAME && w.variation === TEST_VARIATION)
+    expect(flagged?.flagged).toBe(true)
+    expect(flagged?.flagNote).toBe('the distance looks wrong')
+  })
+
+  it('fixes a flagged workout and clears the flag via dbFixWorkoutAndClearFlag', async () => {
+    await dbFixWorkoutAndClearFlag(TEST_NAME, TEST_VARIATION, {
+      reason: 'Fixed reason',
+      distTime: '45min',
+      instructions: 'Fixed instructions',
+    })
+    const workouts = await fetchWorkouts()
+    const fixed = workouts.find(w => w.name === TEST_NAME && w.variation === TEST_VARIATION)
+    expect(fixed?.flagged).toBe(false)
+    expect(fixed?.flagNote).toBe('')
+    expect(fixed?.reason).toBe('Fixed reason')
+    expect(fixed?.distTime).toBe('45min')
+    expect(fixed?.instructions).toBe('Fixed instructions')
   })
 
   it('renames a family via dbRegroupFamily', async () => {

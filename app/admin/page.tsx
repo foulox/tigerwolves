@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { fetchData } from '@/lib/db'
@@ -11,7 +12,9 @@ export default async function AdminPage() {
   return (
     <div>
       <Header title="Admin" isLeader={true} />
-      <RegroupWorkoutsForm workouts={workouts} />
+      <Suspense>
+        <RegroupWorkoutsForm workouts={workouts} />
+      </Suspense>
     </div>
   )
 }

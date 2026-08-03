@@ -43,6 +43,8 @@ export async function fetchWorkouts(): Promise<Workout[]> {
     trainingPhases: (r.training_phases as string[]) ?? [],
     hasTurnaround: r.has_turnaround as boolean,
     turnaroundDistance: r.turnaround_distance as string,
+    flagged: r.flagged as boolean,
+    flagNote: r.flag_note as string,
   }))
 }
 
@@ -94,14 +96,14 @@ export async function dbInsertWorkout(w: Omit<Workout, 'lastRan'>): Promise<void
       name, sport, category, type, reason, instructions, dist_time,
       lap_structure, energy_system, hr_zone, rpe, last_ran, coaching_notes,
       map_link, variation, progression, author, race_types, training_phases,
-      has_turnaround, turnaround_distance
+      has_turnaround, turnaround_distance, flagged, flag_note
     ) VALUES (
       ${w.name}, ${w.sport}, ${w.category}, ${w.type}, ${w.reason},
       ${w.instructions}, ${w.distTime}, ${w.lapStructure}, ${w.energySystem},
       ${w.hrZone}, ${w.rpe}, NULL, ${w.coachingNotes}, ${w.mapLink},
       ${w.variation}, ${w.progression}, ${w.author},
       ${w.raceTypes}, ${w.trainingPhases},
-      ${w.hasTurnaround}, ${w.turnaroundDistance}
+      ${w.hasTurnaround}, ${w.turnaroundDistance}, ${w.flagged}, ${w.flagNote}
     )
   `
 }
@@ -132,7 +134,9 @@ export async function dbUpdateWorkout(
       race_types = ${w.raceTypes},
       training_phases = ${w.trainingPhases},
       has_turnaround = ${w.hasTurnaround},
-      turnaround_distance = ${w.turnaroundDistance}
+      turnaround_distance = ${w.turnaroundDistance},
+      flagged = ${w.flagged},
+      flag_note = ${w.flagNote}
     WHERE name = ${originalName} AND variation = ${originalVariation}
   `
 }
@@ -141,6 +145,33 @@ export async function dbDeleteWorkout(name: string, variation: string): Promise<
   await sql`
     DELETE FROM workouts WHERE name = ${name} AND variation = ${variation}
   `
+}
+
+export async function dbFlagWorkout(name: string, variation: string, flagNote: string): Promise<void> {
+  const rows = await sql`
+    UPDATE workouts SET flagged = true, flag_note = ${flagNote}
+    WHERE name = ${name} AND variation = ${variation}
+    RETURNING name
+  `
+  if (rows.length === 0) throw new Error(`Workout ${name} (${variation}) not found`)
+}
+
+export async function dbFixWorkoutAndClearFlag(
+  name: string,
+  variation: string,
+  fields: { reason: string; distTime: string; instructions: string },
+): Promise<void> {
+  const rows = await sql`
+    UPDATE workouts SET
+      reason = ${fields.reason},
+      dist_time = ${fields.distTime},
+      instructions = ${fields.instructions},
+      flagged = false,
+      flag_note = ''
+    WHERE name = ${name} AND variation = ${variation}
+    RETURNING name
+  `
+  if (rows.length === 0) throw new Error(`Workout ${name} (${variation}) not found`)
 }
 
 export async function dbInsertRace(race: Omit<Race, 'id'>): Promise<number> {

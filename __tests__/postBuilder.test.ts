@@ -77,6 +77,8 @@ const baseWorkout: Workout = {
   trainingPhases: [],
   hasTurnaround: false,
   turnaroundDistance: '',
+  flagged: false,
+  flagNote: '',
 }
 
 describe('buildPost', () => {
