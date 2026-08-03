@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import * as Sentry from '@sentry/nextjs'
 import { Flag } from 'lucide-react'
 import type { Workout } from '@/lib/data'
 import { fixWorkoutAndClearFlag, flagWorkoutIssue } from '@/app/actions'
@@ -50,12 +51,17 @@ export function FlagWorkoutDrawer({ workout, onClose }: { workout: Workout; onCl
   function submit() {
     setError(undefined)
     startTransition(async () => {
-      const result = await flagWorkoutIssue(workout.name, workout.variation, note)
-      if (result && 'error' in result) {
-        setError(result.error)
-        return
+      try {
+        const result = await flagWorkoutIssue(workout.name, workout.variation, note)
+        if (result && 'error' in result) {
+          setError(result.error)
+          return
+        }
+        onClose()
+      } catch (err) {
+        Sentry.captureException(err, { extra: { workoutName: workout.name, workoutVariation: workout.variation } })
+        setError('Something went wrong submitting this — try again in a moment.')
       }
-      onClose()
     })
   }
 
@@ -122,12 +128,17 @@ export default function WorkoutFlagSheet({ workout, isLeader, onClose }: Props) 
   function submitFix() {
     setError(undefined)
     startTransition(async () => {
-      const result = await fixWorkoutAndClearFlag(workout.name, workout.variation, { reason, distTime, instructions })
-      if (result && 'error' in result) {
-        setError(result.error)
-        return
+      try {
+        const result = await fixWorkoutAndClearFlag(workout.name, workout.variation, { reason, distTime, instructions })
+        if (result && 'error' in result) {
+          setError(result.error)
+          return
+        }
+        onClose()
+      } catch (err) {
+        Sentry.captureException(err, { extra: { workoutName: workout.name, workoutVariation: workout.variation } })
+        setError('Something went wrong saving this — try again in a moment.')
       }
-      onClose()
     })
   }
 
