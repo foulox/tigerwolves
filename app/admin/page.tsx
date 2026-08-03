@@ -12,7 +12,7 @@ export default async function AdminPage() {
   return (
     <div>
       <Header title="Admin" isLeader={true} />
-      <Suspense>
+      <Suspense fallback={<p className="px-4 text-gray-400 italic text-sm">Loading…</p>}>
         <RegroupWorkoutsForm workouts={workouts} />
       </Suspense>
     </div>

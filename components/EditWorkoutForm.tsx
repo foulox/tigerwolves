@@ -231,6 +231,12 @@ export default function EditWorkoutForm({ workout }: { workout: Workout }) {
       </header>
       <p className="text-sm text-gray-500 mb-6">Update the basics — AI will re-suggest the rest.</p>
 
+      {workout.flagged && (
+        <div className="text-xs text-red-800 bg-red-100 rounded-lg px-3 py-2.5 mb-6">
+          This workout has a reported issue. Saving here will clear the flag along with everything else.
+        </div>
+      )}
+
       <Field label="Workout Name">
         <input required value={entry.name} onChange={e => setEntry(v => ({ ...v, name: e.target.value }))}
           className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />

@@ -1,11 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { dbFlagWorkoutMock, dbFixWorkoutAndClearFlagMock, captureServerEventMock, authMock } = vi.hoisted(() => ({
-  dbFlagWorkoutMock: vi.fn().mockResolvedValue(undefined),
-  dbFixWorkoutAndClearFlagMock: vi.fn().mockResolvedValue(undefined),
-  captureServerEventMock: vi.fn().mockResolvedValue(undefined),
-  authMock: vi.fn().mockResolvedValue({ userId: null }),
-}))
+const { dbFlagWorkoutMock, dbFixWorkoutAndClearFlagMock, captureServerEventMock, authMock, WorkoutNotFoundError } = vi.hoisted(() => {
+  class WorkoutNotFoundError extends Error {
+    constructor(name: string, variation: string) {
+      super(`Workout ${name} (${variation}) not found`)
+      this.name = 'WorkoutNotFoundError'
+    }
+  }
+  return {
+    dbFlagWorkoutMock: vi.fn().mockResolvedValue(undefined),
+    dbFixWorkoutAndClearFlagMock: vi.fn().mockResolvedValue(undefined),
+    captureServerEventMock: vi.fn().mockResolvedValue(undefined),
+    authMock: vi.fn().mockResolvedValue({ userId: null }),
+    WorkoutNotFoundError,
+  }
+})
 
 vi.mock('@/lib/db', () => ({
   dbSetScheduleWorkout: vi.fn(),
@@ -19,6 +28,7 @@ vi.mock('@/lib/db', () => ({
   dbFixRace: vi.fn(),
   dbFlagWorkout: dbFlagWorkoutMock,
   dbFixWorkoutAndClearFlag: dbFixWorkoutAndClearFlagMock,
+  WorkoutNotFoundError,
 }))
 
 vi.mock('next/cache', () => ({
@@ -77,6 +87,18 @@ describe('flagWorkoutIssue', () => {
     await flagWorkoutIssue('Yasso 800s', '', 'wrong reps')
     expect(captureServerEventMock).toHaveBeenCalledWith('workout_flagged', 'user_leader_1', { isLeader: true })
   })
+
+  it('returns a friendly error instead of throwing when the workout was renamed/moved underneath it', async () => {
+    dbFlagWorkoutMock.mockRejectedValueOnce(new WorkoutNotFoundError('Yasso 800s', ''))
+    const result = await flagWorkoutIssue('Yasso 800s', '', 'wrong reps')
+    expect(result).toEqual({ error: 'This workout may have changed since you opened this page — refresh and try again.' })
+    expect(captureServerEventMock).not.toHaveBeenCalled()
+  })
+
+  it('still propagates an unexpected (non-not-found) DB error rather than swallowing it', async () => {
+    dbFlagWorkoutMock.mockRejectedValueOnce(new Error('connection reset'))
+    await expect(flagWorkoutIssue('Yasso 800s', '', 'wrong reps')).rejects.toThrow('connection reset')
+  })
 })
 
 describe('fixWorkoutAndClearFlag', () => {
@@ -110,5 +132,19 @@ describe('fixWorkoutAndClearFlag', () => {
       distTime: '8 x 800m',
       instructions: 'warm up',
     })
+  })
+
+  it('returns a friendly error instead of throwing when the workout was renamed/moved underneath it', async () => {
+    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+    dbFixWorkoutAndClearFlagMock.mockRejectedValueOnce(new WorkoutNotFoundError('Yasso 800s', ''))
+    const result = await fixWorkoutAndClearFlag('Yasso 800s', '', fields)
+    expect(result).toEqual({ error: 'This workout may have changed since you opened this page — refresh and try again.' })
+    expect(captureServerEventMock).not.toHaveBeenCalled()
+  })
+
+  it('still propagates an unexpected (non-not-found) DB error rather than swallowing it', async () => {
+    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+    dbFixWorkoutAndClearFlagMock.mockRejectedValueOnce(new Error('connection reset'))
+    await expect(fixWorkoutAndClearFlag('Yasso 800s', '', fields)).rejects.toThrow('connection reset')
   })
 })

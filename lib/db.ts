@@ -147,13 +147,23 @@ export async function dbDeleteWorkout(name: string, variation: string): Promise<
   `
 }
 
+// Thrown when a (name, variation) match fails — distinguishable from other
+// DB errors so callers can tell "this workout moved" (e.g. renamed via
+// dbRegroupFamily between page load and submit) from an unexpected failure.
+export class WorkoutNotFoundError extends Error {
+  constructor(name: string, variation: string) {
+    super(`Workout ${name} (${variation}) not found`)
+    this.name = 'WorkoutNotFoundError'
+  }
+}
+
 export async function dbFlagWorkout(name: string, variation: string, flagNote: string): Promise<void> {
   const rows = await sql`
     UPDATE workouts SET flagged = true, flag_note = ${flagNote}
     WHERE name = ${name} AND variation = ${variation}
     RETURNING name
   `
-  if (rows.length === 0) throw new Error(`Workout ${name} (${variation}) not found`)
+  if (rows.length === 0) throw new WorkoutNotFoundError(name, variation)
 }
 
 export async function dbFixWorkoutAndClearFlag(
@@ -171,7 +181,7 @@ export async function dbFixWorkoutAndClearFlag(
     WHERE name = ${name} AND variation = ${variation}
     RETURNING name
   `
-  if (rows.length === 0) throw new Error(`Workout ${name} (${variation}) not found`)
+  if (rows.length === 0) throw new WorkoutNotFoundError(name, variation)
 }
 
 export async function dbInsertRace(race: Omit<Race, 'id'>): Promise<number> {
