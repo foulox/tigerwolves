@@ -17,6 +17,8 @@ import {
   dbFlagRace,
   dbVerifyRace,
   dbFixRace,
+  dbFlagWorkout,
+  dbFixWorkoutAndClearFlag,
 } from '@/lib/db'
 import { captureServerEvent } from '@/lib/analytics'
 import { feedbackLabel, feedbackTitle, feedbackBody, type FeedbackType } from '@/lib/feedbackUtils'
@@ -169,6 +171,10 @@ function buildWorkout(formData: FormData, variation = '', progression = ''): Omi
     trainingPhases: ((formData.get('trainingPhases') as string) || '').split(',').map(s => s.trim()).filter(Boolean),
     hasTurnaround: (formData.get('hasTurnaround') as string) === 'true',
     turnaroundDistance: (formData.get('turnaroundDistance') as string) || '',
+    // Saving through the full edit form always clears any flag, same as the
+    // inline fix sheet — both are "this workout's data is now correct".
+    flagged: false,
+    flagNote: '',
   }
 }
 
@@ -237,6 +243,33 @@ export async function updateWorkout(
   revalidateAll()
   await captureServerEvent('workout_edited', userId, { turnaroundChanged, isLeader: true })
   redirect('/library')
+}
+
+export async function flagWorkoutIssue(name: string, variation: string, note: string): Promise<void | { error: string }> {
+  const trimmed = note.trim()
+  if (!trimmed) return { error: 'Description is required' }
+  await dbFlagWorkout(name, variation, trimmed)
+  revalidateAll()
+  const { userId } = await auth()
+  await captureServerEvent('workout_flagged', userId ?? 'anonymous-runner', { isLeader: !!userId })
+}
+
+export async function fixWorkoutAndClearFlag(
+  name: string,
+  variation: string,
+  fields: { reason: string; distTime: string; instructions: string },
+): Promise<void | { error: string }> {
+  const userId = await requireAuth()
+  const reason = fields.reason.trim()
+  if (!reason) return { error: 'Reason is required' }
+
+  await dbFixWorkoutAndClearFlag(name, variation, {
+    reason,
+    distTime: fields.distTime.trim(),
+    instructions: fields.instructions.trim(),
+  })
+  revalidateAll()
+  await captureServerEvent('workout_fixed', userId, { isLeader: true })
 }
 
 export async function addRace(data: {
@@ -334,6 +367,8 @@ export async function addVariation(
     trainingPhases: parent.trainingPhases,
     hasTurnaround: false,
     turnaroundDistance: '',
+    flagged: false,
+    flagNote: '',
   })
   revalidateAll()
   await captureServerEvent('workout_added', userId, { isVariation: true, isLeader: true })

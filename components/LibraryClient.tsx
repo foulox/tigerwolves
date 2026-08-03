@@ -6,6 +6,7 @@ import type { Workout } from '@/lib/data'
 import { ABBREVIATIONS, RACE_TYPES } from '@/lib/data'
 import DeleteWorkoutButton from '@/components/DeleteWorkoutButton'
 import ReactionPicker from '@/components/ReactionPicker'
+import WorkoutFlagSheet, { FlagBadge } from '@/components/WorkoutFlagSheet'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 
@@ -41,6 +42,9 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
   const [expandedFamily, setExpandedFamily] = useState<string | null>(null)
   const [expandedNotes, setExpandedNotes] = useState<string | null>(null)
   const [showAbbrev, setShowAbbrev] = useState(false)
+  const [flagSheetFor, setFlagSheetFor] = useState<string | null>(null)
+
+  const flaggedWorkout = flagSheetFor ? workouts.find(w => workoutVoteId(w.name, w.variation) === flagSheetFor) ?? null : null
 
   const q = search.toLowerCase()
   function matchesSearch(w: Workout) {
@@ -224,6 +228,9 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                 <div className="flex justify-between items-start gap-2">
                   <div className="font-semibold text-gray-900">{w.name}</div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    {w.flagged && (
+                      <FlagBadge onClick={() => setFlagSheetFor(workoutVoteId(w.name, w.variation))} />
+                    )}
                     {isLeader && <DeleteWorkoutButton name={w.name} variation={w.variation} />}
                     {isLeader && (
                       <Link
@@ -260,6 +267,7 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
           }
 
           const isExpanded = expandedFamily === row.name
+          const familyFlagged = row.base?.flagged || row.progressions.some(p => p.flagged)
           return (
             <div key={`f-${row.name}`} data-tour="library-variations">
               <button
@@ -269,6 +277,15 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                 <div className="flex justify-between items-start gap-2">
                   <div className="font-semibold text-gray-900">{row.name}</div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    {familyFlagged && (
+                      <FlagBadge
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const flaggedMember = row.base?.flagged ? row.base : row.progressions.find(p => p.flagged)
+                          if (flaggedMember) setFlagSheetFor(workoutVoteId(flaggedMember.name, flaggedMember.variation))
+                        }}
+                      />
+                    )}
                     <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
                       {row.total} versions
                     </span>
@@ -287,16 +304,21 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                     <div className="bg-white rounded-xl px-4 py-3 border border-gray-100">
                       <div className="flex justify-between items-start">
                         <div className="text-xs font-bold text-gray-500 mb-0.5">Standard</div>
-                        {isLeader && (
-                          <div className="flex items-center gap-1.5">
-                            <DeleteWorkoutButton name={row.base.name} variation={row.base.variation} />
-                            <Link
-                              href={`/library/edit?name=${encodeURIComponent(row.base.name)}&variation=`}
-                              className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
-                              title="Edit"
-                            >✎</Link>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {row.base.flagged && (
+                            <FlagBadge onClick={() => setFlagSheetFor(workoutVoteId(row.base!.name, row.base!.variation))} />
+                          )}
+                          {isLeader && (
+                            <>
+                              <DeleteWorkoutButton name={row.base.name} variation={row.base.variation} />
+                              <Link
+                                href={`/library/edit?name=${encodeURIComponent(row.base.name)}&variation=`}
+                                className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                                title="Edit"
+                              >✎</Link>
+                            </>
+                          )}
+                        </div>
                       </div>
                       {row.base.distTime && <div className="text-xs text-gray-400">{row.base.distTime}</div>}
                       {row.base.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(row.base.lastRan)}</div>}
@@ -313,16 +335,21 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                     <div key={p.progression} className="bg-white rounded-xl px-4 py-3 border border-gray-100">
                       <div className="flex justify-between items-start">
                         <div className="text-xs font-bold text-orange-500 mb-0.5">Variation {p.progression} of {row.total}</div>
-                        {isLeader && (
-                          <div className="flex items-center gap-1.5">
-                            <DeleteWorkoutButton name={p.name} variation={p.variation} />
-                            <Link
-                              href={`/library/edit?name=${encodeURIComponent(p.name)}&variation=${encodeURIComponent(p.variation)}`}
-                              className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
-                              title="Edit"
-                            >✎</Link>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {p.flagged && (
+                            <FlagBadge onClick={() => setFlagSheetFor(workoutVoteId(p.name, p.variation))} />
+                          )}
+                          {isLeader && (
+                            <>
+                              <DeleteWorkoutButton name={p.name} variation={p.variation} />
+                              <Link
+                                href={`/library/edit?name=${encodeURIComponent(p.name)}&variation=${encodeURIComponent(p.variation)}`}
+                                className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                                title="Edit"
+                              >✎</Link>
+                            </>
+                          )}
+                        </div>
                       </div>
                       <div className="text-sm font-semibold text-gray-800">{p.variation}</div>
                       {p.distTime && <div className="text-xs text-gray-400 mt-0.5">{p.distTime}</div>}
@@ -350,6 +377,9 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
           )
         })}
       </div>
+      {flaggedWorkout && (
+        <WorkoutFlagSheet workout={flaggedWorkout} isLeader={isLeader} onClose={() => setFlagSheetFor(null)} />
+      )}
     </div>
   )
 }

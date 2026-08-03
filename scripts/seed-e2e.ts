@@ -59,6 +59,8 @@ function baseWorkout(overrides: Partial<Omit<Workout, 'lastRan'>> & Pick<Omit<Wo
     trainingPhases: [],
     hasTurnaround: false,
     turnaroundDistance: '',
+    flagged: false,
+    flagNote: '',
     ...overrides,
   }
 }
@@ -66,7 +68,11 @@ function baseWorkout(overrides: Partial<Omit<Workout, 'lastRan'>> & Pick<Omit<Wo
 const WORKOUTS: Omit<Workout, 'lastRan'>[] = [
   baseWorkout({ name: 'Easy Recovery Run', category: 'Easy', type: 'Recovery' }),
   baseWorkout({ name: 'Long Run — Progressive', category: 'Long', type: 'Progressive' }),
-  baseWorkout({ name: 'Yasso 800s', category: 'Quality', type: 'Interval', instructions: '10x800m @ 5K effort, 400m jog recovery.' }),
+  baseWorkout({
+    name: 'Yasso 800s', category: 'Quality', type: 'Interval',
+    instructions: '10x800m @ 5K effort, 400m jog recovery.',
+    flagged: true, flagNote: "We've actually been running 8 reps lately, not 10 — might be worth double-checking.",
+  }),
   baseWorkout({ name: 'Fort Greene Hills', category: 'Quality', type: 'Hills', instructions: '8x90sec hill repeats, jog down recovery.' }),
   baseWorkout({ name: 'Prospect Park Tempo', category: 'Quality', type: 'Straight Tempo', instructions: '20min @ tempo effort around the loop.' }),
   baseWorkout({ name: 'Track Ladder 400-800-1200', category: 'Quality', type: 'Ladder', instructions: '400-800-1200-800-400 @ 5K effort, equal jog recovery.' }),
@@ -97,14 +103,14 @@ export async function seedE2E(): Promise<void> {
         name, sport, category, type, reason, instructions, dist_time,
         lap_structure, energy_system, hr_zone, rpe, last_ran, coaching_notes,
         map_link, variation, progression, author, race_types, training_phases,
-        has_turnaround, turnaround_distance
+        has_turnaround, turnaround_distance, flagged, flag_note
       ) VALUES (
         ${w.name}, ${w.sport}, ${w.category}, ${w.type}, ${w.reason},
         ${w.instructions}, ${w.distTime}, ${w.lapStructure}, ${w.energySystem},
         ${w.hrZone}, ${w.rpe}, NULL, ${w.coachingNotes}, ${w.mapLink},
         ${w.variation}, ${w.progression}, ${w.author},
         ${w.raceTypes}, ${w.trainingPhases},
-        ${w.hasTurnaround}, ${w.turnaroundDistance}
+        ${w.hasTurnaround}, ${w.turnaroundDistance}, ${w.flagged}, ${w.flagNote}
       )
     `
   }

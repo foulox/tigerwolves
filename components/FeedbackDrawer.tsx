@@ -3,7 +3,7 @@
 import { useState, useRef, useTransition } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { X, ExternalLink, Loader2, Image as ImageIcon } from 'lucide-react'
-import { createFeedbackIssue } from '@/app/actions'
+import { createFeedbackIssue, flagWorkoutIssue } from '@/app/actions'
 import type { FeedbackType } from '@/lib/feedbackUtils'
 
 type Props = {
@@ -11,6 +11,9 @@ type Props = {
   onClose: () => void
   defaultType?: FeedbackType
   workoutContext?: string
+  // When set alongside defaultType="workout-data", submitting also sets the
+  // DB-backed flag on this workout, not just the GitHub audit-trail issue (#209).
+  workoutId?: { name: string; variation: string }
 }
 
 const TYPE_OPTIONS: { type: FeedbackType; emoji: string; label: string }[] = [
@@ -34,7 +37,7 @@ const TYPE_PLACEHOLDER: Record<FeedbackType, string> = {
   'run-leader': 'What would you like to tell the run leaders?',
 }
 
-export default function FeedbackDrawer({ open, onClose, defaultType, workoutContext }: Props) {
+export default function FeedbackDrawer({ open, onClose, defaultType, workoutContext, workoutId }: Props) {
   const { isSignedIn } = useAuth()
   const [type, setType] = useState<FeedbackType>(defaultType ?? 'bug')
   const [description, setDescription] = useState('')
@@ -89,8 +92,11 @@ export default function FeedbackDrawer({ open, onClose, defaultType, workoutCont
       })
       if ('error' in result) {
         setErrorMsg(result.error)
-      } else {
-        setIssueUrl(result.url)
+        return
+      }
+      setIssueUrl(result.url)
+      if (type === 'workout-data' && workoutId) {
+        await flagWorkoutIssue(workoutId.name, workoutId.variation, description.trim())
       }
     })
   }

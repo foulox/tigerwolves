@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { Flag } from 'lucide-react'
 import type { ScheduleEntry, Workout } from '@/lib/data'
 import { formatDateMedium } from '@/lib/postBuilder'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import ReactionPicker from '@/components/ReactionPicker'
 import FeedbackDrawer from '@/components/FeedbackDrawer'
+import WorkoutFlagSheet, { FlagBadge, FlagGhostButton } from '@/components/WorkoutFlagSheet'
 import { captureClientEvent } from '@/lib/analyticsClient'
 
 const TYPE_COLORS: Record<string, string> = {
@@ -32,6 +34,7 @@ interface Props {
 export default function ScheduleCard({ entry, workout, index, isLeader, voteData, isPast = false }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [flagSheetOpen, setFlagSheetOpen] = useState(false)
   const isNext = !isPast && index === 0
   const hasWorkout = workout !== null
   const filteredVariations = entry.selectedVariations.filter(v => v !== '')
@@ -77,13 +80,18 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
             </div>
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
-            <span
-              className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
-                isPast ? 'bg-[#e9eaec] text-[#9ca3af]' : (TYPE_COLORS[entry.workoutType] ?? 'bg-gray-100 text-gray-600')
-              }`}
-            >
-              {entry.workoutType}
-            </span>
+            <div className="flex items-center gap-1.5">
+              {workout && workout.flagged && (
+                <FlagBadge onClick={(e) => { e.stopPropagation(); setFlagSheetOpen(true) }} />
+              )}
+              <span
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                  isPast ? 'bg-[#e9eaec] text-[#9ca3af]' : (TYPE_COLORS[entry.workoutType] ?? 'bg-gray-100 text-gray-600')
+                }`}
+              >
+                {entry.workoutType}
+              </span>
+            </div>
             {isLeader && isPast && hasWorkout && (
               <Link
                 href={`/library/edit?name=${encodeURIComponent(workout.name)}&variation=${encodeURIComponent(workout.variation)}`}
@@ -145,19 +153,30 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
           {filteredVariations.length > 0 && (
             <ChipRow label="Variations" chips={filteredVariations} />
           )}
-          <ReactionPicker
-            workoutId={workoutVoteId(workout.name, workout.variation)}
-            workoutName={workout.name}
-            initialVoteData={voteData ?? null}
-            muted={isPast}
-          />
-          <button
-            onClick={e => { e.stopPropagation(); setFeedbackOpen(true) }}
-            data-tour={isNext ? 'schedule-flag' : undefined}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-full border border-dashed border-gray-300 text-xs text-gray-400 hover:text-gray-600 hover:border-gray-400 touch-manipulation transition-colors"
-          >
-            🚩 Flag an issue with this workout
-          </button>
+          <div className="flex items-center justify-between gap-2">
+            <ReactionPicker
+              workoutId={workoutVoteId(workout.name, workout.variation)}
+              workoutName={workout.name}
+              initialVoteData={voteData ?? null}
+              muted={isPast}
+            />
+            {workout.flagged ? (
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); setFlagSheetOpen(true) }}
+                className="flex items-center gap-1.5 bg-red-100 text-red-800 rounded-full px-3 py-1.5 text-xs font-bold shrink-0 touch-manipulation"
+              >
+                <Flag size={12} />
+                Issue reported
+              </button>
+            ) : (
+              <FlagGhostButton
+                workoutName={workout.name}
+                onClick={e => { e.stopPropagation(); setFeedbackOpen(true) }}
+                dataTour={isNext ? 'schedule-flag' : undefined}
+              />
+            )}
+          </div>
         </div>
       )}
       {/* FeedbackDrawer lives outside the expanded block so feedbackOpen state
@@ -168,7 +187,11 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
           onClose={() => setFeedbackOpen(false)}
           defaultType="workout-data"
           workoutContext={`${workout.name} (${entry.workoutType}) — ${formatDateMedium(entry.date)}`}
+          workoutId={{ name: workout.name, variation: workout.variation }}
         />
+      )}
+      {workout && workout.flagged && flagSheetOpen && (
+        <WorkoutFlagSheet workout={workout} isLeader={isLeader} onClose={() => setFlagSheetOpen(false)} />
       )}
     </div>
   )

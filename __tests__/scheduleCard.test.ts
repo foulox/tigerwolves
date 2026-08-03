@@ -25,6 +25,8 @@ function makeWorkout(overrides: Partial<Workout> = {}): Workout {
     trainingPhases: ['Build', 'Peak'],
     hasTurnaround: false,
     turnaroundDistance: '',
+    flagged: false,
+    flagNote: '',
     ...overrides,
   }
 }
