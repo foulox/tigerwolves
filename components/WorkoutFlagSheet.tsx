@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Flag } from 'lucide-react'
 import type { Workout } from '@/lib/data'
-import { fixWorkoutAndClearFlag } from '@/app/actions'
+import { fixWorkoutAndClearFlag, flagWorkoutIssue } from '@/app/actions'
 import { workoutVoteId } from '@/lib/votes'
 
 export function FlagBadge({ onClick, size = 22 }: { onClick: (e: React.MouseEvent) => void; size?: number }) {
@@ -34,6 +34,72 @@ export function FlagGhostButton({ workoutName, onClick, dataTour }: { workoutNam
     >
       <Flag size={13} />
     </button>
+  )
+}
+
+// Submit-a-new-flag sheet — mirrors RacesClient's own flag sheet exactly
+// (same "what's wrong?" shape, no GitHub issue): DB-only, no audit-trail
+// side effect, unlike the pre-#209 FeedbackDrawer this replaces as the entry point.
+export function FlagWorkoutDrawer({ workout, onClose }: { workout: Workout; onClose: () => void }) {
+  const [note, setNote] = useState('')
+  const [error, setError] = useState<string | undefined>()
+  const [isPending, startTransition] = useTransition()
+
+  const label = workout.variation ? `${workout.name} — ${workout.variation}` : workout.name
+
+  function submit() {
+    setError(undefined)
+    startTransition(async () => {
+      const result = await flagWorkoutIssue(workout.name, workout.variation, note)
+      if (result && 'error' in result) {
+        setError(result.error)
+        return
+      }
+      onClose()
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end" onClick={onClose}>
+      <div
+        className="w-full bg-white rounded-t-2xl shadow-xl max-h-[85vh] overflow-y-auto flex flex-col px-5 pt-3 pb-6"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-center pb-3">
+          <div className="w-9 h-1 rounded-full bg-gray-200" />
+        </div>
+        <div className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Flag an issue</h2>
+            <p className="text-sm text-gray-500">{label}</p>
+          </div>
+          <label className="flex flex-col gap-1.5 text-xs font-bold text-gray-500">
+            What&apos;s wrong?
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="e.g. the distance is wrong, we usually run 8 reps not 6"
+              rows={4}
+              className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900 font-normal resize-none"
+            />
+          </label>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="flex gap-2.5">
+            <button type="button" onClick={onClose} className="touch-manipulation flex-1 bg-gray-100 text-gray-700 rounded-2xl py-3 font-bold text-sm">
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={isPending}
+              className="touch-manipulation flex-1 bg-orange-600 text-white rounded-2xl py-3 font-bold text-sm disabled:opacity-50"
+            >
+              Submit
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

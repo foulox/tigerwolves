@@ -8,8 +8,7 @@ import { formatDateMedium } from '@/lib/postBuilder'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import ReactionPicker from '@/components/ReactionPicker'
-import FeedbackDrawer from '@/components/FeedbackDrawer'
-import WorkoutFlagSheet, { FlagBadge, FlagGhostButton } from '@/components/WorkoutFlagSheet'
+import WorkoutFlagSheet, { FlagBadge, FlagGhostButton, FlagWorkoutDrawer } from '@/components/WorkoutFlagSheet'
 import { captureClientEvent } from '@/lib/analyticsClient'
 
 const TYPE_COLORS: Record<string, string> = {
@@ -33,7 +32,7 @@ interface Props {
 
 export default function ScheduleCard({ entry, workout, index, isLeader, voteData, isPast = false }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [flagDrawerOpen, setFlagDrawerOpen] = useState(false)
   const [flagSheetOpen, setFlagSheetOpen] = useState(false)
   const isNext = !isPast && index === 0
   const hasWorkout = workout !== null
@@ -172,23 +171,15 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
             ) : (
               <FlagGhostButton
                 workoutName={workout.name}
-                onClick={e => { e.stopPropagation(); setFeedbackOpen(true) }}
+                onClick={e => { e.stopPropagation(); setFlagDrawerOpen(true) }}
                 dataTour={isNext ? 'schedule-flag' : undefined}
               />
             )}
           </div>
         </div>
       )}
-      {/* FeedbackDrawer lives outside the expanded block so feedbackOpen state
-          doesn't persist across collapse/re-expand cycles */}
-      {workout && (
-        <FeedbackDrawer
-          open={feedbackOpen}
-          onClose={() => setFeedbackOpen(false)}
-          defaultType="workout-data"
-          workoutContext={`${workout.name} (${entry.workoutType}) — ${formatDateMedium(entry.date)}`}
-          workoutId={{ name: workout.name, variation: workout.variation }}
-        />
+      {workout && flagDrawerOpen && (
+        <FlagWorkoutDrawer workout={workout} onClose={() => setFlagDrawerOpen(false)} />
       )}
       {workout && workout.flagged && flagSheetOpen && (
         <WorkoutFlagSheet workout={workout} isLeader={isLeader} onClose={() => setFlagSheetOpen(false)} />
