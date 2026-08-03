@@ -21,6 +21,7 @@ vi.mock('@/lib/db', () => ({
   dbFixRace: dbFixRaceMock,
   dbFlagWorkout: vi.fn(),
   dbFixWorkoutAndClearFlag: vi.fn(),
+  WorkoutNotFoundError: class WorkoutNotFoundError extends Error {},
 }))
 
 vi.mock('next/cache', () => ({

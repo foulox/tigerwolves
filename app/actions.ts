@@ -19,6 +19,7 @@ import {
   dbFixRace,
   dbFlagWorkout,
   dbFixWorkoutAndClearFlag,
+  WorkoutNotFoundError,
 } from '@/lib/db'
 import { captureServerEvent } from '@/lib/analytics'
 import { feedbackLabel, feedbackTitle, feedbackBody, type FeedbackType } from '@/lib/feedbackUtils'
@@ -248,7 +249,14 @@ export async function updateWorkout(
 export async function flagWorkoutIssue(name: string, variation: string, note: string): Promise<void | { error: string }> {
   const trimmed = note.trim()
   if (!trimmed) return { error: 'Description is required' }
-  await dbFlagWorkout(name, variation, trimmed)
+  try {
+    await dbFlagWorkout(name, variation, trimmed)
+  } catch (err) {
+    if (err instanceof WorkoutNotFoundError) {
+      return { error: 'This workout may have changed since you opened this page — refresh and try again.' }
+    }
+    throw err
+  }
   revalidateAll()
   const { userId } = await auth()
   await captureServerEvent('workout_flagged', userId ?? 'anonymous-runner', { isLeader: !!userId })
@@ -263,11 +271,18 @@ export async function fixWorkoutAndClearFlag(
   const reason = fields.reason.trim()
   if (!reason) return { error: 'Reason is required' }
 
-  await dbFixWorkoutAndClearFlag(name, variation, {
-    reason,
-    distTime: fields.distTime.trim(),
-    instructions: fields.instructions.trim(),
-  })
+  try {
+    await dbFixWorkoutAndClearFlag(name, variation, {
+      reason,
+      distTime: fields.distTime.trim(),
+      instructions: fields.instructions.trim(),
+    })
+  } catch (err) {
+    if (err instanceof WorkoutNotFoundError) {
+      return { error: 'This workout may have changed since you opened this page — refresh and try again.' }
+    }
+    throw err
+  }
   revalidateAll()
   await captureServerEvent('workout_fixed', userId, { isLeader: true })
 }

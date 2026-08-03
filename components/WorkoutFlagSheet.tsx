@@ -49,6 +49,10 @@ export function FlagWorkoutDrawer({ workout, onClose }: { workout: Workout; onCl
   const label = workout.variation ? `${workout.name} — ${workout.variation}` : workout.name
 
   function submit() {
+    if (!note.trim()) {
+      setError('Description is required')
+      return
+    }
     setError(undefined)
     startTransition(async () => {
       try {

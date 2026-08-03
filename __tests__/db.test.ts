@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from 'vitest'
-import { sql, fetchWorkouts, fetchSchedule, fetchRaces, dbInsertWorkout, dbUpdateWorkout, dbDeleteWorkout, dbSetScheduleWorkout, dbRegroupFamily, dbFlagWorkout, dbFixWorkoutAndClearFlag } from '../lib/db'
+import { sql, fetchWorkouts, fetchSchedule, fetchRaces, dbInsertWorkout, dbUpdateWorkout, dbDeleteWorkout, dbSetScheduleWorkout, dbRegroupFamily, dbFlagWorkout, dbFixWorkoutAndClearFlag, WorkoutNotFoundError } from '../lib/db'
 
 describe('database connection and schema', () => {
   it('connects to the database', async () => {
@@ -209,6 +209,16 @@ describe('workout mutations', () => {
     expect(fixed?.reason).toBe('Fixed reason')
     expect(fixed?.distTime).toBe('45min')
     expect(fixed?.instructions).toBe('Fixed instructions')
+  })
+
+  it('dbFlagWorkout throws WorkoutNotFoundError for a (name, variation) that does not match any row', async () => {
+    await expect(dbFlagWorkout('__no_such_workout__', '', 'note')).rejects.toThrow(WorkoutNotFoundError)
+  })
+
+  it('dbFixWorkoutAndClearFlag throws WorkoutNotFoundError for a (name, variation) that does not match any row', async () => {
+    await expect(dbFixWorkoutAndClearFlag('__no_such_workout__', '', {
+      reason: 'x', distTime: 'x', instructions: 'x',
+    })).rejects.toThrow(WorkoutNotFoundError)
   })
 
   it('renames a family via dbRegroupFamily', async () => {
