@@ -73,3 +73,53 @@ CREATE TABLE IF NOT EXISTS run_leaders (
   active BOOLEAN NOT NULL DEFAULT true,
   UNIQUE (run_id, name)
 );
+
+-- #272: new data model — run_groups / workout_families / workout_variants / routes
+-- Additive alongside the existing workouts table; no application code changes in this story.
+-- workout_families and routes both reference run_groups, so run_groups must be created first.
+-- workout_variants references workout_families, so workout_families precedes it.
+CREATE TABLE IF NOT EXISTS run_groups (
+  id               SERIAL PRIMARY KEY,
+  name             TEXT NOT NULL,
+  venue            TEXT NOT NULL,   -- 'road' | 'track' | 'trail'
+  default_location TEXT
+);
+
+CREATE TABLE IF NOT EXISTS workout_families (
+  id             SERIAL PRIMARY KEY,
+  name           TEXT NOT NULL,
+  category       TEXT NOT NULL,     -- Quality, Long, Easy
+  type           TEXT NOT NULL,     -- Threshold, Ladder, Superset, etc. (TEXT in DB; zod enum on write path)
+  reason         TEXT,
+  author         TEXT,
+  coaching_notes TEXT,
+  map_link       TEXT,
+  run_group_id   INT REFERENCES run_groups(id)  -- NULL = global/inspirational; one group per family for now
+);
+
+CREATE TABLE IF NOT EXISTS workout_variants (
+  id              SERIAL PRIMARY KEY,
+  family_id       INT NOT NULL REFERENCES workout_families(id),
+  label           TEXT,             -- NULL = sole/standard variant; "Shorter"/"Longer"/etc. when multiple exist
+  sort_order      INT,              -- display ordering within family; NULL for singletons
+  raw_input       TEXT NOT NULL,    -- leader's original free-form description, kept verbatim for audit
+  has_turnaround  BOOLEAN NOT NULL DEFAULT false,
+  turnaround      TEXT,             -- e.g. "After the 2nd 5-min tempo rep"; populated by AI at creation
+  energy_system   TEXT,
+  hr_zone         TEXT,
+  rpe             TEXT,
+  dist_time       TEXT,
+  race_types      TEXT[] NOT NULL DEFAULT '{}',
+  training_phases TEXT[] NOT NULL DEFAULT '{}',
+  flagged         BOOLEAN NOT NULL DEFAULT false,
+  flag_note       TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS routes (
+  id           SERIAL PRIMARY KEY,
+  name         TEXT NOT NULL,
+  distance     NUMERIC,            -- miles
+  description  TEXT,               -- free text including any progression notes
+  map_link     TEXT,
+  run_group_id INT REFERENCES run_groups(id)  -- scoped to one group for now; sharing model deferred
+);
