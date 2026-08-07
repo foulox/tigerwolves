@@ -114,6 +114,12 @@ CREATE TABLE IF NOT EXISTS workout_variants (
   flagged         BOOLEAN NOT NULL DEFAULT false,
   flag_note       TEXT NOT NULL DEFAULT ''
 );
+-- Two partial indexes rather than a single UNIQUE constraint: PostgreSQL treats NULLs as distinct
+-- in UNIQUE constraints, so (family_id, label) UNIQUE would allow multiple singleton rows per family.
+CREATE UNIQUE INDEX IF NOT EXISTS workout_variants_family_label_key
+  ON workout_variants (family_id, label) WHERE label IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS workout_variants_family_singleton_key
+  ON workout_variants (family_id) WHERE label IS NULL;
 
 CREATE TABLE IF NOT EXISTS routes (
   id           SERIAL PRIMARY KEY,
