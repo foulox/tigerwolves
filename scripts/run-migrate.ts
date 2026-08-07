@@ -8,10 +8,9 @@ if (!url) throw new Error('DATABASE_URL is not set')
 const sql = neon(url)
 const migrate = readFileSync(join(__dirname, 'migrate.sql'), 'utf8')
 
-const statements = migrate
-  .split(';')
-  .map(s => s.split('\n').filter(line => !line.trimStart().startsWith('--')).join('\n').trim())
-  .filter(s => s.length > 0)
+// Strip -- comments before splitting so semicolons inside comment text don't create bogus statements
+const stripped = migrate.split('\n').map(line => line.replace(/--.*$/, '')).join('\n')
+const statements = stripped.split(';').map(s => s.trim()).filter(s => s.length > 0)
 
 async function main() {
   console.log(`Running ${statements.length} statements against ${url!.split('@')[1]}`)
