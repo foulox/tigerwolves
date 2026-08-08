@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { NextResponse } from 'next/server'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
+import { fieldDescription } from '@/lib/schemaSemantics'
 
 const client = new Anthropic()
 
@@ -22,6 +23,8 @@ export async function POST(req: Request) {
   if (!userId) return new Response('Unauthorized', { status: 401 })
   const { name, category, type, instructions, reason } = await req.json()
 
+  // lapStructure has no schema-semantics.yml entry: the new workout_variants schema
+  // has no dedicated structure column, since #271 decided structure lives in raw_input.
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 512,
@@ -37,15 +40,15 @@ Instructions: ${instructions}
 Purpose: ${reason}
 
 Return a JSON object with exactly these fields:
-- distTime: estimated total distance or time (e.g. "6–8 miles" or "45–50 min")
+- distTime: ${fieldDescription('workout_variants', 'dist_time')}
 - lapStructure: concise rep structure using abbreviations (e.g. "3×10min@tempo r2min jog"). Empty string if continuous.
-- energySystem: one of "Aerobic", "Lactate Threshold", "Anaerobic", "Mixed"
-- hrZone: heart rate zones (e.g. "Z3-Z4" or "Z4-Z5")
-- rpe: RPE on 1-10 scale as a string (e.g. "7")
-- raceTypes: array from ${JSON.stringify(RACE_TYPES)} — include all race distances this workout meaningfully prepares for
-- trainingPhases: array from ${JSON.stringify(TRAINING_PHASES)} — include all phases where this workout fits
-- author: source or creator (e.g. "Brad Hudson", "Jack Daniels", "TigerWolves"). Use "TigerWolves" if unknown or original.
-- coachingNotes: 1–2 sentence cue for the leader running this workout. Empty string if nothing to add.
+- energySystem: ${fieldDescription('workout_variants', 'energy_system')}
+- hrZone: ${fieldDescription('workout_variants', 'hr_zone')}
+- rpe: ${fieldDescription('workout_variants', 'rpe')}
+- raceTypes: array from ${JSON.stringify(RACE_TYPES)} — ${fieldDescription('workout_variants', 'race_types')}
+- trainingPhases: array from ${JSON.stringify(TRAINING_PHASES)} — ${fieldDescription('workout_variants', 'training_phases')}
+- author: ${fieldDescription('workout_families', 'author')}
+- coachingNotes: ${fieldDescription('workout_families', 'coaching_notes')} 1–2 sentences. Empty string if nothing to add.
 
 Return ONLY valid JSON, no explanation or markdown.`
     }],
