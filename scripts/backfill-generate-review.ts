@@ -34,6 +34,10 @@ type ReviewFile = {
   families: BackfillFamily[]
 }
 
+function save(review: ReviewFile) {
+  writeFileSync(OUTPUT_PATH, JSON.stringify(review, null, 2))
+}
+
 async function fetchLegacyWorkouts(): Promise<Workout[]> {
   const rows = await sql`SELECT * FROM workouts ORDER BY name, progression NULLS LAST`
   return rows.map((r): Workout => ({
@@ -120,6 +124,18 @@ async function main() {
   console.log(`  grouped into ${families.length} families, ${totalVariants} variants`)
   console.log(`  ${needsTurnaround.length} variant(s) need an AI turnaround suggestion`)
 
+  const output: ReviewFile = {
+    generatedAt: new Date().toISOString(),
+    runGroupId: runGroup.id,
+    runGroupVenue: runGroup.venue,
+    families,
+  }
+  // Write the file up front (before any AI calls) and re-save after every
+  // attempt below — a run that's killed partway through (network drop, laptop
+  // sleep, Ctrl-C) still leaves every turnaround suggestion made so far on
+  // disk instead of losing the whole batch of Anthropic calls to a restart.
+  save(output)
+
   let done = 0
   for (const family of families) {
     for (const variant of family.variants) {
@@ -137,17 +153,11 @@ async function main() {
         const message = err instanceof Error ? err.message : String(err)
         variant.warnings.push(`AI turnaround suggestion failed: ${message}`)
         console.log(`  [${done}/${needsTurnaround.length}] ${family.legacyName} (${label}) -> FAILED: ${message}`)
+      } finally {
+        save(output)
       }
     }
   }
-
-  const output: ReviewFile = {
-    generatedAt: new Date().toISOString(),
-    runGroupId: runGroup.id,
-    runGroupVenue: runGroup.venue,
-    families,
-  }
-  writeFileSync(OUTPUT_PATH, JSON.stringify(output, null, 2))
 
   const familyWarnings = families.filter(f => f.warnings.length > 0).length
   console.log(`\nWrote ${OUTPUT_PATH}`)
