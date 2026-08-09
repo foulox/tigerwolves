@@ -19,8 +19,10 @@ import {
   dbFixRace,
   dbFlagWorkout,
   dbFixWorkoutAndClearFlag,
+  dbInsertWorkoutVariant,
   WorkoutNotFoundError,
 } from '@/lib/db'
+import { buildWorkoutVariantInput } from '@/lib/workoutVariant'
 import { captureServerEvent } from '@/lib/analytics'
 import { feedbackLabel, feedbackTitle, feedbackBody, type FeedbackType } from '@/lib/feedbackUtils'
 
@@ -213,9 +215,13 @@ export async function regroupFamily(
   redirect('/library')
 }
 
+// Writes to the new workout_families/workout_variants schema (#274) — not the
+// legacy `workouts` table dbInsertWorkout still writes to for addVariation.
+// New workouts won't show up in /library or the schedule picker until #276/#277
+// rewire those reads onto the new schema; this is a known, deliberate gap.
 export async function addWorkout(formData: FormData) {
   const userId = await requireAuth()
-  await dbInsertWorkout(buildWorkout(formData))
+  await dbInsertWorkoutVariant(buildWorkoutVariantInput(formData))
   revalidateAll()
   await captureServerEvent('workout_added', userId, { isVariation: false, isLeader: true })
   redirect('/library')

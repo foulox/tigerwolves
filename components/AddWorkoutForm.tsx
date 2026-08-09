@@ -3,9 +3,9 @@
 import { useState, useTransition } from 'react'
 import { addWorkout } from '@/app/actions'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
+import type { RunGroup } from '@/lib/data'
 import { FORM_CATEGORIES, FORM_TYPES, chipBase, chipDark, chipOrange, chipOff, toggleItem } from '@/lib/workoutForm'
-import { computeTurnaround } from '@/lib/postBuilder'
-import type { InferredFields } from '@/app/api/workout/infer/route'
+import type { InferredFields } from '@/lib/workoutInference'
 
 type Step = 'entry' | 'loading' | 'review'
 
@@ -16,14 +16,20 @@ type EntryData = {
   instructions: string
   reason: string
   route: string
+  runGroupId: number | null
+  hasTurnaroundHint: boolean
 }
 
-export default function AddWorkoutForm() {
+export default function AddWorkoutForm({ runGroups }: { runGroups: RunGroup[] }) {
   const [step, setStep] = useState<Step>('entry')
-  const [entry, setEntry] = useState<EntryData>({ name: '', category: '', type: '', instructions: '', reason: '', route: '' })
+  const [entry, setEntry] = useState<EntryData>({
+    name: '', category: '', type: '', instructions: '', reason: '', route: '',
+    runGroupId: runGroups.length === 1 ? runGroups[0].id : null,
+    hasTurnaroundHint: false,
+  })
   const [review, setReview] = useState<InferredFields | null>(null)
   const [hasTurnaround, setHasTurnaround] = useState(false)
-  const [turnaroundDistance, setTurnaroundDistance] = useState('')
+  const [turnaround, setTurnaround] = useState('')
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
@@ -32,20 +38,17 @@ export default function AddWorkoutForm() {
     setError('')
     setStep('loading')
     try {
+      const selectedGroup = runGroups.find(g => g.id === entry.runGroupId)
       const res = await fetch('/api/workout/infer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry),
+        body: JSON.stringify({ ...entry, venue: selectedGroup?.venue ?? null }),
       })
       if (!res.ok) throw new Error('Inference failed')
       const inferred: InferredFields = await res.json()
       setReview(inferred)
-      if (hasTurnaround && !turnaroundDistance) {
-        const computed = computeTurnaround(entry.instructions)
-        const prefix = '↩️ TURN AROUND: '
-        const desc = computed.startsWith(prefix) ? computed.slice(prefix.length) : ''
-        if (desc && desc !== '[add before posting]') setTurnaroundDistance(desc)
-      }
+      setHasTurnaround(inferred.hasTurnaround)
+      setTurnaround(inferred.turnaround)
       setStep('review')
     } catch (err) {
       setError(`Could not infer fields: ${err instanceof Error ? err.message : String(err)}`)
@@ -61,8 +64,8 @@ export default function AddWorkoutForm() {
     formData.set('instructions', entry.instructions)
     formData.set('reason', entry.reason)
     formData.set('mapLink', entry.route)
+    formData.set('runGroupId', entry.runGroupId != null ? String(entry.runGroupId) : '')
     formData.set('distTime', review!.distTime)
-    formData.set('lapStructure', review!.lapStructure)
     formData.set('energySystem', review!.energySystem)
     formData.set('hrZone', review!.hrZone)
     formData.set('rpe', review!.rpe)
@@ -71,7 +74,7 @@ export default function AddWorkoutForm() {
     formData.set('author', review!.author)
     formData.set('coachingNotes', review!.coachingNotes)
     formData.set('hasTurnaround', String(hasTurnaround))
-    formData.set('turnaroundDistance', turnaroundDistance)
+    formData.set('turnaround', turnaround)
     return formData
   }
 
@@ -118,12 +121,6 @@ export default function AddWorkoutForm() {
         <Field label="Distance / Time">
           <input value={review.distTime} onChange={e => setReview(r => r && ({ ...r, distTime: e.target.value }))}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
-        </Field>
-
-        <Field label="Lap Structure">
-          <input value={review.lapStructure} onChange={e => setReview(r => r && ({ ...r, lapStructure: e.target.value }))}
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
-            placeholder="e.g. 3×10min@tempo r2min jog" />
         </Field>
 
         <Field label="Energy System">
@@ -181,9 +178,18 @@ export default function AddWorkoutForm() {
             placeholder="Cues for the leader running this workout" />
         </Field>
 
+        <Field label="Needs turnaround?">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setHasTurnaround(true)}
+              className={`${chipBase} ${hasTurnaround ? chipOrange : chipOff}`}>Yes</button>
+            <button type="button" onClick={() => setHasTurnaround(false)}
+              className={`${chipBase} ${!hasTurnaround ? chipDark : chipOff}`}>No</button>
+          </div>
+        </Field>
+
         {hasTurnaround && (
           <Field label="Turnaround point">
-            <input value={turnaroundDistance} onChange={e => setTurnaroundDistance(e.target.value)}
+            <input value={turnaround} onChange={e => setTurnaround(e.target.value)}
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
               placeholder="e.g. After the 3rd rep of 4×5min" />
           </Field>
@@ -236,6 +242,19 @@ export default function AddWorkoutForm() {
         </div>
       </Field>
 
+      {runGroups.length > 0 && (
+        <Field label="Run group">
+          <div className="flex flex-wrap gap-2">
+            {runGroups.map(g => (
+              <button type="button" key={g.id} onClick={() => setEntry(v => ({ ...v, runGroupId: g.id }))}
+                className={`${chipBase} ${entry.runGroupId === g.id ? chipDark : chipOff}`}>{g.name}</button>
+            ))}
+            <button type="button" onClick={() => setEntry(v => ({ ...v, runGroupId: null }))}
+              className={`${chipBase} ${entry.runGroupId === null ? chipDark : chipOff}`}>Global</button>
+          </div>
+        </Field>
+      )}
+
       <Field label="Instructions">
         <textarea required value={entry.instructions} onChange={e => setEntry(v => ({ ...v, instructions: e.target.value }))}
           rows={4}
@@ -258,11 +277,12 @@ export default function AddWorkoutForm() {
 
       <Field label="Needs turnaround?">
         <div className="flex gap-2">
-          <button type="button" onClick={() => setHasTurnaround(true)}
-            className={`${chipBase} ${hasTurnaround ? chipOrange : chipOff}`}>Yes</button>
-          <button type="button" onClick={() => setHasTurnaround(false)}
-            className={`${chipBase} ${!hasTurnaround ? chipDark : chipOff}`}>No</button>
+          <button type="button" onClick={() => setEntry(v => ({ ...v, hasTurnaroundHint: true }))}
+            className={`${chipBase} ${entry.hasTurnaroundHint ? chipOrange : chipOff}`}>Yes</button>
+          <button type="button" onClick={() => setEntry(v => ({ ...v, hasTurnaroundHint: false }))}
+            className={`${chipBase} ${!entry.hasTurnaroundHint ? chipDark : chipOff}`}>No</button>
         </div>
+        <p className="text-xs text-gray-400 mt-1">Just a starting guess — AI will refine it on the next screen.</p>
       </Field>
 
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}

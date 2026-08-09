@@ -129,3 +129,10 @@ CREATE TABLE IF NOT EXISTS routes (
   map_link     TEXT,
   run_group_id INT REFERENCES run_groups(id)  -- scoped to one group for now; sharing model deferred
 );
+
+-- #274: seed the TigerWolves run group so the new write path has a real group to
+-- attach new workout_families to — run_groups had no seed data until now. venue/
+-- default_location match the route described in buildPost (lib/postBuilder.ts).
+INSERT INTO run_groups (name, venue, default_location)
+SELECT 'TigerWolves', 'road', 'Tom Stofka Garden, aka "Da Bins"'
+WHERE NOT EXISTS (SELECT 1 FROM run_groups WHERE name = 'TigerWolves');
