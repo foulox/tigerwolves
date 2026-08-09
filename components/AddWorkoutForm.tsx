@@ -17,6 +17,7 @@ type EntryData = {
   reason: string
   route: string
   runGroupId: number | null
+  hasTurnaroundHint: boolean
 }
 
 export default function AddWorkoutForm({ runGroups }: { runGroups: RunGroup[] }) {
@@ -24,6 +25,7 @@ export default function AddWorkoutForm({ runGroups }: { runGroups: RunGroup[] })
   const [entry, setEntry] = useState<EntryData>({
     name: '', category: '', type: '', instructions: '', reason: '', route: '',
     runGroupId: runGroups.length === 1 ? runGroups[0].id : null,
+    hasTurnaroundHint: false,
   })
   const [review, setReview] = useState<InferredFields | null>(null)
   const [hasTurnaround, setHasTurnaround] = useState(false)
@@ -271,6 +273,16 @@ export default function AddWorkoutForm({ runGroups }: { runGroups: RunGroup[] })
         <input value={entry.route} onChange={e => setEntry(v => ({ ...v, route: e.target.value }))}
           className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
           placeholder="e.g. strava.com/routes/... or mapmyrun.com/..." />
+      </Field>
+
+      <Field label="Needs turnaround?">
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setEntry(v => ({ ...v, hasTurnaroundHint: true }))}
+            className={`${chipBase} ${entry.hasTurnaroundHint ? chipOrange : chipOff}`}>Yes</button>
+          <button type="button" onClick={() => setEntry(v => ({ ...v, hasTurnaroundHint: false }))}
+            className={`${chipBase} ${!entry.hasTurnaroundHint ? chipDark : chipOff}`}>No</button>
+        </div>
+        <p className="text-xs text-gray-400 mt-1">Just a starting guess — AI will refine it on the next screen.</p>
       </Field>
 
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}

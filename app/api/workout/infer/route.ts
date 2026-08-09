@@ -12,7 +12,7 @@ const client = new Anthropic()
 export async function POST(req: Request) {
   const { userId } = await auth()
   if (!userId) return new Response('Unauthorized', { status: 401 })
-  const { name, category, type, instructions, reason, venue } = await req.json()
+  const { name, category, type, instructions, reason, venue, hasTurnaroundHint } = await req.json()
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
@@ -28,6 +28,7 @@ Type: ${type}
 Instructions: ${instructions}
 Purpose: ${reason}
 Run group venue: ${venue ?? 'unspecified'}
+Leader's initial guess on turnaround: ${hasTurnaroundHint ? 'yes, this workout probably needs one' : 'no, probably doesn\'t need one'} — treat this as a signal, not a rule; they filled this in before seeing the instructions parsed back to them, so overrule it if the instructions clearly say otherwise.
 
 Return a JSON object with exactly these fields:
 - distTime: ${fieldDescription('workout_variants', 'dist_time')}
