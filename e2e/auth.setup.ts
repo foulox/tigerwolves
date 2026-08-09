@@ -1,4 +1,5 @@
 import { test as setup, expect } from '@playwright/test'
+import { setupClerkTestingToken } from '@clerk/testing/playwright'
 import fs from 'fs'
 import path from 'path'
 
@@ -8,6 +9,11 @@ setup('authenticate as test leader', async ({ page }) => {
   const email = process.env.PLAYWRIGHT_TEST_EMAIL
   const password = process.env.PLAYWRIGHT_TEST_PASSWORD
   if (!email || !password) throw new Error('PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD must be set in .env.test')
+
+  // Without this, Device Trust treats this fresh browser context as a new
+  // device and redirects password sign-in to an email-verification step
+  // (/sign-in/client-trust) this script can't complete. See #273.
+  await setupClerkTestingToken({ page })
 
   await page.goto('/sign-in')
 
