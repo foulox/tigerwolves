@@ -1,5 +1,5 @@
 import { test as setup, expect } from '@playwright/test'
-import { setupClerkTestingToken } from '@clerk/testing/playwright'
+import { clerk } from '@clerk/testing/playwright'
 import fs from 'fs'
 import path from 'path'
 
@@ -10,24 +10,18 @@ setup('authenticate as test leader', async ({ page }) => {
   const password = process.env.PLAYWRIGHT_TEST_PASSWORD
   if (!email || !password) throw new Error('PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD must be set in .env.test')
 
-  // Without this, Device Trust treats this fresh browser context as a new
-  // device and redirects password sign-in to an email-verification step
-  // (/sign-in/client-trust) this script can't complete. See #273.
-  await setupClerkTestingToken({ page })
+  // Signs in via Clerk's JS SDK directly (Clerk.client.signIn.create + setActive),
+  // bypassing the hosted sign-in UI entirely — a UI-driven password sign-in from
+  // a fresh browser gets redirected by Device Trust to an email-verification step
+  // (/sign-in/client-trust) this script has no way to complete. clerk.signIn()
+  // uses a Clerk testing token internally to skip that. See #273.
+  await page.goto('/')
+  await clerk.signIn({
+    page,
+    signInParams: { strategy: 'password', identifier: email, password },
+  })
 
-  await page.goto('/sign-in')
-
-  // Step 1: email
-  await page.getByLabel(/email address/i).or(page.getByPlaceholder(/email/i)).fill(email)
-  await page.getByRole('button', { name: 'Continue', exact: true }).click()
-
-  // Step 2: password (Clerk shows it after email step)
-  const passwordInput = page.getByPlaceholder('Enter your password')
-  await passwordInput.waitFor({ timeout: 10000 })
-  await passwordInput.fill(password)
-  await page.getByRole('button', { name: 'Continue', exact: true }).click()
-
-  await page.waitForURL(url => !url.pathname.startsWith('/sign-in'), { timeout: 15000 })
+  await page.goto('/')
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
 
