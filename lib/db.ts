@@ -302,8 +302,10 @@ export async function dbInsertWorkoutVariant(
     // Two sequential HTTP calls, not a single transaction (the neon serverless
     // driver's .transaction() only supports independent queries, not one that
     // depends on the previous query's result) — clean up the orphaned family
-    // row by hand if the variant insert fails.
-    await sql`DELETE FROM workout_families WHERE id = ${familyId}`
+    // row by hand if the variant insert fails. Swallow a rollback failure
+    // rather than let it replace `err` — the caller needs to know the variant
+    // insert failed, not that the best-effort cleanup afterward also failed.
+    await sql`DELETE FROM workout_families WHERE id = ${familyId}`.catch(() => {})
     throw err
   }
 }
