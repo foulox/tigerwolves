@@ -7,19 +7,19 @@ const authFile = path.join(__dirname, '.auth/user.json')
 
 setup('authenticate as test leader', async ({ page }) => {
   const email = process.env.PLAYWRIGHT_TEST_EMAIL
-  const password = process.env.PLAYWRIGHT_TEST_PASSWORD
-  if (!email || !password) throw new Error('PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD must be set in .env.test')
+  if (!email) throw new Error('PLAYWRIGHT_TEST_EMAIL must be set in .env.test')
 
-  // Signs in via Clerk's JS SDK directly (Clerk.client.signIn.create + setActive),
-  // bypassing the hosted sign-in UI entirely — a UI-driven password sign-in from
-  // a fresh browser gets redirected by Device Trust to an email-verification step
-  // (/sign-in/client-trust) this script has no way to complete. clerk.signIn()
-  // uses a Clerk testing token internally to skip that. See #273.
+  // Signs in via a Backend-API-minted ticket instead of password + Device Trust.
+  // Device Trust only gates *password* sign-ins, and @clerk/testing's password
+  // strategy doesn't check signIn.create()'s status before calling setActive() —
+  // when Device Trust requires extra verification, createdSessionId comes back
+  // undefined and setActive() silently no-ops, so no error surfaces but no
+  // session cookie is ever set either. Ticket-based sign-in (clerk.signIn with
+  // emailAddress) uses CLERK_SECRET_KEY to mint a sign-in ticket directly via
+  // the Backend API and redeems it client-side — no password, no Device Trust
+  // check. See #273.
   await page.goto('/')
-  await clerk.signIn({
-    page,
-    signInParams: { strategy: 'password', identifier: email, password },
-  })
+  await clerk.signIn({ page, emailAddress: email })
 
   await page.goto('/')
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
