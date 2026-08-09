@@ -1,4 +1,5 @@
 import { test as setup, expect } from '@playwright/test'
+import { clerk } from '@clerk/testing/playwright'
 import fs from 'fs'
 import path from 'path'
 
@@ -6,22 +7,21 @@ const authFile = path.join(__dirname, '.auth/user.json')
 
 setup('authenticate as test leader', async ({ page }) => {
   const email = process.env.PLAYWRIGHT_TEST_EMAIL
-  const password = process.env.PLAYWRIGHT_TEST_PASSWORD
-  if (!email || !password) throw new Error('PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD must be set in .env.test')
+  if (!email) throw new Error('PLAYWRIGHT_TEST_EMAIL must be set in .env.test')
 
-  await page.goto('/sign-in')
+  // Signs in via a Backend-API-minted ticket instead of password + Device Trust.
+  // Device Trust only gates *password* sign-ins, and @clerk/testing's password
+  // strategy doesn't check signIn.create()'s status before calling setActive() —
+  // when Device Trust requires extra verification, createdSessionId comes back
+  // undefined and setActive() silently no-ops, so no error surfaces but no
+  // session cookie is ever set either. Ticket-based sign-in (clerk.signIn with
+  // emailAddress) uses CLERK_SECRET_KEY to mint a sign-in ticket directly via
+  // the Backend API and redeems it client-side — no password, no Device Trust
+  // check. See #273.
+  await page.goto('/')
+  await clerk.signIn({ page, emailAddress: email })
 
-  // Step 1: email
-  await page.getByLabel(/email address/i).or(page.getByPlaceholder(/email/i)).fill(email)
-  await page.getByRole('button', { name: 'Continue', exact: true }).click()
-
-  // Step 2: password (Clerk shows it after email step)
-  const passwordInput = page.getByPlaceholder('Enter your password')
-  await passwordInput.waitFor({ timeout: 10000 })
-  await passwordInput.fill(password)
-  await page.getByRole('button', { name: 'Continue', exact: true }).click()
-
-  await page.waitForURL(url => !url.pathname.startsWith('/sign-in'), { timeout: 15000 })
+  await page.goto('/')
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
 

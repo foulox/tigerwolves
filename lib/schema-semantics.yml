@@ -1,0 +1,122 @@
+# Semantic layer for the workout data model (#271 epic, #272 schema).
+#
+# States what each table/column MEANS and the business rules around it — not just
+# its type. Keep in sync with scripts/migrate.sql in the same PR as any migration.
+#
+# Read by:
+#   - The wiki's Architecture Overview (linked from there, not duplicated)
+#   - Any AI prompt that reasons about these fields — see lib/schemaSemantics.ts
+#     and its consumer, app/api/workout/infer/route.ts. New prompts should read
+#     descriptions from here instead of hand-copying their own wording.
+#
+# SERIAL primary keys and plain foreign-key ids are omitted below — they're not
+# domain-meaningful beyond "references that row."
+
+run_groups:
+  description: >
+    A recurring running club session (e.g. TigerWolves, Helkatz, MMER).
+    Owns zero or more workout_families and routes.
+  fields:
+    name:
+      description: Display name of the run group, e.g. "TigerWolves".
+    venue:
+      description: >
+        One of 'road' | 'track' | 'trail'. Useful context for AI turnaround
+        suggestions (track workouts default to no turnaround), but it is not
+        itself the display condition — see workout_variants.has_turnaround.
+    default_location:
+      description: >
+        Where this group usually meets, e.g. "Kent Ave / Da Bins", "McCarren Track".
+
+workout_families:
+  description: >
+    A named workout concept. May have one or more variants (e.g. Shorter/Standard/Longer).
+    A family with exactly one variant is effectively standalone from a leader's perspective.
+  fields:
+    name:
+      description: The workout's name, e.g. "Broken Tempo".
+    category:
+      description: One of Quality | Long | Easy.
+    type:
+      description: >
+        The workout structure type (Threshold, Ladder, Superset, etc.). Stored as
+        open text — not a closed Postgres enum — so new types can be introduced
+        without a migration. A zod enum is enforced on the write path instead.
+    reason:
+      description: Why leaders pick this workout — the training purpose.
+    author:
+      description: >
+        Source or creator of the workout, e.g. "Brad Hudson", "Jack Daniels", "TigerWolves".
+        "TigerWolves" means original or unknown origin.
+    coaching_notes:
+      description: A short cue for the leader running this workout.
+    map_link:
+      description: Link to a map of the workout, if applicable.
+    run_group_id:
+      description: >
+        NULL means global/inspirational — not owned by any one run group. One run
+        group per family for now; no adoption/sharing model yet (deferred until a
+        second run group joins, see epic #271 decisions).
+
+workout_variants:
+  description: >
+    One concrete version of a workout family. Variants within a family share the
+    same structure but differ in volume (e.g. different hard-effort durations).
+  fields:
+    label:
+      description: >
+        Display name distinguishing this variant from its siblings (e.g. "Shorter",
+        "Longer"). NULL means this is the only version of this workout — no label
+        is shown in the UI.
+    sort_order:
+      description: Display order within the family. NULL for singleton variants.
+    raw_input:
+      description: >
+        The leader's original free-form paragraph, exactly as typed. Never
+        overwritten — re-run AI metadata/turnaround inference against this if a
+        suggestion needs refreshing.
+    has_turnaround:
+      description: >
+        Whether this variant gets a turnaround line in the post. Set per variant
+        by the leader; AI suggests it at creation time. This is the ONLY display
+        gate — venue is useful context (track defaults to false) but does not
+        itself imply the value. Road workouts can still be false: Hills and
+        Domino Park 800s are road workouts with no turnaround.
+    turnaround:
+      description: >
+        Human-readable turnaround instruction (e.g. "After the 2nd 5-min tempo
+        rep"). AI-suggested at creation from raw_input, editable before posting.
+        Only shown in posts when has_turnaround = true.
+    energy_system:
+      description: One of Aerobic | Lactate Threshold | Anaerobic | Mixed.
+    hr_zone:
+      description: Target heart rate zone(s) for the workout, e.g. "Z3-Z4".
+    rpe:
+      description: Rate of perceived exertion, 1-10 scale, stored as text.
+    dist_time:
+      description: Estimated total distance or time, e.g. "6-8 miles" or "45-50 min".
+    race_types:
+      description: >
+        Race distances this workout meaningfully prepares for. Multiple values allowed.
+    training_phases:
+      description: >
+        Training phase(s) where this workout fits (e.g. Base, Build, Peak, Taper).
+        Multiple values allowed.
+    flagged:
+      description: Leader-raised flag that this variant's data may be wrong or needs review.
+    flag_note:
+      description: Free-text explanation attached to a flagged variant.
+
+routes:
+  description: >
+    A named running route. Scoped to one run group for now — cross-group sharing
+    model deferred until a second run group joins (see epic #271 decisions).
+  fields:
+    name:
+      description: Route name.
+    distance:
+      description: Route distance in miles.
+    description:
+      description: Free text describing the route, including any progression notes.
+    map_link:
+      description: Link to a map of the route.
