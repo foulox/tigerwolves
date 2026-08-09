@@ -1,5 +1,10 @@
 import { describe, it, expect, afterAll } from 'vitest'
-import { sql, fetchWorkouts, fetchSchedule, fetchRaces, dbInsertWorkout, dbUpdateWorkout, dbDeleteWorkout, dbSetScheduleWorkout, dbRegroupFamily, dbFlagWorkout, dbFixWorkoutAndClearFlag, WorkoutNotFoundError } from '../lib/db'
+import {
+  sql, fetchWorkouts, fetchSchedule, fetchRaces, fetchRunGroups,
+  dbInsertWorkout, dbUpdateWorkout, dbDeleteWorkout, dbSetScheduleWorkout,
+  dbRegroupFamily, dbFlagWorkout, dbFixWorkoutAndClearFlag, WorkoutNotFoundError,
+  dbInsertWorkoutVariant, dbUpdateWorkoutVariant, WorkoutVariantNotFoundError,
+} from '../lib/db'
 
 describe('database connection and schema', () => {
   it('connects to the database', async () => {
@@ -297,5 +302,90 @@ describe('dbSetScheduleWorkout', () => {
     } finally {
       await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date`
     }
+  })
+})
+
+describe('fetchRunGroups', () => {
+  it('returns an array of run groups with the expected shape', async () => {
+    const groups = await fetchRunGroups()
+    expect(Array.isArray(groups)).toBe(true)
+    for (const g of groups) {
+      expect(typeof g.id).toBe('number')
+      expect(typeof g.name).toBe('string')
+      expect(typeof g.venue).toBe('string')
+    }
+  })
+})
+
+describe('workout_families / workout_variants write path (#274)', () => {
+  const TEST_NAME = '__test_family_274__'
+  let familyId: number
+  let variantId: number
+
+  const BASE_INPUT = {
+    name: TEST_NAME,
+    category: 'Quality' as const,
+    type: 'Hills' as const,
+    reason: 'Test reason',
+    author: 'Test',
+    coachingNotes: 'Push the pace',
+    mapLink: null,
+    runGroupId: null,
+    instructions: 'WU: 10 min easy. Main: 5x2min hill. CD: 10 min easy.',
+    distTime: '30min',
+    energySystem: 'Anaerobic',
+    hrZone: 'Z4-Z5',
+    rpe: '8',
+    raceTypes: ['5K'],
+    trainingPhases: ['Build'],
+    hasTurnaround: true,
+    turnaround: 'After the 3rd rep',
+  }
+
+  afterAll(async () => {
+    if (variantId) await sql`DELETE FROM workout_variants WHERE id = ${variantId}`
+    if (familyId) await sql`DELETE FROM workout_families WHERE id = ${familyId}`
+  })
+
+  it('inserts a workout family + variant via dbInsertWorkoutVariant and reads both back', async () => {
+    const result = await dbInsertWorkoutVariant(BASE_INPUT)
+    familyId = result.familyId
+    variantId = result.variantId
+
+    const [family] = await sql`SELECT * FROM workout_families WHERE id = ${familyId}`
+    expect(family.name).toBe(TEST_NAME)
+    expect(family.category).toBe('Quality')
+    expect(family.type).toBe('Hills')
+
+    const [variant] = await sql`SELECT * FROM workout_variants WHERE id = ${variantId}`
+    expect(variant.family_id).toBe(familyId)
+    expect(variant.label).toBeNull()
+    expect(variant.raw_input).toBe(BASE_INPUT.instructions)
+    expect(variant.has_turnaround).toBe(true)
+    expect(variant.turnaround).toBe('After the 3rd rep')
+    expect(variant.race_types).toEqual(['5K'])
+  })
+
+  it('updates the family + variant via dbUpdateWorkoutVariant', async () => {
+    await dbUpdateWorkoutVariant(variantId, {
+      ...BASE_INPUT,
+      category: 'Long',
+      reason: 'Updated reason',
+      instructions: 'Updated instructions',
+      hasTurnaround: false,
+      turnaround: '',
+    })
+
+    const [family] = await sql`SELECT * FROM workout_families WHERE id = ${familyId}`
+    expect(family.category).toBe('Long')
+    expect(family.reason).toBe('Updated reason')
+
+    const [variant] = await sql`SELECT * FROM workout_variants WHERE id = ${variantId}`
+    expect(variant.raw_input).toBe('Updated instructions')
+    expect(variant.has_turnaround).toBe(false)
+  })
+
+  it('dbUpdateWorkoutVariant throws WorkoutVariantNotFoundError for an unknown id', async () => {
+    await expect(dbUpdateWorkoutVariant(-1, BASE_INPUT)).rejects.toThrow(WorkoutVariantNotFoundError)
   })
 })

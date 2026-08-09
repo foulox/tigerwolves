@@ -1,7 +1,8 @@
 import { neon } from '@neondatabase/serverless'
 import { unstable_cache } from 'next/cache'
-import type { Workout, ScheduleEntry, Race } from './data'
+import type { Workout, ScheduleEntry, Race, RunGroup } from './data'
 import { weekOfMonth } from './data'
+import type { WorkoutVariantInput } from './workoutVariant'
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is not set')
@@ -63,6 +64,18 @@ export async function fetchSchedule(): Promise<ScheduleEntry[]> {
       selectedVariations: (r.selected_variations as string[]) ?? [''],
     }
   })
+}
+
+export async function fetchRunGroups(): Promise<RunGroup[]> {
+  const rows = await sql`
+    SELECT * FROM run_groups ORDER BY name
+  `
+  return rows.map((r) => ({
+    id: r.id as number,
+    name: r.name as string,
+    venue: r.venue as string,
+    defaultLocation: (r.default_location as string | null) ?? null,
+  }))
 }
 
 export async function fetchRaces(): Promise<Race[]> {
@@ -246,6 +259,85 @@ export async function dbRegroupFamily(
       `,
     ),
   )
+}
+
+// ── New schema writes (#274) ────────────────────────────────────────────────
+// workout_families / workout_variants, additive alongside the legacy `workouts`
+// table (which stays in place until cutover story #278). Only AddWorkoutForm
+// writes here today; dbUpdateWorkoutVariant has no call site yet — editing is
+// blocked for every workout reachable today, since none have a variant row
+// until #275's backfill runs. It exists now because #276/#277's read-path
+// rewire will need it.
+
+export class WorkoutVariantNotFoundError extends Error {
+  constructor(variantId: number) {
+    super(`Workout variant ${variantId} not found`)
+    this.name = 'WorkoutVariantNotFoundError'
+  }
+}
+
+export async function dbInsertWorkoutVariant(
+  w: WorkoutVariantInput,
+): Promise<{ familyId: number; variantId: number }> {
+  const [family] = await sql`
+    INSERT INTO workout_families (name, category, type, reason, author, coaching_notes, map_link, run_group_id)
+    VALUES (${w.name}, ${w.category}, ${w.type}, ${w.reason}, ${w.author}, ${w.coachingNotes}, ${w.mapLink}, ${w.runGroupId})
+    RETURNING id
+  `
+  const familyId = family.id as number
+
+  try {
+    const [variant] = await sql`
+      INSERT INTO workout_variants (
+        family_id, label, sort_order, raw_input, has_turnaround, turnaround,
+        energy_system, hr_zone, rpe, dist_time, race_types, training_phases
+      ) VALUES (
+        ${familyId}, NULL, NULL, ${w.instructions}, ${w.hasTurnaround}, ${w.turnaround},
+        ${w.energySystem}, ${w.hrZone}, ${w.rpe}, ${w.distTime}, ${w.raceTypes}, ${w.trainingPhases}
+      )
+      RETURNING id
+    `
+    return { familyId, variantId: variant.id as number }
+  } catch (err) {
+    // Two sequential HTTP calls, not a single transaction (the neon serverless
+    // driver's .transaction() only supports independent queries, not one that
+    // depends on the previous query's result) — clean up the orphaned family
+    // row by hand if the variant insert fails.
+    await sql`DELETE FROM workout_families WHERE id = ${familyId}`
+    throw err
+  }
+}
+
+export async function dbUpdateWorkoutVariant(variantId: number, w: WorkoutVariantInput): Promise<void> {
+  const [variant] = await sql`SELECT family_id FROM workout_variants WHERE id = ${variantId}`
+  if (!variant) throw new WorkoutVariantNotFoundError(variantId)
+  const familyId = variant.family_id as number
+
+  await sql`
+    UPDATE workout_families SET
+      name = ${w.name},
+      category = ${w.category},
+      type = ${w.type},
+      reason = ${w.reason},
+      author = ${w.author},
+      coaching_notes = ${w.coachingNotes},
+      map_link = ${w.mapLink},
+      run_group_id = ${w.runGroupId}
+    WHERE id = ${familyId}
+  `
+  await sql`
+    UPDATE workout_variants SET
+      raw_input = ${w.instructions},
+      has_turnaround = ${w.hasTurnaround},
+      turnaround = ${w.turnaround},
+      energy_system = ${w.energySystem},
+      hr_zone = ${w.hrZone},
+      rpe = ${w.rpe},
+      dist_time = ${w.distTime},
+      race_types = ${w.raceTypes},
+      training_phases = ${w.trainingPhases}
+    WHERE id = ${variantId}
+  `
 }
 
 // ── Aggregate read, cached ──────────────────────────────────────────────────

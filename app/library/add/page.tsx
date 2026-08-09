@@ -1,4 +1,4 @@
-import { fetchData } from '@/lib/db'
+import { fetchData, fetchRunGroups } from '@/lib/db'
 import AddWorkoutForm from '@/components/AddWorkoutForm'
 import AddVariationForm from '@/components/AddVariationForm'
 
@@ -16,5 +16,6 @@ export default async function AddWorkoutPage({ searchParams }: { searchParams: P
     }
   }
 
-  return <AddWorkoutForm />
+  const runGroups = await fetchRunGroups()
+  return <AddWorkoutForm runGroups={runGroups} />
 }

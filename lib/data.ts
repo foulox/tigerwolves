@@ -66,6 +66,13 @@ export type Race = {
   flagNote: string
 }
 
+export type RunGroup = {
+  id: number
+  name: string
+  venue: string  // 'road' | 'track' | 'trail'
+  defaultLocation: string | null
+}
+
 export const RUN_LEADERS = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']
 
 export const TW_WORKOUT_TYPES: WorkoutType[] = [
