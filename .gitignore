@@ -47,5 +47,8 @@ tmp/
 workouts-import.csv
 .env*.local
 
+# #275 backfill review artifact — Lou's local review/approval state, not source
+scripts/backfill-review.json
+
 # clerk configuration (can include secrets)
 /.clerk/
