@@ -27,9 +27,11 @@ if (!url) throw new Error('DATABASE_URL is not set')
 const sql = neon(url)
 const anthropic = new Anthropic()
 
+type RunGroup = { id: number; name: string; venue: string }
+
 type ReviewFile = {
   generatedAt: string
-  runGroupId: number
+  runGroups: Pick<RunGroup, 'id' | 'name'>[]
   runGroupVenue: string
   families: BackfillFamily[]
 }
@@ -67,14 +69,9 @@ async function fetchLegacyWorkouts(): Promise<Workout[]> {
   }))
 }
 
-async function fetchTigerWolvesRunGroup(): Promise<{ id: number; venue: string }> {
-  const rows = await sql`SELECT id, venue FROM run_groups WHERE name = 'TigerWolves'`
-  if (rows.length === 0) {
-    throw new Error(
-      "No 'TigerWolves' row in run_groups — run scripts/run-migrate.ts first (it seeds this row as part of #274's migration)."
-    )
-  }
-  return { id: rows[0].id as number, venue: rows[0].venue as string }
+async function fetchRunGroups(): Promise<RunGroup[]> {
+  const rows = await sql`SELECT id, name, venue FROM run_groups ORDER BY name`
+  return rows.map((r) => ({ id: r.id as number, name: r.name as string, venue: r.venue as string }))
 }
 
 async function suggestTurnaround(
@@ -111,14 +108,26 @@ async function main() {
   }
 
   console.log(`Reading legacy workouts from ${url!.split('@')[1]}...`)
-  const [legacyWorkouts, runGroup] = await Promise.all([fetchLegacyWorkouts(), fetchTigerWolvesRunGroup()])
+  const [legacyWorkouts, runGroups] = await Promise.all([fetchLegacyWorkouts(), fetchRunGroups()])
+  const tigerWolves = runGroups.find(g => g.name === 'TigerWolves')
+  if (!tigerWolves) {
+    throw new Error(
+      "No 'TigerWolves' row in run_groups — run scripts/run-migrate.ts first (it seeds this row as part of #274's migration)."
+    )
+  }
   console.log(`  found ${legacyWorkouts.length} legacy workout rows`)
   console.log(
     "  note: legacy 'sport', 'lapStructure', and 'lastRan' have no column on workout_families/" +
     "workout_variants (#272 schema) and are dropped, not carried over."
   )
 
-  const families = groupWorkoutsIntoFamilies(legacyWorkouts)
+  // Every legacy workout is TigerWolves-run-group content by default (that's
+  // all there ever was before #272), but not every workout necessarily
+  // belongs there — e.g. a generic drill that isn't specific to any one run
+  // group should end up "Global" (run_group_id = NULL) instead. Default
+  // everything to TigerWolves and let the reviewer move individual families
+  // to Global (or another group) by editing runGroupId per family.
+  const families = groupWorkoutsIntoFamilies(legacyWorkouts, tigerWolves.id)
   const totalVariants = families.reduce((n, f) => n + f.variants.length, 0)
   const needsTurnaround = families.flatMap(f => f.variants).filter(v => v.hasTurnaround && v.rawInput.trim())
   console.log(`  grouped into ${families.length} families, ${totalVariants} variants`)
@@ -126,8 +135,8 @@ async function main() {
 
   const output: ReviewFile = {
     generatedAt: new Date().toISOString(),
-    runGroupId: runGroup.id,
-    runGroupVenue: runGroup.venue,
+    runGroups: runGroups.map(g => ({ id: g.id, name: g.name })),
+    runGroupVenue: tigerWolves.venue,
     families,
   }
   // Write the file up front (before any AI calls) and re-save after every
@@ -147,7 +156,7 @@ async function main() {
       done++
       const label = variant.legacyVariation || '(base)'
       try {
-        variant.turnaround = await suggestTurnaround(family, variant, runGroup.venue)
+        variant.turnaround = await suggestTurnaround(family, variant, tigerWolves.venue)
         console.log(`  [${done}/${needsTurnaround.length}] ${family.legacyName} (${label}) -> "${variant.turnaround}"`)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)

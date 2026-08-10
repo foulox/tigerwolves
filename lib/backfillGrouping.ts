@@ -30,6 +30,7 @@ export type BackfillFamily = {
   author: string | null
   coachingNotes: string | null
   mapLink: string | null
+  runGroupId: number | null
   warnings: string[]
   familyId: number | null
   variants: BackfillVariant[]
@@ -54,7 +55,7 @@ function pickRepresentative(members: Workout[]): Workout {
   })[0]
 }
 
-export function groupWorkoutsIntoFamilies(workouts: Workout[]): BackfillFamily[] {
+export function groupWorkoutsIntoFamilies(workouts: Workout[], defaultRunGroupId: number | null): BackfillFamily[] {
   const byName = new Map<string, Workout[]>()
   for (const w of workouts) {
     const list = byName.get(w.name)
@@ -93,6 +94,7 @@ export function groupWorkoutsIntoFamilies(workouts: Workout[]): BackfillFamily[]
       author: rep.author,
       coachingNotes: rep.coachingNotes,
       mapLink: rep.mapLink,
+      runGroupId: defaultRunGroupId,
       warnings,
       familyId: null,
       variants: members.map(w => ({

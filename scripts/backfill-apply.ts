@@ -23,7 +23,7 @@ const sql = neon(url)
 
 type ReviewFile = {
   generatedAt: string
-  runGroupId: number
+  runGroups: { id: number; name: string }[]
   runGroupVenue: string
   families: BackfillFamily[]
 }
@@ -39,10 +39,10 @@ function save(review: ReviewFile) {
   writeFileSync(REVIEW_PATH, JSON.stringify(review, null, 2))
 }
 
-async function insertFamily(family: BackfillFamily, runGroupId: number): Promise<number> {
+async function insertFamily(family: BackfillFamily): Promise<number> {
   const [row] = await sql`
     INSERT INTO workout_families (name, category, type, reason, author, coaching_notes, map_link, run_group_id)
-    VALUES (${family.legacyName}, ${family.category}, ${family.type}, ${family.reason}, ${family.author}, ${family.coachingNotes}, ${family.mapLink}, ${runGroupId})
+    VALUES (${family.legacyName}, ${family.category}, ${family.type}, ${family.reason}, ${family.author}, ${family.coachingNotes}, ${family.mapLink}, ${family.runGroupId})
     RETURNING id
   `
   return row.id as number
@@ -80,7 +80,7 @@ async function main() {
       const label = variant.legacyVariation || '(base)'
       try {
         if (family.familyId == null) {
-          family.familyId = await insertFamily(family, review.runGroupId)
+          family.familyId = await insertFamily(family)
         }
         variant.variantId = await insertVariant(family.familyId, variant)
         variant.committed = true
