@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 import { unstable_cache } from 'next/cache'
-import type { Workout, ScheduleEntry, Race, RunGroup } from './data'
+import type { Workout, ScheduleEntry, Race, RunGroup, WorkoutVariantRow } from './data'
 import { weekOfMonth } from './data'
 import type { WorkoutVariantInput } from './workoutVariant'
 
@@ -64,6 +64,71 @@ export async function fetchSchedule(): Promise<ScheduleEntry[]> {
       selectedVariations: (r.selected_variations as string[]) ?? [''],
     }
   })
+}
+
+// Joins workout_variants + workout_families + run_groups (#276) — the read-side
+// counterpart to dbInsertWorkoutVariant/dbUpdateWorkoutVariant (#274). Scoped to
+// this app's own run group (TigerWolves) plus global/unowned families, same as
+// the implicit scope the legacy `workouts` table always had (no run_group concept
+// there at all) — this app doesn't yet serve any other run group's workouts.
+export async function fetchWorkoutVariants(): Promise<WorkoutVariantRow[]> {
+  const rows = await sql`
+    SELECT
+      wv.id AS variant_id,
+      wv.family_id,
+      wf.name,
+      wv.label,
+      wv.sort_order,
+      wf.category,
+      wf.type,
+      wf.reason,
+      wv.raw_input,
+      wv.dist_time,
+      wv.energy_system,
+      wv.hr_zone,
+      wv.rpe,
+      wf.coaching_notes,
+      wf.map_link,
+      wf.author,
+      wv.race_types,
+      wv.training_phases,
+      wv.has_turnaround,
+      wv.turnaround,
+      wv.flagged,
+      wv.flag_note,
+      wf.run_group_id
+    FROM workout_variants wv
+    JOIN workout_families wf ON wf.id = wv.family_id
+    LEFT JOIN run_groups rg ON rg.id = wf.run_group_id
+    WHERE wf.run_group_id IS NULL OR rg.name = 'TigerWolves'
+    ORDER BY wf.name, wv.sort_order NULLS LAST
+  `
+  return rows.map((r) => ({
+    id: r.variant_id as number,
+    familyId: r.family_id as number,
+    name: r.name as string,
+    label: (r.label as string | null) ?? null,
+    sortOrder: (r.sort_order as number | null) ?? null,
+    category: r.category as string,
+    type: r.type as string,
+    reason: (r.reason as string | null) ?? '',
+    rawInput: r.raw_input as string,
+    distTime: (r.dist_time as string | null) ?? '',
+    energySystem: (r.energy_system as string | null) ?? '',
+    hrZone: (r.hr_zone as string | null) ?? '',
+    rpe: (r.rpe as string | null) ?? '',
+    coachingNotes: (r.coaching_notes as string | null) ?? null,
+    mapLink: (r.map_link as string | null) ?? null,
+    author: (r.author as string | null) ?? null,
+    raceTypes: (r.race_types as string[]) ?? [],
+    trainingPhases: (r.training_phases as string[]) ?? [],
+    hasTurnaround: r.has_turnaround as boolean,
+    turnaround: (r.turnaround as string | null) ?? '',
+    flagged: r.flagged as boolean,
+    flagNote: r.flag_note as string,
+    runGroupId: (r.run_group_id as number | null) ?? null,
+    lastRan: null,
+  }))
 }
 
 export async function fetchRunGroups(): Promise<RunGroup[]> {
@@ -346,15 +411,25 @@ export async function dbUpdateWorkoutVariant(variantId: number, w: WorkoutVarian
 
 export const fetchData = unstable_cache(
   async () => {
+    // Isolated from the Promise.all below: a workout_variants/workout_families
+    // query failure (e.g. a Preview branch where the migration hasn't run yet —
+    // has happened twice before, #238/#272) shouldn't blank out schedule/races/
+    // legacy workouts too, which have nothing to do with this table.
+    let workoutVariants: WorkoutVariantRow[] = []
+    try {
+      workoutVariants = await fetchWorkoutVariants()
+    } catch {
+      workoutVariants = []
+    }
     try {
       const [schedule, races, workouts] = await Promise.all([
         fetchSchedule(),
         fetchRaces(),
         fetchWorkouts(),
       ])
-      return { schedule, races, workouts }
+      return { schedule, races, workouts, workoutVariants }
     } catch {
-      return { schedule: [], races: [], workouts: [] }
+      return { schedule: [], races: [], workouts: [], workoutVariants }
     }
   },
   ['fetchData'],

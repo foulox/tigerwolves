@@ -5,7 +5,7 @@ import { getVoteData, workoutVoteId } from '@/lib/votes'
 
 export default async function PlanPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   const { userId } = await auth()
-  const { schedule, workouts } = await fetchData()
+  const { schedule, workoutVariants } = await fetchData()
   const today = new Date().toISOString().slice(0, 10)
 
   const upcoming = schedule
@@ -15,7 +15,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
   const { week } = await searchParams
   const initialWeekIndex = Math.min(Math.max(parseInt(week ?? '0', 10) || 0, 0), upcoming.length - 1)
 
-  const voteData = await getVoteData(workouts.map(w => workoutVoteId(w.name, w.variation)))
+  const voteData = await getVoteData(workoutVariants.map(w => workoutVoteId(w.name, w.label ?? '')))
 
-  return <PlanClient upcoming={upcoming} workouts={workouts} initialWeekIndex={initialWeekIndex} isLeader={!!userId} voteData={voteData} />
+  return <PlanClient upcoming={upcoming} variants={workoutVariants} initialWeekIndex={initialWeekIndex} isLeader={!!userId} voteData={voteData} />
 }
