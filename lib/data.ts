@@ -26,6 +26,40 @@ export type Workout = {
   flagNote: string
 }
 
+// One workout_variant row joined with its parent workout_families row (#276).
+// Replaces Workout as the read shape for the Plan screen — the write side
+// (dbInsertWorkoutVariant/dbUpdateWorkoutVariant) already targets these tables (#274).
+// `sport`, `lapStructure`, and `lastRan` have no column on workout_families/
+// workout_variants (see scripts/backfill-generate-review.ts) and are not carried
+// over; lastRan-dependent UI (recency sort, "Last ran"/"Never" display) degrades
+// to a no-op/always-"Never" until the app tracks this some other way.
+export type WorkoutVariantRow = {
+  id: number                  // workout_variants.id
+  familyId: number
+  name: string                 // workout_families.name
+  label: string | null         // workout_variants.label — null = sole/standard variant
+  sortOrder: number | null
+  category: string
+  type: WorkoutType
+  reason: string
+  rawInput: string
+  distTime: string
+  energySystem: string
+  hrZone: string
+  rpe: string
+  coachingNotes: string | null
+  mapLink: string | null
+  author: string | null
+  raceTypes: string[]
+  trainingPhases: string[]
+  hasTurnaround: boolean
+  turnaround: string
+  flagged: boolean
+  flagNote: string
+  runGroupId: number | null
+  lastRan: string | null
+}
+
 export const RACE_TYPES = ['Mile', '5K', '10K', 'Half', 'Full'] as const
 export const TRAINING_PHASES = ['Base', 'Build', 'Peak', 'Taper'] as const
 

@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { ScheduleEntry, Workout } from '@/lib/data'
-import { resolveWorkout } from '@/lib/scheduleUtils'
+import type { ScheduleEntry, WorkoutVariantRow } from '@/lib/data'
+import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import { buildPost, formatDateLong } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
@@ -16,8 +16,8 @@ function formatDateShort(iso: string) {
 }
 
 
-type PlanStandaloneRow = { kind: 'standalone'; workout: Workout }
-type PlanFamilyRow = { kind: 'family'; name: string; base: Workout | null; progressions: Workout[]; total: number }
+type PlanStandaloneRow = { kind: 'standalone'; workout: WorkoutVariantRow }
+type PlanFamilyRow = { kind: 'family'; familyId: number; name: string; variants: WorkoutVariantRow[]; total: number }
 type PlanDisplayRow = PlanStandaloneRow | PlanFamilyRow
 
 function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined }) {
@@ -27,14 +27,15 @@ function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined
   return <span className="text-xs text-gray-300">🙂</span>
 }
 
-function WorkoutDetail({ w, isLeader }: { w: Workout; isLeader: boolean }) {
+// Edit link uses w.label as the legacy `variation` query param — backfill (#275)
+// copied legacy `variation` values into `label`, so this still resolves the
+// right row on the legacy-table-backed /library/edit page until #277 moves
+// editing to variant_id.
+function WorkoutDetail({ w, isLeader }: { w: WorkoutVariantRow; isLeader: boolean }) {
   return (
     <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm text-gray-600">
-      {w.instructions && (
-        <p className="whitespace-pre-wrap leading-snug">{w.instructions}</p>
-      )}
-      {w.lapStructure && (
-        <p className="text-xs text-gray-500"><span className="font-semibold">Laps:</span> {w.lapStructure}</p>
+      {w.rawInput && (
+        <p className="whitespace-pre-wrap leading-snug">{w.rawInput}</p>
       )}
       {w.energySystem && (
         <p className="text-xs text-gray-500"><span className="font-semibold">Energy:</span> {w.energySystem}</p>
@@ -56,7 +57,7 @@ function WorkoutDetail({ w, isLeader }: { w: Workout; isLeader: boolean }) {
         ) : <span />}
         {isLeader && (
           <a
-            href={`/library/edit?name=${encodeURIComponent(w.name)}&variation=${encodeURIComponent(w.variation)}`}
+            href={`/library/edit?name=${encodeURIComponent(w.name)}&variation=${encodeURIComponent(w.label ?? '')}`}
             className="text-xs font-semibold text-orange-500 touch-manipulation"
           >
             Edit
@@ -69,15 +70,15 @@ function WorkoutDetail({ w, isLeader }: { w: Workout; isLeader: boolean }) {
 
 type Props = {
   upcoming: ScheduleEntry[]
-  workouts: Workout[]
+  variants: WorkoutVariantRow[]
   initialWeekIndex?: number
   isLeader: boolean
   voteData?: Record<string, VoteData | null>
 }
 
-export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, isLeader, voteData = {} }: Props) {
+export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {} }: Props) {
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
-  const [selectedWorkouts, setSelectedWorkouts] = useState<Workout[]>([])
+  const [selectedWorkouts, setSelectedWorkouts] = useState<WorkoutVariantRow[]>([])
   const [showCount, setShowCount] = useState(3)
   const [pickerSearch, setPickerSearch] = useState('')
   const [copied, setCopied] = useState(false)
@@ -93,16 +94,19 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
   const effectiveType = activeType ?? scheduledTypes[0] ?? ''
 
   const availableTypes = useMemo(() =>
-    [...new Set(workouts.filter(w => w.category === 'Quality').map(w => w.type))].sort()
-  , [workouts])
+    [...new Set(variants.filter(w => w.category === 'Quality').map(w => w.type))].sort()
+  , [variants])
 
-  const familyNames = useMemo(() => {
-    const s = new Set<string>()
-    for (const w of workouts) {
-      if (w.variation) s.add(w.name)
-    }
+  // A family is "multi-version" (Standard/Longer picker UI) when it has more
+  // than one variant row — label alone isn't the signal, since a lone variant
+  // can still carry a non-null label.
+  const familyIds = useMemo(() => {
+    const counts = new Map<number, number>()
+    for (const w of variants) counts.set(w.familyId, (counts.get(w.familyId) ?? 0) + 1)
+    const s = new Set<number>()
+    for (const [id, count] of counts) if (count > 1) s.add(id)
     return s
-  }, [workouts])
+  }, [variants])
 
   // Look up the already-scheduled workout across the FULL library, not the
   // type-filtered allSuggestions — a leader can deliberately schedule a workout
@@ -111,58 +115,56 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
   // for an unrelated suggestion.
   const plannedWorkout = useMemo(() => {
     if (!entry?.workoutName) return null
-    return resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)
-  }, [entry, workouts])
+    return resolveWorkoutVariant(variants, entry.workoutName, entry.selectedVariations)
+  }, [entry, variants])
 
   const plannedNotFound = !!entry?.workoutName && plannedWorkout === null
 
   const allSuggestions = useMemo(() => {
     if (!entry) return []
     const types = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
-    return workouts
+    return variants
       .filter(w => types.includes(w.type))
       .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
-  }, [entry, workouts, activeType, plannedWorkout])
+  }, [entry, variants, activeType, plannedWorkout])
 
   const pickerSource = useMemo(() => {
     const q = pickerSearch.toLowerCase()
     if (!q) return allSuggestions
-    return workouts
+    return variants
       .filter(w =>
         w.name.toLowerCase().includes(q) ||
         w.type.toLowerCase().includes(q) ||
-        w.variation.toLowerCase().includes(q) ||
+        (w.label ?? '').toLowerCase().includes(q) ||
         w.reason.toLowerCase().includes(q) ||
         w.raceTypes.some(r => r.toLowerCase().includes(q))
       )
       .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
-  }, [pickerSearch, allSuggestions, workouts, plannedWorkout])
+  }, [pickerSearch, allSuggestions, variants, plannedWorkout])
 
   const displayRows = useMemo<PlanDisplayRow[]>(() => {
     const rows: PlanDisplayRow[] = []
-    const seen = new Set<string>()
+    const seen = new Set<number>()
     for (const w of pickerSource) {
-      if (!familyNames.has(w.name)) {
+      if (!familyIds.has(w.familyId)) {
         rows.push({ kind: 'standalone', workout: w })
-      } else if (!seen.has(w.name)) {
-        seen.add(w.name)
-        const allMembers = pickerSource.filter(p => p.name === w.name)
-        const base = allMembers.find(p => !p.variation) ?? null
-        const progressions = allMembers
-          .filter(p => p.variation)
-          .sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
-        rows.push({ kind: 'family', name: w.name, base, progressions, total: (base ? 1 : 0) + progressions.length })
+      } else if (!seen.has(w.familyId)) {
+        seen.add(w.familyId)
+        const members = pickerSource
+          .filter(p => p.familyId === w.familyId)
+          .sort((a, b) => (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity))
+        rows.push({ kind: 'family', familyId: w.familyId, name: w.name, variants: members, total: members.length })
       }
     }
     return rows
-  }, [pickerSource, familyNames])
+  }, [pickerSource, familyIds])
 
   const visibleRows = pickerSearch ? displayRows : displayRows.slice(0, showCount)
   const remainingCount = pickerSearch ? 0 : displayRows.length - showCount
 
-  const effectiveSelections: Workout[] = selectedWorkouts.length > 0
+  const effectiveSelections: WorkoutVariantRow[] = selectedWorkouts.length > 0
     ? selectedWorkouts
     : plannedWorkout
       ? [plannedWorkout]
@@ -173,11 +175,11 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
             return w ? [w] : []
           })()
 
-  function workoutKey(w: Workout) {
-    return `${w.name}||${w.progression ?? ''}`
+  function workoutKey(w: WorkoutVariantRow) {
+    return String(w.id)
   }
 
-  function isEffectivelySelected(w: Workout): boolean {
+  function isEffectivelySelected(w: WorkoutVariantRow): boolean {
     return effectiveSelections.some(s => workoutKey(s) === workoutKey(w))
   }
 
@@ -197,16 +199,16 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
     setExpandedId(prev => prev === id ? null : id)
   }
 
-  function handleSelect(w: Workout) {
+  function handleSelect(w: WorkoutVariantRow) {
     setSelectedWorkouts(prev => {
       const key = workoutKey(w)
       if (prev.some(s => workoutKey(s) === key)) {
         return prev.filter(s => workoutKey(s) !== key)
       }
-      if (prev.length === 2 && prev[0].name === w.name) {
+      if (prev.length === 2 && prev[0].familyId === w.familyId) {
         return [prev[0], w]
       }
-      if (prev.length === 1 && prev[0].name === w.name) {
+      if (prev.length === 1 && prev[0].familyId === w.familyId) {
         return [prev[0], w]
       }
       return [w]
@@ -226,10 +228,10 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
 
   async function handleSetPlan() {
     if (!entry || effectiveSelections.length === 0) return
-    const sorted = [...effectiveSelections].sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
+    const sorted = [...effectiveSelections].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     setSaving(true)
     try {
-      await setPlanWorkout(entry.date, sorted[0].name, sorted.map(w => w.variation))
+      await setPlanWorkout(entry.date, sorted[0].name, sorted.map(w => w.label ?? ''))
       setSaved(true)
       setPlanTab('post')
     } finally {
@@ -310,7 +312,7 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
             {plannedWorkout && (() => {
               const w = plannedWorkout
               const sel = isEffectivelySelected(w)
-              const eid = `planned-${w.name}-${w.variation}`
+              const eid = `planned-${w.id}`
               const expanded = expandedId === eid
               return (
                 <div className="mb-4">
@@ -325,11 +327,11 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                       <div className="flex justify-between items-start gap-2">
                         <div className="font-semibold text-gray-900">{w.name}</div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <VoteBadge v={voteData[workoutVoteId(w.name, w.variation)]} />
+                          <VoteBadge v={voteData[workoutVoteId(w.name, w.label ?? '')]} />
                           <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(w.lastRan) : 'Never'}</span>
                         </div>
                       </div>
-                      {w.variation && <div className="text-xs text-gray-400 mt-0.5">{w.variation}</div>}
+                      {w.label && <div className="text-xs text-gray-400 mt-0.5">{w.label}</div>}
                       <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
                       <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
                     </button>
@@ -402,11 +404,11 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                         if (row.kind === 'standalone') {
                           const w = row.workout
                           const sel = isEffectivelySelected(w)
-                          const eid = `s-${w.name}-${w.variation}`
+                          const eid = `s-${w.id}`
                           const expanded = expandedId === eid
                           return (
                             <div
-                              key={`s-${w.name}`}
+                              key={`s-${w.id}`}
                               className={`bg-white rounded-2xl border shadow-sm transition-colors ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
                             >
                               <button
@@ -416,11 +418,11 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                                 <div className="flex justify-between items-start gap-2">
                                   <div className="font-semibold text-gray-900">{w.name}</div>
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <VoteBadge v={voteData[workoutVoteId(w.name, w.variation)]} />
+                                    <VoteBadge v={voteData[workoutVoteId(w.name, w.label ?? '')]} />
                                     <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(w.lastRan) : 'Never'}</span>
                                   </div>
                                 </div>
-                                {w.variation && <div className="text-xs text-gray-400 mt-0.5">{w.variation}</div>}
+                                {w.label && <div className="text-xs text-gray-400 mt-0.5">{w.label}</div>}
                                 <div className="text-sm text-gray-500 mt-1 leading-snug">{w.reason}</div>
                                 <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
                               </button>
@@ -440,9 +442,12 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                           )
                         }
 
-                        // Family row — all versions always visible, up to 2 selectable
+                        // Family row — all versions always visible, up to 2 selectable.
+                        // Badge text is a generic ordinal ("Standard" / "Variation N of
+                        // Total"), not driven by label — label is a short leader-authored
+                        // tag ("Shorter"/"Longer"), shown as the subtitle beneath it.
                         return (
-                          <div key={`f-${row.name}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                          <div key={`f-${row.familyId}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                             <div className="px-4 py-3 border-b border-gray-100">
                               <div className="flex justify-between items-start gap-2">
                                 <div className="font-semibold text-gray-900">{row.name}</div>
@@ -451,45 +456,16 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                                 </span>
                               </div>
                             </div>
-                            {row.base && (() => {
-                              const eid = `f-base-${row.name}`
+                            {row.variants.map((v, i) => {
+                              const sel = isEffectivelySelected(v)
+                              const isLast = i === row.variants.length - 1
+                              const eid = `f-variant-${v.id}`
                               const expanded = expandedId === eid
+                              const label = i === 0 ? 'Standard' : `Variation ${i + 1} of ${row.total}`
                               return (
-                                <div className={`border-b border-gray-50 ${isEffectivelySelected(row.base) ? 'bg-orange-50' : 'bg-white'}`}>
+                                <div key={v.id} className={`${!isLast ? 'border-b border-gray-50' : ''} ${sel ? 'bg-orange-50' : 'bg-white'}`}>
                                   <button
-                                    onClick={() => handleSelect(row.base!)}
-                                    className="w-full text-left px-4 pt-3 pb-1 touch-manipulation"
-                                  >
-                                    <div className="flex justify-between items-start gap-2">
-                                      <div className="flex items-center gap-2">
-                                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${isEffectivelySelected(row.base) ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
-                                        <span className="text-xs font-bold text-gray-600">Standard</span>
-                                      </div>
-                                      <div className="flex items-center gap-2 shrink-0">
-                                        <VoteBadge v={voteData[workoutVoteId(row.base!.name, row.base!.variation)]} />
-                                        <span className="text-xs text-gray-400">{row.base.lastRan ? formatDateShort(row.base.lastRan) : 'Never'}</span>
-                                      </div>
-                                    </div>
-                                    {row.base.distTime && <div className="text-xs text-gray-400 mt-1 ml-6">{row.base.distTime}</div>}
-                                  </button>
-                                  <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1 ml-6">
-                                    <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
-                                    {expanded ? 'Hide' : 'Details'}
-                                  </button>
-                                  {expanded && <div className="px-4 pb-3"><WorkoutDetail w={row.base} isLeader={isLeader} /></div>}
-                                </div>
-                              )
-                            })()}
-                            {row.progressions.map((p, i) => {
-                              const sel = isEffectivelySelected(p)
-                              const isLast = i === row.progressions.length - 1
-                              const eid = `f-prog-${row.name}-${p.progression}`
-                              const expanded = expandedId === eid
-                              const label = (i === 0 && !row.base) ? 'Standard' : `Variation ${row.base ? i + 2 : i + 1} of ${row.total}`
-                              return (
-                                <div key={p.progression ?? i} className={`${!isLast ? 'border-b border-gray-50' : ''} ${sel ? 'bg-orange-50' : 'bg-white'}`}>
-                                  <button
-                                    onClick={() => handleSelect(p)}
+                                    onClick={() => handleSelect(v)}
                                     className="w-full text-left px-4 pt-3 pb-1 touch-manipulation"
                                   >
                                     <div className="flex justify-between items-start gap-2">
@@ -498,18 +474,18 @@ export default function PlanClient({ upcoming, workouts, initialWeekIndex = 0, i
                                         <span className={`text-xs font-bold ${i === 0 ? 'text-gray-600' : 'text-orange-500'}`}>{label}</span>
                                       </div>
                                       <div className="flex items-center gap-2 shrink-0">
-                                        <VoteBadge v={voteData[workoutVoteId(p.name, p.variation)]} />
-                                        <span className="text-xs text-gray-400">{p.lastRan ? formatDateShort(p.lastRan) : 'Never'}</span>
+                                        <VoteBadge v={voteData[workoutVoteId(v.name, v.label ?? '')]} />
+                                        <span className="text-xs text-gray-400">{v.lastRan ? formatDateShort(v.lastRan) : 'Never'}</span>
                                       </div>
                                     </div>
-                                    {p.variation && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{p.variation}</div>}
-                                    {p.distTime && <div className="text-xs text-gray-400 mt-0.5 ml-6">{p.distTime}</div>}
+                                    {v.label && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{v.label}</div>}
+                                    {v.distTime && <div className="text-xs text-gray-400 mt-0.5 ml-6">{v.distTime}</div>}
                                   </button>
                                   <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1 ml-6">
                                     <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
                                     {expanded ? 'Hide' : 'Details'}
                                   </button>
-                                  {expanded && <div className="px-4 pb-3"><WorkoutDetail w={p} isLeader={isLeader} /></div>}
+                                  {expanded && <div className="px-4 pb-3"><WorkoutDetail w={v} isLeader={isLeader} /></div>}
                                 </div>
                               )
                             })}
