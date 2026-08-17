@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useLayoutEffect, useEffect } from 'react'
-import type { ScheduleEntry, Workout } from '@/lib/data'
+import type { ScheduleEntry, WorkoutVariantRow } from '@/lib/data'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import ScheduleCard from '@/components/ScheduleCard'
@@ -12,9 +12,9 @@ const NEXT_UP_BUTTON_MARGIN = 20
 
 interface Props {
   past: ScheduleEntry[]
-  pastWorkouts: (Workout | null)[]
+  pastWorkouts: (WorkoutVariantRow | null)[]
   upcoming: ScheduleEntry[]
-  upcomingWorkouts: (Workout | null)[]
+  upcomingWorkouts: (WorkoutVariantRow | null)[]
   isLeader: boolean
   voteData: Record<string, VoteData | null>
 }
@@ -131,7 +131,7 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
             index={i}
             isLeader={isLeader}
             isPast
-            voteData={workout ? (voteData[workoutVoteId(workout.name, workout.variation)] ?? null) : null}
+            voteData={workout ? (voteData[workoutVoteId(workout.name, workout.label ?? '')] ?? null) : null}
           />
         )
       })}
@@ -148,7 +148,7 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
             workout={workout}
             index={i}
             isLeader={isLeader}
-            voteData={workout ? (voteData[workoutVoteId(workout.name, workout.variation)] ?? null) : null}
+            voteData={workout ? (voteData[workoutVoteId(workout.name, workout.label ?? '')] ?? null) : null}
           />
         )
         if (i !== 0) return <div key={key}>{card}</div>

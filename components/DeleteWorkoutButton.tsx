@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { deleteWorkout } from '@/app/actions'
 
-export default function DeleteWorkoutButton({ name, variation }: { name: string; variation: string }) {
+export default function DeleteWorkoutButton({ variantId }: { variantId: number }) {
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -12,7 +12,7 @@ export default function DeleteWorkoutButton({ name, variation }: { name: string;
     setError('')
     startTransition(async () => {
       try {
-        await deleteWorkout(name, variation)
+        await deleteWorkout(variantId)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Delete failed')
         setConfirming(false)

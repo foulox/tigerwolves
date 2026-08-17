@@ -3,11 +3,11 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { addVariation } from '@/app/actions'
-import type { Workout } from '@/lib/data'
+import type { WorkoutVariantRow } from '@/lib/data'
 
-export default function AddVariationForm({ parent, siblings, nextProgression }: { parent: Workout; siblings: Workout[]; nextProgression: number }) {
+export default function AddVariationForm({ parent, siblings, nextSortOrder }: { parent: WorkoutVariantRow; siblings: WorkoutVariantRow[]; nextSortOrder: number }) {
   const [variation, setVariation] = useState('')
-  const [instructions, setInstructions] = useState(parent.instructions)
+  const [instructions, setInstructions] = useState(parent.rawInput)
   const [distTime, setDistTime] = useState(parent.distTime)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -19,7 +19,7 @@ export default function AddVariationForm({ parent, siblings, nextProgression }: 
     setError('')
     startTransition(async () => {
       try {
-        await addVariation(parent, variation.trim(), nextProgression, instructions, distTime)
+        await addVariation(parent, variation.trim(), nextSortOrder, instructions, distTime)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Something went wrong')
       }
@@ -44,13 +44,13 @@ export default function AddVariationForm({ parent, siblings, nextProgression }: 
             <p className="text-xs font-bold text-gray-500 mb-1.5">Existing variations</p>
             <div className="flex flex-col gap-1">
               {siblings.map(s => (
-                <div key={s.progression} className="flex items-baseline gap-2">
-                  <span className="text-xs font-bold text-orange-500 shrink-0">V{s.progression}</span>
-                  <span className="text-xs text-gray-600">{s.variation}</span>
+                <div key={s.id} className="flex items-baseline gap-2">
+                  <span className="text-xs font-bold text-orange-500 shrink-0">V{s.sortOrder}</span>
+                  <span className="text-xs text-gray-600">{s.label}</span>
                 </div>
               ))}
               <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-xs font-bold text-orange-300 shrink-0">V{nextProgression}</span>
+                <span className="text-xs font-bold text-orange-300 shrink-0">V{nextSortOrder}</span>
                 <span className="text-xs text-gray-400 italic">← you are adding this</span>
               </div>
             </div>

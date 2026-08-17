@@ -6,13 +6,14 @@ export default async function AddWorkoutPage({ searchParams }: { searchParams: P
   const { parent } = await searchParams
 
   if (parent) {
-    const { workouts } = await fetchData()
-    const members = workouts.filter(w => w.name === parent)
-    const base = members.find(w => !w.variation) ?? members[0]
+    const { workoutVariants } = await fetchData()
+    const familyId = Number(parent)
+    const members = workoutVariants.filter(w => w.familyId === familyId)
+    const base = members.find(w => w.label === null) ?? members[0]
     if (base) {
-      const variations = members.filter(w => w.variation).sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
-      const maxProgression = members.reduce((max, w) => Math.max(max, w.progression ?? 0), 0)
-      return <AddVariationForm parent={base} siblings={variations} nextProgression={maxProgression + 1} />
+      const variations = members.filter(w => w.label !== null).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      const maxSortOrder = members.reduce((max, w) => Math.max(max, w.sortOrder ?? 0), 0)
+      return <AddVariationForm parent={base} siblings={variations} nextSortOrder={maxSortOrder + 1} />
     }
   }
 

@@ -7,12 +7,12 @@ import { getVoteData, workoutVoteId } from '@/lib/votes'
 export default async function LibraryPage() {
   const { userId } = await auth()
   const isLeader = !!userId
-  const { workouts } = await fetchData()
-  const voteData = await getVoteData(workouts.map(w => workoutVoteId(w.name, w.variation)))
+  const { workoutVariants } = await fetchData()
+  const voteData = await getVoteData(workoutVariants.map(w => workoutVoteId(w.name, w.label ?? '')))
   return (
     <div>
       <Header title="Library" isLeader={isLeader} />
-      <LibraryClient workouts={workouts} isLeader={isLeader} voteData={voteData} />
+      <LibraryClient variants={workoutVariants} isLeader={isLeader} voteData={voteData} />
     </div>
   )
 }

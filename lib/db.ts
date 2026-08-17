@@ -394,6 +394,8 @@ export async function dbUpdateWorkoutVariant(variantId: number, w: WorkoutVarian
   `
   await sql`
     UPDATE workout_variants SET
+      label = ${w.label},
+      sort_order = ${w.sortOrder},
       raw_input = ${w.instructions},
       has_turnaround = ${w.hasTurnaround},
       turnaround = ${w.turnaround},
@@ -405,6 +407,140 @@ export async function dbUpdateWorkoutVariant(variantId: number, w: WorkoutVarian
       training_phases = ${w.trainingPhases}
     WHERE id = ${variantId}
   `
+}
+
+// Adds a variant to an EXISTING family — the workout_variants-only counterpart
+// to dbInsertWorkoutVariant (which always creates a brand-new family too).
+// #277's fix for addVariation's half of the addWorkout/addVariation split-brain
+// bug: this writes to the same tables the Library/Plan screens now both read.
+export async function dbAddWorkoutVariant(
+  familyId: number,
+  w: {
+    label: string
+    sortOrder: number
+    instructions: string
+    distTime: string
+    energySystem: string
+    hrZone: string
+    rpe: string
+    raceTypes: string[]
+    trainingPhases: string[]
+    hasTurnaround: boolean
+    turnaround: string
+  },
+): Promise<{ variantId: number }> {
+  const [variant] = await sql`
+    INSERT INTO workout_variants (
+      family_id, label, sort_order, raw_input, has_turnaround, turnaround,
+      energy_system, hr_zone, rpe, dist_time, race_types, training_phases
+    ) VALUES (
+      ${familyId}, ${w.label}, ${w.sortOrder}, ${w.instructions}, ${w.hasTurnaround}, ${w.turnaround},
+      ${w.energySystem}, ${w.hrZone}, ${w.rpe}, ${w.distTime}, ${w.raceTypes}, ${w.trainingPhases}
+    )
+    RETURNING id
+  `
+  return { variantId: variant.id as number }
+}
+
+// Deletes a variant; if it was the last variant in its family, the now-empty
+// family row goes too — mirrors the legacy dbDeleteWorkout's implicit
+// behavior (a standalone `workouts` row's deletion never left an orphan
+// parent, since there was no separate parent row at all).
+export async function dbDeleteWorkoutVariant(variantId: number): Promise<void> {
+  const [variant] = await sql`SELECT family_id FROM workout_variants WHERE id = ${variantId}`
+  if (!variant) throw new WorkoutVariantNotFoundError(variantId)
+  const familyId = variant.family_id as number
+
+  await sql`DELETE FROM workout_variants WHERE id = ${variantId}`
+
+  const [remaining] = await sql`SELECT count(*)::int AS count FROM workout_variants WHERE family_id = ${familyId}`
+  if ((remaining.count as number) === 0) {
+    await sql`DELETE FROM workout_families WHERE id = ${familyId}`
+  }
+}
+
+export async function dbFlagWorkoutVariant(variantId: number, flagNote: string): Promise<void> {
+  const rows = await sql`
+    UPDATE workout_variants SET flagged = true, flag_note = ${flagNote}
+    WHERE id = ${variantId}
+    RETURNING id
+  `
+  if (rows.length === 0) throw new WorkoutVariantNotFoundError(variantId)
+}
+
+export async function dbFixWorkoutVariantAndClearFlag(
+  variantId: number,
+  fields: { reason: string; distTime: string; instructions: string },
+): Promise<void> {
+  const [variant] = await sql`SELECT family_id FROM workout_variants WHERE id = ${variantId}`
+  if (!variant) throw new WorkoutVariantNotFoundError(variantId)
+  const familyId = variant.family_id as number
+
+  await sql`UPDATE workout_families SET reason = ${fields.reason} WHERE id = ${familyId}`
+  await sql`
+    UPDATE workout_variants SET
+      dist_time = ${fields.distTime},
+      raw_input = ${fields.instructions},
+      flagged = false,
+      flag_note = ''
+    WHERE id = ${variantId}
+  `
+}
+
+// New-schema counterpart to dbRegroupFamily. Unlike the legacy `workouts`
+// table (where "family" was implicit — just rows sharing a name), workout_variants
+// merges into a real workout_families row via family_id, so a merge always
+// creates one new family rather than renaming rows in place. Family-level
+// fields (category/type/reason/author/coaching_notes/map_link/run_group_id)
+// come from whichever selected variant's family sorts first — merging variants
+// that previously had different category/type is a real, deliberate
+// simplification the family/variant model forces (variants can no longer
+// disagree on those fields the way standalone `workouts` rows could).
+// Sequential queries, not sql.transaction(), for the same reason as
+// dbInsertWorkoutVariant: each step depends on the previous step's result,
+// which the neon serverless driver's transaction() doesn't support.
+export async function dbRegroupVariants(
+  newName: string,
+  variants: Array<{ variantId: number; label: string; sortOrder: number }>,
+): Promise<void> {
+  if (variants.length === 0) return
+
+  const [first] = await sql`SELECT family_id FROM workout_variants WHERE id = ${variants[0].variantId}`
+  if (!first) throw new WorkoutVariantNotFoundError(variants[0].variantId)
+  const [sourceFamily] = await sql`
+    SELECT category, type, reason, author, coaching_notes, map_link, run_group_id
+    FROM workout_families WHERE id = ${first.family_id as number}
+  `
+
+  const [newFamily] = await sql`
+    INSERT INTO workout_families (name, category, type, reason, author, coaching_notes, map_link, run_group_id)
+    VALUES (
+      ${newName}, ${sourceFamily.category}, ${sourceFamily.type}, ${sourceFamily.reason},
+      ${sourceFamily.author}, ${sourceFamily.coaching_notes}, ${sourceFamily.map_link}, ${sourceFamily.run_group_id}
+    )
+    RETURNING id
+  `
+  const newFamilyId = newFamily.id as number
+
+  const sourceFamilyIds = new Set<number>([first.family_id as number])
+  for (const v of variants) {
+    const [row] = await sql`SELECT family_id FROM workout_variants WHERE id = ${v.variantId}`
+    if (!row) throw new WorkoutVariantNotFoundError(v.variantId)
+    sourceFamilyIds.add(row.family_id as number)
+    await sql`
+      UPDATE workout_variants SET family_id = ${newFamilyId}, label = ${v.label}, sort_order = ${v.sortOrder}
+      WHERE id = ${v.variantId}
+    `
+  }
+
+  // Clean up any source families left with zero variants after the move —
+  // same orphan-family rule as dbDeleteWorkoutVariant.
+  for (const familyId of sourceFamilyIds) {
+    const [remaining] = await sql`SELECT count(*)::int AS count FROM workout_variants WHERE family_id = ${familyId}`
+    if ((remaining.count as number) === 0) {
+      await sql`DELETE FROM workout_families WHERE id = ${familyId}`
+    }
+  }
 }
 
 // ── Aggregate read, cached ──────────────────────────────────────────────────

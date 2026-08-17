@@ -4,9 +4,8 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import * as Sentry from '@sentry/nextjs'
 import { Flag } from 'lucide-react'
-import type { Workout } from '@/lib/data'
+import type { WorkoutVariantRow } from '@/lib/data'
 import { fixWorkoutAndClearFlag, flagWorkoutIssue } from '@/app/actions'
-import { workoutVoteId } from '@/lib/votes'
 
 export function FlagBadge({ onClick, size = 22 }: { onClick: (e: React.MouseEvent) => void; size?: number }) {
   return (
@@ -41,12 +40,12 @@ export function FlagGhostButton({ workoutName, onClick, dataTour }: { workoutNam
 // Submit-a-new-flag sheet — mirrors RacesClient's own flag sheet exactly
 // (same "what's wrong?" shape, no GitHub issue): DB-only, no audit-trail
 // side effect, unlike the pre-#209 FeedbackDrawer this replaces as the entry point.
-export function FlagWorkoutDrawer({ workout, onClose }: { workout: Workout; onClose: () => void }) {
+export function FlagWorkoutDrawer({ workout, onClose }: { workout: WorkoutVariantRow; onClose: () => void }) {
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | undefined>()
   const [isPending, startTransition] = useTransition()
 
-  const label = workout.variation ? `${workout.name} — ${workout.variation}` : workout.name
+  const label = workout.label ? `${workout.name} — ${workout.label}` : workout.name
 
   function submit() {
     if (!note.trim()) {
@@ -56,14 +55,14 @@ export function FlagWorkoutDrawer({ workout, onClose }: { workout: Workout; onCl
     setError(undefined)
     startTransition(async () => {
       try {
-        const result = await flagWorkoutIssue(workout.name, workout.variation, note)
+        const result = await flagWorkoutIssue(workout.id, note)
         if (result && 'error' in result) {
           setError(result.error)
           return
         }
         onClose()
       } catch (err) {
-        Sentry.captureException(err, { extra: { workoutName: workout.name, workoutVariation: workout.variation } })
+        Sentry.captureException(err, { extra: { variantId: workout.id, workoutName: workout.name } })
         setError('Something went wrong submitting this — try again in a moment.')
       }
     })
@@ -114,7 +113,7 @@ export function FlagWorkoutDrawer({ workout, onClose }: { workout: Workout; onCl
 }
 
 type Props = {
-  workout: Workout
+  workout: WorkoutVariantRow
   isLeader: boolean
   onClose: () => void
 }
@@ -122,25 +121,25 @@ type Props = {
 export default function WorkoutFlagSheet({ workout, isLeader, onClose }: Props) {
   const [reason, setReason] = useState(workout.reason)
   const [distTime, setDistTime] = useState(workout.distTime)
-  const [instructions, setInstructions] = useState(workout.instructions)
+  const [instructions, setInstructions] = useState(workout.rawInput)
   const [error, setError] = useState<string | undefined>()
   const [isPending, startTransition] = useTransition()
 
-  const label = workout.variation ? `${workout.name} — ${workout.variation}` : workout.name
-  const preselect = encodeURIComponent(workoutVoteId(workout.name, workout.variation))
+  const label = workout.label ? `${workout.name} — ${workout.label}` : workout.name
+  const preselect = String(workout.id)
 
   function submitFix() {
     setError(undefined)
     startTransition(async () => {
       try {
-        const result = await fixWorkoutAndClearFlag(workout.name, workout.variation, { reason, distTime, instructions })
+        const result = await fixWorkoutAndClearFlag(workout.id, { reason, distTime, instructions })
         if (result && 'error' in result) {
           setError(result.error)
           return
         }
         onClose()
       } catch (err) {
-        Sentry.captureException(err, { extra: { workoutName: workout.name, workoutVariation: workout.variation } })
+        Sentry.captureException(err, { extra: { variantId: workout.id, workoutName: workout.name } })
         setError('Something went wrong saving this — try again in a moment.')
       }
     })
@@ -193,7 +192,7 @@ export default function WorkoutFlagSheet({ workout, isLeader, onClose }: Props) 
               />
             </label>
             <Link
-              href={`/library/edit?name=${encodeURIComponent(workout.name)}&variation=${encodeURIComponent(workout.variation)}`}
+              href={`/library/edit?variantId=${workout.id}`}
               className="text-xs font-bold text-orange-600 touch-manipulation"
             >
               Full edit →

@@ -8,12 +8,12 @@ import RegroupWorkoutsForm from '@/components/RegroupWorkoutsForm'
 export default async function AdminPage() {
   const { userId } = await auth()
   if (!userId) redirect('/sign-in')
-  const { workouts } = await fetchData()
+  const { workoutVariants } = await fetchData()
   return (
     <div>
       <Header title="Admin" isLeader={true} />
       <Suspense fallback={<p className="px-4 text-gray-400 italic text-sm">Loading…</p>}>
-        <RegroupWorkoutsForm workouts={workouts} />
+        <RegroupWorkoutsForm variants={workoutVariants} />
       </Suspense>
     </div>
   )
