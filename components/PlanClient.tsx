@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import * as Sentry from '@sentry/nextjs'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ScheduleEntry, WorkoutVariantRow } from '@/lib/data'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
@@ -27,11 +28,12 @@ function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined
   return <span className="text-xs text-gray-300">🙂</span>
 }
 
-// Edit link uses w.label as the legacy `variation` query param — backfill (#275)
-// copied legacy `variation` values into `label`, so this still resolves the
-// right row on the legacy-table-backed /library/edit page until #277 moves
-// editing to variant_id.
-function WorkoutDetail({ w, isLeader }: { w: WorkoutVariantRow; isLeader: boolean }) {
+// No "Edit" link here (unlike the old Workout-typed WorkoutDetail this replaces) —
+// /library/edit is still legacy-table-backed and 404s for any workout added via
+// the new-schema-only addWorkout path (#274) since it has no legacy `workouts`
+// row at all. Editing moves to variant_id in #277; until then this screen is
+// read-only for leaders too.
+function WorkoutDetail({ w }: { w: WorkoutVariantRow }) {
   return (
     <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm text-gray-600">
       {w.rawInput && (
@@ -49,21 +51,11 @@ function WorkoutDetail({ w, isLeader }: { w: WorkoutVariantRow; isLeader: boolea
       {w.coachingNotes && (
         <p className="text-xs text-gray-500 italic">{w.coachingNotes}</p>
       )}
-      <div className="flex items-center justify-between pt-1">
-        {w.mapLink ? (
-          <a href={w.mapLink} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-500 touch-manipulation">
-            Map ↗
-          </a>
-        ) : <span />}
-        {isLeader && (
-          <a
-            href={`/library/edit?name=${encodeURIComponent(w.name)}&variation=${encodeURIComponent(w.label ?? '')}`}
-            className="text-xs font-semibold text-orange-500 touch-manipulation"
-          >
-            Edit
-          </a>
-        )}
-      </div>
+      {w.mapLink && (
+        <a href={w.mapLink} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-500 touch-manipulation">
+          Map ↗
+        </a>
+      )}
     </div>
   )
 }
@@ -234,6 +226,8 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
       await setPlanWorkout(entry.date, sorted[0].name, sorted.map(w => w.label ?? ''))
       setSaved(true)
       setPlanTab('post')
+    } catch (err) {
+      Sentry.captureException(err, { extra: { date: entry.date, workoutName: sorted[0].name } })
     } finally {
       setSaving(false)
     }
@@ -344,7 +338,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                     </button>
                     {expanded && (
                       <div className="px-4 pb-4">
-                        <WorkoutDetail w={w} isLeader={isLeader} />
+                        <WorkoutDetail w={w} />
                       </div>
                     )}
                   </div>
@@ -435,7 +429,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                               </button>
                               {expanded && (
                                 <div className="px-4 pb-4">
-                                  <WorkoutDetail w={w} isLeader={isLeader} />
+                                  <WorkoutDetail w={w} />
                                 </div>
                               )}
                             </div>
@@ -485,7 +479,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                                     <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
                                     {expanded ? 'Hide' : 'Details'}
                                   </button>
-                                  {expanded && <div className="px-4 pb-3"><WorkoutDetail w={v} isLeader={isLeader} /></div>}
+                                  {expanded && <div className="px-4 pb-3"><WorkoutDetail w={v} /></div>}
                                 </div>
                               )
                             })}

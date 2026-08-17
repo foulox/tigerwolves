@@ -411,16 +411,25 @@ export async function dbUpdateWorkoutVariant(variantId: number, w: WorkoutVarian
 
 export const fetchData = unstable_cache(
   async () => {
+    // Isolated from the Promise.all below: a workout_variants/workout_families
+    // query failure (e.g. a Preview branch where the migration hasn't run yet —
+    // has happened twice before, #238/#272) shouldn't blank out schedule/races/
+    // legacy workouts too, which have nothing to do with this table.
+    let workoutVariants: WorkoutVariantRow[] = []
     try {
-      const [schedule, races, workouts, workoutVariants] = await Promise.all([
+      workoutVariants = await fetchWorkoutVariants()
+    } catch {
+      workoutVariants = []
+    }
+    try {
+      const [schedule, races, workouts] = await Promise.all([
         fetchSchedule(),
         fetchRaces(),
         fetchWorkouts(),
-        fetchWorkoutVariants(),
       ])
       return { schedule, races, workouts, workoutVariants }
     } catch {
-      return { schedule: [], races: [], workouts: [], workoutVariants: [] }
+      return { schedule: [], races: [], workouts: [], workoutVariants }
     }
   },
   ['fetchData'],

@@ -354,6 +354,12 @@ export async function fixRaceAndClearFlag(
   await captureServerEvent('race_fixed', userId, { raceId, isLeader: true })
 }
 
+// Writes only to the legacy `workouts` table — no matching workout_variants row
+// is created. Since #276, PlanClient reads exclusively from workout_variants,
+// so a variation added here won't appear on the Plan screen until #277 (which
+// already lists AddVariationForm.tsx as a call site) migrates this write path
+// to variant_id. Known, temporary gap — not fixed here to avoid duplicating
+// #277's scope.
 export async function addVariation(
   parent: {
     name: string; category: string; type: string; reason: string;
