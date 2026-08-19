@@ -131,9 +131,10 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
       {/* Detail panel */}
       {hasWorkout && expanded && (
         <div className="border-t border-gray-100 px-4 py-3 space-y-2 text-sm" data-testid={detailTestId}>
+          {/* #288: instructions, then reason ("why"), then everything else that has a value */}
+          {workout.rawInput && <DetailRow label="Instructions" value={workout.rawInput} />}
           {workout.reason && <DetailRow label="Reason" value={workout.reason} />}
           {workout.distTime && <DetailRow label="Distance / Time" value={workout.distTime} />}
-          {workout.rawInput && <DetailRow label="Instructions" value={workout.rawInput} />}
           {workout.energySystem && <DetailRow label="Energy System" value={workout.energySystem} />}
           {(workout.hrZone || workout.rpe) && (
             <div className="flex gap-4">
@@ -141,6 +142,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
               {workout.rpe && <DetailRow label="RPE" value={workout.rpe} />}
             </div>
           )}
+          {workout.hasTurnaround && workout.turnaround && <DetailRow label="Turnaround" value={workout.turnaround} />}
           {workout.trainingPhases.length > 0 && (
             <ChipRow label="Training Phases" chips={workout.trainingPhases} />
           )}
@@ -148,6 +150,12 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
             <ChipRow label="Race Types" chips={workout.raceTypes} />
           )}
           {workout.author && <DetailRow label="Author" value={workout.author} />}
+          {workout.coachingNotes && <DetailRow label="Coach Notes" value={workout.coachingNotes} />}
+          {workout.mapLink && (
+            <a href={workout.mapLink} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-500 touch-manipulation block">
+              Map ↗
+            </a>
+          )}
           {filteredVariations.length > 0 && (
             <ChipRow label="Variations" chips={filteredVariations} />
           )}
