@@ -6,7 +6,7 @@
 
 **Open PRs:**
 
-- None open — #285 (closes #276) merged 2026-08-17
+- #286 Rewire write paths from (name, variation) keys to variant_id (closes #277) — awaiting review/merge
 
 **Bugs** (open, always priority):
 
@@ -19,7 +19,7 @@
 
 **Up next** (awaiting your `ready-to-build`):
 
-- #277 Rewire write paths from (name, variation) keys to variant_id — groomed 2026-08-17, split into 3 build-ordered parts (Library CRUD+flags → Schedule → Regroup) inside one issue
+- None — #277 built and in PR #286 (see Open PRs)
 
 **Current milestone:** Data Foundation Sprint — 4/9 closed
 
@@ -28,7 +28,7 @@
 - **Data Foundation Sprint** (Epic #271, Epic #267) — *Get the workout library's and runner feedback's data models structurally right before Release 4 multiplies how much data exists across more runs.*
 
   - *Active sequence* (Epic #271 — Workout Data Model Rebuild, per 2026-08-09 comment):
-    - - [ ] #277 Rewire write paths from (name, variation) keys to variant_id ← groomed 2026-08-17, `up-next`, awaiting `ready-to-build`. Split into 3 build-ordered parts within one issue: Part A (Library CRUD + flags — includes rebuilding `EditWorkoutForm`, which is a dead stub since #274, not a rewire target), Part B (Schedule — small, `resolveWorkoutVariant` already exists from #276), Part C (Regroup). Votes (`lib/votes.ts`) confirmed permanently out of scope. Not treated as time-sensitive — usage is low right now, which is the whole reason for doing this migration now.
+    - - [ ] #277 Rewire write paths from (name, variation) keys to variant_id ← PR #286 open, awaiting review/merge. Built as all 3 parts together (Library CRUD+flags, Schedule, Regroup) rather than split across PRs — grooming's "PR-per-part is fine" framing missed that they're coupled through Library's shared read path (flagged for PM triage in claude-memory's `pending-decisions.md`). Votes (`lib/votes.ts`) confirmed permanently out of scope, untouched.
   - *Done this release:*
     - - [X] ~~#272 Schema migration — run_groups/workout_families/workout_variants/routes~~
     - - [X] ~~#273 Semantic layer definition for the workout schema~~ (PR #281)
@@ -77,7 +77,7 @@
 
 ---
 
-**Last session:** Groomed #277 (write-path migration to `variant_id`) — audited every call site against real code (not just the epic's sketch), found the scope bigger/differently-shaped than assumed (dead `EditWorkoutForm` stub, live split-brain between `addWorkout`/`addVariation`), re-split into 3 build-ordered parts, rewrote the issue body to full story format, moved `backlog` → `up-next`. Also found and fixed a schema problem in sibling issue #253 (different epic) — its planned `reaction_comments` table would have inherited the same string-key fragility #277 retires — rewrote its schema to key off `variant_id` and added an explicit dependency on #277. 1 item staged in claude-memory's `pending-decisions.md` for next PM triage (candidate grooming-process improvement: scan other open issues for schema/keying assumptions before finalizing a story that changes a shared pattern).
+**Last session:** Built #277 (write-path migration to `variant_id`) — PR #286 open. Built all 3 parts (Library CRUD+flags, Schedule, Regroup) together after finding mid-build they're not independently shippable, contrary to grooming's assumption. Rebuilt `EditWorkoutForm` for real (was a stub since #274); fixed the live addWorkout/addVariation split-brain as a byproduct. Along the way, root-caused and fixed a Neon free-tier compute-quota exhaustion blocking this story's own tests — Sentry's built-in Uptime Monitoring was pinging production every 1 minute, 24/7 (see `project_neon_quota_sentry_uptime.md`). Full verification: tsc/lint clean, 201/201 unit tests, 20/20 e2e tests, Preview confirmed healthy. 2 items staged in claude-memory's `pending-decisions.md` for next PM triage (the A/B/C scope-coupling finding, and a praise note on the Neon investigation approach).
 
 ---
 
@@ -86,6 +86,7 @@
 - 2026-08-16 1808 — 276-grooming: groomed #276 to `ready-to-build`; resolved turnaround-gate conflict, backfill verification, PlanClient scope, and edit-drift risk; rewrote issue body to full story format. Next: build session picks up #276.
 - 2026-08-17 0808 — 276-build: PR #285 opened, `/code-review` run (3 fixed, 1 confirmed as #277's scope), manually verified on Preview. Next: Lou merges #285, then #277 grooming.
 - 2026-08-17 1026 — 277-grooming: groomed #277 to `up-next` (8 decisions, re-split into 3 parts, rewrote issue body); also fixed #253's schema (variant_id instead of name||variation) and added its new dependency on #277. Next: Lou reviews #277 for `ready-to-build`.
+- 2026-08-17/19 0935 — 277-build: PR #286 opened — built all 3 parts together (found mid-build they're coupled, not independently shippable); also root-caused and fixed a Neon compute-quota exhaustion (Sentry Uptime Monitor pinging production every minute) that was blocking this story's own test runs. Full verification passing (tsc, lint, 201 unit tests, 20 e2e tests, Preview). Next: Lou reviews PR #286.
 
 ---
 
