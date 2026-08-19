@@ -67,6 +67,19 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat)\ncmd=$(printf '%s' \"$input\" | jq -r '.tool_input.command // empty')\nif ! printf '%s' \"$cmd\" | grep -qE 'gh pr (create|edit)'; then\n  echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'\n  exit 0\nfi\nbodyfile=$(printf '%s' \"$cmd\" | grep -oE -- '--body-file[= ]+[^ ]+' | sed -E 's/--body-file[= ]+//' | head -1)\nif [ -n \"$bodyfile\" ]; then\n  body=$(cat \"$bodyfile\" 2>/dev/null || echo \"\")\nelse\n  body=\"$cmd\"\nfi\nif printf '%s' \"$body\" | grep -q \"Verified by Claude\" && printf '%s' \"$body\" | grep -q \"Please verify manually\"; then\n  echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'\nelse\n  echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"PR body is missing the required split: both a \\\"Verified by Claude\\\" and a \\\"Please verify manually\\\" section are required. Use .github/PULL_REQUEST_TEMPLATE.md as the starting structure (see wiki Contributing.md, PR test plan section). This convention was silently dropped for a month before being caught on PR #286 - do not skip it.\"}}'\nfi",
+            "timeout": 10,
+            "statusMessage": "Checking PR test-plan structure..."
+          }
+        ]
+      }
     ]
   }
 }
