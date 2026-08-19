@@ -1,34 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { dbFlagWorkoutMock, dbFixWorkoutAndClearFlagMock, captureServerEventMock, authMock, WorkoutNotFoundError } = vi.hoisted(() => {
-  class WorkoutNotFoundError extends Error {
-    constructor(name: string, variation: string) {
-      super(`Workout ${name} (${variation}) not found`)
-      this.name = 'WorkoutNotFoundError'
+const { dbFlagWorkoutVariantMock, dbFixWorkoutVariantAndClearFlagMock, captureServerEventMock, authMock, WorkoutVariantNotFoundError } = vi.hoisted(() => {
+  class WorkoutVariantNotFoundError extends Error {
+    constructor(variantId: number) {
+      super(`Workout variant ${variantId} not found`)
+      this.name = 'WorkoutVariantNotFoundError'
     }
   }
   return {
-    dbFlagWorkoutMock: vi.fn().mockResolvedValue(undefined),
-    dbFixWorkoutAndClearFlagMock: vi.fn().mockResolvedValue(undefined),
+    dbFlagWorkoutVariantMock: vi.fn().mockResolvedValue(undefined),
+    dbFixWorkoutVariantAndClearFlagMock: vi.fn().mockResolvedValue(undefined),
     captureServerEventMock: vi.fn().mockResolvedValue(undefined),
     authMock: vi.fn().mockResolvedValue({ userId: null }),
-    WorkoutNotFoundError,
+    WorkoutVariantNotFoundError,
   }
 })
 
 vi.mock('@/lib/db', () => ({
   dbSetScheduleWorkout: vi.fn(),
-  dbInsertWorkout: vi.fn(),
-  dbUpdateWorkout: vi.fn(),
-  dbDeleteWorkout: vi.fn(),
-  dbRegroupFamily: vi.fn(),
+  dbInsertWorkoutVariant: vi.fn(),
+  dbUpdateWorkoutVariant: vi.fn(),
+  dbAddWorkoutVariant: vi.fn(),
+  dbDeleteWorkoutVariant: vi.fn(),
+  dbRegroupVariants: vi.fn(),
   dbInsertRace: vi.fn(),
   dbFlagRace: vi.fn(),
   dbVerifyRace: vi.fn(),
   dbFixRace: vi.fn(),
-  dbFlagWorkout: dbFlagWorkoutMock,
-  dbFixWorkoutAndClearFlag: dbFixWorkoutAndClearFlagMock,
-  WorkoutNotFoundError,
+  dbFlagWorkoutVariant: dbFlagWorkoutVariantMock,
+  dbFixWorkoutVariantAndClearFlag: dbFixWorkoutVariantAndClearFlagMock,
+  WorkoutVariantNotFoundError,
 }))
 
 vi.mock('next/cache', () => ({
@@ -60,6 +61,8 @@ vi.mock('@sentry/nextjs', () => ({
 
 import { flagWorkoutIssue, fixWorkoutAndClearFlag } from '../app/actions'
 
+const VARIANT_ID = 42
+
 beforeEach(() => {
   vi.clearAllMocks()
   authMock.mockResolvedValue({ userId: null })
@@ -67,37 +70,37 @@ beforeEach(() => {
 
 describe('flagWorkoutIssue', () => {
   it('returns an error when note is blank', async () => {
-    const result = await flagWorkoutIssue('Yasso 800s', '', '   ')
+    const result = await flagWorkoutIssue(VARIANT_ID, '   ')
     expect(result).toEqual({ error: 'Description is required' })
-    expect(dbFlagWorkoutMock).not.toHaveBeenCalled()
+    expect(dbFlagWorkoutVariantMock).not.toHaveBeenCalled()
   })
 
   it('flags the workout with the trimmed note', async () => {
-    await flagWorkoutIssue('Yasso 800s', '', '  we run 8 reps not 6  ')
-    expect(dbFlagWorkoutMock).toHaveBeenCalledWith('Yasso 800s', '', 'we run 8 reps not 6')
+    await flagWorkoutIssue(VARIANT_ID, '  we run 8 reps not 6  ')
+    expect(dbFlagWorkoutVariantMock).toHaveBeenCalledWith(VARIANT_ID, 'we run 8 reps not 6')
   })
 
   it('fires workout_flagged anonymously by default', async () => {
-    await flagWorkoutIssue('Yasso 800s', '', 'wrong reps')
+    await flagWorkoutIssue(VARIANT_ID, 'wrong reps')
     expect(captureServerEventMock).toHaveBeenCalledWith('workout_flagged', 'anonymous-runner', { isLeader: false })
   })
 
   it('fires workout_flagged with the real userId and isLeader=true for a signed-in leader', async () => {
     authMock.mockResolvedValue({ userId: 'user_leader_1' })
-    await flagWorkoutIssue('Yasso 800s', '', 'wrong reps')
+    await flagWorkoutIssue(VARIANT_ID, 'wrong reps')
     expect(captureServerEventMock).toHaveBeenCalledWith('workout_flagged', 'user_leader_1', { isLeader: true })
   })
 
   it('returns a friendly error instead of throwing when the workout was renamed/moved underneath it', async () => {
-    dbFlagWorkoutMock.mockRejectedValueOnce(new WorkoutNotFoundError('Yasso 800s', ''))
-    const result = await flagWorkoutIssue('Yasso 800s', '', 'wrong reps')
+    dbFlagWorkoutVariantMock.mockRejectedValueOnce(new WorkoutVariantNotFoundError(VARIANT_ID))
+    const result = await flagWorkoutIssue(VARIANT_ID, 'wrong reps')
     expect(result).toEqual({ error: 'This workout may have changed since you opened this page — refresh and try again.' })
     expect(captureServerEventMock).not.toHaveBeenCalled()
   })
 
   it('still propagates an unexpected (non-not-found) DB error rather than swallowing it', async () => {
-    dbFlagWorkoutMock.mockRejectedValueOnce(new Error('connection reset'))
-    await expect(flagWorkoutIssue('Yasso 800s', '', 'wrong reps')).rejects.toThrow('connection reset')
+    dbFlagWorkoutVariantMock.mockRejectedValueOnce(new Error('connection reset'))
+    await expect(flagWorkoutIssue(VARIANT_ID, 'wrong reps')).rejects.toThrow('connection reset')
   })
 })
 
@@ -105,29 +108,29 @@ describe('fixWorkoutAndClearFlag', () => {
   const fields = { reason: 'VO2max intervals', distTime: '8 x 800m', instructions: 'Warm up 15 min' }
 
   it('throws Unauthorized when not signed in, before any field validation runs', async () => {
-    await expect(fixWorkoutAndClearFlag('Yasso 800s', '', fields)).rejects.toThrow('Unauthorized')
-    expect(dbFixWorkoutAndClearFlagMock).not.toHaveBeenCalled()
+    await expect(fixWorkoutAndClearFlag(VARIANT_ID, fields)).rejects.toThrow('Unauthorized')
+    expect(dbFixWorkoutVariantAndClearFlagMock).not.toHaveBeenCalled()
   })
 
   it('returns an error when reason is blank', async () => {
     authMock.mockResolvedValue({ userId: 'user_leader_1' })
-    const result = await fixWorkoutAndClearFlag('Yasso 800s', '', { ...fields, reason: '   ' })
+    const result = await fixWorkoutAndClearFlag(VARIANT_ID, { ...fields, reason: '   ' })
     expect(result).toEqual({ error: 'Reason is required' })
-    expect(dbFixWorkoutAndClearFlagMock).not.toHaveBeenCalled()
+    expect(dbFixWorkoutVariantAndClearFlagMock).not.toHaveBeenCalled()
   })
 
   it('fixes the workout when signed in with valid fields', async () => {
     authMock.mockResolvedValue({ userId: 'user_leader_1' })
-    const result = await fixWorkoutAndClearFlag('Yasso 800s', '', fields)
+    const result = await fixWorkoutAndClearFlag(VARIANT_ID, fields)
     expect(result).toBeUndefined()
-    expect(dbFixWorkoutAndClearFlagMock).toHaveBeenCalledWith('Yasso 800s', '', fields)
+    expect(dbFixWorkoutVariantAndClearFlagMock).toHaveBeenCalledWith(VARIANT_ID, fields)
     expect(captureServerEventMock).toHaveBeenCalledWith('workout_fixed', 'user_leader_1', { isLeader: true })
   })
 
   it('trims fields before saving', async () => {
     authMock.mockResolvedValue({ userId: 'user_leader_1' })
-    await fixWorkoutAndClearFlag('Yasso 800s', '', { reason: '  VO2max  ', distTime: '  8 x 800m  ', instructions: '  warm up  ' })
-    expect(dbFixWorkoutAndClearFlagMock).toHaveBeenCalledWith('Yasso 800s', '', {
+    await fixWorkoutAndClearFlag(VARIANT_ID, { reason: '  VO2max  ', distTime: '  8 x 800m  ', instructions: '  warm up  ' })
+    expect(dbFixWorkoutVariantAndClearFlagMock).toHaveBeenCalledWith(VARIANT_ID, {
       reason: 'VO2max',
       distTime: '8 x 800m',
       instructions: 'warm up',
@@ -136,15 +139,15 @@ describe('fixWorkoutAndClearFlag', () => {
 
   it('returns a friendly error instead of throwing when the workout was renamed/moved underneath it', async () => {
     authMock.mockResolvedValue({ userId: 'user_leader_1' })
-    dbFixWorkoutAndClearFlagMock.mockRejectedValueOnce(new WorkoutNotFoundError('Yasso 800s', ''))
-    const result = await fixWorkoutAndClearFlag('Yasso 800s', '', fields)
+    dbFixWorkoutVariantAndClearFlagMock.mockRejectedValueOnce(new WorkoutVariantNotFoundError(VARIANT_ID))
+    const result = await fixWorkoutAndClearFlag(VARIANT_ID, fields)
     expect(result).toEqual({ error: 'This workout may have changed since you opened this page — refresh and try again.' })
     expect(captureServerEventMock).not.toHaveBeenCalled()
   })
 
   it('still propagates an unexpected (non-not-found) DB error rather than swallowing it', async () => {
     authMock.mockResolvedValue({ userId: 'user_leader_1' })
-    dbFixWorkoutAndClearFlagMock.mockRejectedValueOnce(new Error('connection reset'))
-    await expect(fixWorkoutAndClearFlag('Yasso 800s', '', fields)).rejects.toThrow('connection reset')
+    dbFixWorkoutVariantAndClearFlagMock.mockRejectedValueOnce(new Error('connection reset'))
+    await expect(fixWorkoutAndClearFlag(VARIANT_ID, fields)).rejects.toThrow('connection reset')
   })
 })

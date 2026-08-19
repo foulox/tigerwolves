@@ -11,17 +11,18 @@ const { dbInsertRaceMock, dbFlagRaceMock, dbVerifyRaceMock, dbFixRaceMock, captu
 
 vi.mock('@/lib/db', () => ({
   dbSetScheduleWorkout: vi.fn(),
-  dbInsertWorkout: vi.fn(),
-  dbUpdateWorkout: vi.fn(),
-  dbDeleteWorkout: vi.fn(),
-  dbRegroupFamily: vi.fn(),
+  dbInsertWorkoutVariant: vi.fn(),
+  dbUpdateWorkoutVariant: vi.fn(),
+  dbAddWorkoutVariant: vi.fn(),
+  dbDeleteWorkoutVariant: vi.fn(),
+  dbRegroupVariants: vi.fn(),
   dbInsertRace: dbInsertRaceMock,
   dbFlagRace: dbFlagRaceMock,
   dbVerifyRace: dbVerifyRaceMock,
   dbFixRace: dbFixRaceMock,
-  dbFlagWorkout: vi.fn(),
-  dbFixWorkoutAndClearFlag: vi.fn(),
-  WorkoutNotFoundError: class WorkoutNotFoundError extends Error {},
+  dbFlagWorkoutVariant: vi.fn(),
+  dbFixWorkoutVariantAndClearFlag: vi.fn(),
+  WorkoutVariantNotFoundError: class WorkoutVariantNotFoundError extends Error {},
 }))
 
 vi.mock('next/cache', () => ({
