@@ -85,22 +85,26 @@ const RACES: Omit<Race, 'id'>[] = [
   { date: '', name: 'Prospect Park 5K Series #3', distance: '5K', location: 'Prospect Park, Brooklyn', organizer: 'NBR', verified: false, flagged: true, flagNote: "Date TBD — organizer hasn't confirmed" },
 ]
 
-// #276: PlanClient now reads workout_families/workout_variants, not the legacy
-// `workouts` table above — mirror the same Quality-category fixtures into the
-// new schema too, or plan.spec.ts's Plan-screen assertions have nothing to
-// find. Kept as a second, parallel fixture set rather than derived from
-// WORKOUTS above: the legacy rows still back schedule.spec.ts/library.spec.ts/
-// admin.spec.ts, which stay on the legacy table until #277 — the two schemas
-// aren't the same shape (no override-text field on workout_variants; label is
-// a short tag, not post content), so a shared source would just paper over that.
+// #276/#277: Library/Plan/Schedule/Admin now all read workout_families/
+// workout_variants exclusively, not the legacy `workouts` table above — mirror
+// every WORKOUTS fixture into the new schema too, or the e2e specs asserting
+// against those screens have nothing to find. Kept as a second, parallel
+// fixture set rather than derived from WORKOUTS above: the two schemas aren't
+// the same shape (no override-text field on workout_variants; label is a
+// short tag, not post content), so a shared source would just paper over that.
+// The legacy WORKOUTS rows stay seeded too (harmless, and #278 — not this
+// story — owns retiring that table and its fixtures).
 type VariantFixture = {
   label: string | null
   sortOrder: number | null
   rawInput: string
+  flagged?: boolean
+  flagNote?: string
 }
 
 type FamilyFixture = {
   name: string
+  category: string
   type: string
   reason: string
   variants: VariantFixture[]
@@ -108,23 +112,34 @@ type FamilyFixture = {
 
 const FAMILIES: FamilyFixture[] = [
   {
-    name: 'Yasso 800s', type: 'Interval', reason: 'E2E fixture workout.',
-    variants: [{ label: null, sortOrder: null, rawInput: '10x800m @ 5K effort, 400m jog recovery.' }],
+    name: 'Easy Recovery Run', category: 'Easy', type: 'Recovery', reason: 'E2E fixture workout.',
+    variants: [{ label: null, sortOrder: null, rawInput: 'Fixture instructions — seeded by scripts/seed-e2e.ts.' }],
   },
   {
-    name: 'Fort Greene Hills', type: 'Hills', reason: 'E2E fixture workout.',
+    name: 'Long Run — Progressive', category: 'Long', type: 'Progressive', reason: 'E2E fixture workout.',
+    variants: [{ label: null, sortOrder: null, rawInput: 'Fixture instructions — seeded by scripts/seed-e2e.ts.' }],
+  },
+  {
+    name: 'Yasso 800s', category: 'Quality', type: 'Interval', reason: 'E2E fixture workout.',
+    variants: [{
+      label: null, sortOrder: null, rawInput: '10x800m @ 5K effort, 400m jog recovery.',
+      flagged: true, flagNote: "We've actually been running 8 reps lately, not 10 — might be worth double-checking.",
+    }],
+  },
+  {
+    name: 'Fort Greene Hills', category: 'Quality', type: 'Hills', reason: 'E2E fixture workout.',
     variants: [{ label: null, sortOrder: null, rawInput: '8x90sec hill repeats, jog down recovery.' }],
   },
   {
-    name: 'Prospect Park Tempo', type: 'Straight Tempo', reason: 'E2E fixture workout.',
+    name: 'Prospect Park Tempo', category: 'Quality', type: 'Straight Tempo', reason: 'E2E fixture workout.',
     variants: [{ label: null, sortOrder: null, rawInput: '20min @ tempo effort around the loop.' }],
   },
   {
-    name: 'Track Ladder 400-800-1200', type: 'Ladder', reason: 'E2E fixture workout.',
+    name: 'Track Ladder 400-800-1200', category: 'Quality', type: 'Ladder', reason: 'E2E fixture workout.',
     variants: [{ label: null, sortOrder: null, rawInput: '400-800-1200-800-400 @ 5K effort, equal jog recovery.' }],
   },
   {
-    name: 'McCarren Loop Repeats', type: 'Interval', reason: 'E2E fixture workout.',
+    name: 'McCarren Loop Repeats', category: 'Quality', type: 'Interval', reason: 'E2E fixture workout.',
     variants: [
       { label: 'Short loop, 6x800m', sortOrder: 1, rawInput: 'Short loop, 6x800m' },
       { label: 'Long loop, 4x1200m', sortOrder: 2, rawInput: 'Long loop, 4x1200m' },
@@ -157,14 +172,14 @@ export async function seedE2E(): Promise<void> {
   for (const f of FAMILIES) {
     const [family] = await sql`
       INSERT INTO workout_families (name, category, type, reason, author, run_group_id)
-      VALUES (${f.name}, 'Quality', ${f.type}, ${f.reason}, 'TigerWolves', ${tigerWolvesId})
+      VALUES (${f.name}, ${f.category}, ${f.type}, ${f.reason}, 'TigerWolves', ${tigerWolvesId})
       RETURNING id
     `
     const familyId = family.id as number
     for (const v of f.variants) {
       await sql`
-        INSERT INTO workout_variants (family_id, label, sort_order, raw_input, has_turnaround, turnaround)
-        VALUES (${familyId}, ${v.label}, ${v.sortOrder}, ${v.rawInput}, false, '')
+        INSERT INTO workout_variants (family_id, label, sort_order, raw_input, has_turnaround, turnaround, flagged, flag_note)
+        VALUES (${familyId}, ${v.label}, ${v.sortOrder}, ${v.rawInput}, false, '', ${v.flagged ?? false}, ${v.flagNote ?? ''})
       `
     }
   }

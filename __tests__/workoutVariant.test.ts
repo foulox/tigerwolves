@@ -48,7 +48,21 @@ describe('buildWorkoutVariantInput', () => {
       runGroupId: 3,
       hasTurnaround: true,
       turnaround: 'After the 2nd rep',
+      label: null,
+      sortOrder: null,
     })
+  })
+
+  it('parses label and sortOrder when present (#277 — variant rename)', () => {
+    const input = buildWorkoutVariantInput(formData({ ...VALID_FIELDS, label: 'Shorter version', sortOrder: '2' }))
+    expect(input.label).toBe('Shorter version')
+    expect(input.sortOrder).toBe(2)
+  })
+
+  it('defaults label and sortOrder to null when absent', () => {
+    const input = buildWorkoutVariantInput(formData(VALID_FIELDS))
+    expect(input.label).toBeNull()
+    expect(input.sortOrder).toBeNull()
   })
 
   it('defaults empty optional fields to null', () => {

@@ -1,14 +1,15 @@
 import { notFound } from 'next/navigation'
-import { fetchData } from '@/lib/db'
+import { fetchData, fetchRunGroups } from '@/lib/db'
 import EditWorkoutForm from '@/components/EditWorkoutForm'
 
-export default async function EditWorkoutPage({ searchParams }: { searchParams: Promise<{ name?: string; variation?: string }> }) {
-  const { name, variation = '' } = await searchParams
-  if (!name) notFound()
+export default async function EditWorkoutPage({ searchParams }: { searchParams: Promise<{ variantId?: string }> }) {
+  const { variantId } = await searchParams
+  if (!variantId) notFound()
 
-  const { workouts } = await fetchData()
-  const workout = workouts.find(w => w.name === name && w.variation === variation)
-  if (!workout) notFound()
+  const { workoutVariants } = await fetchData()
+  const variant = workoutVariants.find(w => w.id === Number(variantId))
+  if (!variant) notFound()
 
-  return <EditWorkoutForm workout={workout} />
+  const runGroups = await fetchRunGroups()
+  return <EditWorkoutForm variant={variant} runGroups={runGroups} />
 }

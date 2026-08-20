@@ -1,13 +1,13 @@
 import { auth } from '@clerk/nextjs/server'
 import { fetchData } from '@/lib/db'
-import { resolveWorkout } from '@/lib/scheduleUtils'
+import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import Header from '@/components/Header'
 import ScheduleClient from '@/components/ScheduleClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 
 export default async function SchedulePage() {
   const { userId } = await auth()
-  const { schedule, workouts } = await fetchData()
+  const { schedule, workoutVariants } = await fetchData()
   const today = new Date().toISOString().slice(0, 10)
 
   const PAST_WEEKS_SHOWN = 8
@@ -18,20 +18,20 @@ export default async function SchedulePage() {
   const allPast = schedule
     .filter(e => e.date < today)
     .sort((a, b) => a.date.localeCompare(b.date))
-  // Bounded to a fixed window — no "load more" — so resolveWorkout/vote-data cost
-  // stays flat regardless of how much schedule history accumulates over time.
+  // Bounded to a fixed window — no "load more" — so resolveWorkoutVariant/vote-data
+  // cost stays flat regardless of how much schedule history accumulates over time.
   const past = allPast.slice(Math.max(0, allPast.length - PAST_WEEKS_SHOWN))
 
   const upcomingWorkouts = upcoming.map(entry =>
-    resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)
+    resolveWorkoutVariant(workoutVariants, entry.workoutName, entry.selectedVariations)
   )
   const pastWorkouts = past.map(entry =>
-    resolveWorkout(workouts, entry.workoutName, entry.selectedVariations)
+    resolveWorkoutVariant(workoutVariants, entry.workoutName, entry.selectedVariations)
   )
 
   const workoutIds = [...upcomingWorkouts, ...pastWorkouts]
     .filter(w => w !== null)
-    .map(w => workoutVoteId(w!.name, w!.variation))
+    .map(w => workoutVoteId(w!.name, w!.label ?? ''))
   const voteData = await getVoteData(workoutIds)
 
   return (

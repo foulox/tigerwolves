@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Flag } from 'lucide-react'
-import type { ScheduleEntry, Workout } from '@/lib/data'
+import type { ScheduleEntry, WorkoutVariantRow } from '@/lib/data'
 import { formatDateMedium } from '@/lib/postBuilder'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
@@ -23,7 +23,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 interface Props {
   entry: ScheduleEntry
-  workout: Workout | null
+  workout: WorkoutVariantRow | null
   index: number
   isLeader: boolean
   voteData?: VoteData | null
@@ -93,7 +93,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
             </div>
             {isLeader && isPast && hasWorkout && (
               <Link
-                href={`/library/edit?name=${encodeURIComponent(workout.name)}&variation=${encodeURIComponent(workout.variation)}`}
+                href={`/library/edit?variantId=${workout.id}`}
                 className="text-xs font-semibold text-gray-500 border border-gray-300 rounded-full px-3 py-1 bg-white active:bg-gray-50 touch-manipulation whitespace-nowrap"
                 onClick={(e) => e.stopPropagation()}
                 data-testid={`edit-in-library-${index}`}
@@ -118,7 +118,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
           {workout && (
             <div className="shrink-0" onClick={(e) => e.stopPropagation()} data-tour={isNext ? 'schedule-reactions' : undefined}>
               <ReactionPicker
-                workoutId={workoutVoteId(workout.name, workout.variation)}
+                workoutId={workoutVoteId(workout.name, workout.label ?? '')}
                 workoutName={workout.name}
                 initialVoteData={voteData ?? null}
                 muted={isPast}
@@ -133,8 +133,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
         <div className="border-t border-gray-100 px-4 py-3 space-y-2 text-sm" data-testid={detailTestId}>
           {workout.reason && <DetailRow label="Reason" value={workout.reason} />}
           {workout.distTime && <DetailRow label="Distance / Time" value={workout.distTime} />}
-          {workout.instructions && <DetailRow label="Instructions" value={workout.instructions} />}
-          {workout.lapStructure && <DetailRow label="Lap Structure" value={workout.lapStructure} />}
+          {workout.rawInput && <DetailRow label="Instructions" value={workout.rawInput} />}
           {workout.energySystem && <DetailRow label="Energy System" value={workout.energySystem} />}
           {(workout.hrZone || workout.rpe) && (
             <div className="flex gap-4">
@@ -154,7 +153,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
           )}
           <div className="flex items-center justify-between gap-2">
             <ReactionPicker
-              workoutId={workoutVoteId(workout.name, workout.variation)}
+              workoutId={workoutVoteId(workout.name, workout.label ?? '')}
               workoutName={workout.name}
               initialVoteData={voteData ?? null}
               muted={isPast}

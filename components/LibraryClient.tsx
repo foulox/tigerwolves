@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import type { Workout } from '@/lib/data'
+import type { WorkoutVariantRow } from '@/lib/data'
 import { ABBREVIATIONS, RACE_TYPES } from '@/lib/data'
 import DeleteWorkoutButton from '@/components/DeleteWorkoutButton'
 import ReactionPicker from '@/components/ReactionPicker'
@@ -23,76 +23,87 @@ const PHASE_COLORS: Record<string, string> = {
   Taper: 'bg-green-100 text-green-700',
 }
 
-type StandaloneRow = { kind: 'standalone'; workout: Workout }
+type StandaloneRow = { kind: 'standalone'; workout: WorkoutVariantRow }
 type FamilyRow = {
   kind: 'family'
+  familyId: number
   name: string; type: string; reason: string
-  base: Workout | null
-  progressions: Workout[]
+  base: WorkoutVariantRow | null
+  variants: WorkoutVariantRow[]
   total: number
   lastRan: string | null
 }
 type DisplayRow = StandaloneRow | FamilyRow
 
-export default function LibraryClient({ workouts, isLeader, voteData = {} }: { workouts: Workout[]; isLeader: boolean; voteData?: Record<string, VoteData | null> }) {
+// Reads workout_variants/workout_families (#277) — replaces the legacy
+// `workouts`-typed version. Family grouping mirrors PlanClient's own
+// familyId-based grouping (#276) rather than the old name-string grouping.
+export default function LibraryClient({ variants, isLeader, voteData = {} }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null> }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [raceFilter, setRaceFilter] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [expandedFamily, setExpandedFamily] = useState<string | null>(null)
-  const [expandedNotes, setExpandedNotes] = useState<string | null>(null)
+  const [expandedFamily, setExpandedFamily] = useState<number | null>(null)
+  const [expandedNotes, setExpandedNotes] = useState<number | null>(null)
   const [showAbbrev, setShowAbbrev] = useState(false)
-  const [flagSheetFor, setFlagSheetFor] = useState<string | null>(null)
+  const [flagSheetFor, setFlagSheetFor] = useState<number | null>(null)
 
-  const flaggedWorkout = flagSheetFor ? workouts.find(w => workoutVoteId(w.name, w.variation) === flagSheetFor) ?? null : null
+  const flaggedWorkout = flagSheetFor ? variants.find(w => w.id === flagSheetFor) ?? null : null
 
   const q = search.toLowerCase()
-  function matchesSearch(w: Workout) {
+  function matchesSearch(w: WorkoutVariantRow) {
     if (!q) return true
     return (
       w.name.toLowerCase().includes(q) ||
       w.type.toLowerCase().includes(q) ||
-      w.variation.toLowerCase().includes(q) ||
+      (w.label ?? '').toLowerCase().includes(q) ||
       w.reason.toLowerCase().includes(q) ||
       w.raceTypes.some(r => r.toLowerCase().includes(q))
     )
   }
 
   const types = Array.from(new Set(
-    workouts.filter(w => !category || w.category === category).map(w => w.type)
+    variants.filter(w => !category || w.category === category).map(w => w.type)
   )).sort()
 
-  const filtered = workouts
+  const filtered = variants
     .filter(w => !category || w.category === category)
     .filter(w => !typeFilter || w.type === typeFilter)
     .filter(w => !raceFilter || w.raceTypes.includes(raceFilter))
     .filter(matchesSearch)
     .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
 
-  const familyNames = new Set<string>()
-  for (const w of workouts) {
-    if (w.variation) familyNames.add(w.name)
-  }
+  // A family is "multi-version" (expandable Standard/Variation N group) only
+  // when its familyId has more than one variant row — same rule PlanClient
+  // uses (#276), so a lone variant with a non-null label still displays
+  // standalone rather than as a one-item "family".
+  const familyIds = useMemo(() => {
+    const counts = new Map<number, number>()
+    for (const w of variants) counts.set(w.familyId, (counts.get(w.familyId) ?? 0) + 1)
+    const s = new Set<number>()
+    for (const [id, count] of counts) if (count > 1) s.add(id)
+    return s
+  }, [variants])
 
   const displayRows: DisplayRow[] = []
-  const seenFamilies = new Set<string>()
+  const seenFamilies = new Set<number>()
   for (const w of filtered) {
-    if (!familyNames.has(w.name)) {
+    if (!familyIds.has(w.familyId)) {
       displayRows.push({ kind: 'standalone', workout: w })
-    } else if (!seenFamilies.has(w.name)) {
-      seenFamilies.add(w.name)
-      const allMembers = workouts.filter(p => p.name === w.name)
-      const base = allMembers.find(p => !p.variation) ?? null
-      const progressions = allMembers
-        .filter(p => p.variation)
-        .sort((a, b) => (a.progression ?? 0) - (b.progression ?? 0))
-      const total = (base ? 1 : 0) + progressions.length
+    } else if (!seenFamilies.has(w.familyId)) {
+      seenFamilies.add(w.familyId)
+      const allMembers = variants.filter(p => p.familyId === w.familyId)
+      const base = allMembers.find(p => p.label === null) ?? null
+      const members = allMembers
+        .filter(p => p.label !== null)
+        .sort((a, b) => (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity))
+      const total = (base ? 1 : 0) + members.length
       const lastRan = allMembers.reduce<string | null>((best, p) => {
         if (!p.lastRan) return best
         if (!best) return p.lastRan
         return p.lastRan > best ? p.lastRan : best
       }, null)
-      displayRows.push({ kind: 'family', name: w.name, type: w.type, reason: base?.reason ?? w.reason, base, progressions, total, lastRan })
+      displayRows.push({ kind: 'family', familyId: w.familyId, name: w.name, type: w.type, reason: base?.reason ?? w.reason, base, variants: members, total, lastRan })
     }
   }
 
@@ -101,7 +112,7 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
     setTypeFilter(null)
   }
 
-  function WorkoutMeta({ w }: { w: Workout }) {
+  function WorkoutMeta({ w }: { w: WorkoutVariantRow }) {
     return (
       <div className="mt-2.5 space-y-2">
         <div className="flex gap-3 text-xs text-gray-400">
@@ -125,12 +136,12 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
         {w.coachingNotes && (
           <div>
             <button
-              onClick={e => { e.stopPropagation(); setExpandedNotes(expandedNotes === w.name ? null : w.name) }}
+              onClick={e => { e.stopPropagation(); setExpandedNotes(expandedNotes === w.id ? null : w.id) }}
               className="text-xs font-semibold text-orange-500 touch-manipulation"
             >
-              {expandedNotes === w.name ? 'Hide coach notes' : 'Coach notes'}
+              {expandedNotes === w.id ? 'Hide coach notes' : 'Coach notes'}
             </button>
-            {expandedNotes === w.name && (
+            {expandedNotes === w.id && (
               <p className="text-xs text-gray-600 mt-1 leading-snug">{w.coachingNotes}</p>
             )}
           </div>
@@ -214,27 +225,27 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
       )}
 
       <div className="px-4 flex flex-col gap-3">
-        {workouts.length === 0 && (
+        {variants.length === 0 && (
           <p className="text-gray-400 italic text-sm">No workouts in the library yet.</p>
         )}
-        {workouts.length > 0 && displayRows.length === 0 && (
+        {variants.length > 0 && displayRows.length === 0 && (
           <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
         )}
         {displayRows.map(row => {
           if (row.kind === 'standalone') {
             const w = row.workout
             return (
-              <div key={`s-${w.name}`} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+              <div key={`s-${w.id}`} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                 <div className="flex justify-between items-start gap-2">
                   <div className="font-semibold text-gray-900">{w.name}</div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {w.flagged && (
-                      <FlagBadge onClick={() => setFlagSheetFor(workoutVoteId(w.name, w.variation))} />
+                      <FlagBadge onClick={() => setFlagSheetFor(w.id)} />
                     )}
-                    {isLeader && <DeleteWorkoutButton name={w.name} variation={w.variation} />}
+                    {isLeader && <DeleteWorkoutButton variantId={w.id} />}
                     {isLeader && (
                       <Link
-                        href={`/library/edit?name=${encodeURIComponent(w.name)}&variation=${encodeURIComponent(w.variation)}`}
+                        href={`/library/edit?variantId=${w.id}`}
                         className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
                         title="Edit workout"
                       >✎</Link>
@@ -242,20 +253,20 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                     <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{w.type}</span>
                   </div>
                 </div>
-                {w.variation && <p className="text-xs text-gray-400 mt-0.5">{w.variation}</p>}
+                {w.label && <p className="text-xs text-gray-400 mt-0.5">{w.label}</p>}
                 <p className="text-sm text-gray-500 mt-1.5 leading-snug">{w.reason}</p>
                 <WorkoutMeta w={w} />
                 <div className="flex justify-end mt-2">
                   <ReactionPicker
-                    workoutId={workoutVoteId(w.name, w.variation)}
+                    workoutId={workoutVoteId(w.name, w.label ?? '')}
                     workoutName={w.name}
-                    initialVoteData={voteData[workoutVoteId(w.name, w.variation)] ?? null}
+                    initialVoteData={voteData[workoutVoteId(w.name, w.label ?? '')] ?? null}
                   />
                 </div>
                 {isLeader && (
                   <div className="mt-3 pt-3 border-t border-gray-50">
                     <Link
-                      href={`/library/add?parent=${encodeURIComponent(w.name)}`}
+                      href={`/library/add?parent=${w.familyId}`}
                       className="text-xs font-semibold text-orange-500 touch-manipulation"
                     >
                       + Add variation
@@ -266,12 +277,12 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
             )
           }
 
-          const isExpanded = expandedFamily === row.name
-          const familyFlagged = row.base?.flagged || row.progressions.some(p => p.flagged)
+          const isExpanded = expandedFamily === row.familyId
+          const familyFlagged = row.base?.flagged || row.variants.some(p => p.flagged)
           return (
-            <div key={`f-${row.name}`} data-tour="library-variations">
+            <div key={`f-${row.familyId}`} data-tour="library-variations">
               <button
-                onClick={() => setExpandedFamily(isExpanded ? null : row.name)}
+                onClick={() => setExpandedFamily(isExpanded ? null : row.familyId)}
                 className="w-full text-left bg-white rounded-2xl p-4 border border-gray-100 shadow-sm touch-manipulation"
               >
                 <div className="flex justify-between items-start gap-2">
@@ -281,8 +292,8 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                       <FlagBadge
                         onClick={(e) => {
                           e.stopPropagation()
-                          const flaggedMember = row.base?.flagged ? row.base : row.progressions.find(p => p.flagged)
-                          if (flaggedMember) setFlagSheetFor(workoutVoteId(flaggedMember.name, flaggedMember.variation))
+                          const flaggedMember = row.base?.flagged ? row.base : row.variants.find(p => p.flagged)
+                          if (flaggedMember) setFlagSheetFor(flaggedMember.id)
                         }}
                       />
                     )}
@@ -306,13 +317,13 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                         <div className="text-xs font-bold text-gray-500 mb-0.5">Standard</div>
                         <div className="flex items-center gap-1.5">
                           {row.base.flagged && (
-                            <FlagBadge onClick={() => setFlagSheetFor(workoutVoteId(row.base!.name, row.base!.variation))} />
+                            <FlagBadge onClick={() => setFlagSheetFor(row.base!.id)} />
                           )}
                           {isLeader && (
                             <>
-                              <DeleteWorkoutButton name={row.base.name} variation={row.base.variation} />
+                              <DeleteWorkoutButton variantId={row.base.id} />
                               <Link
-                                href={`/library/edit?name=${encodeURIComponent(row.base.name)}&variation=`}
+                                href={`/library/edit?variantId=${row.base.id}`}
                                 className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
                                 title="Edit"
                               >✎</Link>
@@ -324,26 +335,26 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                       {row.base.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(row.base.lastRan)}</div>}
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
-                          workoutId={workoutVoteId(row.base.name, row.base.variation)}
+                          workoutId={workoutVoteId(row.base.name, row.base.label ?? '')}
                           workoutName={row.base.name}
-                          initialVoteData={voteData[workoutVoteId(row.base.name, row.base.variation)] ?? null}
+                          initialVoteData={voteData[workoutVoteId(row.base.name, row.base.label ?? '')] ?? null}
                         />
                       </div>
                     </div>
                   )}
-                  {row.progressions.map(p => (
-                    <div key={p.progression} className="bg-white rounded-xl px-4 py-3 border border-gray-100">
+                  {row.variants.map(p => (
+                    <div key={p.id} className="bg-white rounded-xl px-4 py-3 border border-gray-100">
                       <div className="flex justify-between items-start">
-                        <div className="text-xs font-bold text-orange-500 mb-0.5">Variation {p.progression} of {row.total}</div>
+                        <div className="text-xs font-bold text-orange-500 mb-0.5">Variation {p.sortOrder} of {row.total}</div>
                         <div className="flex items-center gap-1.5">
                           {p.flagged && (
-                            <FlagBadge onClick={() => setFlagSheetFor(workoutVoteId(p.name, p.variation))} />
+                            <FlagBadge onClick={() => setFlagSheetFor(p.id)} />
                           )}
                           {isLeader && (
                             <>
-                              <DeleteWorkoutButton name={p.name} variation={p.variation} />
+                              <DeleteWorkoutButton variantId={p.id} />
                               <Link
-                                href={`/library/edit?name=${encodeURIComponent(p.name)}&variation=${encodeURIComponent(p.variation)}`}
+                                href={`/library/edit?variantId=${p.id}`}
                                 className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
                                 title="Edit"
                               >✎</Link>
@@ -351,21 +362,21 @@ export default function LibraryClient({ workouts, isLeader, voteData = {} }: { w
                           )}
                         </div>
                       </div>
-                      <div className="text-sm font-semibold text-gray-800">{p.variation}</div>
+                      <div className="text-sm font-semibold text-gray-800">{p.label}</div>
                       {p.distTime && <div className="text-xs text-gray-400 mt-0.5">{p.distTime}</div>}
                       {p.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(p.lastRan)}</div>}
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
-                          workoutId={workoutVoteId(p.name, p.variation)}
+                          workoutId={workoutVoteId(p.name, p.label ?? '')}
                           workoutName={p.name}
-                          initialVoteData={voteData[workoutVoteId(p.name, p.variation)] ?? null}
+                          initialVoteData={voteData[workoutVoteId(p.name, p.label ?? '')] ?? null}
                         />
                       </div>
                     </div>
                   ))}
                   {isLeader && (
                     <Link
-                      href={`/library/add?parent=${encodeURIComponent(row.name)}`}
+                      href={`/library/add?parent=${row.familyId}`}
                       className="bg-white rounded-xl px-4 py-3 border border-dashed border-orange-200 text-xs font-semibold text-orange-500 touch-manipulation text-center"
                     >
                       + Add variation

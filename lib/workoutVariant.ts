@@ -21,12 +21,19 @@ export const WorkoutVariantInputSchema = z.object({
   runGroupId: z.number().nullable(),
   hasTurnaround: z.boolean(),
   turnaround: z.string(),
+  // Variant-level rename fields (#277) — dbInsertWorkoutVariant ignores these
+  // (a brand-new family's sole variant is always the null/null singleton);
+  // dbUpdateWorkoutVariant writes them, so editing a family member's label/
+  // ordering no longer silently drops the change.
+  label: z.string().nullable(),
+  sortOrder: z.number().nullable(),
 })
 
 export type WorkoutVariantInput = z.infer<typeof WorkoutVariantInputSchema>
 
 export function buildWorkoutVariantInput(formData: FormData): WorkoutVariantInput {
   const runGroupIdRaw = formData.get('runGroupId') as string
+  const sortOrderRaw = formData.get('sortOrder') as string
   return WorkoutVariantInputSchema.parse({
     name: formData.get('name'),
     category: formData.get('category'),
@@ -45,5 +52,7 @@ export function buildWorkoutVariantInput(formData: FormData): WorkoutVariantInpu
     runGroupId: runGroupIdRaw ? Number(runGroupIdRaw) : null,
     hasTurnaround: (formData.get('hasTurnaround') as string) === 'true',
     turnaround: (formData.get('turnaround') as string) || '',
+    label: (formData.get('label') as string) || null,
+    sortOrder: sortOrderRaw ? Number(sortOrderRaw) : null,
   })
 }

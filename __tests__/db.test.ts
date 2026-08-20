@@ -1,9 +1,11 @@
-import { describe, it, expect, afterAll } from 'vitest'
+import { describe, it, expect, afterAll, beforeEach, afterEach } from 'vitest'
 import {
   sql, fetchWorkouts, fetchSchedule, fetchRaces, fetchRunGroups,
   dbInsertWorkout, dbUpdateWorkout, dbDeleteWorkout, dbSetScheduleWorkout,
   dbRegroupFamily, dbFlagWorkout, dbFixWorkoutAndClearFlag, WorkoutNotFoundError,
   dbInsertWorkoutVariant, dbUpdateWorkoutVariant, WorkoutVariantNotFoundError,
+  dbAddWorkoutVariant, dbDeleteWorkoutVariant, dbFlagWorkoutVariant,
+  dbFixWorkoutVariantAndClearFlag, dbRegroupVariants,
 } from '../lib/db'
 
 describe('database connection and schema', () => {
@@ -340,6 +342,8 @@ describe('workout_families / workout_variants write path (#274)', () => {
     trainingPhases: ['Build'],
     hasTurnaround: true,
     turnaround: 'After the 3rd rep',
+    label: null,
+    sortOrder: null,
   }
 
   afterAll(async () => {
@@ -366,7 +370,7 @@ describe('workout_families / workout_variants write path (#274)', () => {
     expect(variant.race_types).toEqual(['5K'])
   })
 
-  it('updates the family + variant via dbUpdateWorkoutVariant', async () => {
+  it('updates the family + variant via dbUpdateWorkoutVariant, including label/sortOrder (#277)', async () => {
     await dbUpdateWorkoutVariant(variantId, {
       ...BASE_INPUT,
       category: 'Long',
@@ -374,6 +378,8 @@ describe('workout_families / workout_variants write path (#274)', () => {
       instructions: 'Updated instructions',
       hasTurnaround: false,
       turnaround: '',
+      label: 'Renamed variation',
+      sortOrder: 3,
     })
 
     const [family] = await sql`SELECT * FROM workout_families WHERE id = ${familyId}`
@@ -383,9 +389,167 @@ describe('workout_families / workout_variants write path (#274)', () => {
     const [variant] = await sql`SELECT * FROM workout_variants WHERE id = ${variantId}`
     expect(variant.raw_input).toBe('Updated instructions')
     expect(variant.has_turnaround).toBe(false)
+    expect(variant.label).toBe('Renamed variation')
+    expect(variant.sort_order).toBe(3)
+
+    // Restore to a null-label singleton so later tests in this file (which
+    // assume BASE_INPUT's original shape) aren't affected by this rename.
+    await dbUpdateWorkoutVariant(variantId, BASE_INPUT)
   })
 
   it('dbUpdateWorkoutVariant throws WorkoutVariantNotFoundError for an unknown id', async () => {
     await expect(dbUpdateWorkoutVariant(-1, BASE_INPUT)).rejects.toThrow(WorkoutVariantNotFoundError)
+  })
+})
+
+describe('workout_variants write path additions (#277)', () => {
+  const FAMILY_NAME = '__test_family_277__'
+  let familyId: number
+  let baseVariantId: number
+
+  const BASE_INPUT = {
+    name: FAMILY_NAME,
+    category: 'Quality' as const,
+    type: 'Hills' as const,
+    reason: 'Test reason',
+    author: 'Test',
+    coachingNotes: null,
+    mapLink: null,
+    runGroupId: null,
+    instructions: 'WU: 10 min easy. Main: 5x2min hill. CD: 10 min easy.',
+    distTime: '30min',
+    energySystem: 'Anaerobic',
+    hrZone: 'Z4-Z5',
+    rpe: '8',
+    raceTypes: ['5K'],
+    trainingPhases: ['Build'],
+    hasTurnaround: false,
+    turnaround: '',
+    label: null,
+    sortOrder: null,
+  }
+
+  beforeEach(async () => {
+    const result = await dbInsertWorkoutVariant(BASE_INPUT)
+    familyId = result.familyId
+    baseVariantId = result.variantId
+  })
+
+  afterEach(async () => {
+    await sql`DELETE FROM workout_variants WHERE family_id = ${familyId}`
+    await sql`DELETE FROM workout_families WHERE id = ${familyId}`
+  })
+
+  it('dbAddWorkoutVariant adds a variant to an existing family without creating a new one', async () => {
+    const { variantId } = await dbAddWorkoutVariant(familyId, {
+      label: 'Shorter version',
+      sortOrder: 1,
+      instructions: 'WU: 10 min easy. Main: 3x2min hill.',
+      distTime: '20min',
+      energySystem: 'Anaerobic',
+      hrZone: 'Z4-Z5',
+      rpe: '7',
+      raceTypes: ['5K'],
+      trainingPhases: ['Build'],
+      hasTurnaround: false,
+      turnaround: '',
+    })
+
+    const [variant] = await sql`SELECT * FROM workout_variants WHERE id = ${variantId}`
+    expect(variant.family_id).toBe(familyId)
+    expect(variant.label).toBe('Shorter version')
+    expect(variant.sort_order).toBe(1)
+
+    const families = await sql`SELECT id FROM workout_families WHERE id = ${familyId}`
+    expect(families).toHaveLength(1)
+  })
+
+  it('dbFlagWorkoutVariant flags a variant', async () => {
+    await dbFlagWorkoutVariant(baseVariantId, 'the distance looks wrong')
+    const [variant] = await sql`SELECT flagged, flag_note FROM workout_variants WHERE id = ${baseVariantId}`
+    expect(variant.flagged).toBe(true)
+    expect(variant.flag_note).toBe('the distance looks wrong')
+  })
+
+  it('dbFlagWorkoutVariant throws WorkoutVariantNotFoundError for an unknown id', async () => {
+    await expect(dbFlagWorkoutVariant(-1, 'note')).rejects.toThrow(WorkoutVariantNotFoundError)
+  })
+
+  it('dbFixWorkoutVariantAndClearFlag fixes and clears the flag', async () => {
+    await dbFlagWorkoutVariant(baseVariantId, 'wrong distance')
+    await dbFixWorkoutVariantAndClearFlag(baseVariantId, {
+      reason: 'Fixed reason', distTime: '25min', instructions: 'Fixed instructions',
+    })
+
+    const [family] = await sql`SELECT reason FROM workout_families WHERE id = ${familyId}`
+    expect(family.reason).toBe('Fixed reason')
+
+    const [variant] = await sql`SELECT dist_time, raw_input, flagged, flag_note FROM workout_variants WHERE id = ${baseVariantId}`
+    expect(variant.dist_time).toBe('25min')
+    expect(variant.raw_input).toBe('Fixed instructions')
+    expect(variant.flagged).toBe(false)
+    expect(variant.flag_note).toBe('')
+  })
+
+  it('dbFixWorkoutVariantAndClearFlag throws WorkoutVariantNotFoundError for an unknown id', async () => {
+    await expect(dbFixWorkoutVariantAndClearFlag(-1, {
+      reason: 'x', distTime: 'x', instructions: 'x',
+    })).rejects.toThrow(WorkoutVariantNotFoundError)
+  })
+
+  it('dbDeleteWorkoutVariant deletes a variant but keeps the family when other variants remain', async () => {
+    const { variantId: secondVariantId } = await dbAddWorkoutVariant(familyId, {
+      label: 'Second variant', sortOrder: 1,
+      instructions: 'x', distTime: '', energySystem: '', hrZone: '', rpe: '',
+      raceTypes: [], trainingPhases: [], hasTurnaround: false, turnaround: '',
+    })
+
+    await dbDeleteWorkoutVariant(secondVariantId)
+
+    const remainingVariants = await sql`SELECT id FROM workout_variants WHERE family_id = ${familyId}`
+    expect(remainingVariants).toHaveLength(1)
+    const families = await sql`SELECT id FROM workout_families WHERE id = ${familyId}`
+    expect(families).toHaveLength(1)
+  })
+
+  it('dbDeleteWorkoutVariant deletes the family too when it was the last variant', async () => {
+    await dbDeleteWorkoutVariant(baseVariantId)
+
+    const remainingVariants = await sql`SELECT id FROM workout_variants WHERE family_id = ${familyId}`
+    expect(remainingVariants).toHaveLength(0)
+    const families = await sql`SELECT id FROM workout_families WHERE id = ${familyId}`
+    expect(families).toHaveLength(0)
+
+    // afterEach's cleanup queries are harmless no-ops once the family is already gone.
+  })
+
+  it('dbDeleteWorkoutVariant throws WorkoutVariantNotFoundError for an unknown id', async () => {
+    await expect(dbDeleteWorkoutVariant(-1)).rejects.toThrow(WorkoutVariantNotFoundError)
+  })
+
+  it('dbRegroupVariants merges variants from different families into one new family', async () => {
+    const other = await dbInsertWorkoutVariant({ ...BASE_INPUT, name: '__test_family_277_other__' })
+
+    await dbRegroupVariants('__test_regrouped_277__', [
+      { variantId: baseVariantId, label: 'First', sortOrder: 1 },
+      { variantId: other.variantId, label: 'Second', sortOrder: 2 },
+    ])
+
+    const [newFamily] = await sql`SELECT id, category, type FROM workout_families WHERE name = '__test_regrouped_277__'`
+    expect(newFamily).toBeDefined()
+    expect(newFamily.category).toBe('Quality')
+
+    const variants = await sql`SELECT label, sort_order, family_id FROM workout_variants WHERE family_id = ${newFamily.id}`
+    expect(variants).toHaveLength(2)
+    expect(variants.map(v => v.label).sort()).toEqual(['First', 'Second'])
+
+    // Both source families should be gone — each had exactly one variant, and both moved out.
+    const sourceFamilies = await sql`SELECT id FROM workout_families WHERE id IN (${familyId}, ${other.familyId})`
+    expect(sourceFamilies).toHaveLength(0)
+
+    // Clean up the new family this test created (not covered by afterEach, which only
+    // knows about the original familyId).
+    await sql`DELETE FROM workout_variants WHERE family_id = ${newFamily.id}`
+    await sql`DELETE FROM workout_families WHERE id = ${newFamily.id}`
   })
 })

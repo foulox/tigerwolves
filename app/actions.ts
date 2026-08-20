@@ -5,22 +5,21 @@ import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { after } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
-import type { Workout } from '@/lib/data'
 import { isValidDateString } from '@/lib/data'
 import {
   dbSetScheduleWorkout,
-  dbInsertWorkout,
-  dbUpdateWorkout,
-  dbDeleteWorkout,
-  dbRegroupFamily,
   dbInsertRace,
   dbFlagRace,
   dbVerifyRace,
   dbFixRace,
-  dbFlagWorkout,
-  dbFixWorkoutAndClearFlag,
   dbInsertWorkoutVariant,
-  WorkoutNotFoundError,
+  dbUpdateWorkoutVariant,
+  dbAddWorkoutVariant,
+  dbDeleteWorkoutVariant,
+  dbFlagWorkoutVariant,
+  dbFixWorkoutVariantAndClearFlag,
+  dbRegroupVariants,
+  WorkoutVariantNotFoundError,
 } from '@/lib/db'
 import { buildWorkoutVariantInput } from '@/lib/workoutVariant'
 import { captureServerEvent } from '@/lib/analytics'
@@ -151,36 +150,6 @@ export async function createFeedbackIssue(data: {
   return { url: issue.html_url }
 }
 
-function buildWorkout(formData: FormData, variation = '', progression = ''): Omit<Workout, 'lastRan'> {
-  const progressionNum = parseInt(progression)
-  return {
-    name: formData.get('name') as string,
-    sport: 'Running',
-    category: formData.get('category') as string,
-    type: formData.get('type') as string,
-    reason: formData.get('reason') as string,
-    instructions: formData.get('instructions') as string,
-    distTime: formData.get('distTime') as string,
-    lapStructure: formData.get('lapStructure') as string,
-    energySystem: formData.get('energySystem') as string,
-    hrZone: formData.get('hrZone') as string,
-    rpe: formData.get('rpe') as string,
-    coachingNotes: (formData.get('coachingNotes') as string) || null,
-    mapLink: (formData.get('mapLink') as string) || null,
-    variation,
-    progression: isNaN(progressionNum) ? null : progressionNum,
-    author: (formData.get('author') as string) || null,
-    raceTypes: ((formData.get('raceTypes') as string) || '').split(',').map(s => s.trim()).filter(Boolean),
-    trainingPhases: ((formData.get('trainingPhases') as string) || '').split(',').map(s => s.trim()).filter(Boolean),
-    hasTurnaround: (formData.get('hasTurnaround') as string) === 'true',
-    turnaroundDistance: (formData.get('turnaroundDistance') as string) || '',
-    // Saving through the full edit form always clears any flag, same as the
-    // inline fix sheet — both are "this workout's data is now correct".
-    flagged: false,
-    flagNote: '',
-  }
-}
-
 async function requireAuth(): Promise<string> {
   const { userId } = await auth()
   if (!userId) throw new Error('Unauthorized')
@@ -201,24 +170,15 @@ export async function setPlanWorkout(date: string, workoutName: string, selected
 
 export async function regroupFamily(
   newName: string,
-  workouts: Array<{
-    originalName: string
-    originalVariation: string
-    variation: string
-    progression: number
-  }>
+  variants: Array<{ variantId: number; label: string; sortOrder: number }>,
 ) {
   const userId = await requireAuth()
-  await dbRegroupFamily(newName, workouts)
+  await dbRegroupVariants(newName, variants)
   revalidateAll()
   await captureServerEvent('workouts_combined', userId, { isLeader: true })
   redirect('/library')
 }
 
-// Writes to the new workout_families/workout_variants schema (#274) — not the
-// legacy `workouts` table dbInsertWorkout still writes to for addVariation.
-// New workouts won't show up in /library or the schedule picker until #276/#277
-// rewire those reads onto the new schema; this is a known, deliberate gap.
 export async function addWorkout(formData: FormData) {
   const userId = await requireAuth()
   await dbInsertWorkoutVariant(buildWorkoutVariantInput(formData))
@@ -227,38 +187,28 @@ export async function addWorkout(formData: FormData) {
   redirect('/library')
 }
 
-export async function deleteWorkout(name: string, variation: string) {
+export async function deleteWorkout(variantId: number) {
   const userId = await requireAuth()
-  await dbDeleteWorkout(name, variation)
+  await dbDeleteWorkoutVariant(variantId)
   revalidateAll()
   await captureServerEvent('workout_deleted', userId, { isLeader: true })
 }
 
-export async function updateWorkout(
-  original: { name: string; variation: string; hasTurnaround: boolean; turnaroundDistance: string },
-  formData: FormData,
-) {
+export async function updateWorkout(variantId: number, formData: FormData) {
   const userId = await requireAuth()
-  const variation = (formData.get('variation') as string) ?? ''
-  const progression = (formData.get('progression') as string) ?? ''
-  const updated = buildWorkout(formData, variation, progression)
-
-  const turnaroundChanged =
-    original.hasTurnaround !== updated.hasTurnaround || original.turnaroundDistance !== updated.turnaroundDistance
-
-  await dbUpdateWorkout(original.name, original.variation, updated)
+  await dbUpdateWorkoutVariant(variantId, buildWorkoutVariantInput(formData))
   revalidateAll()
-  await captureServerEvent('workout_edited', userId, { turnaroundChanged, isLeader: true })
+  await captureServerEvent('workout_edited', userId, { isLeader: true })
   redirect('/library')
 }
 
-export async function flagWorkoutIssue(name: string, variation: string, note: string): Promise<void | { error: string }> {
+export async function flagWorkoutIssue(variantId: number, note: string): Promise<void | { error: string }> {
   const trimmed = note.trim()
   if (!trimmed) return { error: 'Description is required' }
   try {
-    await dbFlagWorkout(name, variation, trimmed)
+    await dbFlagWorkoutVariant(variantId, trimmed)
   } catch (err) {
-    if (err instanceof WorkoutNotFoundError) {
+    if (err instanceof WorkoutVariantNotFoundError) {
       return { error: 'This workout may have changed since you opened this page — refresh and try again.' }
     }
     throw err
@@ -269,8 +219,7 @@ export async function flagWorkoutIssue(name: string, variation: string, note: st
 }
 
 export async function fixWorkoutAndClearFlag(
-  name: string,
-  variation: string,
+  variantId: number,
   fields: { reason: string; distTime: string; instructions: string },
 ): Promise<void | { error: string }> {
   const userId = await requireAuth()
@@ -278,13 +227,13 @@ export async function fixWorkoutAndClearFlag(
   if (!reason) return { error: 'Reason is required' }
 
   try {
-    await dbFixWorkoutAndClearFlag(name, variation, {
+    await dbFixWorkoutVariantAndClearFlag(variantId, {
       reason,
       distTime: fields.distTime.trim(),
       instructions: fields.instructions.trim(),
     })
   } catch (err) {
-    if (err instanceof WorkoutNotFoundError) {
+    if (err instanceof WorkoutVariantNotFoundError) {
       return { error: 'This workout may have changed since you opened this page — refresh and try again.' }
     }
     throw err
@@ -354,48 +303,34 @@ export async function fixRaceAndClearFlag(
   await captureServerEvent('race_fixed', userId, { raceId, isLeader: true })
 }
 
-// Writes only to the legacy `workouts` table — no matching workout_variants row
-// is created. Since #276, PlanClient reads exclusively from workout_variants,
-// so a variation added here won't appear on the Plan screen until #277 (which
-// already lists AddVariationForm.tsx as a call site) migrates this write path
-// to variant_id. Known, temporary gap — not fixed here to avoid duplicating
-// #277's scope.
+// Adds a variant to an existing family — the workout_variants counterpart to
+// addWorkout above. Inherits energySystem/hrZone/rpe/raceTypes/trainingPhases
+// from the parent (base) variant, same as the legacy version did; turnaround
+// always starts unset for a new variation, same as before.
 export async function addVariation(
   parent: {
-    name: string; category: string; type: string; reason: string;
-    lapStructure: string; energySystem: string; hrZone: string; rpe: string;
-    coachingNotes: string | null; mapLink: string | null; author: string | null;
+    familyId: number
+    energySystem: string; hrZone: string; rpe: string;
     raceTypes: string[]; trainingPhases: string[];
   },
-  variation: string,
-  progression: number,
+  label: string,
+  sortOrder: number,
   instructions: string,
   distTime: string,
 ) {
   const userId = await requireAuth()
-  await dbInsertWorkout({
-    name: parent.name,
-    sport: 'Running',
-    category: parent.category,
-    type: parent.type,
-    reason: parent.reason,
+  await dbAddWorkoutVariant(parent.familyId, {
+    label,
+    sortOrder,
     instructions,
     distTime,
-    lapStructure: parent.lapStructure,
     energySystem: parent.energySystem,
     hrZone: parent.hrZone,
     rpe: parent.rpe,
-    coachingNotes: parent.coachingNotes,
-    mapLink: parent.mapLink,
-    variation,
-    progression,
-    author: parent.author,
     raceTypes: parent.raceTypes,
     trainingPhases: parent.trainingPhases,
     hasTurnaround: false,
-    turnaroundDistance: '',
-    flagged: false,
-    flagNote: '',
+    turnaround: '',
   })
   revalidateAll()
   await captureServerEvent('workout_added', userId, { isVariation: true, isLeader: true })
