@@ -34,12 +34,17 @@ function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined
 // row at all. Editing moves to variant_id in #277; until then this screen is
 // read-only for leaders too.
 //
-// #288: instructions + reason moved out to always-visible card body (not hidden
-// behind this expand). Everything else that has a value still lives here —
-// nothing with data gets silently dropped, just deprioritized behind "Show details".
+// #288: instructions + coaching notes are always visible in the card body
+// (not hidden behind this expand) — Lou prefers coach's notes over "why this
+// workout" as the second always-visible field, so reason lives here instead.
+// Everything else that has a value still lives here too — nothing with data
+// gets silently dropped, just deprioritized behind "Show details".
 function WorkoutDetail({ w }: { w: WorkoutVariantRow }) {
   return (
     <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm text-gray-600">
+      {w.reason && (
+        <p className="leading-snug">{w.reason}</p>
+      )}
       {w.energySystem && (
         <p className="text-xs text-gray-500"><span className="font-semibold">Energy:</span> {w.energySystem}</p>
       )}
@@ -57,9 +62,6 @@ function WorkoutDetail({ w }: { w: WorkoutVariantRow }) {
       )}
       {w.hasTurnaround && w.turnaround && (
         <p className="text-xs text-gray-500"><span className="font-semibold">Turnaround:</span> {w.turnaround}</p>
-      )}
-      {w.coachingNotes && (
-        <p className="text-xs text-gray-500 italic">{w.coachingNotes}</p>
       )}
       {w.author && (
         <p className="text-xs text-gray-400 italic">— {w.author}</p>
@@ -340,7 +342,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                       </div>
                       {w.label && <div className="text-xs text-gray-400 mt-0.5">{w.label}</div>}
                       {w.rawInput && <div className="text-sm text-gray-700 mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</div>}
-                      <div className="text-sm text-gray-500 mt-1.5 leading-snug">{w.reason}</div>
+                      {w.coachingNotes && <div className="text-sm text-gray-500 mt-1.5 italic leading-snug">{w.coachingNotes}</div>}
                       <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
                     </button>
                     <button
@@ -432,7 +434,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                                 </div>
                                 {w.label && <div className="text-xs text-gray-400 mt-0.5">{w.label}</div>}
                                 {w.rawInput && <div className="text-sm text-gray-700 mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</div>}
-                                <div className="text-sm text-gray-500 mt-1.5 leading-snug">{w.reason}</div>
+                                {w.coachingNotes && <div className="text-sm text-gray-500 mt-1.5 italic leading-snug">{w.coachingNotes}</div>}
                                 <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
                               </button>
                               <button
@@ -489,7 +491,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                                     </div>
                                     {v.label && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{v.label}</div>}
                                     {v.rawInput && <div className="text-sm text-gray-700 mt-1.5 ml-6 whitespace-pre-wrap leading-snug">{v.rawInput}</div>}
-                                    <div className="text-sm text-gray-500 mt-1.5 ml-6 leading-snug">{v.reason}</div>
+                                    {v.coachingNotes && <div className="text-sm text-gray-500 mt-1.5 ml-6 italic leading-snug">{v.coachingNotes}</div>}
                                     {v.distTime && <div className="text-xs text-gray-400 mt-0.5 ml-6">{v.distTime}</div>}
                                   </button>
                                   <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1 ml-6">

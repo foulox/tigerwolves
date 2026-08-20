@@ -131,9 +131,11 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
       {/* Detail panel */}
       {hasWorkout && expanded && (
         <div className="border-t border-gray-100 px-4 py-3 space-y-2 text-sm" data-testid={detailTestId}>
-          {/* #288: instructions, then reason ("why"), then everything else that has a value */}
+          {/* #288: instructions, then coach's notes (Lou prefers this over "why" as the
+              second thing shown), then everything else that has a value — reason included
+              further down rather than dropped */}
           {workout.rawInput && <DetailRow label="Instructions" value={workout.rawInput} />}
-          {workout.reason && <DetailRow label="Reason" value={workout.reason} />}
+          {workout.coachingNotes && <DetailRow label="Coach Notes" value={workout.coachingNotes} />}
           {workout.distTime && <DetailRow label="Distance / Time" value={workout.distTime} />}
           {workout.energySystem && <DetailRow label="Energy System" value={workout.energySystem} />}
           {(workout.hrZone || workout.rpe) && (
@@ -150,7 +152,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
             <ChipRow label="Race Types" chips={workout.raceTypes} />
           )}
           {workout.author && <DetailRow label="Author" value={workout.author} />}
-          {workout.coachingNotes && <DetailRow label="Coach Notes" value={workout.coachingNotes} />}
+          {workout.reason && <DetailRow label="Reason" value={workout.reason} />}
           {workout.mapLink && (
             <a href={workout.mapLink} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-500 touch-manipulation block">
               Map ↗
