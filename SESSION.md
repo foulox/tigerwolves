@@ -6,10 +6,12 @@
 
 **Open PRs:**
 
-- #286 Rewire write paths from (name, variation) keys to variant_id (closes #277) — awaiting review/merge
+- #289 Show complete workout info on Plan/Library/Schedule cards (closes #288) — awaiting review/merge
+- #287 Add PR template splitting Claude's tests from Lou's manual verification — awaiting review/merge
 
 **Bugs** (open, always priority):
 
+- #290 Run /code-review on #286/#287; consolidate duplicated workout-detail fields across Plan/Library/Schedule (not yet on project board)
 - #284 Can't fix organized by club member on NYC marathon
 - #279 label-only variation text posts as the entire workout (backlog)
 
@@ -27,14 +29,14 @@
 
 - **Data Foundation Sprint** (Epic #271, Epic #267) — *Get the workout library's and runner feedback's data models structurally right before Release 4 multiplies how much data exists across more runs.*
 
-  - *Active sequence* (Epic #271 — Workout Data Model Rebuild, per 2026-08-09 comment):
-    - - [ ] #277 Rewire write paths from (name, variation) keys to variant_id ← PR #286 open, awaiting review/merge. Built as all 3 parts together (Library CRUD+flags, Schedule, Regroup) rather than split across PRs — grooming's "PR-per-part is fine" framing missed that they're coupled through Library's shared read path (flagged for PM triage in claude-memory's `pending-decisions.md`). Votes (`lib/votes.ts`) confirmed permanently out of scope, untouched.
+  - *Active sequence* (Epic #271 — Workout Data Model Rebuild, per 2026-08-09 comment): none open — #277 merged, see below. #278 (cutover) remains, deliberately deferred.
   - *Done this release:*
     - - [X] ~~#272 Schema migration — run_groups/workout_families/workout_variants/routes~~
     - - [X] ~~#273 Semantic layer definition for the workout schema~~ (PR #281)
     - - [X] ~~#274 Write path — new workouts enter new schema, AI-suggested turnaround~~ (PR #282)
     - - [X] ~~#275 Backfill existing library into workout_families/workout_variants~~ (PR #283 — 70/70 legacy workouts verified backfilled in production)
     - - [X] ~~#276 Rewire buildPost + turnaround display to read from workout_variants~~ (PR #285, merged 2026-08-17)
+    - - [X] ~~#277 Rewire write paths from (name, variation) keys to variant_id~~ (PR #286, merged 2026-08-20). Built as all 3 parts together (Library CRUD+flags, Schedule, Regroup) rather than split across PRs — grooming's "PR-per-part is fine" framing missed that they're coupled through Library's shared read path (flagged for PM triage in claude-memory's `pending-decisions.md`). Votes (`lib/votes.ts`) confirmed permanently out of scope, untouched.
   - *Paused / deferred*:
     - #278 Cutover — retire the legacy workouts table — backlog (deliberately deferred weeks out, per its own scope)
     - #267 Epic: Runner Comments — backlog (no epic comment yet setting a build order vs. #271)
@@ -77,7 +79,7 @@
 
 ---
 
-**Last session:** Built #277 (write-path migration to `variant_id`) — PR #286 open. Built all 3 parts (Library CRUD+flags, Schedule, Regroup) together after finding mid-build they're not independently shippable, contrary to grooming's assumption. Rebuilt `EditWorkoutForm` for real (was a stub since #274); fixed the live addWorkout/addVariation split-brain as a byproduct. Along the way, root-caused and fixed a Neon free-tier compute-quota exhaustion blocking this story's own tests — Sentry's built-in Uptime Monitoring was pinging production every 1 minute, 24/7 (see `project_neon_quota_sentry_uptime.md`). Full verification: tsc/lint clean, 201/201 unit tests, 20/20 e2e tests, Preview confirmed healthy. 2 items staged in claude-memory's `pending-decisions.md` for next PM triage (the A/B/C scope-coupling finding, and a praise note on the Neon investigation approach).
+**Last session:** #277 merged (PR #286). Same session also: (1) root-caused and fixed a Neon free-tier compute-quota exhaustion blocking #277's own tests — Sentry's built-in Uptime Monitoring was pinging production every minute, 24/7 (see `project_neon_quota_sentry_uptime.md`); (2) found and fixed a month-long silent regression where PR test plans stopped splitting "Verified by Claude" from "Please verify manually, Lou" — fixed via memory, a wiki Contributing.md section, `.github/PULL_REQUEST_TEMPLATE.md`, and a `PreToolUse` hook that blocks non-compliant `gh pr create`/`gh pr edit` calls (PR #287); (3) built #288 (workout-card info display) end-to-end including a live correction and a real bug `/code-review` caught (PR #289); (4) cleaned up #277's merged branch plus a second, older stale branch/Neon-branch pair left over from #276's merge that nobody had cleaned up since 2026-08-17; (5) filed #290 for deferred follow-up work (review #286/#287, consolidate the now-3x-duplicated workout-detail field list). 3 items staged in claude-memory's `pending-decisions.md` for next PM triage (project-board adds for #288/#290, the stale-branch-cleanup gap, and whether long single-window sessions like this one should periodically re-anchor to a fresh `agent-session-start`).
 
 ---
 
@@ -87,6 +89,9 @@
 - 2026-08-17 0808 — 276-build: PR #285 opened, `/code-review` run (3 fixed, 1 confirmed as #277's scope), manually verified on Preview. Next: Lou merges #285, then #277 grooming.
 - 2026-08-17 1026 — 277-grooming: groomed #277 to `up-next` (8 decisions, re-split into 3 parts, rewrote issue body); also fixed #253's schema (variant_id instead of name||variation) and added its new dependency on #277. Next: Lou reviews #277 for `ready-to-build`.
 - 2026-08-17/19 0935 — 277-build: PR #286 opened — built all 3 parts together (found mid-build they're coupled, not independently shippable); also root-caused and fixed a Neon compute-quota exhaustion (Sentry Uptime Monitor pinging production every minute) that was blocking this story's own test runs. Full verification passing (tsc, lint, 201 unit tests, 20 e2e tests, Preview). Next: Lou reviews PR #286.
+- 2026-08-19/20 — process-fix: found PR test plans had silently stopped splitting "Verified by Claude" from "Please verify manually, Lou" for about a month (#235 through #285) — fixed via memory, Contributing.md, `.github/PULL_REQUEST_TEMPLATE.md`, and a `PreToolUse` hook blocking non-compliant `gh pr create`/`gh pr edit`. PR #287 opened.
+- 2026-08-20 — 288-build: filed and built #288 (instructions + coach's notes always visible on Plan/Library/Schedule cards, everything else behind "Show details"); live correction from Lou (coach's notes over reason); `/code-review` caught and fixed a real gap in Library's family rows. PR #289 opened, stacked on #277's branch, then rebased onto `main` after #286 merged.
+- 2026-08-20 — close-out: #286 merged; cleaned up its branch/worktree plus a stale #276 branch/Neon-branch pair left over since 2026-08-17; filed #290 for deferred review/refactor work. Next: Lou reviews #287 and #289; a future session picks up #290.
 
 ---
 
