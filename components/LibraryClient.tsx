@@ -364,8 +364,7 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
                       </div>
                       {row.base.rawInput && <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap leading-snug">{row.base.rawInput}</p>}
                       {row.base.coachingNotes && <p className="text-sm text-gray-500 mt-1 italic leading-snug">{row.base.coachingNotes}</p>}
-                      {row.base.distTime && <div className="text-xs text-gray-400 mt-1">{row.base.distTime}</div>}
-                      {row.base.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(row.base.lastRan)}</div>}
+                      <WorkoutMeta w={row.base} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
                           workoutId={workoutVoteId(row.base.name, row.base.label ?? '')}
@@ -398,8 +397,7 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
                       <div className="text-sm font-semibold text-gray-800">{p.label}</div>
                       {p.rawInput && <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap leading-snug">{p.rawInput}</p>}
                       {p.coachingNotes && <p className="text-sm text-gray-500 mt-1 italic leading-snug">{p.coachingNotes}</p>}
-                      {p.distTime && <div className="text-xs text-gray-400 mt-1">{p.distTime}</div>}
-                      {p.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(p.lastRan)}</div>}
+                      <WorkoutMeta w={p} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
                           workoutId={workoutVoteId(p.name, p.label ?? '')}
