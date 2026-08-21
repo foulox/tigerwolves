@@ -17,11 +17,11 @@
 
 **Ready to build:**
 
-- None labeled
+- #278 Cutover — retire the legacy workouts table (rename to `workouts_legacy`, delete dead legacy code + one-off #275 backfill scripts, rewrite `seed.ts`/`seed-e2e.ts`) — closes epic #271 when merged
 
 **Up next** (awaiting your `ready-to-build`):
 
-- None — #277 built and in PR #286 (see Open PRs)
+- None
 
 **Current milestone:** Data Foundation Sprint — 4/9 closed
 
@@ -29,7 +29,7 @@
 
 - **Data Foundation Sprint** (Epic #271, Epic #267) — *Get the workout library's and runner feedback's data models structurally right before Release 4 multiplies how much data exists across more runs.*
 
-  - *Active sequence* (Epic #271 — Workout Data Model Rebuild, per 2026-08-09 comment): none open — #277 merged, see below. #278 (cutover) remains, deliberately deferred.
+  - *Active sequence* (Epic #271 — Workout Data Model Rebuild, per 2026-08-09 comment): #278 (cutover) is `ready-to-build` — last story in the epic, closes it on merge.
   - *Done this release:*
     - - [X] ~~#272 Schema migration — run_groups/workout_families/workout_variants/routes~~
     - - [X] ~~#273 Semantic layer definition for the workout schema~~ (PR #281)
@@ -38,7 +38,6 @@
     - - [X] ~~#276 Rewire buildPost + turnaround display to read from workout_variants~~ (PR #285, merged 2026-08-17)
     - - [X] ~~#277 Rewire write paths from (name, variation) keys to variant_id~~ (PR #286, merged 2026-08-20). Built as all 3 parts together (Library CRUD+flags, Schedule, Regroup) rather than split across PRs — grooming's "PR-per-part is fine" framing missed that they're coupled through Library's shared read path (flagged for PM triage in claude-memory's `pending-decisions.md`). Votes (`lib/votes.ts`) confirmed permanently out of scope, untouched.
   - *Paused / deferred*:
-    - #278 Cutover — retire the legacy workouts table — backlog (deliberately deferred weeks out, per its own scope)
     - #267 Epic: Runner Comments — backlog (no epic comment yet setting a build order vs. #271)
     - #253 Runner reaction notes — capture/read/delete — backlog (foundation story for #267). **Schema updated 2026-08-17** during #277 grooming: `reaction_comments.workout_id` changed from a `name||variation` string to `variant_id INT REFERENCES workout_variants(id)` — now has a hard dependency on #277 shipping first, called out explicitly in its own Sequencing section.
     - #268 Runner Comments — presence badges — backlog
@@ -79,7 +78,7 @@
 
 ---
 
-**Last session:** #277 merged (PR #286). Same session also: (1) root-caused and fixed a Neon free-tier compute-quota exhaustion blocking #277's own tests — Sentry's built-in Uptime Monitoring was pinging production every minute, 24/7 (see `project_neon_quota_sentry_uptime.md`); (2) found and fixed a month-long silent regression where PR test plans stopped splitting "Verified by Claude" from "Please verify manually, Lou" — fixed via memory, a wiki Contributing.md section, `.github/PULL_REQUEST_TEMPLATE.md`, and a `PreToolUse` hook that blocks non-compliant `gh pr create`/`gh pr edit` calls (PR #287); (3) built #288 (workout-card info display) end-to-end including a live correction and a real bug `/code-review` caught (PR #289); (4) cleaned up #277's merged branch plus a second, older stale branch/Neon-branch pair left over from #276's merge that nobody had cleaned up since 2026-08-17; (5) filed #290 for deferred follow-up work (review #286/#287, consolidate the now-3x-duplicated workout-detail field list). 3 items staged in claude-memory's `pending-decisions.md` for next PM triage (project-board adds for #288/#290, the stale-branch-cleanup gap, and whether long single-window sessions like this one should periodically re-anchor to a fresh `agent-session-start`).
+**Last session:** #278 groomed to `ready-to-build` — dispatched with the rename-not-drop/proceed-now decision already made by the PM; this session verified in code that #277 left the legacy `workouts`-table functions and `Workout` type fully dead, found `scripts/seed-e2e.ts`/`seed.ts` still hard-depend on `workouts` by name (CI-critical), resolved 4 scope questions with Lou, and wrote the full story body. 1 item staged in claude-memory's `pending-decisions.md` for PM triage (a second confirmed instance of `ACTIVE.md` never getting a `done` event for grooming/design dispatches).
 
 ---
 
@@ -92,6 +91,7 @@
 - 2026-08-19/20 — process-fix: found PR test plans had silently stopped splitting "Verified by Claude" from "Please verify manually, Lou" for about a month (#235 through #285) — fixed via memory, Contributing.md, `.github/PULL_REQUEST_TEMPLATE.md`, and a `PreToolUse` hook blocking non-compliant `gh pr create`/`gh pr edit`. PR #287 opened.
 - 2026-08-20 — 288-build: filed and built #288 (instructions + coach's notes always visible on Plan/Library/Schedule cards, everything else behind "Show details"); live correction from Lou (coach's notes over reason); `/code-review` caught and fixed a real gap in Library's family rows. PR #289 opened, stacked on #277's branch, then rebased onto `main` after #286 merged.
 - 2026-08-20 — close-out: #286 merged; cleaned up its branch/worktree plus a stale #276 branch/Neon-branch pair left over since 2026-08-17; filed #290 for deferred review/refactor work. Next: Lou reviews #287 and #289; a future session picks up #290.
+- 2026-08-21 1511 — 278-grooming: groomed #278 to `ready-to-build`; verified legacy `workouts`-table code is fully dead in the app, found `seed.ts`/`seed-e2e.ts` need rewriting (CI-critical), resolved 4 scope decisions with Lou, wrote full story body. Next: build session picks up #278 — last story in epic #271.
 
 ---
 
