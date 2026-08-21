@@ -1,38 +1,12 @@
 export type WorkoutType = string
 
-export type Workout = {
-  name: string
-  sport: string
-  category: string
-  type: WorkoutType
-  reason: string
-  instructions: string
-  distTime: string
-  lapStructure: string
-  energySystem: string
-  hrZone: string
-  rpe: string
-  lastRan: string | null
-  coachingNotes: string | null
-  mapLink: string | null
-  variation: string       // specific variation description (e.g. "2x(5-4-3-2-1 min) 1min easy rec"); blank = standalone
-  progression: number | null  // difficulty order 1-N within the family; null = standalone
-  author: string | null       // credit — individual name or "TigerWolves"
-  raceTypes: string[]         // e.g. ['Half', 'Full']
-  trainingPhases: string[]    // e.g. ['Build', 'Peak']
-  hasTurnaround: boolean
-  turnaroundDistance: string
-  flagged: boolean
-  flagNote: string
-}
-
-// One workout_variant row joined with its parent workout_families row (#276).
-// Replaces Workout as the read shape for the Plan screen — the write side
-// (dbInsertWorkoutVariant/dbUpdateWorkoutVariant) already targets these tables (#274).
+// One workout_variant row joined with its parent workout_families row (#276),
+// the read shape for the Library/Plan/Schedule screens — the write side
+// (dbInsertWorkoutVariant/dbUpdateWorkoutVariant) targets these tables (#274).
 // `sport`, `lapStructure`, and `lastRan` have no column on workout_families/
-// workout_variants (see scripts/backfill-generate-review.ts) and are not carried
-// over; lastRan-dependent UI (recency sort, "Last ran"/"Never" display) degrades
-// to a no-op/always-"Never" until the app tracks this some other way.
+// workout_variants and are not carried over; lastRan-dependent UI (recency
+// sort, "Last ran"/"Never" display) degrades to a no-op/always-"Never" until
+// the app tracks this some other way.
 export type WorkoutVariantRow = {
   id: number                  // workout_variants.id
   familyId: number

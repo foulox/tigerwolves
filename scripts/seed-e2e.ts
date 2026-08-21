@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless'
-import type { Workout, Race } from '../lib/data'
+import type { Race } from '../lib/data'
 
 // Guards against ever running this destructive wipe-and-reseed against
 // production — only the staging branch's host is allowed through. Update this
@@ -40,60 +40,14 @@ function daysFromNow(days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-function baseWorkout(overrides: Partial<Omit<Workout, 'lastRan'>> & Pick<Omit<Workout, 'lastRan'>, 'name' | 'category' | 'type'>): Omit<Workout, 'lastRan'> {
-  return {
-    sport: 'Run',
-    reason: 'E2E fixture workout.',
-    instructions: 'Fixture instructions — seeded by scripts/seed-e2e.ts.',
-    distTime: '4 mi',
-    lapStructure: '',
-    energySystem: '',
-    hrZone: '',
-    rpe: '',
-    coachingNotes: null,
-    mapLink: null,
-    variation: '',
-    progression: null,
-    author: 'TigerWolves',
-    raceTypes: [],
-    trainingPhases: [],
-    hasTurnaround: false,
-    turnaroundDistance: '',
-    flagged: false,
-    flagNote: '',
-    ...overrides,
-  }
-}
-
-const WORKOUTS: Omit<Workout, 'lastRan'>[] = [
-  baseWorkout({ name: 'Easy Recovery Run', category: 'Easy', type: 'Recovery' }),
-  baseWorkout({ name: 'Long Run — Progressive', category: 'Long', type: 'Progressive' }),
-  baseWorkout({
-    name: 'Yasso 800s', category: 'Quality', type: 'Interval',
-    instructions: '10x800m @ 5K effort, 400m jog recovery.',
-    flagged: true, flagNote: "We've actually been running 8 reps lately, not 10 — might be worth double-checking.",
-  }),
-  baseWorkout({ name: 'Fort Greene Hills', category: 'Quality', type: 'Hills', instructions: '8x90sec hill repeats, jog down recovery.' }),
-  baseWorkout({ name: 'Prospect Park Tempo', category: 'Quality', type: 'Straight Tempo', instructions: '20min @ tempo effort around the loop.' }),
-  baseWorkout({ name: 'Track Ladder 400-800-1200', category: 'Quality', type: 'Ladder', instructions: '400-800-1200-800-400 @ 5K effort, equal jog recovery.' }),
-  baseWorkout({ name: 'McCarren Loop Repeats', category: 'Quality', type: 'Interval', variation: 'Short loop, 6x800m', progression: 1 }),
-  baseWorkout({ name: 'McCarren Loop Repeats', category: 'Quality', type: 'Interval', variation: 'Long loop, 4x1200m', progression: 2 }),
-]
-
 const RACES: Omit<Race, 'id'>[] = [
   { date: '', name: 'Brooklyn Half Marathon', distance: '13.1mi', location: 'Prospect Park, Brooklyn', organizer: 'NYRR', verified: true, flagged: false, flagNote: '' },
   { date: '', name: 'Prospect Park 5K Series #3', distance: '5K', location: 'Prospect Park, Brooklyn', organizer: 'NBR', verified: false, flagged: true, flagNote: "Date TBD — organizer hasn't confirmed" },
 ]
 
-// #276/#277: Library/Plan/Schedule/Admin now all read workout_families/
-// workout_variants exclusively, not the legacy `workouts` table above — mirror
-// every WORKOUTS fixture into the new schema too, or the e2e specs asserting
-// against those screens have nothing to find. Kept as a second, parallel
-// fixture set rather than derived from WORKOUTS above: the two schemas aren't
-// the same shape (no override-text field on workout_variants; label is a
-// short tag, not post content), so a shared source would just paper over that.
-// The legacy WORKOUTS rows stay seeded too (harmless, and #278 — not this
-// story — owns retiring that table and its fixtures).
+// #276/#277: Library/Plan/Schedule/Admin all read workout_families/
+// workout_variants exclusively — these fixtures are what the e2e specs
+// assert against.
 type VariantFixture = {
   label: string | null
   sortOrder: number | null
@@ -157,7 +111,6 @@ export async function seedE2E(): Promise<void> {
   // Wipe in FK-safe order, then reinsert.
   await sql`DELETE FROM schedule`
   await sql`DELETE FROM races`
-  await sql`DELETE FROM workouts`
   await sql`DELETE FROM workout_variants`
   await sql`DELETE FROM workout_families`
 
@@ -184,24 +137,6 @@ export async function seedE2E(): Promise<void> {
     }
   }
 
-  for (const w of WORKOUTS) {
-    await sql`
-      INSERT INTO workouts (
-        name, sport, category, type, reason, instructions, dist_time,
-        lap_structure, energy_system, hr_zone, rpe, last_ran, coaching_notes,
-        map_link, variation, progression, author, race_types, training_phases,
-        has_turnaround, turnaround_distance, flagged, flag_note
-      ) VALUES (
-        ${w.name}, ${w.sport}, ${w.category}, ${w.type}, ${w.reason},
-        ${w.instructions}, ${w.distTime}, ${w.lapStructure}, ${w.energySystem},
-        ${w.hrZone}, ${w.rpe}, NULL, ${w.coachingNotes}, ${w.mapLink},
-        ${w.variation}, ${w.progression}, ${w.author},
-        ${w.raceTypes}, ${w.trainingPhases},
-        ${w.hasTurnaround}, ${w.turnaroundDistance}, ${w.flagged}, ${w.flagNote}
-      )
-    `
-  }
-
   // workout_type must match the assigned workout's own "type" field (not its
   // "category") — PlanClient's suggestion picker filters library workouts by
   // types.includes(w.type) against this column, so a mismatch here silently
@@ -226,5 +161,5 @@ export async function seedE2E(): Promise<void> {
     `
   }
 
-  console.log(`  seeded ${WORKOUTS.length} workouts, ${FAMILIES.length} workout_families, 3 schedule entries (${week1}, ${week2}, ${week3}), ${RACES.length} races`)
+  console.log(`  seeded ${FAMILIES.length} workout_families, 3 schedule entries (${week1}, ${week2}, ${week3}), ${RACES.length} races`)
 }
