@@ -12,10 +12,8 @@ export type InferPromptInput = {
   hasTurnaroundHint: boolean
 }
 
-// Shared by the write-path route (app/api/workout/infer/route.ts, #274) and the
-// library backfill script (scripts/backfill-generate-review.ts, #275) — both
-// need the exact same prompt contract so the AI-suggested `turnaround` text is
-// consistent whether a workout enters the new schema by hand or by backfill.
+// Used by the write-path route (app/api/workout/infer/route.ts, #274) to
+// suggest a workout's `turnaround` text from its instructions.
 export function buildInferPrompt(input: InferPromptInput): string {
   const { name, category, type, instructions, reason, venue, hasTurnaroundHint } = input
   return `You are a running coach assistant. Given a workout's basic details, infer the missing training metadata.

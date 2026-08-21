@@ -1,31 +1,13 @@
 -- Migration: initial schema
 -- Run against production and staging (Neon preview branch) before #84 seed
 
-CREATE TABLE IF NOT EXISTS workouts (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  sport TEXT NOT NULL DEFAULT '',
-  category TEXT NOT NULL DEFAULT '',
-  type TEXT NOT NULL DEFAULT '',
-  reason TEXT NOT NULL DEFAULT '',
-  instructions TEXT NOT NULL DEFAULT '',
-  dist_time TEXT NOT NULL DEFAULT '',
-  lap_structure TEXT NOT NULL DEFAULT '',
-  energy_system TEXT NOT NULL DEFAULT '',
-  hr_zone TEXT NOT NULL DEFAULT '',
-  rpe TEXT NOT NULL DEFAULT '',
-  last_ran DATE,
-  coaching_notes TEXT,
-  map_link TEXT,
-  variation TEXT NOT NULL DEFAULT '',
-  progression INT,
-  author TEXT,
-  race_types TEXT[] NOT NULL DEFAULT '{}',
-  training_phases TEXT[] NOT NULL DEFAULT '{}',
-  has_turnaround BOOLEAN NOT NULL DEFAULT false,
-  turnaround_distance TEXT NOT NULL DEFAULT '',
-  UNIQUE (name, variation)
-);
+-- The original `CREATE TABLE IF NOT EXISTS workouts (...)` DDL that lived here
+-- (#84-#209 era) is removed as of #278: `workouts` was renamed to
+-- `workouts_legacy` further down this file, and leaving an IF-NOT-EXISTS
+-- CREATE for the old name in place would silently resurrect an empty ghost
+-- `workouts` table on every future full-file replay of this script (run-migrate.ts
+-- has no migration-tracking table — it always runs the whole file). See
+-- `workouts_legacy` below for the live (frozen, renamed) table.
 
 CREATE TABLE IF NOT EXISTS schedule (
   date DATE PRIMARY KEY,
@@ -62,8 +44,10 @@ ALTER TABLE races ADD PRIMARY KEY (id);
 -- #209: visible flag + inline fix for workouts, mirroring #238/#256's races flag
 -- state. Workouts are always leader-authored (addWorkout/updateWorkout require auth),
 -- so unlike races there's no "unverified" state — just flagged / not.
-ALTER TABLE workouts ADD COLUMN IF NOT EXISTS flagged BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE workouts ADD COLUMN IF NOT EXISTS flag_note TEXT NOT NULL DEFAULT '';
+-- IF EXISTS on the table (not just the column) keeps this safe to replay after
+-- #278's rename below has already renamed `workouts` away on a given database.
+ALTER TABLE IF EXISTS workouts ADD COLUMN IF NOT EXISTS flagged BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE IF EXISTS workouts ADD COLUMN IF NOT EXISTS flag_note TEXT NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS run_leaders (
   id SERIAL PRIMARY KEY,
@@ -136,3 +120,12 @@ CREATE TABLE IF NOT EXISTS routes (
 INSERT INTO run_groups (name, venue, default_location)
 SELECT 'TigerWolves', 'road', 'Tom Stofka Garden, aka "Da Bins"'
 WHERE NOT EXISTS (SELECT 1 FROM run_groups WHERE name = 'TigerWolves');
+
+-- #278: cutover complete (#274-#277 verified in production) — rename rather than
+-- drop to keep a costless rollback net for the one unverified edge (read-path
+-- variety across every workout/turnaround/venue combo). No code reads this table
+-- after this migration; see lib/db.ts and lib/scheduleUtils.ts deletions in #278.
+-- IF EXISTS keeps this idempotent — run-migrate.ts replays the whole file on
+-- every run (no migration-tracking table), so a second run must not fail once
+-- `workouts` is already gone.
+ALTER TABLE IF EXISTS workouts RENAME TO workouts_legacy;

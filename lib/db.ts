@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 import { unstable_cache } from 'next/cache'
-import type { Workout, ScheduleEntry, Race, RunGroup, WorkoutVariantRow } from './data'
+import type { ScheduleEntry, Race, RunGroup, WorkoutVariantRow } from './data'
 import { weekOfMonth } from './data'
 import type { WorkoutVariantInput } from './workoutVariant'
 
@@ -17,37 +17,6 @@ function toDateString(val: unknown): string {
 }
 
 // ── Reads ─────────────────────────────────────────────────────────────────────
-
-export async function fetchWorkouts(): Promise<Workout[]> {
-  const rows = await sql`
-    SELECT * FROM workouts ORDER BY name, progression NULLS LAST
-  `
-  return rows.map((r) => ({
-    name: r.name as string,
-    sport: r.sport as string,
-    category: r.category as string,
-    type: r.type as string,
-    reason: r.reason as string,
-    instructions: r.instructions as string,
-    distTime: r.dist_time as string,
-    lapStructure: r.lap_structure as string,
-    energySystem: r.energy_system as string,
-    hrZone: r.hr_zone as string,
-    rpe: r.rpe as string,
-    lastRan: r.last_ran ? toDateString(r.last_ran) : null,
-    coachingNotes: (r.coaching_notes as string | null) ?? null,
-    mapLink: (r.map_link as string | null) ?? null,
-    variation: r.variation as string,
-    progression: (r.progression as number | null) ?? null,
-    author: (r.author as string | null) ?? null,
-    raceTypes: (r.race_types as string[]) ?? [],
-    trainingPhases: (r.training_phases as string[]) ?? [],
-    hasTurnaround: r.has_turnaround as boolean,
-    turnaroundDistance: r.turnaround_distance as string,
-    flagged: r.flagged as boolean,
-    flagNote: r.flag_note as string,
-  }))
-}
 
 export async function fetchSchedule(): Promise<ScheduleEntry[]> {
   const rows = await sql`
@@ -168,100 +137,6 @@ export async function dbSetScheduleWorkout(date: string, workoutName: string, se
   `
 }
 
-export async function dbInsertWorkout(w: Omit<Workout, 'lastRan'>): Promise<void> {
-  await sql`
-    INSERT INTO workouts (
-      name, sport, category, type, reason, instructions, dist_time,
-      lap_structure, energy_system, hr_zone, rpe, last_ran, coaching_notes,
-      map_link, variation, progression, author, race_types, training_phases,
-      has_turnaround, turnaround_distance, flagged, flag_note
-    ) VALUES (
-      ${w.name}, ${w.sport}, ${w.category}, ${w.type}, ${w.reason},
-      ${w.instructions}, ${w.distTime}, ${w.lapStructure}, ${w.energySystem},
-      ${w.hrZone}, ${w.rpe}, NULL, ${w.coachingNotes}, ${w.mapLink},
-      ${w.variation}, ${w.progression}, ${w.author},
-      ${w.raceTypes}, ${w.trainingPhases},
-      ${w.hasTurnaround}, ${w.turnaroundDistance}, ${w.flagged}, ${w.flagNote}
-    )
-  `
-}
-
-export async function dbUpdateWorkout(
-  originalName: string,
-  originalVariation: string,
-  w: Omit<Workout, 'lastRan'>,
-): Promise<void> {
-  await sql`
-    UPDATE workouts SET
-      name = ${w.name},
-      sport = ${w.sport},
-      category = ${w.category},
-      type = ${w.type},
-      reason = ${w.reason},
-      instructions = ${w.instructions},
-      dist_time = ${w.distTime},
-      lap_structure = ${w.lapStructure},
-      energy_system = ${w.energySystem},
-      hr_zone = ${w.hrZone},
-      rpe = ${w.rpe},
-      coaching_notes = ${w.coachingNotes},
-      map_link = ${w.mapLink},
-      variation = ${w.variation},
-      progression = ${w.progression},
-      author = ${w.author},
-      race_types = ${w.raceTypes},
-      training_phases = ${w.trainingPhases},
-      has_turnaround = ${w.hasTurnaround},
-      turnaround_distance = ${w.turnaroundDistance},
-      flagged = ${w.flagged},
-      flag_note = ${w.flagNote}
-    WHERE name = ${originalName} AND variation = ${originalVariation}
-  `
-}
-
-export async function dbDeleteWorkout(name: string, variation: string): Promise<void> {
-  await sql`
-    DELETE FROM workouts WHERE name = ${name} AND variation = ${variation}
-  `
-}
-
-// Thrown when a (name, variation) match fails — distinguishable from other
-// DB errors so callers can tell "this workout moved" (e.g. renamed via
-// dbRegroupFamily between page load and submit) from an unexpected failure.
-export class WorkoutNotFoundError extends Error {
-  constructor(name: string, variation: string) {
-    super(`Workout ${name} (${variation}) not found`)
-    this.name = 'WorkoutNotFoundError'
-  }
-}
-
-export async function dbFlagWorkout(name: string, variation: string, flagNote: string): Promise<void> {
-  const rows = await sql`
-    UPDATE workouts SET flagged = true, flag_note = ${flagNote}
-    WHERE name = ${name} AND variation = ${variation}
-    RETURNING name
-  `
-  if (rows.length === 0) throw new WorkoutNotFoundError(name, variation)
-}
-
-export async function dbFixWorkoutAndClearFlag(
-  name: string,
-  variation: string,
-  fields: { reason: string; distTime: string; instructions: string },
-): Promise<void> {
-  const rows = await sql`
-    UPDATE workouts SET
-      reason = ${fields.reason},
-      dist_time = ${fields.distTime},
-      instructions = ${fields.instructions},
-      flagged = false,
-      flag_note = ''
-    WHERE name = ${name} AND variation = ${variation}
-    RETURNING name
-  `
-  if (rows.length === 0) throw new WorkoutNotFoundError(name, variation)
-}
-
 export async function dbInsertRace(race: Omit<Race, 'id'>): Promise<number> {
   const rows = await sql`
     INSERT INTO races (date, name, distance, location, organizer, verified, flagged, flag_note)
@@ -306,33 +181,7 @@ export async function dbFixRace(
   if (rows.length === 0) throw new Error(`Race ${id} not found`)
 }
 
-export async function dbRegroupFamily(
-  newName: string,
-  workouts: Array<{
-    originalName: string
-    originalVariation: string
-    variation: string
-    progression: number
-  }>,
-): Promise<void> {
-  await sql.transaction(
-    workouts.map(
-      (w) => sql`
-        UPDATE workouts
-        SET name = ${newName}, variation = ${w.variation}, progression = ${w.progression}
-        WHERE name = ${w.originalName} AND variation = ${w.originalVariation}
-      `,
-    ),
-  )
-}
-
-// ── New schema writes (#274) ────────────────────────────────────────────────
-// workout_families / workout_variants, additive alongside the legacy `workouts`
-// table (which stays in place until cutover story #278). Only AddWorkoutForm
-// writes here today; dbUpdateWorkoutVariant has no call site yet — editing is
-// blocked for every workout reachable today, since none have a variant row
-// until #275's backfill runs. It exists now because #276/#277's read-path
-// rewire will need it.
+// ── workout_families / workout_variants writes (#274-#277) ─────────────────
 
 export class WorkoutVariantNotFoundError extends Error {
   constructor(variantId: number) {
@@ -443,9 +292,7 @@ export async function dbAddWorkoutVariant(
 }
 
 // Deletes a variant; if it was the last variant in its family, the now-empty
-// family row goes too — mirrors the legacy dbDeleteWorkout's implicit
-// behavior (a standalone `workouts` row's deletion never left an orphan
-// parent, since there was no separate parent row at all).
+// family row goes too, so a delete never leaves an orphan parent behind.
 export async function dbDeleteWorkoutVariant(variantId: number): Promise<void> {
   const [variant] = await sql`SELECT family_id FROM workout_variants WHERE id = ${variantId}`
   if (!variant) throw new WorkoutVariantNotFoundError(variantId)
@@ -487,12 +334,11 @@ export async function dbFixWorkoutVariantAndClearFlag(
   `
 }
 
-// New-schema counterpart to dbRegroupFamily. Unlike the legacy `workouts`
-// table (where "family" was implicit — just rows sharing a name), workout_variants
-// merges into a real workout_families row via family_id, so a merge always
-// creates one new family rather than renaming rows in place. Family-level
-// fields (category/type/reason/author/coaching_notes/map_link/run_group_id)
-// come from whichever selected variant's family sorts first — merging variants
+// Merges variants from one or more families into a single new family (family_id
+// is a real workout_families row, so a merge always creates one new family
+// rather than renaming rows in place). Family-level fields (category/type/
+// reason/author/coaching_notes/map_link/run_group_id) come from whichever
+// selected variant's family sorts first — merging variants
 // that previously had different category/type is a real, deliberate
 // simplification the family/variant model forces (variants can no longer
 // disagree on those fields the way standalone `workouts` rows could).
@@ -549,8 +395,8 @@ export const fetchData = unstable_cache(
   async () => {
     // Isolated from the Promise.all below: a workout_variants/workout_families
     // query failure (e.g. a Preview branch where the migration hasn't run yet —
-    // has happened twice before, #238/#272) shouldn't blank out schedule/races/
-    // legacy workouts too, which have nothing to do with this table.
+    // has happened twice before, #238/#272) shouldn't blank out schedule/races
+    // too, which have nothing to do with this table.
     let workoutVariants: WorkoutVariantRow[] = []
     try {
       workoutVariants = await fetchWorkoutVariants()
@@ -558,14 +404,13 @@ export const fetchData = unstable_cache(
       workoutVariants = []
     }
     try {
-      const [schedule, races, workouts] = await Promise.all([
+      const [schedule, races] = await Promise.all([
         fetchSchedule(),
         fetchRaces(),
-        fetchWorkouts(),
       ])
-      return { schedule, races, workouts, workoutVariants }
+      return { schedule, races, workoutVariants }
     } catch {
-      return { schedule: [], races: [], workouts: [], workoutVariants }
+      return { schedule: [], races: [], workoutVariants }
     }
   },
   ['fetchData'],

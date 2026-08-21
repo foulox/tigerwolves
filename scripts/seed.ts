@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 import { RUN_LEADERS, weekOfMonth } from '../lib/data'
-import type { Workout, ScheduleEntry, Race } from '../lib/data'
+import type { ScheduleEntry, Race } from '../lib/data'
 
 const url = process.env.DATABASE_URL
 if (!url) throw new Error('DATABASE_URL is not set')
@@ -15,6 +15,29 @@ const sql = neon(url)
 
 type RawRow = Record<string, unknown>
 
+// Shape of one Sheets workout row, pre-grouping — mirrors the legacy `workouts`
+// row fields this script originally wrote (#84), kept local now that the
+// `workouts` table (and lib/data.ts's `Workout` type) is retired (#278).
+type RawSeedWorkout = {
+  name: string
+  category: string
+  type: string
+  reason: string
+  instructions: string
+  distTime: string
+  energySystem: string
+  hrZone: string
+  rpe: string
+  coachingNotes: string | null
+  mapLink: string | null
+  variation: string
+  progression: number | null
+  author: string | null
+  raceTypes: string[]
+  trainingPhases: string[]
+  hasTurnaround: boolean
+}
+
 function str(val: unknown): string {
   if (val === null || val === undefined || val === '[URL]') return ''
   return String(val).trim()
@@ -25,20 +48,17 @@ function normalizeDate(val: unknown): string | null {
   return s.length >= 10 ? s.slice(0, 10) : null
 }
 
-function mapWorkout(row: RawRow): Workout {
+function mapWorkout(row: RawRow): RawSeedWorkout {
   return {
     name: str(row['Workout Name']),
-    sport: str(row['Sport']),
     category: str(row['Category']),
     type: str(row['Type']),
     reason: str(row['Reason / Purpose']),
     instructions: str(row['Instructions']),
     distTime: str(row['Dist/Time']),
-    lapStructure: str(row['Lap Structure']),
     energySystem: str(row['Energy System']),
     hrZone: str(row['HR Zone']),
     rpe: str(row['RPE']),
-    lastRan: normalizeDate(row['Last Ran']),
     coachingNotes: str(row['Coaching Notes']) || null,
     mapLink: str(row['Map Link']) || null,
     variation: str(row['Variation']),
@@ -47,9 +67,6 @@ function mapWorkout(row: RawRow): Workout {
     raceTypes: str(row['Race Type']).split(',').map(s => s.trim()).filter(Boolean),
     trainingPhases: str(row['Training Phase']).split(',').map(s => s.trim()).filter(Boolean),
     hasTurnaround: str(row['hasTurnaround']) === 'TRUE',
-    turnaroundDistance: str(row['turnaroundDistance']),
-    flagged: false,
-    flagNote: '',
   }
 }
 
@@ -79,6 +96,19 @@ function mapRace(row: RawRow): Race {
   }
 }
 
+// Rows sharing a `name` become one workout_families row with multiple
+// workout_variants — same grouping rule the legacy `workouts` table applied
+// implicitly (rows sharing a name were already treated as one family).
+function groupByName(workouts: RawSeedWorkout[]): Map<string, RawSeedWorkout[]> {
+  const byName = new Map<string, RawSeedWorkout[]>()
+  for (const w of workouts) {
+    const list = byName.get(w.name)
+    if (list) list.push(w)
+    else byName.set(w.name, [w])
+  }
+  return byName
+}
+
 async function main() {
   console.log('Fetching data from Google Sheets...')
   const res = await fetch(sheetsUrl!)
@@ -88,28 +118,38 @@ async function main() {
   const workouts = json.workouts.map(mapWorkout).filter(w => w.name)
   const schedule = json.schedule.map(mapScheduleEntry).filter(e => e.date)
   const races = json.races.map(mapRace).filter(r => r.date)
+  const families = groupByName(workouts)
 
-  console.log(`Seeding ${workouts.length} workouts, ${schedule.length} schedule entries, ${races.length} races, ${RUN_LEADERS.length} run leaders...`)
+  console.log(`Seeding ${workouts.length} workouts across ${families.size} families, ${schedule.length} schedule entries, ${races.length} races, ${RUN_LEADERS.length} run leaders...`)
 
-  // workouts
-  for (const w of workouts) {
-    await sql.query(
-      `INSERT INTO workouts
-        (name, sport, category, type, reason, instructions, dist_time, lap_structure,
-         energy_system, hr_zone, rpe, last_ran, coaching_notes, map_link, variation,
-         progression, author, race_types, training_phases, has_turnaround, turnaround_distance)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
-       ON CONFLICT (name, variation) DO NOTHING`,
-      [
-        w.name, w.sport, w.category, w.type, w.reason, w.instructions,
-        w.distTime, w.lapStructure, w.energySystem, w.hrZone, w.rpe,
-        w.lastRan || null, w.coachingNotes, w.mapLink, w.variation,
-        w.progression, w.author, w.raceTypes, w.trainingPhases,
-        w.hasTurnaround, w.turnaroundDistance,
-      ]
-    )
+  const [tigerWolves] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
+  if (!tigerWolves) {
+    throw new Error("No 'TigerWolves' row in run_groups — run scripts/run-migrate.ts first (it seeds this row as part of #274's migration).")
   }
-  console.log(`  ✓ workouts`)
+  const tigerWolvesId = tigerWolves.id as number
+
+  // workout_families / workout_variants
+  for (const [name, members] of families) {
+    const rep = members[0]
+    const [family] = await sql`
+      INSERT INTO workout_families (name, category, type, reason, author, coaching_notes, map_link, run_group_id)
+      VALUES (${name}, ${rep.category}, ${rep.type}, ${rep.reason}, ${rep.author}, ${rep.coachingNotes}, ${rep.mapLink}, ${tigerWolvesId})
+      RETURNING id
+    `
+    const familyId = family.id as number
+    for (const w of members) {
+      await sql`
+        INSERT INTO workout_variants (
+          family_id, label, sort_order, raw_input, has_turnaround, turnaround,
+          energy_system, hr_zone, rpe, dist_time, race_types, training_phases
+        ) VALUES (
+          ${familyId}, ${w.variation || null}, ${w.progression}, ${w.instructions}, ${w.hasTurnaround}, '',
+          ${w.energySystem}, ${w.hrZone}, ${w.rpe}, ${w.distTime}, ${w.raceTypes}, ${w.trainingPhases}
+        )
+      `
+    }
+  }
+  console.log(`  ✓ workout_families / workout_variants`)
 
   // schedule
   for (const e of schedule) {
@@ -145,16 +185,18 @@ async function main() {
   console.log(`  ✓ run_leaders`)
 
   // verify row counts
-  const [wCount] = await sql`SELECT COUNT(*) AS n FROM workouts`
+  const [fCount] = await sql`SELECT COUNT(*) AS n FROM workout_families`
+  const [vCount] = await sql`SELECT COUNT(*) AS n FROM workout_variants`
   const [sCount] = await sql`SELECT COUNT(*) AS n FROM schedule`
   const [rCount] = await sql`SELECT COUNT(*) AS n FROM races`
   const [lCount] = await sql`SELECT COUNT(*) AS n FROM run_leaders`
 
   console.log('\nRow counts:')
-  console.log(`  workouts:    ${wCount.n} (sheet: ${workouts.length})`)
-  console.log(`  schedule:    ${sCount.n} (sheet: ${schedule.length})`)
-  console.log(`  races:       ${rCount.n} (sheet: ${races.length})`)
-  console.log(`  run_leaders: ${lCount.n} (constant: ${RUN_LEADERS.length})`)
+  console.log(`  workout_families: ${fCount.n} (sheet: ${families.size})`)
+  console.log(`  workout_variants: ${vCount.n} (sheet: ${workouts.length})`)
+  console.log(`  schedule:         ${sCount.n} (sheet: ${schedule.length})`)
+  console.log(`  races:            ${rCount.n} (sheet: ${races.length})`)
+  console.log(`  run_leaders:      ${lCount.n} (constant: ${RUN_LEADERS.length})`)
   console.log('\nSeed complete.')
 }
 

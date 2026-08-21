@@ -1,8 +1,6 @@
 import { describe, it, expect, afterAll, beforeEach, afterEach } from 'vitest'
 import {
-  sql, fetchWorkouts, fetchSchedule, fetchRaces, fetchRunGroups,
-  dbInsertWorkout, dbUpdateWorkout, dbDeleteWorkout, dbSetScheduleWorkout,
-  dbRegroupFamily, dbFlagWorkout, dbFixWorkoutAndClearFlag, WorkoutNotFoundError,
+  sql, fetchSchedule, fetchRaces, fetchRunGroups, dbSetScheduleWorkout,
   dbInsertWorkoutVariant, dbUpdateWorkoutVariant, WorkoutVariantNotFoundError,
   dbAddWorkoutVariant, dbDeleteWorkoutVariant, dbFlagWorkoutVariant,
   dbFixWorkoutVariantAndClearFlag, dbRegroupVariants,
@@ -14,22 +12,24 @@ describe('database connection and schema', () => {
     expect(result[0].ok).toBe(1)
   })
 
-  it('workouts table exists with correct columns', async () => {
+  // #278: `workouts` was renamed to `workouts_legacy` as a rollback net once
+  // every read/write path moved to workout_families/workout_variants — this
+  // just confirms the rename preserved the table and its data, not a hardcoded
+  // row count (incidental to what the rename is meant to prove).
+  it('workouts_legacy exists and retains its data after the #278 rename', async () => {
     const rows = await sql`
       SELECT column_name
       FROM information_schema.columns
-      WHERE table_name = 'workouts'
+      WHERE table_name = 'workouts_legacy'
       ORDER BY column_name
     `
     const cols = rows.map((r) => r.column_name as string)
     expect(cols).toContain('id')
     expect(cols).toContain('name')
     expect(cols).toContain('variation')
-    expect(cols).toContain('has_turnaround')
-    expect(cols).toContain('race_types')
-    expect(cols).toContain('training_phases')
-    expect(cols).toContain('flagged')
-    expect(cols).toContain('flag_note')
+
+    const [{ count }] = await sql`SELECT COUNT(*)::int AS count FROM workouts_legacy`
+    expect(count as number).toBeGreaterThan(0)
   })
 
   it('schedule table has expected columns including selected_variations', async () => {
@@ -63,32 +63,6 @@ describe('database connection and schema', () => {
   })
 })
 
-describe('fetchWorkouts', () => {
-  it('returns an array of workouts with expected shape', async () => {
-    const workouts = await fetchWorkouts()
-    expect(Array.isArray(workouts)).toBe(true)
-    expect(workouts.length).toBeGreaterThan(0)
-    const w = workouts[0]
-    expect(typeof w.name).toBe('string')
-    expect(typeof w.category).toBe('string')
-    expect(typeof w.type).toBe('string')
-    expect(Array.isArray(w.raceTypes)).toBe(true)
-    expect(Array.isArray(w.trainingPhases)).toBe(true)
-    expect(typeof w.hasTurnaround).toBe('boolean')
-    expect(typeof w.flagged).toBe('boolean')
-    expect(typeof w.flagNote).toBe('string')
-  })
-
-  it('lastRan is null or a YYYY-MM-DD string', async () => {
-    const workouts = await fetchWorkouts()
-    for (const w of workouts) {
-      if (w.lastRan !== null) {
-        expect(w.lastRan).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-      }
-    }
-  })
-})
-
 describe('fetchSchedule', () => {
   it('returns schedule entries with date and weekOfMonth', async () => {
     const entries = await fetchSchedule()
@@ -117,137 +91,6 @@ describe('fetchRaces', () => {
     expect(typeof r.verified).toBe('boolean')
     expect(typeof r.flagged).toBe('boolean')
     expect(typeof r.flagNote).toBe('string')
-  })
-})
-
-describe('workout mutations', () => {
-  const TEST_NAME = '__test_workout__'
-  const TEST_VARIATION = '__v1__'
-
-  afterAll(async () => {
-    await sql`DELETE FROM workouts WHERE name = ${TEST_NAME}`
-  })
-
-  it('inserts a workout and reads it back', async () => {
-    await dbInsertWorkout({
-      name: TEST_NAME,
-      sport: 'Running',
-      category: 'Quality',
-      type: 'Hills',
-      reason: 'Test',
-      instructions: 'Run up',
-      distTime: '30min',
-      lapStructure: '',
-      energySystem: '',
-      hrZone: '',
-      rpe: '7',
-      coachingNotes: null,
-      mapLink: null,
-      variation: TEST_VARIATION,
-      progression: 1,
-      author: 'Test',
-      raceTypes: ['5K', 'Half'],
-      trainingPhases: ['Build'],
-      hasTurnaround: true,
-      turnaroundDistance: '15min',
-      flagged: false,
-      flagNote: '',
-    })
-    const workouts = await fetchWorkouts()
-    const inserted = workouts.find(w => w.name === TEST_NAME && w.variation === TEST_VARIATION)
-    expect(inserted).toBeDefined()
-    expect(inserted?.raceTypes).toContain('5K')
-    expect(inserted?.hasTurnaround).toBe(true)
-    expect(inserted?.progression).toBe(1)
-    expect(inserted?.flagged).toBe(false)
-  })
-
-  it('updates a workout', async () => {
-    await dbUpdateWorkout(TEST_NAME, TEST_VARIATION, {
-      name: TEST_NAME,
-      sport: 'Running',
-      category: 'Quality',
-      type: 'Hills',
-      reason: 'Updated reason',
-      instructions: 'Run up faster',
-      distTime: '40min',
-      lapStructure: '',
-      energySystem: '',
-      hrZone: '',
-      rpe: '8',
-      coachingNotes: 'Good one',
-      mapLink: null,
-      variation: TEST_VARIATION,
-      progression: 2,
-      author: 'Test',
-      raceTypes: ['Full'],
-      trainingPhases: ['Peak'],
-      hasTurnaround: false,
-      turnaroundDistance: '',
-      flagged: false,
-      flagNote: '',
-    })
-    const workouts = await fetchWorkouts()
-    const updated = workouts.find(w => w.name === TEST_NAME && w.variation === TEST_VARIATION)
-    expect(updated?.reason).toBe('Updated reason')
-    expect(updated?.rpe).toBe('8')
-    expect(updated?.progression).toBe(2)
-    expect(updated?.hasTurnaround).toBe(false)
-  })
-
-  it('flags a workout via dbFlagWorkout', async () => {
-    await dbFlagWorkout(TEST_NAME, TEST_VARIATION, 'the distance looks wrong')
-    const workouts = await fetchWorkouts()
-    const flagged = workouts.find(w => w.name === TEST_NAME && w.variation === TEST_VARIATION)
-    expect(flagged?.flagged).toBe(true)
-    expect(flagged?.flagNote).toBe('the distance looks wrong')
-  })
-
-  it('fixes a flagged workout and clears the flag via dbFixWorkoutAndClearFlag', async () => {
-    await dbFixWorkoutAndClearFlag(TEST_NAME, TEST_VARIATION, {
-      reason: 'Fixed reason',
-      distTime: '45min',
-      instructions: 'Fixed instructions',
-    })
-    const workouts = await fetchWorkouts()
-    const fixed = workouts.find(w => w.name === TEST_NAME && w.variation === TEST_VARIATION)
-    expect(fixed?.flagged).toBe(false)
-    expect(fixed?.flagNote).toBe('')
-    expect(fixed?.reason).toBe('Fixed reason')
-    expect(fixed?.distTime).toBe('45min')
-    expect(fixed?.instructions).toBe('Fixed instructions')
-  })
-
-  it('dbFlagWorkout throws WorkoutNotFoundError for a (name, variation) that does not match any row', async () => {
-    await expect(dbFlagWorkout('__no_such_workout__', '', 'note')).rejects.toThrow(WorkoutNotFoundError)
-  })
-
-  it('dbFixWorkoutAndClearFlag throws WorkoutNotFoundError for a (name, variation) that does not match any row', async () => {
-    await expect(dbFixWorkoutAndClearFlag('__no_such_workout__', '', {
-      reason: 'x', distTime: 'x', instructions: 'x',
-    })).rejects.toThrow(WorkoutNotFoundError)
-  })
-
-  it('renames a family via dbRegroupFamily', async () => {
-    const NEW_NAME = '__test_renamed__'
-    await dbRegroupFamily(NEW_NAME, [{
-      originalName: TEST_NAME,
-      originalVariation: TEST_VARIATION,
-      variation: TEST_VARIATION,
-      progression: 1,
-    }])
-    const workouts = await fetchWorkouts()
-    const renamed = workouts.find(w => w.name === NEW_NAME && w.variation === TEST_VARIATION)
-    expect(renamed).toBeDefined()
-    // restore name for cleanup
-    await sql`UPDATE workouts SET name = ${TEST_NAME} WHERE name = ${NEW_NAME}`
-  })
-
-  it('deletes a workout', async () => {
-    await dbDeleteWorkout(TEST_NAME, TEST_VARIATION)
-    const workouts = await fetchWorkouts()
-    const gone = workouts.find(w => w.name === TEST_NAME && w.variation === TEST_VARIATION)
-    expect(gone).toBeUndefined()
   })
 })
 
