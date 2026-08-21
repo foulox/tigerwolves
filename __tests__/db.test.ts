@@ -15,7 +15,11 @@ describe('database connection and schema', () => {
   // #278: `workouts` was renamed to `workouts_legacy` as a rollback net once
   // every read/write path moved to workout_families/workout_variants — this
   // just confirms the rename preserved the table and its data, not a hardcoded
-  // row count (incidental to what the rename is meant to prove).
+  // row count (incidental to what the rename is meant to prove). The non-empty
+  // assertion relies on this DB already having pre-#278 `workouts` data — true
+  // for every real database this migration will ever run against, since Neon's
+  // Preview/staging/production branches are always forks of a parent branch
+  // that already has it (CLAUDE.md), never a from-scratch empty schema.
   it('workouts_legacy exists and retains its data after the #278 rename', async () => {
     const rows = await sql`
       SELECT column_name

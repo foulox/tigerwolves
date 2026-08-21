@@ -2,12 +2,17 @@
 -- Run against production and staging (Neon preview branch) before #84 seed
 
 -- The original `CREATE TABLE IF NOT EXISTS workouts (...)` DDL that lived here
--- (#84-#209 era) is removed as of #278: `workouts` was renamed to
--- `workouts_legacy` further down this file, and leaving an IF-NOT-EXISTS
--- CREATE for the old name in place would silently resurrect an empty ghost
--- `workouts` table on every future full-file replay of this script (run-migrate.ts
--- has no migration-tracking table — it always runs the whole file). See
--- `workouts_legacy` below for the live (frozen, renamed) table.
+-- (#84-#209 era), plus the #209 `ALTER TABLE workouts ADD COLUMN ... flagged`/
+-- `flag_note` statements that used to follow the `races` block below, are
+-- removed as of #278: `workouts` was renamed to `workouts_legacy` further down
+-- this file, so every one of those statements would be a permanent no-op on
+-- any database from here on (a fresh database never has `workouts` to create
+-- or alter; an existing one gets it renamed away by the next statement in the
+-- same replay). Leaving the CREATE in place would have silently resurrected
+-- an empty ghost `workouts` table on every future full-file replay of this
+-- script (run-migrate.ts has no migration-tracking table — it always runs the
+-- whole file); the two ALTERs would just be dead weight parsed on every replay
+-- forever. See `workouts_legacy` below for the live (frozen, renamed) table.
 
 CREATE TABLE IF NOT EXISTS schedule (
   date DATE PRIMARY KEY,
@@ -40,14 +45,6 @@ ALTER TABLE races ADD COLUMN IF NOT EXISTS flagged BOOLEAN NOT NULL DEFAULT fals
 ALTER TABLE races ADD COLUMN IF NOT EXISTS flag_note TEXT NOT NULL DEFAULT '';
 ALTER TABLE races DROP CONSTRAINT IF EXISTS races_pkey;
 ALTER TABLE races ADD PRIMARY KEY (id);
-
--- #209: visible flag + inline fix for workouts, mirroring #238/#256's races flag
--- state. Workouts are always leader-authored (addWorkout/updateWorkout require auth),
--- so unlike races there's no "unverified" state — just flagged / not.
--- IF EXISTS on the table (not just the column) keeps this safe to replay after
--- #278's rename below has already renamed `workouts` away on a given database.
-ALTER TABLE IF EXISTS workouts ADD COLUMN IF NOT EXISTS flagged BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE IF EXISTS workouts ADD COLUMN IF NOT EXISTS flag_note TEXT NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS run_leaders (
   id SERIAL PRIMARY KEY,
