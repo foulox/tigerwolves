@@ -112,7 +112,16 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
     setTypeFilter(null)
   }
 
+  // #288: instructions + coaching notes are always visible in the card body
+  // itself (rendered by the caller, before this component) — Lou prefers
+  // coach's notes over "why this workout" as the always-visible second field,
+  // so reason moved into the "Show details" toggle here instead. Everything
+  // else that has a value lives here too — race types/training phases/author
+  // stay always visible as before, and the toggle houses the rest (energy
+  // system, HR zone, RPE, turnaround, reason, map link).
   function WorkoutMeta({ w }: { w: WorkoutVariantRow }) {
+    const showDetails = expandedNotes === w.id
+    const hasDetails = !!(w.reason || w.energySystem || w.hrZone || w.rpe || (w.hasTurnaround && w.turnaround) || w.mapLink)
     return (
       <div className="mt-2.5 space-y-2">
         <div className="flex gap-3 text-xs text-gray-400">
@@ -133,16 +142,37 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
         {w.author && (
           <p className="text-xs text-gray-400 italic">— {w.author}</p>
         )}
-        {w.coachingNotes && (
+        {hasDetails && (
           <div>
             <button
-              onClick={e => { e.stopPropagation(); setExpandedNotes(expandedNotes === w.id ? null : w.id) }}
+              onClick={e => { e.stopPropagation(); setExpandedNotes(showDetails ? null : w.id) }}
               className="text-xs font-semibold text-orange-500 touch-manipulation"
             >
-              {expandedNotes === w.id ? 'Hide coach notes' : 'Coach notes'}
+              {showDetails ? 'Hide details' : 'Show details'}
             </button>
-            {expandedNotes === w.id && (
-              <p className="text-xs text-gray-600 mt-1 leading-snug">{w.coachingNotes}</p>
+            {showDetails && (
+              <div className="mt-1 space-y-1">
+                {w.reason && (
+                  <p className="text-xs text-gray-600 leading-snug">{w.reason}</p>
+                )}
+                {w.energySystem && (
+                  <p className="text-xs text-gray-500"><span className="font-semibold">Energy:</span> {w.energySystem}</p>
+                )}
+                {w.hrZone && (
+                  <p className="text-xs text-gray-500"><span className="font-semibold">HR:</span> {w.hrZone}</p>
+                )}
+                {w.rpe && (
+                  <p className="text-xs text-gray-500"><span className="font-semibold">RPE:</span> {w.rpe}</p>
+                )}
+                {w.hasTurnaround && w.turnaround && (
+                  <p className="text-xs text-gray-500"><span className="font-semibold">Turnaround:</span> {w.turnaround}</p>
+                )}
+                {w.mapLink && (
+                  <a href={w.mapLink} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-500 touch-manipulation block">
+                    Map ↗
+                  </a>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -254,7 +284,8 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
                   </div>
                 </div>
                 {w.label && <p className="text-xs text-gray-400 mt-0.5">{w.label}</p>}
-                <p className="text-sm text-gray-500 mt-1.5 leading-snug">{w.reason}</p>
+                {w.rawInput && <p className="text-sm text-gray-700 mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</p>}
+                {w.coachingNotes && <p className="text-sm text-gray-500 mt-1.5 italic leading-snug">{w.coachingNotes}</p>}
                 <WorkoutMeta w={w} />
                 <div className="flex justify-end mt-2">
                   <ReactionPicker
@@ -331,8 +362,9 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
                           )}
                         </div>
                       </div>
-                      {row.base.distTime && <div className="text-xs text-gray-400">{row.base.distTime}</div>}
-                      {row.base.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(row.base.lastRan)}</div>}
+                      {row.base.rawInput && <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap leading-snug">{row.base.rawInput}</p>}
+                      {row.base.coachingNotes && <p className="text-sm text-gray-500 mt-1 italic leading-snug">{row.base.coachingNotes}</p>}
+                      <WorkoutMeta w={row.base} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
                           workoutId={workoutVoteId(row.base.name, row.base.label ?? '')}
@@ -363,8 +395,9 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
                         </div>
                       </div>
                       <div className="text-sm font-semibold text-gray-800">{p.label}</div>
-                      {p.distTime && <div className="text-xs text-gray-400 mt-0.5">{p.distTime}</div>}
-                      {p.lastRan && <div className="text-xs text-gray-400">Last ran {formatDate(p.lastRan)}</div>}
+                      {p.rawInput && <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap leading-snug">{p.rawInput}</p>}
+                      {p.coachingNotes && <p className="text-sm text-gray-500 mt-1 italic leading-snug">{p.coachingNotes}</p>}
+                      <WorkoutMeta w={p} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
                           workoutId={workoutVoteId(p.name, p.label ?? '')}
