@@ -6,12 +6,11 @@
 
 **Open PRs:**
 
-- #289 Show complete workout info on Plan/Library/Schedule cards (closes #288) — awaiting review/merge
-- #287 Add PR template splitting Claude's tests from Lou's manual verification — awaiting review/merge
+- None
 
 **Bugs** (open, always priority):
 
-- #290 Run /code-review on #286/#287; consolidate duplicated workout-detail fields across Plan/Library/Schedule (not yet on project board)
+- #290 Consolidate duplicated workout-detail fields across Plan/Library/Schedule (not yet on project board). Its AC #1 ("run /code-review on #286/#287 before merge") is now moot — both merged (#286 on 2026-08-20, #287 on 2026-08-23) without a review pass; AC #2 (the field-duplication consolidation) still stands.
 - #284 Can't fix organized by club member on NYC marathon
 - #279 label-only variation text posts as the entire workout (backlog)
 
@@ -79,7 +78,7 @@
 
 ---
 
-**Last session:** #278 built and shipped — PR #291 merged, migration applied and verified on both staging and production (70 rows preserved in production, `workouts` table gone), `/code-review` findings addressed, `scripts/seed.ts` deleted outright at Lou's call, wiki updated. Epic #271 fully closed — Data Foundation Sprint milestone now 8/9. 7 items staged in claude-memory's `pending-decisions.md` for PM triage, including a direct feedback item from Lou on `/code-review` decision authority (Claude should present findings and ask, not unilaterally triage what gets fixed).
+**Last session:** #287 (PR-template/test-plan-split hook) merged as `d525817` after a `/code-review` misfire reviewed the wrong target (already-merged #289) instead of #287 — Lou judged the actual #287 change (2 files, template + hook config) low-risk enough to skip formal review and merged directly. #289 confirmed already merged too (was stale in this file's Open PRs list). Branch/worktree cleaned up, dispatch closed. 1 item staged in claude-memory's `pending-decisions.md` for PM triage (the `/code-review` misfire itself, flagged as a skill-instruction gap).
 
 ---
 
@@ -94,6 +93,7 @@
 - 2026-08-20 — close-out: #286 merged; cleaned up its branch/worktree plus a stale #276 branch/Neon-branch pair left over since 2026-08-17; filed #290 for deferred review/refactor work. Next: Lou reviews #287 and #289; a future session picks up #290.
 - 2026-08-21 1511 — 278-grooming: groomed #278 to `ready-to-build`; verified legacy `workouts`-table code is fully dead in the app, found `seed.ts`/`seed-e2e.ts` need rewriting (CI-critical), resolved 4 scope decisions with Lou, wrote full story body. Next: build session picks up #278 — last story in epic #271.
 - 2026-08-21 1535 — 278-build: renamed `workouts`→`workouts_legacy` and deleted all dead legacy code; found and fixed a migration full-replay safety bug not in the plan (dead `CREATE`/`ALTER` statements on `workouts` would break or silently misbehave on any second `run-migrate.ts` run); `/code-review` run and addressed; `scripts/seed.ts` deleted entirely at Lou's call mid-session. Applied and verified migration on staging then production (70/70 rows intact) — caught a stale-local-checkout near-miss on the first production attempt. PR #291 merged; epic #271 closed (last open story). Flagged a likely prompt-injection attempt in tool output mid-session. Next: nothing pending on this story — Data Foundation Sprint milestone now 8/9.
+- 2026-08-23 — 287-review: dispatched as a `/review` session for PR #287 (PreToolUse hook + PR template enforcing the Claude/Lou test-plan split). A local `/code-review` run misfired — found no diff on local `main`, fast-forwarded, and reviewed the wrong target (already-merged #289) instead, producing a confusing flood of ~15 straggling background sub-agent notifications. Lou judged #287 itself (2 files, template + hook config) low-risk enough to skip formal review and merged directly (`d525817`). Also confirmed #289 was already merged (stale in this file's Open PRs). Flagged the `/code-review` misfire to pending-decisions.md as a skill-instruction gap; declined to preserve the misfired review's (accidentally on-target) findings for #290's own consolidation AC. Next: nothing pending on #287.
 
 ---
 
