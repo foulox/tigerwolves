@@ -55,3 +55,7 @@ scripts/backfill-review.json
 
 # agent scratch files — working docs, not source
 /scratch/
+
+# per-project dispatch bookkeeping and session notes (claude-cross-profile#94)
+/dispatch/
+/.agent-sessions/
