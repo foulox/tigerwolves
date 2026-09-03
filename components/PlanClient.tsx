@@ -11,6 +11,7 @@ import { captureClientEvent } from '@/lib/analyticsClient'
 import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import Header from '@/components/Header'
+import WorkoutDetails from '@/components/WorkoutDetails'
 
 function formatDateShort(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -26,53 +27,6 @@ function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined
     return <span className="text-xs text-gray-400 tabular-nums">{ratingToEmoji(v.avg)} {v.count}</span>
   }
   return <span className="text-xs text-gray-300">🙂</span>
-}
-
-// No "Edit" link here (unlike the old Workout-typed WorkoutDetail this replaces) —
-// /library/edit is still legacy-table-backed and 404s for any workout added via
-// the new-schema-only addWorkout path (#274) since it has no legacy `workouts`
-// row at all. Editing moves to variant_id in #277; until then this screen is
-// read-only for leaders too.
-//
-// #288: instructions + coaching notes are always visible in the card body
-// (not hidden behind this expand) — Lou prefers coach's notes over "why this
-// workout" as the second always-visible field, so reason lives here instead.
-// Everything else that has a value still lives here too — nothing with data
-// gets silently dropped, just deprioritized behind "Show details".
-function WorkoutDetail({ w }: { w: WorkoutVariantRow }) {
-  return (
-    <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm text-gray-600">
-      {w.reason && (
-        <p className="leading-snug">{w.reason}</p>
-      )}
-      {w.energySystem && (
-        <p className="text-xs text-gray-500"><span className="font-semibold">Energy:</span> {w.energySystem}</p>
-      )}
-      {w.hrZone && (
-        <p className="text-xs text-gray-500"><span className="font-semibold">HR:</span> {w.hrZone}</p>
-      )}
-      {w.rpe && (
-        <p className="text-xs text-gray-500"><span className="font-semibold">RPE:</span> {w.rpe}</p>
-      )}
-      {w.raceTypes.length > 0 && (
-        <p className="text-xs text-gray-500"><span className="font-semibold">Best for race:</span> {w.raceTypes.join(', ')}</p>
-      )}
-      {w.trainingPhases.length > 0 && (
-        <p className="text-xs text-gray-500"><span className="font-semibold">Training phase:</span> {w.trainingPhases.join(', ')}</p>
-      )}
-      {w.hasTurnaround && w.turnaround && (
-        <p className="text-xs text-gray-500"><span className="font-semibold">Turnaround:</span> {w.turnaround}</p>
-      )}
-      {w.author && (
-        <p className="text-xs text-gray-400 italic">— {w.author}</p>
-      )}
-      {w.mapLink && (
-        <a href={w.mapLink} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-500 touch-manipulation">
-          Map ↗
-        </a>
-      )}
-    </div>
-  )
 }
 
 type Props = {
@@ -353,8 +307,8 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                       {expanded ? 'Hide details' : 'Show details'}
                     </button>
                     {expanded && (
-                      <div className="px-4 pb-4">
-                        <WorkoutDetail w={w} />
+                      <div className="px-4 pb-4 mt-3 pt-3 border-t border-gray-100">
+                        <WorkoutDetails w={w} />
                       </div>
                     )}
                   </div>
@@ -445,8 +399,8 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                                 {expanded ? 'Hide details' : 'Show details'}
                               </button>
                               {expanded && (
-                                <div className="px-4 pb-4">
-                                  <WorkoutDetail w={w} />
+                                <div className="px-4 pb-4 mt-3 pt-3 border-t border-gray-100">
+                                  <WorkoutDetails w={w} />
                                 </div>
                               )}
                             </div>
@@ -498,7 +452,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                                     <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
                                     {expanded ? 'Hide' : 'Details'}
                                   </button>
-                                  {expanded && <div className="px-4 pb-3"><WorkoutDetail w={v} /></div>}
+                                  {expanded && <div className="px-4 pb-3 mt-3 pt-3 border-t border-gray-100"><WorkoutDetails w={v} /></div>}
                                 </div>
                               )
                             })}

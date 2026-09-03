@@ -10,6 +10,7 @@ import type { VoteData } from '@/lib/votes'
 import ReactionPicker from '@/components/ReactionPicker'
 import WorkoutFlagSheet, { FlagBadge, FlagGhostButton, FlagWorkoutDrawer } from '@/components/WorkoutFlagSheet'
 import { captureClientEvent } from '@/lib/analyticsClient'
+import WorkoutDetails, { DetailRow, ChipRow } from '@/components/WorkoutDetails'
 
 const TYPE_COLORS: Record<string, string> = {
   Hills: 'bg-green-100 text-green-800',
@@ -137,27 +138,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
           {workout.rawInput && <DetailRow label="Instructions" value={workout.rawInput} />}
           {workout.coachingNotes && <DetailRow label="Coach Notes" value={workout.coachingNotes} />}
           {workout.distTime && <DetailRow label="Distance / Time" value={workout.distTime} />}
-          {workout.energySystem && <DetailRow label="Energy System" value={workout.energySystem} />}
-          {(workout.hrZone || workout.rpe) && (
-            <div className="flex gap-4">
-              {workout.hrZone && <DetailRow label="HR Zone" value={workout.hrZone} />}
-              {workout.rpe && <DetailRow label="RPE" value={workout.rpe} />}
-            </div>
-          )}
-          {workout.hasTurnaround && workout.turnaround && <DetailRow label="Turnaround" value={workout.turnaround} />}
-          {workout.trainingPhases.length > 0 && (
-            <ChipRow label="Training Phases" chips={workout.trainingPhases} />
-          )}
-          {workout.raceTypes.length > 0 && (
-            <ChipRow label="Race Types" chips={workout.raceTypes} />
-          )}
-          {workout.author && <DetailRow label="Author" value={workout.author} />}
-          {workout.reason && <DetailRow label="Reason" value={workout.reason} />}
-          {workout.mapLink && (
-            <a href={workout.mapLink} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-500 touch-manipulation block">
-              Map ↗
-            </a>
-          )}
+          <WorkoutDetails w={workout} />
           {filteredVariations.length > 0 && (
             <ChipRow label="Variations" chips={filteredVariations} />
           )}
@@ -197,24 +178,3 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
   )
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <span className="font-semibold text-gray-700">{label}: </span>
-      <span className="text-gray-600">{value}</span>
-    </div>
-  )
-}
-
-function ChipRow({ label, chips }: { label: string; chips: string[] }) {
-  return (
-    <div>
-      <div className="font-semibold text-gray-700 mb-1">{label}</div>
-      <div className="flex flex-wrap gap-1.5">
-        {chips.map(chip => (
-          <span key={chip} className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-0.5">{chip}</span>
-        ))}
-      </div>
-    </div>
-  )
-}
