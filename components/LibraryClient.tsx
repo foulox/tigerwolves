@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { WorkoutVariantRow } from '@/lib/data'
 import { ABBREVIATIONS, RACE_TYPES } from '@/lib/data'
+import WorkoutDetails, { PHASE_COLORS } from '@/components/WorkoutDetails'
 import DeleteWorkoutButton from '@/components/DeleteWorkoutButton'
 import ReactionPicker from '@/components/ReactionPicker'
 import WorkoutFlagSheet, { FlagBadge } from '@/components/WorkoutFlagSheet'
@@ -15,13 +16,6 @@ function formatDate(iso: string) {
 }
 
 const CATEGORIES = ['Quality', 'Long', 'Easy']
-
-const PHASE_COLORS: Record<string, string> = {
-  Base: 'bg-blue-100 text-blue-700',
-  Build: 'bg-orange-100 text-orange-700',
-  Peak: 'bg-red-100 text-red-700',
-  Taper: 'bg-green-100 text-green-700',
-}
 
 type StandaloneRow = { kind: 'standalone'; workout: WorkoutVariantRow }
 type FamilyRow = {
@@ -112,13 +106,10 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
     setTypeFilter(null)
   }
 
-  // #288: instructions + coaching notes are always visible in the card body
-  // itself (rendered by the caller, before this component) — Lou prefers
-  // coach's notes over "why this workout" as the always-visible second field,
-  // so reason moved into the "Show details" toggle here instead. Everything
-  // else that has a value lives here too — race types/training phases/author
-  // stay always visible as before, and the toggle houses the rest (energy
-  // system, HR zone, RPE, turnaround, reason, map link).
+  // #288: instructions + coaching notes are always visible in the card body.
+  // Race types/training phases/author stay always visible as pills above the
+  // toggle (#290); the expandable section uses WorkoutDetails with those fields
+  // excluded so they don't duplicate.
   function WorkoutMeta({ w }: { w: WorkoutVariantRow }) {
     const showDetails = expandedNotes === w.id
     const hasDetails = !!(w.reason || w.energySystem || w.hrZone || w.rpe || (w.hasTurnaround && w.turnaround) || w.mapLink)
@@ -151,27 +142,8 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
               {showDetails ? 'Hide details' : 'Show details'}
             </button>
             {showDetails && (
-              <div className="mt-1 space-y-1">
-                {w.reason && (
-                  <p className="text-xs text-gray-600 leading-snug">{w.reason}</p>
-                )}
-                {w.energySystem && (
-                  <p className="text-xs text-gray-500"><span className="font-semibold">Energy:</span> {w.energySystem}</p>
-                )}
-                {w.hrZone && (
-                  <p className="text-xs text-gray-500"><span className="font-semibold">HR:</span> {w.hrZone}</p>
-                )}
-                {w.rpe && (
-                  <p className="text-xs text-gray-500"><span className="font-semibold">RPE:</span> {w.rpe}</p>
-                )}
-                {w.hasTurnaround && w.turnaround && (
-                  <p className="text-xs text-gray-500"><span className="font-semibold">Turnaround:</span> {w.turnaround}</p>
-                )}
-                {w.mapLink && (
-                  <a href={w.mapLink} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-500 touch-manipulation block">
-                    Map ↗
-                  </a>
-                )}
+              <div className="mt-1">
+                <WorkoutDetails w={w} exclude={['raceTypes', 'trainingPhases', 'author']} />
               </div>
             )}
           </div>
