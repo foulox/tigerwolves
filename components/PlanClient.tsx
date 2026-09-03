@@ -29,7 +29,6 @@ function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined
   return <span className="text-xs text-gray-300">🙂</span>
 }
 
-
 type Props = {
   upcoming: ScheduleEntry[]
   variants: WorkoutVariantRow[]
