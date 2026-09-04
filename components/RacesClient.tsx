@@ -87,7 +87,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
   const [addError, setAddError] = useState<string | undefined>()
   const [flagText, setFlagText] = useState('')
   const [flagError, setFlagError] = useState<string | undefined>()
-  const [fixForm, setFixForm] = useState({ name: '', date: '', distance: '', location: '' })
+  const [fixForm, setFixForm] = useState({ name: '', date: '', distance: '', location: '', organizer: '' })
   const [fixError, setFixError] = useState<string | undefined>()
 
   function myTagFor(raceId: number): RaceTier | null | undefined {
@@ -124,7 +124,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
     if (isLeader) {
       setFixError(undefined)
       const r = races.find(r => r.id === raceId)
-      if (r) setFixForm({ name: r.name, date: r.date, distance: r.distance, location: r.location })
+      if (r) setFixForm({ name: r.name, date: r.date, distance: r.distance, location: r.location, organizer: r.organizer || '' })
     }
   }
 
@@ -156,7 +156,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
         date: addForm.date.trim(),
         distance: addForm.distance.trim(),
         location: addForm.location.trim(),
-        organizer: addForm.organizer.trim() || 'a club member',
+        organizer: addForm.organizer.trim(),
         verified: false,
         flagged: false,
         flagNote: '',
@@ -274,7 +274,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                   <span>·</span>
                   <span>{race.location || '—'}</span>
                 </div>
-                <div className="mt-1 text-xs text-gray-400">Organized by {race.organizer || 'a club member'}</div>
+                {race.organizer && <div className="mt-1 text-xs text-gray-400">Organized by {race.organizer}</div>}
               </div>
 
               <div className="flex gap-1.5 mt-3 flex-wrap">
@@ -508,6 +508,10 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                     <input value={fixForm.location} onChange={e => setFixForm(f => ({ ...f, location: e.target.value }))} className="w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm text-gray-900 font-normal" />
                   </label>
                 </div>
+                <label className="flex flex-col gap-1 text-[10.5px] font-bold text-gray-500">
+                  Organizer
+                  <input value={fixForm.organizer} onChange={e => setFixForm(f => ({ ...f, organizer: e.target.value }))} placeholder="e.g. NYRR" className="w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm text-gray-900 font-normal" />
+                </label>
                 {fixError && <p className="text-sm text-red-600">{fixError}</p>}
                 <div className="flex gap-2.5">
                   <button type="button" onClick={closeSheet} className="touch-manipulation flex-1 bg-gray-100 text-gray-700 rounded-2xl py-3 font-bold text-sm">

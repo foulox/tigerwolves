@@ -164,7 +164,7 @@ export async function dbVerifyRace(id: number): Promise<void> {
 
 export async function dbFixRace(
   id: number,
-  fields: { name: string; date: string; distance: string; location: string },
+  fields: { name: string; date: string; distance: string; location: string; organizer: string },
 ): Promise<void> {
   const rows = await sql`
     UPDATE races SET
@@ -172,6 +172,7 @@ export async function dbFixRace(
       date = ${fields.date}::date,
       distance = ${fields.distance},
       location = ${fields.location},
+      organizer = ${fields.organizer},
       verified = true,
       flagged = false,
       flag_note = ''
