@@ -85,7 +85,7 @@ describe('addRace', () => {
     expect(dbInsertRaceMock).not.toHaveBeenCalled()
   })
 
-  it('inserts a race as unverified and returns its id on valid input, defaulting a blank organizer', async () => {
+  it('inserts a race as unverified and returns its id on valid input, storing blank organizer as empty string', async () => {
     const result = await addRace({ name: '  NYC Marathon  ', date: '2026-11-01', distance: '26.2 mi', location: 'NYC', organizer: '  ' })
     expect(result).toEqual({ id: 42 })
     expect(dbInsertRaceMock).toHaveBeenCalledWith({
@@ -93,7 +93,7 @@ describe('addRace', () => {
       date: '2026-11-01',
       distance: '26.2 mi',
       location: 'NYC',
-      organizer: 'a club member',
+      organizer: '',
       verified: false,
       flagged: false,
       flagNote: '',
@@ -151,7 +151,7 @@ describe('verifyRace', () => {
 })
 
 describe('fixRaceAndClearFlag', () => {
-  const fields = { name: 'NYC Marathon', date: '2026-11-01', distance: '26.2 mi', location: 'NYC' }
+  const fields = { name: 'NYC Marathon', date: '2026-11-01', distance: '26.2 mi', location: 'NYC', organizer: 'NYRR' }
 
   it('throws Unauthorized when not signed in, before any field validation runs', async () => {
     await expect(fixRaceAndClearFlag(1, fields)).rejects.toThrow('Unauthorized')

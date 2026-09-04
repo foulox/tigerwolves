@@ -260,7 +260,7 @@ export async function addRace(data: {
     name,
     distance: data.distance.trim(),
     location: data.location.trim(),
-    organizer: data.organizer.trim() || 'a club member',
+    organizer: data.organizer.trim(),
     verified: false,
     flagged: false,
     flagNote: '',
@@ -289,7 +289,7 @@ export async function verifyRace(raceId: number) {
 
 export async function fixRaceAndClearFlag(
   raceId: number,
-  fields: { name: string; date: string; distance: string; location: string },
+  fields: { name: string; date: string; distance: string; location: string; organizer: string },
 ): Promise<void | { error: string }> {
   const userId = await requireAuth()
   const name = fields.name.trim()
@@ -298,7 +298,7 @@ export async function fixRaceAndClearFlag(
   if (!date) return { error: 'Date is required' }
   if (!isValidDateString(date)) return { error: 'Enter a valid date' }
 
-  await dbFixRace(raceId, { name, date, distance: fields.distance.trim(), location: fields.location.trim() })
+  await dbFixRace(raceId, { name, date, distance: fields.distance.trim(), location: fields.location.trim(), organizer: fields.organizer.trim() })
   revalidateAll()
   await captureServerEvent('race_fixed', userId, { raceId, isLeader: true })
 }
