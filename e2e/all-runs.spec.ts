@@ -13,7 +13,7 @@ test('BottomNav has All Runs tab pointing to /all-runs (AC1)', async ({ page }) 
 })
 
 test('loads without auth cookies — no redirect to sign-in (AC2)', async ({ browser }) => {
-  const context = await browser.newContext()
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   const page = await context.newPage()
   await page.goto('/all-runs')
   await page.waitForLoadState('networkidle')
@@ -116,7 +116,7 @@ test('page renders without horizontal overflow at 390px (AC9)', async ({ page })
 })
 
 test('header is standard Header.tsx — no Join NBR, no NORTH BROOKLYN RUNNERS eyebrow (AC10)', async ({ browser }) => {
-  const context = await browser.newContext()
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   const page = await context.newPage()
   await page.goto('/all-runs')
   await page.waitForLoadState('networkidle')
