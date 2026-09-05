@@ -3,15 +3,16 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
-import { CalendarDays, BookOpen, Flag, Map } from 'lucide-react'
+import { CalendarDays, BookOpen, Flag, Map, List } from 'lucide-react'
 import { ClipboardCheckIcon } from './icons'
 
 const allTabs = [
-  { href: '/', label: 'Schedule', icon: CalendarDays, tour: 'schedule', leaderOnly: false },
-  { href: '/plan', label: 'Plan', icon: ClipboardCheckIcon, tour: 'plan', leaderOnly: true },
-  { href: '/library', label: 'Library', icon: BookOpen, tour: 'library', leaderOnly: false },
-  { href: '/races', label: 'Races', icon: Flag, tour: 'races', leaderOnly: false },
-  { href: '/roadmap', label: 'Roadmap', icon: Map, tour: 'roadmap', leaderOnly: false },
+  { href: '/',         label: 'Schedule', icon: CalendarDays,    tour: 'schedule',  leaderOnly: false },
+  { href: '/plan',     label: 'Plan',     icon: ClipboardCheckIcon, tour: 'plan',   leaderOnly: true  },
+  { href: '/all-runs', label: 'All Runs', icon: List,            tour: 'all-runs',  leaderOnly: false },
+  { href: '/library',  label: 'Library',  icon: BookOpen,        tour: 'library',   leaderOnly: false },
+  { href: '/races',    label: 'Races',    icon: Flag,            tour: 'races',     leaderOnly: false },
+  { href: '/roadmap',  label: 'Roadmap',  icon: Map,             tour: 'roadmap',   leaderOnly: false },
 ]
 
 export default function BottomNav() {
