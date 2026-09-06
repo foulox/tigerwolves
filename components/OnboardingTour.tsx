@@ -54,8 +54,11 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
   const pathnameRef = useRef(pathname)
   const pendingStep = useRef<number | null>(null)
   const lastHighlightAt = useRef(0)
+  const activeDriverRef = useRef<{ destroy: () => void } | null>(null)
 
   useEffect(() => { pathnameRef.current = pathname }, [pathname])
+
+  useEffect(() => () => { activeDriverRef.current?.destroy() }, [])
 
   function getSteps() {
     return isLeader ? [...VISITOR_STEPS, ...LEADER_STEPS] : VISITOR_STEPS
@@ -98,6 +101,7 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
         }
       },
       onDestroyStarted: (_el, _step, { driver: d }) => {
+        activeDriverRef.current = null
         document.removeEventListener('click', handleOutsideClick, true)
         if (pendingStep.current === null) {
           localStorage.setItem(SEEN_KEY, '1')
@@ -105,6 +109,7 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
         d.destroy()
       },
     })
+    activeDriverRef.current = driverObj
 
     // Next and Previous keep their normal behavior; a click anywhere else — including on
     // the highlighted element, which driver.js otherwise leaves fully interactive — exits

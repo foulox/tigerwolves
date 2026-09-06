@@ -188,7 +188,7 @@ export default function RunnerWeekPage() {
     date: dates[d],
     isToday: d === today,
     isPast: pastToday.includes(d),
-    hasRun: joined.some((id: RunId) => SERIES[id].day === d),
+    hasRun: joined.some((id: RunId) => SERIES[id]?.day === d),
   }))
 
   return (

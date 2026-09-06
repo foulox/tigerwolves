@@ -17,12 +17,12 @@ function JoinSheet({ onConfirm, onDismiss }: { onConfirm: () => void; onDismiss:
       onClick={onDismiss}
     >
       <div
-        className="bg-white rounded-t-3xl px-5 pb-8 pt-3 flex flex-col gap-4 animate-[slideUp_220ms_ease-out]"
+        className="bg-white rounded-t-3xl px-5 pb-8 pt-3 flex flex-col gap-4 animate-[slideUp_220ms_ease-out] max-h-[85vh] overflow-y-auto"
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         <div className="w-11 h-1.5 rounded-full bg-gray-200 self-center" />
         <div className="flex flex-col gap-1.5">
-          <h2 className="text-[22px] font-extrabold tracking-tight">Join the Helkatz Train</h2>
+          <h2 className="text-[22px] font-extrabold tracking-tight">Join the Hellkatz Train</h2>
           <p className="text-sm leading-relaxed text-gray-600">
             Their Thursday workout shows up in your week alongside your other runs. You can leave any time.
           </p>
@@ -46,7 +46,7 @@ function JoinSheet({ onConfirm, onDismiss }: { onConfirm: () => void; onDismiss:
             onClick={onConfirm}
             className="w-full bg-orange-500 text-white rounded-2xl py-3.5 text-[15px] font-bold shadow-orange-200 shadow-md touch-manipulation"
           >
-            Join the Helkatz Train
+            Join the Hellkatz Train
           </button>
           <button
             onClick={onDismiss}
