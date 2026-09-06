@@ -12,10 +12,7 @@ import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import Header from '@/components/Header'
 import WorkoutDetails from '@/components/WorkoutDetails'
-
-function formatDateShort(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
+import { formatDateShort } from '@/lib/dateUtils'
 
 
 type PlanStandaloneRow = { kind: 'standalone'; workout: WorkoutVariantRow }
@@ -229,7 +226,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
           </button>
           <div className="text-center">
             <div className="text-sm font-semibold text-gray-900">{entry?.leader || '—'}</div>
-            <div className="text-xs text-gray-400">{entry ? formatDateShort(entry.date) : ''}</div>
+            <div className="text-xs text-gray-400">{entry ? formatDateShort(new Date(entry.date + 'T00:00:00')) : ''}</div>
           </div>
           <button
             onClick={() => changeWeek(weekIndex + 1)}
@@ -291,7 +288,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                         <div className="font-semibold text-gray-900">{w.name}</div>
                         <div className="flex items-center gap-2 shrink-0">
                           <VoteBadge v={voteData[workoutVoteId(w.name, w.label ?? '')]} />
-                          <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(w.lastRan) : 'Never'}</span>
+                          <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}</span>
                         </div>
                       </div>
                       {w.label && <div className="text-xs text-gray-400 mt-0.5">{w.label}</div>}
@@ -383,7 +380,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                                   <div className="font-semibold text-gray-900">{w.name}</div>
                                   <div className="flex items-center gap-2 shrink-0">
                                     <VoteBadge v={voteData[workoutVoteId(w.name, w.label ?? '')]} />
-                                    <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(w.lastRan) : 'Never'}</span>
+                                    <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}</span>
                                   </div>
                                 </div>
                                 {w.label && <div className="text-xs text-gray-400 mt-0.5">{w.label}</div>}
@@ -440,7 +437,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                                       </div>
                                       <div className="flex items-center gap-2 shrink-0">
                                         <VoteBadge v={voteData[workoutVoteId(v.name, v.label ?? '')]} />
-                                        <span className="text-xs text-gray-400">{v.lastRan ? formatDateShort(v.lastRan) : 'Never'}</span>
+                                        <span className="text-xs text-gray-400">{v.lastRan ? formatDateShort(new Date(v.lastRan + 'T00:00:00')) : 'Never'}</span>
                                       </div>
                                     </div>
                                     {v.label && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{v.label}</div>}
