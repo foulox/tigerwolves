@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import FeedbackDrawer from './FeedbackDrawer'
 import type { NBRRun } from '@/lib/allRunsData'
+import { formatDateShort } from '@/lib/dateUtils'
 
 type Day = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 type TimeFilter = 'all' | 'am' | 'pm' | 'wknd'
@@ -17,6 +18,8 @@ const DAY_NAMES: Record<Day, string> = {
 
 const CATEGORIES: Category[] = ['All', 'Beginner-Friendly', 'Easy Runs', 'Long Runs', 'Food Runs', 'Workouts']
 
+const TIME_FILTER_LABELS: Record<TimeFilter, string> = { all: 'All week', am: 'Morning', pm: 'Evening', wknd: 'Weekend' }
+
 const CATEGORY_PILL: Record<string, string> = {
   'Beginner-Friendly': 'bg-green-100 text-green-800',
   'Easy Runs':         'bg-sky-100 text-sky-800',
@@ -29,10 +32,6 @@ function offsetDate(base: Date, days: number): Date {
   const d = new Date(base)
   d.setDate(base.getDate() + days)
   return d
-}
-
-function formatDate(d: Date): string {
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function nextOccurrence(base: Date, targetJsDay: number): Date {
@@ -57,19 +56,17 @@ export default function AllRunsClient({ runs, serverDate }: Props) {
 
   function orderedDays(): { day: Day; date: Date; isLead: boolean; label: string }[] {
     if (timeFilter === 'wknd') {
-      return (['sat', 'sun'] as Day[]).map((day, idx) => ({
+      return (['sat', 'sun'] as Day[]).map(day => ({
         day,
         date: nextOccurrence(today, day === 'sat' ? 6 : 0),
         isLead: true,
-        label: idx === 0 ? 'Today' : 'Tomorrow',
       })).map(entry => {
-        // Correct "Today"/"Tomorrow" labels for weekend mode based on actual date
         const diff = Math.round((entry.date.getTime() - today.getTime()) / 86400000)
         return {
           ...entry,
           label: diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : DAY_NAMES[entry.day],
         }
-      })
+      }).sort((a, b) => a.date.getTime() - b.date.getTime())
     }
 
     const todayJsDay = today.getDay()
@@ -104,7 +101,6 @@ export default function AllRunsClient({ runs, serverDate }: Props) {
       {/* Time-of-day toggle */}
       <div className="flex gap-[7px] px-4 pb-2.5" data-testid="time-filter-row">
         {(['all', 'am', 'pm', 'wknd'] as const).map(t => {
-          const labels: Record<TimeFilter, string> = { all: 'All week', am: 'Morning', pm: 'Evening', wknd: 'Weekend' }
           const active = timeFilter === t
           return (
             <button
@@ -117,7 +113,7 @@ export default function AllRunsClient({ runs, serverDate }: Props) {
                   : 'bg-white text-[#8b93a1] border-[#e8eaef]'
               }`}
             >
-              {labels[t]}
+              {TIME_FILTER_LABELS[t]}
             </button>
           )
         })}
@@ -164,7 +160,7 @@ export default function AllRunsClient({ runs, serverDate }: Props) {
                 >
                   {label}
                 </span>
-                <span className="text-[12.5px] font-semibold text-[#a7adb8]">{formatDate(date)}</span>
+                <span className="text-[12.5px] font-semibold text-[#a7adb8]">{formatDateShort(date)}</span>
                 <span className="flex-1 h-px bg-[#e8eaef]" />
               </div>
 
