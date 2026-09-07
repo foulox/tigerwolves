@@ -59,3 +59,4 @@ scripts/backfill-review.json
 # per-project dispatch bookkeeping and session notes (claude-cross-profile#94)
 /dispatch/
 /.agent-sessions/
+/SESSION.md
