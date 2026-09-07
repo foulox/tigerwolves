@@ -3,9 +3,8 @@ import { Geist } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
 import './globals.css'
-import BottomNav from '@/components/BottomNav'
+import ConditionalBottomNav from '@/components/ConditionalBottomNav'
 import PostHogInit from '@/components/PostHogInit'
-import TourMount from '@/components/TourMount'
 
 const geist = Geist({ subsets: ['latin'] })
 
@@ -28,11 +27,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <html lang="en" className="h-full">
         <body className={`${geist.className} bg-gray-50 h-full antialiased`}>
           <PostHogInit isLeader={!!userId} />
-          <TourMount isLeader={!!userId} />
           <main className="max-w-lg mx-auto pb-20 min-h-full">
             {children}
           </main>
-          <BottomNav />
+          <ConditionalBottomNav isLeader={!!userId} />
         </body>
       </html>
     </ClerkProvider>

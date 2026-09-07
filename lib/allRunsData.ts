@@ -24,7 +24,7 @@ export const NBR_RUNS: NBRRun[] = [
   { id: 'tue-tnt',           name: 'Tuesday Night Tempo (TNT)',      day: 'tue', startTime: '7:30pm', startHour: 19.5,  location: 'McCarren Park',        distance: '4–7 mi',                   category: 'Workouts'          },
 
   // Wednesday
-  { id: 'wed-mourning-doves', name: 'Wednesday Mourning Doves',      day: 'wed', startTime: '6:00am', startHour: 6,     location: 'McCarren Park',        distance: '7–11 mi',                  category: 'Long Runs'         },
+  { id: 'wed-mourning-doves', name: 'Wednesday Mourning Doves',      day: 'wed', startTime: '6:00am', startHour: 6,     location: 'Tom Stofka Garden',    distance: '7–11 mi',                  category: 'Long Runs'         },
   { id: 'wed-night-beginner', name: 'Wednesday Night Beginner Run',  day: 'wed', startTime: '7:00pm', startHour: 19,    location: 'McCarren Park',        distance: '2–3 mi',                   category: 'Beginner-Friendly' },
   { id: 'wed-night-road',    name: 'Wednesday Night Road Run',       day: 'wed', startTime: '7:30pm', startHour: 19.5,  location: 'McCarren Park',        distance: '4–6 mi',                   category: 'Easy Runs'         },
   { id: 'wed-night-form',    name: 'Wednesday Night Form Run',       day: 'wed', startTime: '7:30pm', startHour: 19.5,  location: 'Grand Army Plaza',     distance: '3–4 mi',                   category: 'Easy Runs'         },

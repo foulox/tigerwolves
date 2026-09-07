@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
 import { fetchRoadmap } from '@/lib/roadmap'
 import type { RoadmapCard, RoadmapStatus } from '@/lib/roadmap'
@@ -62,6 +63,19 @@ export default async function RoadmapPage() {
         ) : (
           cards.map((card, i) => <RoadmapCardItem key={i} card={card} />)
         )}
+
+        {/* Runner prototype entry point */}
+        <Link
+          href="/runner"
+          className="border border-orange-200 rounded-2xl p-4 bg-orange-50 flex justify-between items-center gap-3 touch-manipulation"
+        >
+          <div>
+            <div className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-1">Preview</div>
+            <div className="font-bold text-gray-900">Runner View</div>
+            <p className="text-sm text-gray-500 mt-0.5">See what runners on multiple NBR runs would experience</p>
+          </div>
+          <span className="text-orange-500 text-lg font-bold flex-none">→</span>
+        </Link>
       </div>
     </div>
   )
