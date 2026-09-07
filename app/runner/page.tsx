@@ -41,11 +41,11 @@ function RunRow({ series, isNext, isPast, expanded, onToggle }: {
       >
         <span className={`w-1 self-stretch min-h-[34px] rounded-full flex-none ${series.bar}`} />
         <div className="flex-1 min-w-0">
-          <div className={`text-[12.5px] font-bold ${isPast ? 'text-gray-400' : 'text-gray-500'}`}>
-            {series.name} · {series.time}
-          </div>
           <div className={`text-[17px] font-bold leading-tight tracking-tight ${isPast ? 'text-[#8b8f97]' : 'text-gray-900'}`}>
-            {content.title}
+            {series.name}
+          </div>
+          <div className={`text-[12.5px] ${isPast ? 'text-gray-400' : 'text-gray-500'}`}>
+            {content.title} · {series.time}
           </div>
         </div>
         <span className={`text-[11.5px] font-semibold rounded-full px-2.5 py-1 whitespace-nowrap flex-none ${isPast ? 'bg-gray-100 text-gray-400' : `${series.pillBg} ${series.pillText}`}`}>
@@ -104,10 +104,10 @@ function TodayCard({ series, expanded, onToggle }: { series: RunSeries; expanded
           <div className="text-[11px] font-bold tracking-wide text-orange-500">
             TODAY · {series.dayName} · {series.time.toUpperCase()}
           </div>
-          <div className="text-[13px] font-bold text-gray-500">{series.name} · {series.place}</div>
           <div className="text-[22px] font-extrabold leading-tight tracking-tight text-gray-900">
-            {content.title}
+            {series.name}
           </div>
+          <div className="text-[13px] text-gray-500">{content.title} · {series.place}</div>
         </div>
         <span className={`text-xs font-semibold rounded-full px-2.5 py-1 whitespace-nowrap flex-none ${series.pillBg} ${series.pillText}`}>
           {series.pillLabel}
@@ -136,6 +136,11 @@ function TodayCard({ series, expanded, onToggle }: { series: RunSeries; expanded
           )}
           <div className="pt-2 border-t border-gray-100 flex justify-between items-center">
             <span className="text-[13px] text-gray-400">{series.leaders}</span>
+            {series.id === 'tigerwolves' && (
+              <Link href="/" className="text-[12.5px] font-bold text-orange-600" onClick={e => e.stopPropagation()}>
+                See all TigerWolves →
+              </Link>
+            )}
           </div>
         </div>
       )}
