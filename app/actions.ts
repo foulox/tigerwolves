@@ -151,9 +151,9 @@ export async function createFeedbackIssue(data: {
 }
 
 async function requireAuth(): Promise<string> {
-  const { userId } = await auth()
-  if (!userId) throw new Error('Unauthorized')
-  return userId
+  const user = await currentUser()
+  if (!user || user.publicMetadata?.role !== 'leader') throw new Error('Unauthorized')
+  return user.id
 }
 
 function revalidateAll() {

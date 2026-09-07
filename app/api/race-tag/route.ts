@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { castRaceTag, RACE_TIERS } from '@/lib/raceTags'
 import { captureServerEvent } from '@/lib/analytics'
 import type { RaceTier } from '@/lib/raceTags'
@@ -33,14 +33,15 @@ export async function POST(req: NextRequest) {
   const tally = await castRaceTag(raceId, tier, prevTier)
 
   // No auth gate here — tagging is open to anonymous runners, same as workout
-  // reactions. This auth() call is purely observational, to label the event.
-  const { userId } = await auth()
+  // reactions. currentUser() is purely observational, to label the event accurately.
+  const user = await currentUser()
+  const isLeader = user?.publicMetadata?.role === 'leader'
 
-  await captureServerEvent('race_tag_cast', userId ?? 'anonymous-runner', {
+  await captureServerEvent('race_tag_cast', user?.id ?? 'anonymous-runner', {
     raceId,
     tier: tier ?? 'none',
     is_change: !!prevTier,
-    isLeader: !!userId,
+    isLeader,
   })
 
   return NextResponse.json(tally)

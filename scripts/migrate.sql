@@ -126,3 +126,69 @@ WHERE NOT EXISTS (SELECT 1 FROM run_groups WHERE name = 'TigerWolves');
 -- every run (no migration-tracking table), so a second run must not fail once
 -- `workouts` is already gone.
 ALTER TABLE IF EXISTS workouts RENAME TO workouts_legacy;
+
+-- #309: multi-run foundation — runs table, runner_follows, and new columns for run identity
+-- Lou runs this against Neon Production and Staging after the PR merges.
+-- Post-migration steps (all done by Lou in external tools):
+--   1. Disable Restricted mode on both the Production and Development Clerk instances.
+--   2. Set publicMetadata.role = 'leader' for every TigerWolves leader in the Clerk dashboard.
+--   3. Set role = 'leader' on the Playwright test-leader account (.env.test PLAYWRIGHT_TEST_EMAIL).
+--   4. Backfill run_leaders.clerk_user_id for each active TigerWolves leader (see example below).
+
+CREATE TABLE IF NOT EXISTS runs (
+  id                  TEXT PRIMARY KEY,   -- slug: 'tigerwolves', 'mourning-doves'
+  name                TEXT NOT NULL,
+  emoji               TEXT,
+  description         TEXT,
+  day_of_week         TEXT,               -- 'Tuesday', 'Wednesday'
+  meeting_time        TEXT,               -- '6:30 AM'
+  meeting_location    TEXT,
+  warmup_description  TEXT,               -- default warm-up block; overridable per workout via workout_families.warmup_override
+  closing_notes       TEXT,               -- bag drop, logistics — static per run
+  post_header         TEXT                -- full opening block of the Heylo post (before dynamic date/workout lines)
+);
+
+-- TigerWolves seed row — values extracted from lib/postBuilder.ts (the current hardcoded post).
+-- Story 2 will replace hardcoded buildPost strings with a DB-driven buildPost(run, ...) call.
+INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, warmup_description, closing_notes, post_header)
+SELECT
+  'tigerwolves',
+  'TigerWolves',
+  '🐯🐺',
+  'North Brooklyn Runners'' Tuesday morning quality workout run.',
+  'Tuesday',
+  '6:30 AM',
+  'Tom Stofka Garden, aka "Da Bins"',
+  $$📍 Starting point and route: Tom Stofka Garden, aka "Da Bins."
+We'll warm up by jogging to Marsha P. Johnson which is at the corner of North 8th and Kent
+The run will be along the Kent Avenue Speedway
+We'll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track$$,
+  'Bag Drop: Sorry, Not available',
+  $$🐯🐺 TigerWolves Tuesday Workout
+
+👉 https://tigerwolves.foulox.me 👈
+👀 See every workout between now and the NYC Marathon in the app
+🗳️ React to let us know what you like — and what you don't$$
+WHERE NOT EXISTS (SELECT 1 FROM runs WHERE id = 'tigerwolves');
+
+CREATE TABLE IF NOT EXISTS runner_follows (
+  clerk_user_id  TEXT NOT NULL,
+  run_id         TEXT NOT NULL REFERENCES runs(id),
+  joined_at      TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (clerk_user_id, run_id)
+);
+
+-- Add run_id to schedule. NOT NULL DEFAULT 'tigerwolves' backfills all existing rows immediately in Postgres.
+ALTER TABLE schedule ADD COLUMN IF NOT EXISTS run_id TEXT NOT NULL DEFAULT 'tigerwolves';
+
+-- Add clerk_user_id to run_leaders — nullable; Lou backfills with actual Clerk user IDs after migration.
+-- Example: UPDATE run_leaders SET clerk_user_id = 'user_abc123' WHERE name = 'Lou Fox' AND run_id = 'tigerwolves';
+ALTER TABLE run_leaders ADD COLUMN IF NOT EXISTS clerk_user_id TEXT;
+
+-- Add Story-2 forward-compat columns to workout_families.
+-- warmup_override: per-workout override for the run's default warmup_description (null = use run default).
+-- route_description / route_link: turn-by-turn text and map URL for non-quality (route) runs.
+-- Note: run_group_id (existing INT FK) already handles workout-to-run scoping; no run_id column added here.
+ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS warmup_override TEXT;
+ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS route_description TEXT;
+ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS route_link TEXT;

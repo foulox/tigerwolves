@@ -1,13 +1,13 @@
 import { Suspense } from 'react'
-import { auth } from '@clerk/nextjs/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { fetchData } from '@/lib/db'
 import Header from '@/components/Header'
 import RegroupWorkoutsForm from '@/components/RegroupWorkoutsForm'
 
 export default async function AdminPage() {
-  const { userId } = await auth()
-  if (!userId) redirect('/sign-in')
+  const user = await currentUser()
+  if (!user || user.publicMetadata?.role !== 'leader') redirect('/sign-in')
   const { workoutVariants } = await fetchData()
   return (
     <div>

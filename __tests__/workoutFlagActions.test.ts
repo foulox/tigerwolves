@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { dbFlagWorkoutVariantMock, dbFixWorkoutVariantAndClearFlagMock, captureServerEventMock, authMock, WorkoutVariantNotFoundError } = vi.hoisted(() => {
+const { dbFlagWorkoutVariantMock, dbFixWorkoutVariantAndClearFlagMock, captureServerEventMock, authMock, currentUserMock, WorkoutVariantNotFoundError } = vi.hoisted(() => {
   class WorkoutVariantNotFoundError extends Error {
     constructor(variantId: number) {
       super(`Workout variant ${variantId} not found`)
@@ -12,6 +12,7 @@ const { dbFlagWorkoutVariantMock, dbFixWorkoutVariantAndClearFlagMock, captureSe
     dbFixWorkoutVariantAndClearFlagMock: vi.fn().mockResolvedValue(undefined),
     captureServerEventMock: vi.fn().mockResolvedValue(undefined),
     authMock: vi.fn().mockResolvedValue({ userId: null }),
+    currentUserMock: vi.fn().mockResolvedValue(null),
     WorkoutVariantNotFoundError,
   }
 })
@@ -43,7 +44,7 @@ vi.mock('@/lib/analytics', () => ({
 
 vi.mock('@clerk/nextjs/server', () => ({
   auth: authMock,
-  currentUser: vi.fn(),
+  currentUser: currentUserMock,
 }))
 
 vi.mock('next/navigation', () => ({
@@ -66,6 +67,7 @@ const VARIANT_ID = 42
 beforeEach(() => {
   vi.clearAllMocks()
   authMock.mockResolvedValue({ userId: null })
+  currentUserMock.mockResolvedValue(null)
 })
 
 describe('flagWorkoutIssue', () => {
@@ -113,14 +115,14 @@ describe('fixWorkoutAndClearFlag', () => {
   })
 
   it('returns an error when reason is blank', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     const result = await fixWorkoutAndClearFlag(VARIANT_ID, { ...fields, reason: '   ' })
     expect(result).toEqual({ error: 'Reason is required' })
     expect(dbFixWorkoutVariantAndClearFlagMock).not.toHaveBeenCalled()
   })
 
-  it('fixes the workout when signed in with valid fields', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+  it('fixes the workout when signed in as a leader with valid fields', async () => {
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     const result = await fixWorkoutAndClearFlag(VARIANT_ID, fields)
     expect(result).toBeUndefined()
     expect(dbFixWorkoutVariantAndClearFlagMock).toHaveBeenCalledWith(VARIANT_ID, fields)
@@ -128,7 +130,7 @@ describe('fixWorkoutAndClearFlag', () => {
   })
 
   it('trims fields before saving', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     await fixWorkoutAndClearFlag(VARIANT_ID, { reason: '  VO2max  ', distTime: '  8 x 800m  ', instructions: '  warm up  ' })
     expect(dbFixWorkoutVariantAndClearFlagMock).toHaveBeenCalledWith(VARIANT_ID, {
       reason: 'VO2max',
@@ -138,7 +140,7 @@ describe('fixWorkoutAndClearFlag', () => {
   })
 
   it('returns a friendly error instead of throwing when the workout was renamed/moved underneath it', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     dbFixWorkoutVariantAndClearFlagMock.mockRejectedValueOnce(new WorkoutVariantNotFoundError(VARIANT_ID))
     const result = await fixWorkoutAndClearFlag(VARIANT_ID, fields)
     expect(result).toEqual({ error: 'This workout may have changed since you opened this page — refresh and try again.' })
@@ -146,7 +148,7 @@ describe('fixWorkoutAndClearFlag', () => {
   })
 
   it('still propagates an unexpected (non-not-found) DB error rather than swallowing it', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     dbFixWorkoutVariantAndClearFlagMock.mockRejectedValueOnce(new Error('connection reset'))
     await expect(fixWorkoutAndClearFlag(VARIANT_ID, fields)).rejects.toThrow('connection reset')
   })

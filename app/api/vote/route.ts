@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { castVote, ratingToEmoji } from '@/lib/votes'
 import { captureServerEvent } from '@/lib/analytics'
 import type { Rating } from '@/lib/votes'
@@ -32,17 +32,18 @@ export async function POST(req: NextRequest) {
 
   const voteData = await castVote(workoutId, rating as Rating, prevRating)
 
-  // No auth gate here — reactions are open to anonymous runners. This auth()
-  // call is purely observational, to label the event accurately in PostHog.
-  const { userId } = await auth()
+  // No auth gate here — reactions are open to anonymous runners. currentUser()
+  // is purely observational, to label the event accurately in PostHog.
+  const user = await currentUser()
+  const isLeader = user?.publicMetadata?.role === 'leader'
 
-  await captureServerEvent('reaction_cast', userId ?? 'anonymous-runner', {
+  await captureServerEvent('reaction_cast', user?.id ?? 'anonymous-runner', {
     workoutId,
     workoutName: typeof workoutName === 'string' ? workoutName : workoutId,
     rating,
     emoji: ratingToEmoji(rating),
     is_change: !!prevRating,
-    isLeader: !!userId,
+    isLeader,
   })
 
   // voteData is null only if all buckets sum to zero after the pipeline (e.g. negative counts

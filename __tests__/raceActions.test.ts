@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { dbInsertRaceMock, dbFlagRaceMock, dbVerifyRaceMock, dbFixRaceMock, captureServerEventMock, authMock } = vi.hoisted(() => ({
+const { dbInsertRaceMock, dbFlagRaceMock, dbVerifyRaceMock, dbFixRaceMock, captureServerEventMock, authMock, currentUserMock } = vi.hoisted(() => ({
   dbInsertRaceMock: vi.fn().mockResolvedValue(42),
   dbFlagRaceMock: vi.fn().mockResolvedValue(undefined),
   dbVerifyRaceMock: vi.fn().mockResolvedValue(undefined),
   dbFixRaceMock: vi.fn().mockResolvedValue(undefined),
   captureServerEventMock: vi.fn().mockResolvedValue(undefined),
   authMock: vi.fn().mockResolvedValue({ userId: null }),
+  currentUserMock: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -36,7 +37,7 @@ vi.mock('@/lib/analytics', () => ({
 
 vi.mock('@clerk/nextjs/server', () => ({
   auth: authMock,
-  currentUser: vi.fn(),
+  currentUser: currentUserMock,
 }))
 
 vi.mock('next/navigation', () => ({
@@ -57,6 +58,7 @@ import { addRace, flagRaceIssue, verifyRace, fixRaceAndClearFlag } from '../app/
 beforeEach(() => {
   vi.clearAllMocks()
   authMock.mockResolvedValue({ userId: null })
+  currentUserMock.mockResolvedValue(null)
   dbInsertRaceMock.mockResolvedValue(42)
 })
 
@@ -142,8 +144,8 @@ describe('verifyRace', () => {
     expect(dbVerifyRaceMock).not.toHaveBeenCalled()
   })
 
-  it('verifies the race when signed in', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+  it('verifies the race when signed in as a leader', async () => {
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     await verifyRace(1)
     expect(dbVerifyRaceMock).toHaveBeenCalledWith(1)
     expect(captureServerEventMock).toHaveBeenCalledWith('race_verified', 'user_leader_1', { raceId: 1, isLeader: true })
@@ -159,21 +161,21 @@ describe('fixRaceAndClearFlag', () => {
   })
 
   it('returns an error when name is blank', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     const result = await fixRaceAndClearFlag(1, { ...fields, name: '  ' })
     expect(result).toEqual({ error: 'Race name is required' })
     expect(dbFixRaceMock).not.toHaveBeenCalled()
   })
 
   it('returns an error when date is not a real calendar date', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     const result = await fixRaceAndClearFlag(1, { ...fields, date: '2026-13-01' })
     expect(result).toEqual({ error: 'Enter a valid date' })
     expect(dbFixRaceMock).not.toHaveBeenCalled()
   })
 
-  it('fixes the race when signed in with valid fields', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+  it('fixes the race when signed in as a leader with valid fields', async () => {
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     const result = await fixRaceAndClearFlag(1, fields)
     expect(result).toBeUndefined()
     expect(dbFixRaceMock).toHaveBeenCalledWith(1, fields)
