@@ -15,6 +15,7 @@ This file holds only what must never be missed regardless of task — guardrails
 - **[Wiki Home](https://github.com/foulox/tigerwolves/wiki)** — start here if nothing else below obviously matches
 - **[Architecture Overview](https://github.com/foulox/tigerwolves/wiki/Architecture-Overview)** — stack, data flow, key files, auth model, observability, AI-assist feature, Heylo post generation — **read this before any non-trivial architecture change, full stop**
 - **[Contributing](https://github.com/foulox/tigerwolves/wiki/Contributing)** — branching, PR workflow, self-review checklist, testing standard, epic tracking, labels — **read this before opening a PR, every time**
+- **[PostHog Events](https://github.com/foulox/tigerwolves/wiki/PostHog-Events)** — what analytics events are tracked and why — **read before adding or modifying any `posthog.capture()` call**
 - **[Leader Guide](https://github.com/foulox/tigerwolves/wiki/Leader-Guide)** — what the app does screen-by-screen, workout categories/types, rotation
 - **[Architecture Decisions](https://github.com/foulox/tigerwolves/wiki/Architecture-Decisions)** — ADRs, the "why" behind non-obvious choices
 - **[Local Setup](https://github.com/foulox/tigerwolves/wiki/Local-Setup)** — clone, env vars, running locally
