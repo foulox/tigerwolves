@@ -249,29 +249,7 @@ export default function RunnerWeekPage() {
           />
         ))}
 
-        {/* Hellkatz — not joined slot */}
-        {!hellkatzJoined && (
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold tracking-widest uppercase text-gray-400">THURSDAY</span>
-              <span className="flex-1 h-px bg-gray-100" />
-            </div>
-            <Link
-              href="/runner/all-runs"
-              className="rounded-2xl border-2 border-dashed border-gray-200 px-4 py-3.5 flex justify-between items-center touch-manipulation"
-            >
-              <div>
-                <div className="text-[15px] font-bold text-gray-400">Hellkatz · not joined</div>
-                <div className="text-[12.5px] text-gray-300">Runs Thursdays 6:45am · McCarren Track</div>
-              </div>
-              <span className="text-xs font-bold text-orange-600 bg-orange-50 rounded-full px-3 py-1.5 whitespace-nowrap">
-                See runs
-              </span>
-            </Link>
-          </div>
-        )}
-
-        {/* Hellkatz — joined */}
+        {/* Hellkatz — only shown after joining from All Runs */}
         {hellkatzJoined && (
           <RunRow
             series={SERIES.hellkatz}
