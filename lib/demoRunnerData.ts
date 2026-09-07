@@ -110,7 +110,7 @@ export const SERIES: Record<RunId, RunSeries> = {
   },
   hellkatz: {
     id: 'hellkatz',
-    name: 'Hellkatz',
+    name: 'Helkatz',
     fullName: 'Thursday Morning Hellkatz',
     day: 'thu',
     dayName: 'THURSDAY',

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
 import {
@@ -22,7 +23,7 @@ function JoinSheet({ onConfirm, onDismiss }: { onConfirm: () => void; onDismiss:
       >
         <div className="w-11 h-1.5 rounded-full bg-gray-200 self-center" />
         <div className="flex flex-col gap-1.5">
-          <h2 className="text-[22px] font-extrabold tracking-tight">Join the Hellkatz Train</h2>
+          <h2 className="text-[22px] font-extrabold tracking-tight">Join the Helkatz Train</h2>
           <p className="text-sm leading-relaxed text-gray-600">
             Their Thursday workout shows up in your week alongside your other runs. You can leave any time.
           </p>
@@ -46,7 +47,7 @@ function JoinSheet({ onConfirm, onDismiss }: { onConfirm: () => void; onDismiss:
             onClick={onConfirm}
             className="w-full bg-orange-500 text-white rounded-2xl py-3.5 text-[15px] font-bold shadow-orange-200 shadow-md touch-manipulation"
           >
-            Join the Hellkatz Train
+            Join the Helkatz Train
           </button>
           <button
             onClick={onDismiss}
@@ -108,22 +109,26 @@ export default function AllRunsPage() {
             <div className="text-[11px] font-bold tracking-widest uppercase text-gray-400">
               Your Runs
             </div>
-            {yourRuns.map(series => (
-              <div
-                key={series.id}
-                className="bg-white border border-gray-100 rounded-2xl px-4 py-3.5 flex gap-3 items-center"
-              >
-                <span className={`w-1 self-stretch min-h-[32px] rounded-full flex-none ${series.bar}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[15.5px] font-bold text-gray-900">{series.name}</div>
-                  <div className="text-[13px] text-gray-400">{DAY_LABEL[series.day]}s · {series.time}</div>
-                </div>
-                <span className="text-xs font-bold text-green-700 bg-green-100 rounded-full px-2.5 py-1 flex items-center gap-1">
-                  <Check size={11} strokeWidth={3} />
-                  Joined
-                </span>
-              </div>
-            ))}
+            {yourRuns.map(series => {
+              const href = series.id === 'tigerwolves' ? '/' : series.id === 'doves' ? '/runner/run/mourning-doves' : null
+              const cls = "bg-white border border-gray-100 rounded-2xl px-4 py-3.5 flex gap-3 items-center touch-manipulation"
+              const inner = (
+                <>
+                  <span className={`w-1 self-stretch min-h-[32px] rounded-full flex-none ${series.bar}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[15.5px] font-bold text-gray-900">{series.name}</div>
+                    <div className="text-[13px] text-gray-400">{DAY_LABEL[series.day]}s · {series.time}</div>
+                  </div>
+                  <span className="text-xs font-bold text-green-700 bg-green-100 rounded-full px-2.5 py-1 flex items-center gap-1">
+                    <Check size={11} strokeWidth={3} />
+                    Joined
+                  </span>
+                </>
+              )
+              return href
+                ? <Link key={series.id} href={href} className={cls}>{inner}</Link>
+                : <div key={series.id} className={cls}>{inner}</div>
+            })}
             {/* Hellkatz joined state */}
             {hellkatzJoined && (
               <div className="bg-white border border-sky-200 rounded-2xl px-4 py-3.5 flex gap-3 items-center">
@@ -152,7 +157,7 @@ export default function AllRunsPage() {
                 className="w-full text-left bg-white border border-gray-100 rounded-2xl px-4 py-3.5 flex justify-between items-center gap-3 touch-manipulation"
               >
                 <div>
-                  <div className="text-[15.5px] font-bold text-gray-900">Hellkatz</div>
+                  <div className="text-[15.5px] font-bold text-gray-900">{SERIES.hellkatz.name}</div>
                   <div className="text-[13px] text-gray-400">Thursdays · 6:45am · McCarren Track</div>
                   <div className="text-[12.5px] text-gray-300 mt-0.5">Track workouts</div>
                 </div>

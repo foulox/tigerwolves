@@ -59,7 +59,7 @@ function RouteCard({ route, expanded, onToggle }: {
 }
 
 export default function MourningDovesPage() {
-  const [expanded, setExpanded] = useState<Record<number, boolean>>({ 0: true })
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({})
   const s = SERIES.doves
 
   const toggle = (i: number) => setExpanded((prev: Record<number, boolean>) => ({ ...prev, [i]: !prev[i] }))
@@ -68,7 +68,7 @@ export default function MourningDovesPage() {
     <div className="flex flex-col gap-0 pt-10">
       {/* Header */}
       <div className="px-4 pb-2 flex items-center gap-3">
-        <Link href="/runner" aria-label="Back to My Week" className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 touch-manipulation">
+        <Link href="/runner" aria-label="Back" className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 touch-manipulation">
           <ChevronLeft size={18} strokeWidth={2} />
         </Link>
         <div className="flex-1 min-w-0">

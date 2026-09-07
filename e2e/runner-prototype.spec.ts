@@ -82,24 +82,24 @@ test.describe('Runner prototype — #302', () => {
       // Joined runs should be visible
       await expect(page.getByText('TigerWolves')).toBeVisible()
       await expect(page.getByText('Mourning Doves')).toBeVisible()
-      // Hellkatz shown as available
-      await expect(page.getByText('Hellkatz')).toBeVisible()
+      // Helkatz shown as available
+      await expect(page.getByText('Helkatz')).toBeVisible()
     })
 
     // AC7
     test('tapping Hellkatz opens join confirmation sheet', async ({ page }) => {
-      await page.getByText('Hellkatz').click()
+      await page.getByText('Helkatz').click()
       await expect(page.getByText('Join the Helkatz Train')).toBeVisible()
     })
 
     // AC8
     test('confirming join adds Hellkatz to My Week via localStorage', async ({ page }) => {
-      await page.getByText('Hellkatz').click()
+      await page.getByText('Helkatz').click()
       await page.getByRole('button', { name: 'Join the Helkatz Train' }).click()
       // Navigate to My Week — localStorage persists within same test context
       await page.goto('/runner')
-      // Hellkatz should now appear in My Week
-      await expect(page.getByText('Hellkatz')).toBeVisible()
+      // Helkatz should now appear in My Week
+      await expect(page.getByText('Helkatz')).toBeVisible()
     })
 
     // AC9 — all runs tappable (TigerWolves links to /, Mourning Doves to its run page)

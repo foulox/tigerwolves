@@ -29,8 +29,8 @@ function RunRow({ series, isNext, isPast, expanded, onToggle }: {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
-        <span className={`text-[11px] font-bold tracking-widest uppercase ${isPast ? 'text-gray-400' : 'text-gray-500'}`}>
-          {series.dayName}
+        <span className={`text-[11px] font-bold tracking-widest uppercase ${isPast ? 'text-gray-400' : isNext ? 'text-orange-500' : 'text-gray-500'}`}>
+          {isNext ? 'NEXT UP' : series.dayName}
           {isPast && ' · DONE'}
         </span>
         <span className="flex-1 h-px bg-gray-100" />
@@ -150,7 +150,7 @@ function TodayCard({ series, expanded, onToggle }: { series: RunSeries; expanded
 
 export default function RunnerWeekPage() {
   const [joined, setJoined] = useState<RunId[]>(DEFAULT_JOINED)
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ doves: true })
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   // Read join state from localStorage on mount
   useEffect(() => {
@@ -238,11 +238,11 @@ export default function RunnerWeekPage() {
         )}
 
         {/* Upcoming runs this week */}
-        {upcomingRuns.map(series => (
+        {upcomingRuns.map((series, i) => (
           <RunRow
             key={series.id}
             series={series}
-            isNext={false}
+            isNext={i === 0}
             isPast={false}
             expanded={!!expanded[series.id]}
             onToggle={() => toggleExpanded(series.id)}
