@@ -36,7 +36,8 @@ test.describe('Runner prototype — #302', () => {
     test('tapping a run card expands to show workout detail', async ({ page }) => {
       // The Mourning Doves card is NEXT UP and should show detail on tap
       await page.getByText(/Mourning Doves/i).first().click()
-      await expect(page.getByText(/Socrates Sculpture Park/i)).toBeVisible()
+      // "Hey Doves!" only appears in the expanded prose, not the compact subtitle
+      await expect(page.getByText(/Hey Doves/i)).toBeVisible()
     })
 
     // AC4 — Mourning Doves links to /runner/run/mourning-doves
@@ -69,7 +70,8 @@ test.describe('Runner prototype — #302', () => {
     await expect(page.getByText(/Mourning Doves/i).first()).toBeVisible()
     await expect(page.getByText('NEXT UP')).toBeVisible()
     await expect(page.getByText(/Socrates Sculpture Park/i)).toBeVisible()
-    await expect(page.getByText(/Sep 9|Wed.*9|9.*Wed/i)).toBeVisible()
+    // "Wednesday, Sep 9" is exact — avoids false matches on Sep 16's "~9mi" description
+    await expect(page.getByText('Wednesday, Sep 9').first()).toBeVisible()
   })
 
   test.describe('All Runs — /runner/all-runs', () => {
@@ -89,7 +91,8 @@ test.describe('Runner prototype — #302', () => {
     // AC7
     test('tapping Hellkatz opens join confirmation sheet', async ({ page }) => {
       await page.getByText('Helkatz').click()
-      await expect(page.getByText('Join the Helkatz Train')).toBeVisible()
+      // Use heading role to avoid matching both the h2 and the identically-named button
+      await expect(page.getByRole('heading', { name: 'Join the Helkatz Train' })).toBeVisible()
     })
 
     // AC8

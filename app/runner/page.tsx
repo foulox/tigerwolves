@@ -166,7 +166,6 @@ export default function RunnerWeekPage() {
   // Build the week's run list, sorted by day order
   const { today, pastToday, dates } = DEMO_WEEK
   const todaySeries = Object.values(SERIES).find(s => s.day === today && joined.includes(s.id)) ?? null
-  const hellkatzJoined = joined.includes('hellkatz')
 
   // Upcoming rows (after today, this week)
   const dayOrder = DAY_ORDER
@@ -248,17 +247,6 @@ export default function RunnerWeekPage() {
             onToggle={() => toggleExpanded(series.id)}
           />
         ))}
-
-        {/* Hellkatz — only shown after joining from All Runs */}
-        {hellkatzJoined && (
-          <RunRow
-            series={SERIES.hellkatz}
-            isNext={false}
-            isPast={false}
-            expanded={!!expanded.hellkatz}
-            onToggle={() => toggleExpanded('hellkatz')}
-          />
-        )}
 
         {/* Next week runs */}
         {nextWeekRuns.map(series => (
