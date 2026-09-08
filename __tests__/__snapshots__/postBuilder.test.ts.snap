@@ -1,0 +1,27 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildPost > TigerWolves output matches pre-parameterization snapshot 1`] = `
+"🐯🐺 TigerWolves Tuesday Workout
+
+👉 https://tigerwolves.foulox.me 👈
+👀 See every workout between now and the NYC Marathon in the app
+🗳️ React to let us know what you like — and what you don't
+
+📅 Wednesday, June 24
+🏃🏻‍♂️‍➡️ Ladder: Tempo Ladder
+
+Build lactate threshold
+
+📍 Starting point and route: Tom Stofka Garden, aka "Da Bins."
+We'll warm up by jogging to Marsha P. Johnson which is at the corner of North 8th and Kent
+The run will be along the Kent Avenue Speedway
+We'll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track
+
+🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁
+5min/4min/3min/2min/1min@tempo, r90s
+
+Bag Drop: Sorry, Not available
+
+Led by Lou — see you out there! 🔥
+Run Leaders: Luis, Lou, Kostas, Joelle, Kelsey, Obi, Jared"
+`;

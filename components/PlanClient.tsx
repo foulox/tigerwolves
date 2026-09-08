@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { ScheduleEntry, WorkoutVariantRow } from '@/lib/data'
+import type { ScheduleEntry, WorkoutVariantRow, RunConfig } from '@/lib/data'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import { buildPost, formatDateLong } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
@@ -32,9 +32,12 @@ type Props = {
   initialWeekIndex?: number
   isLeader: boolean
   voteData?: Record<string, VoteData | null>
+  // Temporary — Task 5 makes these required
+  runConfig?: RunConfig
+  roster?: string[]
 }
 
-export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {} }: Props) {
+export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {}, runConfig, roster = [] }: Props) {
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
   const [selectedWorkouts, setSelectedWorkouts] = useState<WorkoutVariantRow[]>([])
   const [showCount, setShowCount] = useState(3)
@@ -174,7 +177,9 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
     setSaved(false)
   }
 
-  const post = entry && effectiveSelections.length > 0 ? buildPost(entry, effectiveSelections, activeType) : ''
+  const post = entry && effectiveSelections.length > 0 && runConfig
+    ? buildPost(entry, effectiveSelections, runConfig, roster, activeType)
+    : ''
 
   function handleCopy() {
     navigator.clipboard.writeText(post).then(() => {

@@ -49,12 +49,7 @@ export function formatMainContent(instructions: string): string {
   return splitRespectParens(mainPart, ' / ').join(' /\n')
 }
 
-import type { ScheduleEntry, WorkoutVariantRow } from './data'
-
-// Hardcoded fallback — will be replaced with DB-driven roster in story #310's
-// buildPost refactor. Kept here (rather than re-exporting from data.ts) because
-// data.ts no longer exports RUN_LEADERS; the static array is only needed here.
-const RUN_LEADERS = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']
+import type { ScheduleEntry, WorkoutVariantRow, RunConfig } from './data'
 
 // Turnaround is a stored field now (has_turnaround/turnaround, set at write time —
 // AI-suggested, leader-editable), not computed from instructions text. If
@@ -65,12 +60,18 @@ function turnaroundLine(w: WorkoutVariantRow): string | null {
   return w.hasTurnaround && w.turnaround ? `↩️ TURN AROUND: ${w.turnaround}` : null
 }
 
-export function buildPost(entry: ScheduleEntry, selections: WorkoutVariantRow[], activeType: string | null = null): string {
+export function buildPost(
+  entry: ScheduleEntry,
+  selections: WorkoutVariantRow[],
+  runConfig: RunConfig,
+  roster: string[],
+  activeType: string | null = null,
+): string {
   const sorted = [...selections].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
   const primary = sorted[0]
 
   const lines = [
-    '🐯🐺 TigerWolves Tuesday Workout',
+    runConfig.postHeader,
     '',
     '👉 https://tigerwolves.foulox.me 👈',
     '👀 See every workout between now and the NYC Marathon in the app',
@@ -82,14 +83,7 @@ export function buildPost(entry: ScheduleEntry, selections: WorkoutVariantRow[],
 
   if (primary.reason) lines.push('', primary.reason)
 
-  lines.push(
-    '',
-    '📍 Starting point and route: Tom Stofka Garden, aka "Da Bins."',
-    'We\'ll warm up by jogging to Marsha P. Johnson which is at the corner of North 8th and Kent',
-    'The run will be along the Kent Avenue Speedway',
-    'We\'ll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track',
-    '',
-  )
+  lines.push('', ...runConfig.meetingLocation.split('\n').map((l, i) => i === 0 ? `📍 ${l}` : l), '')
 
   if (sorted.length === 2) {
     const [standard, longer] = sorted
@@ -117,10 +111,10 @@ export function buildPost(entry: ScheduleEntry, selections: WorkoutVariantRow[],
 
   lines.push(
     '',
-    'Bag Drop: Sorry, Not available',
+    runConfig.closingNotes,
     '',
     `Led by ${entry.leader} — see you out there! 🔥`,
-    `Run Leaders: ${RUN_LEADERS.join(', ')}`,
+    `${runConfig.leaderIntro} ${roster.join(', ')}`,
   )
 
   return lines.join('\n')
