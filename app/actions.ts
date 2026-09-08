@@ -21,6 +21,7 @@ import {
   dbFixWorkoutVariantAndClearFlag,
   dbRegroupVariants,
   WorkoutVariantNotFoundError,
+  getLeaderRun,
 } from '@/lib/db'
 import { buildWorkoutVariantInput } from '@/lib/workoutVariant'
 import { captureServerEvent } from '@/lib/analytics'
@@ -315,7 +316,12 @@ export async function saveScheduleLeader(date: string, leader: string): Promise<
   try {
     const user = await currentUser()
     if (!user || user.publicMetadata?.role !== 'leader') throw new Error('Unauthorized')
-    await sql`UPDATE schedule SET leader = ${leader}, needs_leader = null WHERE date = ${date}::date`
+    // Verify the schedule entry belongs to the caller's run
+    const run = await getLeaderRun(user.id)
+    if (!run) throw new Error('Forbidden')
+    const entryRows = await sql`SELECT run_id FROM schedule WHERE date = ${date}::date AND run_id = ${run.id}`
+    if (!entryRows[0]) throw new Error('Forbidden')
+    await sql`UPDATE schedule SET leader = ${leader}, needs_leader = null WHERE date = ${date}::date AND run_id = ${run.id}`
     updateTag('tigerwolves-data')
     await captureServerEvent('schedule_leader_changed', user.id, { date, leader })
   } catch (err) {

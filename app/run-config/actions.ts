@@ -1,9 +1,23 @@
 'use server'
 import { currentUser } from '@clerk/nextjs/server'
+import type { User } from '@clerk/nextjs/server'
 import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
 import { sql, getLeaderRun, getRunRoster } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
+
+/** Throws 'Forbidden' if the caller's run does not match runId. */
+async function assertCallerOwnsRun(user: User, runId: string): Promise<void> {
+  const run = await getLeaderRun(user.id)
+  if (!run || run.id !== runId) throw new Error('Forbidden')
+}
+
+/** Fetches the run_id for a run_leaders row and asserts the caller owns it. */
+async function assertCallerOwnsLeaderRow(user: User, leaderId: number): Promise<void> {
+  const rows = await sql`SELECT run_id FROM run_leaders WHERE id = ${leaderId}`
+  if (!rows[0]) throw new Error('Forbidden')
+  await assertCallerOwnsRun(user, rows[0].run_id as string)
+}
 
 export async function savePostTemplate(data: {
   postHeader: string
@@ -39,6 +53,15 @@ export async function saveRotationOrder(
   try {
     const user = await currentUser()
     if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
+    // Verify all IDs belong to the caller's run
+    if (orderedIds.length > 0) {
+      const run = await getLeaderRun(user.id)
+      if (!run) return { error: 'Run not found' }
+      const ownershipRows = await sql`
+        SELECT run_id FROM run_leaders WHERE id = ANY(${orderedIds})
+      `
+      if (ownershipRows.some(r => (r.run_id as string) !== run.id)) return { error: 'Forbidden' }
+    }
     for (let i = 0; i < orderedIds.length; i++) {
       await sql`UPDATE run_leaders SET sort_order = ${i + 1} WHERE id = ${orderedIds[i]}`
     }
@@ -57,6 +80,13 @@ export async function saveAwayPeriod(
   try {
     const user = await currentUser()
     if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized', reassignedCount: 0, noLeaderDates: [] }
+
+    // Verify caller owns the targeted leader row
+    try {
+      await assertCallerOwnsLeaderRow(user, leaderId)
+    } catch {
+      return { error: 'Forbidden', reassignedCount: 0, noLeaderDates: [] }
+    }
 
     // Append period to away_periods
     await sql`
@@ -88,11 +118,24 @@ export async function saveAwayPeriod(
 
     for (const row of affected) {
       const dateStr = (row.date as Date).toISOString().slice(0, 10)
-      // Find the previous leader (the one before this leader in rotation on this date)
-      // Then advance from them to skip the away leader
-      const beforeIdx = roster.findIndex(l => l.name === leaderName)
-      const prevLeader = roster[(beforeIdx - 1 + roster.length) % roster.length]
-      const next = getNextLeader(roster, prevLeader.name, dateStr)
+      // Use the actual leader from the schedule entry immediately before this date as the
+      // anchor for getNextLeader. Positional roster math is wrong after manual overrides.
+      const prevEntryRows = await sql`
+        SELECT leader FROM schedule
+        WHERE run_id = ${runId}
+          AND date < ${dateStr}::date
+        ORDER BY date DESC
+        LIMIT 1
+      `
+      let anchorLeader: string
+      if (prevEntryRows.length > 0) {
+        anchorLeader = prevEntryRows[0].leader as string
+      } else {
+        // No prior entry — fall back to positional roster predecessor
+        const beforeIdx = roster.findIndex(l => l.name === leaderName)
+        anchorLeader = roster[(beforeIdx - 1 + roster.length) % roster.length].name
+      }
+      const next = getNextLeader(roster, anchorLeader, dateStr)
 
       if (next === null) {
         await sql`UPDATE schedule SET needs_leader = true WHERE date = ${dateStr}::date AND run_id = ${runId}`
@@ -118,6 +161,12 @@ export async function removeAwayPeriod(
   try {
     const user = await currentUser()
     if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
+    // Verify caller owns the targeted leader row
+    try {
+      await assertCallerOwnsLeaderRow(user, leaderId)
+    } catch {
+      return { error: 'Forbidden' }
+    }
     // Remove element at periodIndex from JSONB array
     await sql`
       UPDATE run_leaders
@@ -139,6 +188,12 @@ export async function addRunLeaderByEmail(
   try {
     const user = await currentUser()
     if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
+    // Verify caller owns the target run
+    try {
+      await assertCallerOwnsRun(user, runId)
+    } catch {
+      return { error: 'Forbidden' }
+    }
     // Look up Clerk user by email to get their name
     // Note: Clerk Admin API is needed here — use process.env.CLERK_SECRET_KEY
     // Simplest approach: insert with email, name defaults to email prefix until they sign in
@@ -162,6 +217,12 @@ export async function removeRunLeader(leaderId: number): Promise<{ error?: strin
   try {
     const user = await currentUser()
     if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
+    // Verify caller owns the targeted leader row
+    try {
+      await assertCallerOwnsLeaderRow(user, leaderId)
+    } catch {
+      return { error: 'Forbidden' }
+    }
     await sql`UPDATE run_leaders SET active = false WHERE id = ${leaderId}`
     updateTag('tigerwolves-data')
     return {}

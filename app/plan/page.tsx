@@ -1,5 +1,5 @@
 import { currentUser } from '@clerk/nextjs/server'
-import { fetchData, getLeaderRun, getRunRoster, generateScheduleHorizon } from '@/lib/db'
+import { fetchData, fetchSchedule, getLeaderRun, getRunRoster, generateScheduleHorizon } from '@/lib/db'
 import PlanClient from '@/components/PlanClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 import type { RunConfig } from '@/lib/data'
@@ -27,7 +27,12 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
     await generateScheduleHorizon(runConfig.id, runConfig.dayOfWeek, runLeaders)
   }
 
-  const { schedule, workoutVariants } = await fetchData()  // TODO in future: pass runId
+  // Schedule filtered to this leader's run; workout variants still come from the cached
+  // aggregate since they're global/run-group-scoped and benefit from the 5-min cache.
+  const [schedule, { workoutVariants }] = await Promise.all([
+    fetchSchedule(runConfig.id),
+    fetchData(),
+  ])
   const today = new Date().toISOString().slice(0, 10)
 
   const upcoming = schedule

@@ -19,6 +19,14 @@ ALTER TABLE run_leaders ADD COLUMN IF NOT EXISTS email TEXT;
 -- 4. Add needs_leader flag to schedule
 ALTER TABLE schedule ADD COLUMN IF NOT EXISTS needs_leader BOOLEAN;
 
+-- NOTE (post-review): Before relying on the post-generation regression snapshot in
+-- tests, verify:
+--   a) run_leaders seed rows exist for the target run (SELECT * FROM run_leaders WHERE run_id = 'tigerwolves')
+--   b) runs.meeting_location and runs.post_header are non-null for that run
+--      (SELECT id, meeting_location, post_header FROM runs WHERE id = 'tigerwolves')
+-- Both columns were added in this migration; a Preview branch that missed step 1
+-- or the UPDATE backfill above will produce empty-field posts that don't match the snapshot.
+
 -- 5. Backfill rotation for TigerWolves (sort_order already set in #309 seed if done)
 -- Only run if sort_order values are NULL:
 -- UPDATE run_leaders SET sort_order = 1 WHERE run_id = 'tigerwolves' AND name = 'Luis';

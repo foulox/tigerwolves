@@ -4,11 +4,22 @@ test.describe('Run Settings', () => {
   // storageState defaults to e2e/.auth/user.json via playwright.config.ts project config
   // The seeded test leader has the 'leader' role set in Clerk publicMetadata.
 
-  test('Run Settings link appears in hamburger menu', async ({ page }) => {
+  test('Run Settings link appears in Clerk UserButton menu', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
-    await page.getByRole('button', { name: /menu/i }).click()
-    await expect(page.getByRole('link', { name: /run settings/i })).toBeVisible()
+    // Run Settings is a Clerk UserButton.Link, not a hamburger menu link.
+    // The UserButton renders as an avatar button; click it to open the dropdown.
+    // Clerk's rendered class is .cl-userButtonTrigger; data-testid fallbacks are also tried.
+    // NOTE: exact selector may need tuning against a live Preview URL — Clerk's DOM
+    // class names are stable across minor versions but verify if this fails after a
+    // Clerk SDK upgrade.
+    const trigger =
+      page.locator('[data-testid="user-button-trigger"]').first().or(
+        page.locator('.cl-userButtonTrigger').first()
+      )
+    await trigger.click()
+    await expect(page.getByRole('menuitem', { name: /run settings/i })
+      .or(page.getByText(/run settings/i))).toBeVisible()
   })
 
   test('post template saves and persists', async ({ page }) => {
