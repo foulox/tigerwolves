@@ -1,4 +1,4 @@
-import { test as setup, expect } from '@playwright/test'
+import { test as setup } from '@playwright/test'
 import { clerk } from '@clerk/testing/playwright'
 import fs from 'fs'
 import path from 'path'
@@ -31,19 +31,10 @@ setup('authenticate as test leader', async ({ page }) => {
   // net::ERR_ABORTED ("maybe frame was detached") in CI.
   await page.waitForURL(url => !url.searchParams.has('__clerk_ticket'), { timeout: 60000 })
 
-  // Wait for the page to finish rendering before saving state and calling
-  // e2e-revalidate. In CI, '/' is slow to render (several sequential DB calls
-  // inside generateScheduleHorizon). Calling revalidatePath while the page is
-  // still rendering deadlocks in Next.js dev mode.
+  // Wait for the page to finish rendering before saving state — in CI, '/' is
+  // slow (generateScheduleHorizon makes several sequential DB calls).
   await page.waitForLoadState('load', { timeout: 60000 })
 
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
-
-  // scripts/seed-e2e.ts writes with raw SQL, which fetchData's unstable_cache
-  // (lib/db.ts) has no way to know about — without this, pages can keep
-  // serving a previous run's cached result for up to 5 minutes. See
-  // app/api/e2e-revalidate/route.ts.
-  const revalidateResponse = await page.request.post('/api/e2e-revalidate')
-  expect(revalidateResponse.ok(), `e2e-revalidate failed: ${revalidateResponse.status()}`).toBe(true)
 })
