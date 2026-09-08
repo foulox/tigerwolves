@@ -17,4 +17,11 @@ export default async function globalSetup() {
   // calling globalSetup).
   const res = await fetch('http://localhost:3000/api/e2e-revalidate', { method: 'POST' })
   if (!res.ok) throw new Error(`e2e-revalidate failed with status ${res.status}`)
+
+  // Pre-warm every page route the test suite navigates to. In next dev, the
+  // first request to any route triggers compilation (60s+ in CI). Doing it
+  // here — where there is no per-test timeout — prevents those compilations
+  // from blowing the 35s test timeout during the actual runs.
+  const routes = ['/', '/admin', '/all-runs', '/plan', '/plan?week=0', '/library', '/run-config', '/schedule', '/races']
+  await Promise.all(routes.map(r => fetch(`http://localhost:3000${r}`).catch(() => {})))
 }
