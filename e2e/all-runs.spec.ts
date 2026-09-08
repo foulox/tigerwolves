@@ -6,7 +6,7 @@ const ALWAYS_EMPTY_LEAD_DAY_CATEGORY = '[data-testid="category-chip-food-runs"]'
 
 test('BottomNav has All Runs tab pointing to /all-runs (AC1)', async ({ page }) => {
   await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
   const tab = page.locator('a[href="/all-runs"]')
   await expect(tab).toBeVisible()
   await expect(tab).toContainText('All Runs')
@@ -16,7 +16,7 @@ test('loads without auth cookies — no redirect to sign-in (AC2)', async ({ bro
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   const page = await context.newPage()
   await page.goto('/all-runs')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
   expect(page.url()).toContain('/all-runs')
   expect(page.url()).not.toContain('/sign-in')
   await context.close()
@@ -24,7 +24,7 @@ test('loads without auth cookies — no redirect to sign-in (AC2)', async ({ bro
 
 test('run rows are visible with name, time, and category pill (AC3)', async ({ page }) => {
   await page.goto('/all-runs')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
   const rows = page.locator('[data-testid="run-row"]')
   expect(await rows.count()).toBeGreaterThan(0)
   await expect(page.locator('[data-testid="run-name"]').first()).toBeVisible()
@@ -33,7 +33,7 @@ test('run rows are visible with name, time, and category pill (AC3)', async ({ p
 
 test('Morning filter hides PM runs; Evening filter hides AM runs; Weekend shows only Sat/Sun (AC4)', async ({ page }) => {
   await page.goto('/all-runs')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   // Morning: all visible run times should end in "am"
   await page.locator('[data-testid="time-filter-am"]').click()
@@ -65,7 +65,7 @@ test('Morning filter hides PM runs; Evening filter hides AM runs; Weekend shows 
 
 test('Workouts category chip shows only Workouts-labelled runs (AC5)', async ({ page }) => {
   await page.goto('/all-runs')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
   await page.locator('[data-testid="category-chip-workouts"]').click()
   const pills = page.locator('[data-testid="run-category-pill"]')
   const count = await pills.count()
@@ -77,7 +77,7 @@ test('Workouts category chip shows only Workouts-labelled runs (AC5)', async ({ 
 
 test('food-run filter empties at least one lead day; later non-matching days are absent (AC6)', async ({ page }) => {
   await page.goto('/all-runs')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   // Food Runs exist only on Friday — at least one of Today/Tomorrow is always a non-Friday
   await page.locator(ALWAYS_EMPTY_LEAD_DAY_CATEGORY).click()
@@ -100,7 +100,7 @@ test('food-run filter empties at least one lead day; later non-matching days are
 
 test('"Lead a run that isn\'t here?" CTA is visible; Add your run opens feedback drawer pre-set to run-leader (AC7)', async ({ page }) => {
   await page.goto('/all-runs')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
   await expect(page.locator('[data-testid="leader-cta"]')).toBeVisible()
   await page.locator('[data-testid="add-your-run-btn"]').click()
   await expect(page.getByText('Send Feedback')).toBeVisible()
@@ -110,7 +110,7 @@ test('"Lead a run that isn\'t here?" CTA is visible; Add your run opens feedback
 test('page renders without horizontal overflow at 390px (AC9)', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/all-runs')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
   const overflow = await page.evaluate(() => document.body.scrollWidth > document.body.clientWidth)
   expect(overflow).toBe(false)
 })
@@ -119,7 +119,7 @@ test('header is standard Header.tsx — no Join NBR, no NORTH BROOKLYN RUNNERS e
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   const page = await context.newPage()
   await page.goto('/all-runs')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
   await expect(page.getByText('Join NBR', { exact: false })).toHaveCount(0)
   await expect(page.getByText('NORTH BROOKLYN RUNNERS', { exact: false })).toHaveCount(0)
   // Standard sign-in link (not a "Log in" text link) should be present for logged-out users

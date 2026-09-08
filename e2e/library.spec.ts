@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test('Library page loads with all 8 fixture workout names', async ({ page }) => {
   await page.goto('/library')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   const countEl = page.locator('p').filter({ hasText: /workouts · oldest first/ })
   await expect(countEl).toHaveText('8 workouts · oldest first')
@@ -21,7 +21,7 @@ test('Library page loads with all 8 fixture workout names', async ({ page }) => 
 
 test('Library category filter narrows to exactly the 6 Quality-category rows', async ({ page }) => {
   await page.goto('/library')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   const countEl = page.locator('p').filter({ hasText: /workouts · oldest first/ })
   await expect(countEl).toHaveText('8 workouts · oldest first')
@@ -41,18 +41,18 @@ test('Library category filter narrows to exactly the 6 Quality-category rows', a
 
 test('Add variation: a new variation shows up immediately in Library AND on Plan (#277 — closes the addVariation split-brain gap)', async ({ page }) => {
   await page.goto('/library')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   const card = page.locator('.bg-white.rounded-2xl', { hasText: 'Prospect Park Tempo' })
   await card.getByText('+ Add variation').click()
 
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
   await expect(page.getByRole('heading', { name: 'Add Variation' })).toBeVisible()
   await page.getByPlaceholder('e.g. 3×2mi@HMP, r3min').fill('12min tempo instead of 20min')
   await page.getByRole('button', { name: 'Save Variation' }).click()
 
   await page.waitForURL(/\/library/)
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
   const familyCard = page.locator('.bg-white.rounded-2xl', { hasText: 'Prospect Park Tempo' })
   await expect(familyCard.getByText('2 versions')).toBeVisible()
 
@@ -60,7 +60,7 @@ test('Add variation: a new variation shows up immediately in Library AND on Plan
   // week's workout type — proves the new variant is visible there too, not just
   // in the Library (the other half of the addWorkout/addVariation split-brain).
   await page.goto('/plan?week=0')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
   const browseTab = page.getByRole('button', { name: 'Change workout', exact: true })
   if (await browseTab.isVisible()) await browseTab.click()
   await page.locator('input[type="search"]').fill('Prospect Park Tempo')
@@ -69,7 +69,7 @@ test('Add variation: a new variation shows up immediately in Library AND on Plan
 
 test('Flag round trip: leader reviews a reported issue and saves a fix, clearing the flag (#277 — variant_id write path)', async ({ page }) => {
   await page.goto('/library')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   await page.getByRole('button', { name: 'Issue reported — view details' }).click()
   await expect(page.getByRole('heading', { name: 'Review & fix' })).toBeVisible()
@@ -83,6 +83,6 @@ test('Flag round trip: leader reviews a reported issue and saves a fix, clearing
   await expect(page.getByRole('heading', { name: 'Review & fix' })).not.toBeVisible()
 
   await page.reload()
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
   await expect(page.getByRole('button', { name: 'Issue reported — view details' })).toHaveCount(0)
 })

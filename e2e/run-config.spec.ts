@@ -6,7 +6,7 @@ test.describe('Run Settings', () => {
 
   test('Run Settings link appears in Clerk UserButton menu', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
     // Run Settings is a Clerk UserButton.Link, not a hamburger menu link.
     // The UserButton renders as an avatar button; click it to open the dropdown.
     // Clerk's rendered class is .cl-userButtonTrigger; data-testid fallbacks are also tried.
@@ -24,7 +24,7 @@ test.describe('Run Settings', () => {
 
   test('post template saves and persists', async ({ page }) => {
     await page.goto('/run-config')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
 
     const input = page.getByLabel(/meeting location/i)
     const original = await input.inputValue()
@@ -34,7 +34,7 @@ test.describe('Run Settings', () => {
 
     // Reload and verify persistence
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
     await expect(page.getByLabel(/meeting location/i)).toHaveValue('Test Location Updated')
 
     // Restore original value
@@ -45,7 +45,7 @@ test.describe('Run Settings', () => {
 
   test('away period save shows confirmation banner', async ({ page }) => {
     await page.goto('/run-config')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
 
     // Switch to the Roster tab
     await page.getByRole('button', { name: 'Roster' }).click()
