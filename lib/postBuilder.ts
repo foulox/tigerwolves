@@ -119,3 +119,22 @@ export function buildPost(
 
   return lines.join('\n')
 }
+
+const ROUTE_TYPES = new Set(['Route', 'Easy', 'Long'])
+
+export function buildVerificationLabel(workout: WorkoutVariantRow): string {
+  const dist = workout.distTime ? `, ${workout.distTime}` : ''
+
+  if (ROUTE_TYPES.has(workout.type)) {
+    return `I've verified: ${workout.name}${dist}`
+  }
+
+  // Extract main interval details from rawInput
+  const main = extractMain(workout.rawInput)
+  if (main) {
+    const condensed = main.length > 60 ? main.slice(0, 60) + '…' : main
+    return `I've verified: ${condensed}${dist}`
+  }
+
+  return `I've verified: ${workout.name}${dist || ' — key workout details'}`
+}

@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/lib/data'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
-import { buildPost, formatDateLong } from '@/lib/postBuilder'
+import { buildPost, buildVerificationLabel, formatDateLong } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
 import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
@@ -51,6 +51,9 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
   const [planTab, setPlanTab] = useState<'post' | 'browse'>('post')
   const [leaderPickerOpen, setLeaderPickerOpen] = useState(false)
   const [localLeader, setLocalLeader] = useState<string | null>(null)
+  const [verified, setVerified] = useState(false)
+
+  useEffect(() => { setVerified(false) }, [weekIndex])
 
   const entry = upcoming[weekIndex]
 
@@ -202,6 +205,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
     try {
       await setPlanWorkout(entry.date, sorted[0].name, sorted.map(w => w.label ?? ''))
       setSaved(true)
+      setVerified(false)
       setPlanTab('post')
     } catch (err) {
       Sentry.captureException(err, { extra: { date: entry.date, workoutName: sorted[0].name } })
@@ -522,19 +526,28 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
             )}
 
             {(!plannedWorkout || planTab === 'post') && effectiveSelections.length > 0 && (
-              <div>
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-                  <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
-                  <button
-                    onClick={handleCopy}
-                    data-tour="heylo-copy"
-                    className={`mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-colors touch-manipulation cursor-pointer ${
-                      copied ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'
-                    }`}
-                  >
-                    {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
-                  </button>
+              <div className="flex flex-col gap-3 p-4">
+                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
+                <div className="flex items-start gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                  <input
+                    type="checkbox"
+                    id="verify-checkbox"
+                    checked={verified}
+                    onChange={e => setVerified(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 shrink-0 accent-orange-600 touch-manipulation"
+                  />
+                  <label htmlFor="verify-checkbox" className="text-sm text-gray-600 leading-snug cursor-pointer">
+                    {effectiveSelections.length > 0 ? buildVerificationLabel(effectiveSelections[0]) : 'I\'ve verified the key workout details'}
+                  </label>
                 </div>
+                <button
+                  onClick={handleCopy}
+                  disabled={!verified}
+                  data-tour="heylo-copy"
+                  className={`flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-sm touch-manipulation transition-opacity ${verified ? 'bg-orange-600 text-white' : 'bg-orange-600 text-white opacity-35 cursor-not-allowed'}`}
+                >
+                  {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
+                </button>
               </div>
             )}
           </>

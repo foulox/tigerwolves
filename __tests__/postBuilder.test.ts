@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { buildPost, formatMainContent } from '../lib/postBuilder'
+import { buildPost, buildVerificationLabel, formatMainContent } from '../lib/postBuilder'
 import type { ScheduleEntry, WorkoutVariantRow, RunConfig } from '../lib/data'
 
 const tigerWolvesConfig: RunConfig = {
@@ -183,5 +183,28 @@ describe('buildPost', () => {
     // On first run: vitest creates __tests__/__snapshots__/postBuilder.test.ts.snap
     const post = buildPost(entry, [baseWorkout], tigerWolvesConfig, tigerWolvesRoster)
     expect(post).toMatchSnapshot()
+  })
+})
+
+describe('buildVerificationLabel', () => {
+  test('quality workout returns intervals-focused label', () => {
+    const label = buildVerificationLabel({ ...baseWorkout, type: 'Ladder', rawInput: 'WU: 15min. Main: 3×1K @ 3K pace, 90s rest. CD: 10min.', distTime: '~5mi' })
+    expect(label).toContain('3×1K')
+    expect(label).toContain('90s rest')
+    expect(label).toContain('~5mi')
+  })
+
+  test('route workout returns route-focused label', () => {
+    const routeWorkout = { ...baseWorkout, type: 'Route', name: 'Kent Ave Loop', distTime: '~6mi' }
+    const label = buildVerificationLabel(routeWorkout)
+    expect(label).toContain('Kent Ave Loop')
+    expect(label).toContain('~6mi')
+  })
+
+  test('fallback label when no useful fields', () => {
+    const minimal = { ...baseWorkout, rawInput: '', distTime: '', type: 'Easy' }
+    const label = buildVerificationLabel(minimal)
+    expect(label).toBeTruthy()
+    expect(label.length).toBeGreaterThan(5)
   })
 })
