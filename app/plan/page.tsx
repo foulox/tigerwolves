@@ -17,7 +17,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
     closingNotes: 'Bag Drop: Sorry, Not available',
   }
   const runConfig = (user && isLeader ? await getLeaderRun(user.id) : null) ?? tigerWolvesConfig
-  const runLeaders = await getRunRoster(runConfig.id)
+  const runLeaders = isLeader ? await getRunRoster(runConfig.id) : []
   const roster = runLeaders
     .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999))
     .map(l => l.name)
