@@ -63,3 +63,17 @@ describe('getNextLeader', () => {
     expect(getNextLeader(allAway, 'Luis', '2025-12-30')).toBeNull()
   })
 })
+
+describe('getNextLeader reassignment', () => {
+  test('skips away leader when finding replacement', () => {
+    const rosterWithAway = [
+      makeLeader('Luis', 1),
+      makeLeader('Lou', 2, [{ from: '2025-12-23', to: '2026-01-04' }]),
+      makeLeader('Kelsey', 3),
+    ]
+    // When Lou is away, the next after whoever preceded Lou is Kelsey
+    const prevLeader = rosterWithAway[0] // Luis precedes Lou
+    const result = getNextLeader(rosterWithAway, prevLeader.name, '2025-12-30')
+    expect(result).toBe('Kelsey')
+  })
+})
