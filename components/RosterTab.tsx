@@ -1,5 +1,6 @@
 'use client'
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { saveRotationOrder, saveAwayPeriod, removeAwayPeriod, addRunLeaderByEmail, removeRunLeader } from '@/app/run-config/actions'
 import type { RunLeader, AwayPeriod } from '@/lib/data'
@@ -19,11 +20,12 @@ function awayBadgeText(periods: AwayPeriod[]): string | null {
 export default function RosterTab({
   runLeaders, runId, currentUserId,
 }: { runLeaders: RunLeader[]; runId: string; currentUserId: string }) {
+  const router = useRouter()
   const [leaders, setLeaders] = useState(runLeaders)
   const [openAwayId, setOpenAwayId] = useState<number | null>(null)
   const [newFrom, setNewFrom] = useState('')
   const [newTo, setNewTo] = useState('')
-  const [banner, setBanner] = useState<string | null>(null)
+  const [banner, setBanner] = useState<{ message: string; isWarning: boolean } | null>(null)
   const [newEmail, setNewEmail] = useState('')
   const [isPending, startTransition] = useTransition()
 
@@ -50,11 +52,15 @@ export default function RosterTab({
         if (result.error) return
         const msgs = [`✓ Away period saved · ${result.reassignedCount} schedule entries reassigned`]
         if (result.noLeaderDates.length) msgs.push(`⚠ No available leader for: ${result.noLeaderDates.join(', ')} — assign manually`)
-        setBanner(msgs.join('\n'))
+        const hasWarning = result.noLeaderDates.length > 0
+        setBanner({ message: msgs.join('\n'), isWarning: hasWarning })
         setTimeout(() => setBanner(null), 6000)
         setNewFrom(''); setNewTo('')
         setOpenAwayId(null)
-        // Refresh leader list from server (simple: reload page — or update local state)
+        setLeaders(prev => prev.map(r => r.id === leaderId
+          ? { ...r, awayPeriods: [...r.awayPeriods, { from: newFrom, to: newTo }] }
+          : r
+        ))
       } catch (err) {
         Sentry.captureException(err)
       }
@@ -67,6 +73,7 @@ export default function RosterTab({
       try {
         await addRunLeaderByEmail(runId, newEmail.trim())
         setNewEmail('')
+        router.refresh()
       } catch (err) {
         Sentry.captureException(err)
       }
@@ -76,7 +83,7 @@ export default function RosterTab({
   return (
     <div className="p-4 flex flex-col gap-4">
       {banner && (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm font-semibold text-green-800 whitespace-pre-line">{banner}</div>
+        <div className={`border rounded-xl px-4 py-3 text-sm font-semibold whitespace-pre-line ${banner.isWarning ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-green-50 border-green-200 text-green-800'}`}>{banner.message}</div>
       )}
 
       <div>
