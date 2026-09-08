@@ -31,6 +31,12 @@ setup('authenticate as test leader', async ({ page }) => {
   // net::ERR_ABORTED ("maybe frame was detached") in CI.
   await page.waitForURL(url => !url.searchParams.has('__clerk_ticket'), { timeout: 60000 })
 
+  // Wait for the page to finish rendering before saving state and calling
+  // e2e-revalidate. In CI, '/' is slow to render (several sequential DB calls
+  // inside generateScheduleHorizon). Calling revalidatePath while the page is
+  // still rendering deadlocks in Next.js dev mode.
+  await page.waitForLoadState('load', { timeout: 60000 })
+
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
 
