@@ -108,7 +108,7 @@ describe('addRace', () => {
   })
 
   it('fires race_added with the real userId and isLeader=true for a signed-in leader', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     await addRace({ name: 'NYC Marathon', date: '2026-11-01', distance: '', location: '', organizer: '' })
     expect(captureServerEventMock).toHaveBeenCalledWith('race_added', 'user_leader_1', { isLeader: true })
   })
@@ -132,7 +132,7 @@ describe('flagRaceIssue', () => {
   })
 
   it('fires race_flagged with the real userId and isLeader=true for a signed-in leader', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     await flagRaceIssue(1, 'wrong date')
     expect(captureServerEventMock).toHaveBeenCalledWith('race_flagged', 'user_leader_1', { raceId: 1, isLeader: true })
   })

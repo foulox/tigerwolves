@@ -88,7 +88,7 @@ describe('flagWorkoutIssue', () => {
   })
 
   it('fires workout_flagged with the real userId and isLeader=true for a signed-in leader', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_1' })
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
     await flagWorkoutIssue(VARIANT_ID, 'wrong reps')
     expect(captureServerEventMock).toHaveBeenCalledWith('workout_flagged', 'user_leader_1', { isLeader: true })
   })

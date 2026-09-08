@@ -1,6 +1,6 @@
 'use server'
 
-import { auth, currentUser } from '@clerk/nextjs/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { after } from 'next/server'
@@ -40,10 +40,10 @@ export async function createFeedbackIssue(data: {
   const token = process.env.GITHUB_TOKEN
   if (!token) return { error: 'GitHub token not configured' }
 
-  const { userId } = await auth()
+  const user = await currentUser()
+  const userId = user?.id
   let submittedBy: string
   if (userId) {
-    const user = await currentUser()
     const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ')
     const email = user?.primaryEmailAddress?.emailAddress
     submittedBy = [fullName || 'Leader', email ? `(${email})` : ''].filter(Boolean).join(' ')
@@ -93,10 +93,11 @@ export async function createFeedbackIssue(data: {
   if (!res.ok) return { error: `GitHub API error: ${res.status}` }
   const issue = await res.json() as { html_url: string; node_id?: string }
 
+  const isLeaderFeedback = user?.publicMetadata?.role === 'leader'
   await captureServerEvent('feedback_submitted', userId ?? 'anonymous-runner', {
     type: data.type,
     hasScreenshot: !!data.screenshotBase64,
-    isLeader: !!userId,
+    isLeader: isLeaderFeedback,
   })
 
   // Best-effort: link the new issue to the Running Apps project board so it isn't a
@@ -214,8 +215,10 @@ export async function flagWorkoutIssue(variantId: number, note: string): Promise
     throw err
   }
   revalidateAll()
-  const { userId } = await auth()
-  await captureServerEvent('workout_flagged', userId ?? 'anonymous-runner', { isLeader: !!userId })
+  const user = await currentUser()
+  const userId = user?.id
+  const isLeader = user?.publicMetadata?.role === 'leader'
+  await captureServerEvent('workout_flagged', userId ?? 'anonymous-runner', { isLeader })
 }
 
 export async function fixWorkoutAndClearFlag(
@@ -266,8 +269,10 @@ export async function addRace(data: {
     flagNote: '',
   })
   revalidateAll()
-  const { userId } = await auth()
-  await captureServerEvent('race_added', userId ?? 'anonymous-runner', { isLeader: !!userId })
+  const user = await currentUser()
+  const userId = user?.id
+  const isLeader = user?.publicMetadata?.role === 'leader'
+  await captureServerEvent('race_added', userId ?? 'anonymous-runner', { isLeader })
   return { id }
 }
 
@@ -276,8 +281,10 @@ export async function flagRaceIssue(raceId: number, note: string): Promise<void 
   if (!trimmed) return { error: 'Description is required' }
   await dbFlagRace(raceId, trimmed)
   revalidateAll()
-  const { userId } = await auth()
-  await captureServerEvent('race_flagged', userId ?? 'anonymous-runner', { raceId, isLeader: !!userId })
+  const user = await currentUser()
+  const userId = user?.id
+  const isLeader = user?.publicMetadata?.role === 'leader'
+  await captureServerEvent('race_flagged', userId ?? 'anonymous-runner', { raceId, isLeader })
 }
 
 export async function verifyRace(raceId: number) {

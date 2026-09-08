@@ -7,7 +7,8 @@ import RegroupWorkoutsForm from '@/components/RegroupWorkoutsForm'
 
 export default async function AdminPage() {
   const user = await currentUser()
-  if (!user || user.publicMetadata?.role !== 'leader') redirect('/sign-in')
+  if (!user) redirect('/sign-in')
+  if (user.publicMetadata?.role !== 'leader') redirect('/')
   const { workoutVariants } = await fetchData()
   return (
     <div>

@@ -82,6 +82,9 @@ const RUN_CONFIG: RunImportConfig = {
 // ── Import logic ───────────────────────────────────────────────────────────
 
 export async function importRun(config: RunImportConfig): Promise<void> {
+  if (config.id === 'example-run') {
+    throw new Error('RUN_CONFIG is still set to the placeholder. Edit the config before running.')
+  }
   console.log(`Importing run: ${config.name} (${config.id})`)
 
   // 1. Upsert the runs row.

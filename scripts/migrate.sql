@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS run_leaders (
 -- workout_variants references workout_families, so workout_families precedes it.
 CREATE TABLE IF NOT EXISTS run_groups (
   id               SERIAL PRIMARY KEY,
-  name             TEXT NOT NULL,
+  name             TEXT NOT NULL UNIQUE,
   venue            TEXT NOT NULL,   -- 'road' | 'track' | 'trail'
   default_location TEXT
 );
@@ -180,6 +180,7 @@ CREATE TABLE IF NOT EXISTS runner_follows (
 
 -- Add run_id to schedule. NOT NULL DEFAULT 'tigerwolves' backfills all existing rows immediately in Postgres.
 ALTER TABLE schedule ADD COLUMN IF NOT EXISTS run_id TEXT NOT NULL DEFAULT 'tigerwolves';
+ALTER TABLE schedule ADD CONSTRAINT IF NOT EXISTS schedule_run_id_fk FOREIGN KEY (run_id) REFERENCES runs(id);
 
 -- Add clerk_user_id to run_leaders — nullable; Lou backfills with actual Clerk user IDs after migration.
 -- Example: UPDATE run_leaders SET clerk_user_id = 'user_abc123' WHERE name = 'Lou Fox' AND run_id = 'tigerwolves';
