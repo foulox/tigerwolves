@@ -50,7 +50,11 @@ export function formatMainContent(instructions: string): string {
 }
 
 import type { ScheduleEntry, WorkoutVariantRow } from './data'
-import { RUN_LEADERS } from './data'
+
+// Hardcoded fallback — will be replaced with DB-driven roster in story #310's
+// buildPost refactor. Kept here (rather than re-exporting from data.ts) because
+// data.ts no longer exports RUN_LEADERS; the static array is only needed here.
+const RUN_LEADERS = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']
 
 // Turnaround is a stored field now (has_turnaround/turnaround, set at write time —
 // AI-suggested, leader-editable), not computed from instructions text. If

@@ -1,9 +1,10 @@
-import { describe, it, expect, afterAll, beforeEach, afterEach } from 'vitest'
+import { describe, it, test, expect, afterAll, beforeEach, afterEach } from 'vitest'
 import {
   sql, fetchSchedule, fetchRaces, fetchRunGroups, dbSetScheduleWorkout,
   dbInsertWorkoutVariant, dbUpdateWorkoutVariant, WorkoutVariantNotFoundError,
   dbAddWorkoutVariant, dbDeleteWorkoutVariant, dbFlagWorkoutVariant,
   dbFixWorkoutVariantAndClearFlag, dbRegroupVariants,
+  getLeaderRun, getRunRoster,
 } from '../lib/db'
 
 describe('database connection and schema', () => {
@@ -398,5 +399,30 @@ describe('workout_variants write path additions (#277)', () => {
     // knows about the original familyId).
     await sql`DELETE FROM workout_variants WHERE family_id = ${newFamily.id}`
     await sql`DELETE FROM workout_families WHERE id = ${newFamily.id}`
+  })
+})
+
+// These tests require the migration to have been applied to the test DB.
+// They will fail until Task 1 SQL has been run against the staging branch.
+describe('getLeaderRun', () => {
+  test('returns TigerWolves config for a TigerWolves leader clerk_user_id', async () => {
+    // Use the test leader's clerk_user_id from .env.test
+    const run = await getLeaderRun(process.env.PLAYWRIGHT_TEST_CLERK_USER_ID!)
+    expect(run).not.toBeNull()
+    expect(run?.id).toBe('tigerwolves')
+    expect(run?.leaderIntro).toBe('Run Leaders:')
+  })
+
+  test('returns null for unknown userId', async () => {
+    const run = await getLeaderRun('user_nonexistent')
+    expect(run).toBeNull()
+  })
+})
+
+describe('getRunRoster', () => {
+  test('returns leaders ordered by sort_order', async () => {
+    const roster = await getRunRoster('tigerwolves')
+    expect(roster.length).toBeGreaterThan(0)
+    expect(roster[0].sortOrder).toBeLessThan(roster[1].sortOrder!)
   })
 })

@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 import { unstable_cache } from 'next/cache'
-import type { ScheduleEntry, Race, RunGroup, WorkoutVariantRow } from './data'
+import type { ScheduleEntry, Race, RunGroup, WorkoutVariantRow, RunConfig, RunLeader, AwayPeriod } from './data'
 import { weekOfMonth } from './data'
 import type { WorkoutVariantInput } from './workoutVariant'
 
@@ -18,10 +18,10 @@ function toDateString(val: unknown): string {
 
 // ── Reads ─────────────────────────────────────────────────────────────────────
 
-export async function fetchSchedule(): Promise<ScheduleEntry[]> {
-  const rows = await sql`
-    SELECT * FROM schedule ORDER BY date ASC
-  `
+export async function fetchSchedule(runId?: string): Promise<ScheduleEntry[]> {
+  const rows = runId
+    ? await sql`SELECT * FROM schedule WHERE run_id = ${runId} ORDER BY date ASC`
+    : await sql`SELECT * FROM schedule ORDER BY date ASC`
   return rows.map((r) => {
     const date = toDateString(r.date)
     return {
@@ -40,7 +40,8 @@ export async function fetchSchedule(): Promise<ScheduleEntry[]> {
 // this app's own run group (TigerWolves) plus global/unowned families, same as
 // the implicit scope the legacy `workouts` table always had (no run_group concept
 // there at all) — this app doesn't yet serve any other run group's workouts.
-export async function fetchWorkoutVariants(): Promise<WorkoutVariantRow[]> {
+export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVariantRow[]> {
+  const resolvedRunId = runId ?? 'tigerwolves'
   const rows = await sql`
     SELECT
       wv.id AS variant_id,
@@ -69,7 +70,8 @@ export async function fetchWorkoutVariants(): Promise<WorkoutVariantRow[]> {
     FROM workout_variants wv
     JOIN workout_families wf ON wf.id = wv.family_id
     LEFT JOIN run_groups rg ON rg.id = wf.run_group_id
-    WHERE wf.run_group_id IS NULL OR rg.name = 'TigerWolves'
+    WHERE wf.run_group_id IS NULL
+       OR rg.name = (SELECT name FROM runs WHERE id = ${resolvedRunId})
     ORDER BY wf.name, wv.sort_order NULLS LAST
   `
   return rows.map((r) => ({
@@ -109,6 +111,47 @@ export async function fetchRunGroups(): Promise<RunGroup[]> {
     name: r.name as string,
     venue: r.venue as string,
     defaultLocation: (r.default_location as string | null) ?? null,
+  }))
+}
+
+export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | null> {
+  const rows = await sql`
+    SELECT r.id, r.name, r.emoji, r.day_of_week, r.meeting_location,
+           r.post_header, r.leader_intro, r.closing_notes
+    FROM run_leaders rl
+    JOIN runs r ON r.id = rl.run_id
+    WHERE rl.clerk_user_id = ${clerkUserId}
+    LIMIT 1
+  `
+  if (!rows[0]) return null
+  const r = rows[0]
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    emoji: (r.emoji as string | null) ?? null,
+    dayOfWeek: r.day_of_week as string,
+    meetingLocation: r.meeting_location as string,
+    postHeader: r.post_header as string,
+    leaderIntro: (r.leader_intro as string | null) ?? 'Run Leaders:',
+    closingNotes: r.closing_notes as string,
+  }
+}
+
+export async function getRunRoster(runId: string): Promise<RunLeader[]> {
+  const rows = await sql`
+    SELECT id, run_id, clerk_user_id, name, email, sort_order, away_periods
+    FROM run_leaders
+    WHERE run_id = ${runId} AND active = true
+    ORDER BY sort_order ASC NULLS LAST, id ASC
+  `
+  return rows.map(r => ({
+    id: r.id as number,
+    runId: r.run_id as string,
+    clerkUserId: (r.clerk_user_id as string | null) ?? null,
+    name: r.name as string,
+    email: (r.email as string | null) ?? null,
+    sortOrder: (r.sort_order as number | null) ?? null,
+    awayPeriods: (r.away_periods as AwayPeriod[]) ?? [],
   }))
 }
 
