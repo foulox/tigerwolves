@@ -6,6 +6,10 @@ import path from 'path'
 const authFile = path.join(__dirname, '.auth/user.json')
 
 setup('authenticate as test leader', async ({ page }) => {
+  // CI renders '/' slowly (several sequential DB calls). 30s is too tight;
+  // 90s gives the server room to breathe without letting a genuine hang hide.
+  setup.setTimeout(90000)
+
   const email = process.env.PLAYWRIGHT_TEST_EMAIL
   if (!email) throw new Error('PLAYWRIGHT_TEST_EMAIL must be set in .env.test')
 
@@ -21,11 +25,12 @@ setup('authenticate as test leader', async ({ page }) => {
   await page.goto('/')
   await clerk.signIn({ page, emailAddress: email })
 
-  // clerk.signIn() redirects to '/' but may still be mid-navigation when it
-  // returns. Wait for DOM to settle before issuing a second goto — networkidle
-  // never fires against a Next.js dev server (HMR WebSocket keeps it busy).
-  await page.waitForLoadState('domcontentloaded')
-  await page.goto('/')
+  // clerk.signIn() navigates to /?__clerk_ticket=… then Clerk JS redeems it and
+  // redirects to '/'. Wait for that natural redirect to land — do NOT issue a
+  // competing page.goto('/') here, which races the ongoing redirect and produces
+  // net::ERR_ABORTED ("maybe frame was detached") in CI.
+  await page.waitForURL(url => !url.searchParams.has('__clerk_ticket'), { timeout: 60000 })
+
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
 
