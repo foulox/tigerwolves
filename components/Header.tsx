@@ -32,6 +32,7 @@ export default function Header({
         {isLeader ? (
           <UserButton appearance={{ elements: { userButtonAvatarBox: 'w-10 h-10' } }}>
             <UserButton.MenuItems>
+              <UserButton.Link label="Run Settings" href="/run-config" labelIcon={<Settings size={16} />} />
               <UserButton.Link label="Admin" href="/admin" labelIcon={<Settings size={16} />} />
             </UserButton.MenuItems>
           </UserButton>
