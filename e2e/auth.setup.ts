@@ -22,9 +22,9 @@ setup('authenticate as test leader', async ({ page }) => {
   await clerk.signIn({ page, emailAddress: email })
 
   // clerk.signIn() redirects to '/' but may still be mid-navigation when it
-  // returns. Wait for the load to settle before issuing a second goto so we
-  // don't abort the ongoing redirect (net::ERR_ABORTED in CI).
-  await page.waitForLoadState('networkidle')
+  // returns. Wait for DOM to settle before issuing a second goto — networkidle
+  // never fires against a Next.js dev server (HMR WebSocket keeps it busy).
+  await page.waitForLoadState('domcontentloaded')
   await page.goto('/')
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
