@@ -26,6 +26,8 @@ const { store, mgetMock, incrMock, decrMock, execMock, pipelineMock, captureServ
   return { store, mgetMock, incrMock, decrMock, execMock, pipelineMock, captureServerEventMock, authMock }
 })
 
+const { currentUserMock } = vi.hoisted(() => ({ currentUserMock: vi.fn().mockResolvedValue(null) }))
+
 vi.mock('@vercel/kv', () => ({
   kv: { mget: mgetMock, incr: incrMock, decr: decrMock, pipeline: pipelineMock },
 }))
@@ -36,6 +38,7 @@ vi.mock('../lib/analytics', () => ({
 
 vi.mock('@clerk/nextjs/server', () => ({
   auth: authMock,
+  currentUser: currentUserMock,
 }))
 
 import { getVoteData } from '../lib/votes'
@@ -67,6 +70,7 @@ beforeEach(() => {
   execMock.mockResolvedValue([])
   captureServerEventMock.mockResolvedValue(undefined)
   authMock.mockResolvedValue({ userId: null })
+  currentUserMock.mockResolvedValue(null)
 })
 
 describe('POST /api/vote', () => {
@@ -136,7 +140,7 @@ describe('POST /api/vote', () => {
   })
 
   it('fires reaction_cast with the real userId and isLeader=true when a signed-in leader casts a reaction', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_123' })
+    currentUserMock.mockResolvedValue({ id: 'user_leader_123', publicMetadata: { role: 'leader' } })
     await POST(makeRequest({ workoutId: 'w1', workoutName: 'Ladder', rating: 5 }))
     expect(captureServerEventMock).toHaveBeenCalledWith('reaction_cast', 'user_leader_123', expect.objectContaining({
       isLeader: true,

@@ -26,6 +26,8 @@ const { store, mgetMock, incrMock, decrMock, execMock, pipelineMock, captureServ
   return { store, mgetMock, incrMock, decrMock, execMock, pipelineMock, captureServerEventMock, authMock }
 })
 
+const { currentUserMock } = vi.hoisted(() => ({ currentUserMock: vi.fn().mockResolvedValue(null) }))
+
 vi.mock('@vercel/kv', () => ({
   kv: { mget: mgetMock, incr: incrMock, decr: decrMock, pipeline: pipelineMock },
 }))
@@ -36,6 +38,7 @@ vi.mock('../lib/analytics', () => ({
 
 vi.mock('@clerk/nextjs/server', () => ({
   auth: authMock,
+  currentUser: currentUserMock,
 }))
 
 import { getRaceTallies } from '../lib/raceTags'
@@ -67,6 +70,7 @@ beforeEach(() => {
   execMock.mockResolvedValue([])
   captureServerEventMock.mockResolvedValue(undefined)
   authMock.mockResolvedValue({ userId: null })
+  currentUserMock.mockResolvedValue(null)
 })
 
 describe('POST /api/race-tag', () => {
@@ -120,7 +124,7 @@ describe('POST /api/race-tag', () => {
   })
 
   it('fires race_tag_cast with the real userId and isLeader=true for a signed-in leader', async () => {
-    authMock.mockResolvedValue({ userId: 'user_leader_123' })
+    currentUserMock.mockResolvedValue({ id: 'user_leader_123', publicMetadata: { role: 'leader' } })
     await POST(makeRequest({ raceId: 1, tier: 'target' }))
     expect(captureServerEventMock).toHaveBeenCalledWith('race_tag_cast', 'user_leader_123', expect.objectContaining({
       isLeader: true,

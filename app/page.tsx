@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { fetchData } from '@/lib/db'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import Header from '@/components/Header'
@@ -6,7 +6,8 @@ import ScheduleClient from '@/components/ScheduleClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 
 export default async function SchedulePage() {
-  const { userId } = await auth()
+  const user = await currentUser()
+  const isLeader = user?.publicMetadata?.role === 'leader'
   const { schedule, workoutVariants } = await fetchData()
   const today = new Date().toISOString().slice(0, 10)
 
@@ -36,14 +37,14 @@ export default async function SchedulePage() {
 
   return (
     <div>
-      <Header title="Schedule" subtitle="Upcoming Tuesdays" isLeader={!!userId} />
+      <Header title="Schedule" subtitle="Upcoming Tuesdays" isLeader={isLeader} />
 
       <ScheduleClient
         past={past}
         pastWorkouts={pastWorkouts}
         upcoming={upcoming}
         upcomingWorkouts={upcomingWorkouts}
-        isLeader={!!userId}
+        isLeader={isLeader}
         voteData={voteData}
       />
     </div>

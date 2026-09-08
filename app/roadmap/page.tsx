@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { auth } from '@clerk/nextjs/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { fetchRoadmap } from '@/lib/roadmap'
 import type { RoadmapCard, RoadmapStatus } from '@/lib/roadmap'
 import Header from '@/components/Header'
@@ -50,12 +50,13 @@ function RoadmapCardItem({ card }: { card: RoadmapCard }) {
 }
 
 export default async function RoadmapPage() {
-  const { userId } = await auth()
+  const user = await currentUser()
+  const isLeader = user?.publicMetadata?.role === 'leader'
   const cards = await fetchRoadmap()
 
   return (
     <div>
-      <Header title="Roadmap" subtitle="Where TigerWolves is going" isLeader={!!userId} />
+      <Header title="Roadmap" subtitle="Where TigerWolves is going" isLeader={isLeader} />
 
       <div className="px-4 pb-24 flex flex-col gap-3">
         {cards.length === 0 ? (
