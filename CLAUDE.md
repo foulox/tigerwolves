@@ -66,3 +66,25 @@ This is the only enforcement mechanism that actually works: Claude Code plugin s
 - **Never commit directly to `main`.** All code changes go through a PR — see [Contributing](https://github.com/foulox/tigerwolves/wiki/Contributing) for the full workflow. **CLAUDE.md updates are the only exception.**
 - **Does this change anything the wiki documents** (architecture, data flow, key files, dev workflow, club context)? Update the wiki in the same PR/session — don't defer doc updates, they go stale fast (found during the #85 `/review` pass, 2026-07-03; confirmed again 2026-07-19 when `Contributing.md` had already drifted from CLAUDE.md's Development Workflow section).
 - **Active learning: quiz before summarizing.** After any meaningful change — a PR, a bug fix, a new architectural piece — ask Lou 2-4 short questions about what changed and why *before* giving a summary, so Lou reconstructs the understanding via active recall instead of passively reading a wrap-up. Applies especially to Next.js, Clerk, Neon, and the Redis/KV votes store, since Lou wants to be able to lead future developers on this stack, not just approve their output. Kept here rather than in the wiki or Claude's private memory specifically so it survives machine/session switches — an equivalent preference had previously been saved under the wrong project's memory scope and was silently never applied (found 2026-07-19).
+
+## GitHub Workflow
+
+**Issues**
+- The issue body is what to build. When grooming resolves open questions, edit the body — don't leave resolutions only in comments. Fold context-dependent mid-discussion decisions into the relevant issue rather than filing a new one.
+- Write mid-project progress and learnings as a comment on the relevant issue, not in a memory file. Comments are versioned, searchable, and live next to the work.
+- Add every issue to a project board at creation — no floating issues. Use `--add-project` on `gh issue create`, or follow up immediately with `gh issue edit N --add-project`.
+- Bugs are children of stories, not epics (Epic → Story → Bug). File as separate issues with `Part of #N` — bugs don't require `ready-to-build`; verbal approval plus a posted implementation plan is enough.
+
+**Epics**
+- Linking a story to an epic requires two steps — body bullets alone don't create the actual GitHub link:
+  1. `gh api repos/{owner}/{repo}/issues/{epic-number}/sub_issues -F sub_issue_id={story-rest-id}` — use the REST numeric ID from `gh api repos/{owner}/{repo}/issues/{number} -q .id` (not the GraphQL node id)
+  2. Add the story to the project board
+- During grooming, verify the "Epic: #N" line in the body matches the actual sub_issues parent — they drift silently. Query via GraphQL before adding a new parent (REST 422s with "may only have one parent" if a link already exists).
+
+**PRs**
+- Every PR with verification steps gets two labeled sections: **Test plan (Claude)** and **Manual steps (Lou)**.
+  - Check off Claude's items (tsc, unit tests, e2e, greps) immediately via `gh pr edit --body-file` — don't wait.
+  - When Lou confirms a manual step in chat, update the checkbox on GitHub — verbal "done" is not sufficient.
+  - PR also carries the full AC list from the story so Lou tests against the PR, not the issue.
+- An account-wide default PR template lives at `foulox/.github/.github/PULL_REQUEST_TEMPLATE.md` — applies to any foulox repo without its own. Check there before saying "no template applies": `gh api repos/foulox/.github/git/trees/main?recursive=true --jq '.tree[].path'`.
+- Rulesets and branch protection require GitHub Pro on private repos — both APIs return 403 on a free personal account. "Require PR before merging" is also whole-branch only, not path-scoped.
