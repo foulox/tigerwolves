@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache'
 import type { ScheduleEntry, Race, RunGroup, WorkoutVariantRow, RunConfig, RunLeader, AwayPeriod } from './data'
 import { weekOfMonth } from './data'
 import type { WorkoutVariantInput } from './workoutVariant'
+import { getNextLeader } from './rotation'
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is not set')
@@ -430,6 +431,73 @@ export async function dbRegroupVariants(
     if ((remaining.count as number) === 0) {
       await sql`DELETE FROM workout_families WHERE id = ${familyId}`
     }
+  }
+}
+
+// ── Schedule horizon generation ───────────────────────────────────────────────
+
+const DAY_MAP: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
+  Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+  Thursday: 4, Friday: 5, Saturday: 6,
+}
+
+function toYMD(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
+
+// Idempotent — safe to call on every page load.
+// Creates weekly schedule entries for `runId` up to 12 weeks from today,
+// using the run's day_of_week and rotation roster.
+export async function generateScheduleHorizon(
+  runId: string,
+  dayOfWeek: string,
+  roster: RunLeader[],
+): Promise<void> {
+  const horizonDate = new Date()
+  horizonDate.setDate(horizonDate.getDate() + 12 * 7)
+  const horizon = toYMD(horizonDate)
+
+  // Find last existing entry for this run
+  const lastRows = await sql`
+    SELECT date, leader FROM schedule
+    WHERE run_id = ${runId}
+    ORDER BY date DESC LIMIT 1
+  `
+  const lastEntry = lastRows[0] ?? null
+  const lastLeader = (lastEntry?.leader as string | null) ?? null
+
+  // Find the next date to generate from
+  const targetDay = DAY_MAP[dayOfWeek] ?? 2 // default Tuesday
+
+  let cursor = lastEntry
+    ? new Date((lastEntry.date as string) + 'T00:00:00')
+    : new Date()
+
+  // Advance cursor to the first occurrence of targetDay on or after cursor
+  while (cursor.getDay() !== targetDay) {
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  // Move one week forward if we're starting from the last entry's date
+  if (lastEntry) cursor.setDate(cursor.getDate() + 7)
+
+  let currentLeader = lastLeader
+
+  while (toYMD(cursor) <= horizon) {
+    const dateStr = toYMD(cursor)
+
+    // Check if entry already exists (idempotency)
+    const exists = await sql`SELECT 1 FROM schedule WHERE date = ${dateStr}::date AND run_id = ${runId}`
+    if (!exists[0]) {
+      const nextLeader = getNextLeader(roster, currentLeader ?? '', dateStr)
+      await sql`
+        INSERT INTO schedule (date, run_id, workout_type, leader, needs_leader)
+        VALUES (${dateStr}::date, ${runId}, '', ${nextLeader ?? ''}, ${nextLeader === null})
+        ON CONFLICT (date) DO NOTHING
+      `
+      currentLeader = nextLeader ?? currentLeader
+    }
+
+    cursor.setDate(cursor.getDate() + 7)
   }
 }
 
