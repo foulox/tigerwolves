@@ -32,6 +32,7 @@ export async function fetchSchedule(runId?: string): Promise<ScheduleEntry[]> {
       leader: r.leader as string,
       workoutName: (r.workout_name as string | null) ?? null,
       selectedVariations: (r.selected_variations as string[]) ?? [''],
+      needsLeader: r.needs_leader === true,
     }
   })
 }

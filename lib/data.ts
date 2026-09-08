@@ -60,6 +60,7 @@ export type ScheduleEntry = {
   leader: string
   workoutName: string | null
   selectedVariations: string[]
+  needsLeader?: boolean
 }
 
 export type Race = {

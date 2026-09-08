@@ -12,6 +12,7 @@ import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import Header from '@/components/Header'
 import WorkoutDetails from '@/components/WorkoutDetails'
+import LeaderPicker from '@/components/LeaderPicker'
 import { formatDateShort } from '@/lib/dateUtils'
 
 
@@ -37,7 +38,7 @@ type Props = {
   runLeaders: RunLeader[]
 }
 
-export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {}, runConfig, roster }: Props) {
+export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {}, runConfig, roster, runLeaders }: Props) {
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
   const [selectedWorkouts, setSelectedWorkouts] = useState<WorkoutVariantRow[]>([])
   const [showCount, setShowCount] = useState(3)
@@ -48,6 +49,8 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [activeType, setActiveType] = useState<string | null>(null)
   const [planTab, setPlanTab] = useState<'post' | 'browse'>('post')
+  const [leaderPickerOpen, setLeaderPickerOpen] = useState(false)
+  const [localLeader, setLocalLeader] = useState<string | null>(null)
 
   const entry = upcoming[weekIndex]
 
@@ -154,6 +157,8 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
     setExpandedId(null)
     setActiveType(null)
     setPlanTab('post')
+    setLeaderPickerOpen(false)
+    setLocalLeader(null)
   }
 
   function toggleExpand(id: string) {
@@ -177,8 +182,9 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
     setSaved(false)
   }
 
+  const effectiveLeader = localLeader ?? entry?.leader ?? ''
   const post = entry && effectiveSelections.length > 0 && runConfig
-    ? buildPost(entry, effectiveSelections, runConfig, roster, activeType)
+    ? buildPost({ ...entry, leader: effectiveLeader }, effectiveSelections, runConfig, roster, activeType)
     : ''
 
   function handleCopy() {
@@ -221,7 +227,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
       <div className="px-4 pb-4" data-tour="heylo-area">
 
         {/* Week nav */}
-        <div className="flex items-center justify-between mb-5 bg-white rounded-2xl border border-gray-100 shadow-sm px-2 py-2">
+        <div className={`flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-2 py-2 ${leaderPickerOpen ? 'mb-2' : 'mb-5'}`}>
           <button
             onClick={() => changeWeek(weekIndex - 1)}
             disabled={weekIndex === 0}
@@ -230,7 +236,21 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
             <ChevronLeft size={20} />
           </button>
           <div className="text-center">
-            <div className="text-sm font-semibold text-gray-900">{entry?.leader || '—'}</div>
+            {isLeader && entry && !leaderPickerOpen ? (
+              <button
+                onClick={() => setLeaderPickerOpen(true)}
+                className="text-left touch-manipulation"
+                aria-label="Change leader for this week"
+              >
+                <div className="text-sm font-semibold text-gray-900 flex items-center gap-1">
+                  {localLeader ?? entry.leader}
+                  {entry.needsLeader && <span className="text-[9px] bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded">Needs leader</span>}
+                  <span className="text-xs text-orange-600">tap to change</span>
+                </div>
+              </button>
+            ) : (
+              <div className="text-sm font-semibold text-gray-900">{entry ? (localLeader ?? entry.leader) : '—'}</div>
+            )}
             <div className="text-xs text-gray-400">{entry ? formatDateShort(new Date(entry.date + 'T00:00:00')) : ''}</div>
           </div>
           <button
@@ -241,6 +261,18 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
             <ChevronRight size={20} />
           </button>
         </div>
+
+        {isLeader && leaderPickerOpen && entry && (
+          <div className="mb-3 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <LeaderPicker
+              date={entry.date}
+              currentLeader={localLeader ?? entry.leader}
+              runLeaders={runLeaders}
+              onClose={() => setLeaderPickerOpen(false)}
+              onSaved={(name) => { setLocalLeader(name); setLeaderPickerOpen(false) }}
+            />
+          </div>
+        )}
 
         {entry && (
           <>
