@@ -25,6 +25,29 @@ test('Plan page for the unplanned week lets a leader pick a fixture workout and 
   await expect(post).toContainText('8x90sec hill repeats')
 })
 
+test('verification checkbox is required before copy', async ({ page }) => {
+  await page.goto('/plan?week=0')
+  await page.waitForLoadState('networkidle')
+
+  // Planned week shows Post draft tab with copy button — must be disabled before checkbox
+  const copyBtn = page.getByRole('button', { name: /copy to clipboard/i })
+  await expect(copyBtn).toBeDisabled()
+
+  const checkbox = page.getByRole('checkbox')
+  await checkbox.check()
+  await expect(copyBtn).toBeEnabled()
+})
+
+test('TigerWolves post contains correct branding', async ({ page }) => {
+  await page.goto('/plan?week=0')
+  await page.waitForLoadState('networkidle')
+
+  const post = await page.locator('pre').first().textContent()
+  expect(post).toContain('TigerWolves')
+  expect(post).not.toContain('undefined')
+  expect(post).not.toContain('null')
+})
+
 test('Plan page tab switch: Post draft is default, Change workout reveals the picker, and switching back preserves the post', async ({ page }) => {
   await page.goto('/plan?week=0')
   await page.waitForLoadState('networkidle')
