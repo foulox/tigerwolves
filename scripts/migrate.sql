@@ -180,7 +180,8 @@ CREATE TABLE IF NOT EXISTS runner_follows (
 
 -- Add run_id to schedule. NOT NULL DEFAULT 'tigerwolves' backfills all existing rows immediately in Postgres.
 ALTER TABLE schedule ADD COLUMN IF NOT EXISTS run_id TEXT NOT NULL DEFAULT 'tigerwolves';
-ALTER TABLE schedule ADD CONSTRAINT IF NOT EXISTS schedule_run_id_fk FOREIGN KEY (run_id) REFERENCES runs(id);
+ALTER TABLE schedule DROP CONSTRAINT IF EXISTS schedule_run_id_fk;
+ALTER TABLE schedule ADD CONSTRAINT schedule_run_id_fk FOREIGN KEY (run_id) REFERENCES runs(id);
 
 -- Add clerk_user_id to run_leaders — nullable; Lou backfills with actual Clerk user IDs after migration.
 -- Example: UPDATE run_leaders SET clerk_user_id = 'user_abc123' WHERE name = 'Lou Fox' AND run_id = 'tigerwolves';
