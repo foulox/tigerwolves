@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { ScheduleEntry, WorkoutVariantRow, RunConfig } from '@/lib/data'
+import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/lib/data'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import { buildPost, formatDateLong } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
@@ -32,12 +32,12 @@ type Props = {
   initialWeekIndex?: number
   isLeader: boolean
   voteData?: Record<string, VoteData | null>
-  // Temporary — Task 5 makes these required
-  runConfig?: RunConfig
-  roster?: string[]
+  runConfig: RunConfig
+  roster: string[]
+  runLeaders: RunLeader[]
 }
 
-export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {}, runConfig, roster = [] }: Props) {
+export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {}, runConfig, roster }: Props) {
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
   const [selectedWorkouts, setSelectedWorkouts] = useState<WorkoutVariantRow[]>([])
   const [showCount, setShowCount] = useState(3)

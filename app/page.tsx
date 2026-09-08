@@ -1,14 +1,29 @@
 import { currentUser } from '@clerk/nextjs/server'
-import { fetchData } from '@/lib/db'
+import { fetchData, fetchSchedule, getLeaderRun, getRunRoster, generateScheduleHorizon } from '@/lib/db'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import Header from '@/components/Header'
 import ScheduleClient from '@/components/ScheduleClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
+import type { RunConfig } from '@/lib/data'
 
 export default async function SchedulePage() {
   const user = await currentUser()
   const isLeader = user?.publicMetadata?.role === 'leader'
-  const { schedule, workoutVariants } = await fetchData()
+
+  // Identify this leader's run (falls back to TigerWolves config if not found)
+  const tigerWolvesConfig: RunConfig = {
+    id: 'tigerwolves', name: 'TigerWolves', emoji: '🐯🐺', dayOfWeek: 'Tuesday',
+    postHeader: '🐯🐺 TigerWolves Tuesday Workout',
+    meetingLocation: 'Starting point and route: Tom Stofka Garden, aka "Da Bins."\nWe\'ll warm up by jogging to Marsha P. Johnson which is at the corner of North 8th and Kent\nThe run will be along the Kent Avenue Speedway\nWe\'ll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track',
+    leaderIntro: 'Run Leaders:',
+    closingNotes: 'Bag Drop: Sorry, Not available',
+  }
+  const runConfig = (user && isLeader ? await getLeaderRun(user.id) : null) ?? tigerWolvesConfig
+  const runLeaders = isLeader ? await getRunRoster(runConfig.id) : []
+  if (isLeader) await generateScheduleHorizon(runConfig.id, runConfig.dayOfWeek, runLeaders)
+
+  const { workoutVariants } = await fetchData()
+  const schedule = await fetchSchedule(runConfig.id)
   const today = new Date().toISOString().slice(0, 10)
 
   const PAST_WEEKS_SHOWN = 8
@@ -37,7 +52,7 @@ export default async function SchedulePage() {
 
   return (
     <div>
-      <Header title="Schedule" subtitle="Upcoming Tuesdays" isLeader={isLeader} />
+      <Header title="Schedule" subtitle={`Upcoming ${runConfig.dayOfWeek}s`} isLeader={isLeader} />
 
       <ScheduleClient
         past={past}
