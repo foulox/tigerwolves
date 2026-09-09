@@ -10,18 +10,9 @@ export default async function globalSetup() {
   await seedE2E()
 
   // Invalidate fetchData's unstable_cache so tests see the freshly seeded rows.
-  // Moved here from auth.setup.ts: the first request to this route handler
-  // triggers Next.js compilation in CI, which can take 60s+ — longer than the
-  // per-test timeout. globalSetup has no per-test timeout, so it's safe here.
   // The webServer is already running at this point (Playwright starts it before
-  // calling globalSetup).
+  // calling globalSetup). In CI, next build && next start is used, so all routes
+  // are pre-compiled — no first-request compilation delay to worry about here.
   const res = await fetch('http://localhost:3000/api/e2e-revalidate', { method: 'POST' })
   if (!res.ok) throw new Error(`e2e-revalidate failed with status ${res.status}`)
-
-  // Pre-warm every page route the test suite navigates to. In next dev, the
-  // first request to any route triggers compilation (60s+ in CI). Doing it
-  // here — where there is no per-test timeout — prevents those compilations
-  // from blowing the 35s test timeout during the actual runs.
-  const routes = ['/', '/admin', '/all-runs', '/plan', '/plan?week=0', '/library', '/run-config', '/schedule', '/races']
-  await Promise.all(routes.map(r => fetch(`http://localhost:3000${r}`).catch(() => {})))
 }
