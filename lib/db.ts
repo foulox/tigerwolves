@@ -447,15 +447,17 @@ function toYMD(d: Date): string {
 }
 
 // Idempotent — safe to call on every page load.
-// Creates weekly schedule entries for `runId` up to 12 weeks from today,
+// Creates weekly schedule entries for `runId` up to 24 weeks from today,
 // using the run's day_of_week and rotation roster.
+// (24-week horizon locked with Lou for #310; the cron-driven horizon + unbounded
+// "Show more" button is deferred to its own future story.)
 export async function generateScheduleHorizon(
   runId: string,
   dayOfWeek: string,
   roster: RunLeader[],
 ): Promise<void> {
   const horizonDate = new Date()
-  horizonDate.setDate(horizonDate.getDate() + 12 * 7)
+  horizonDate.setDate(horizonDate.getDate() + 24 * 7)
   const horizon = toYMD(horizonDate)
 
   // Find last existing entry for this run
@@ -470,7 +472,7 @@ export async function generateScheduleHorizon(
   // Find the next date to generate from
   const targetDay = DAY_MAP[dayOfWeek] ?? 2 // default Tuesday
 
-  let cursor = lastEntry
+  const cursor = lastEntry
     ? new Date(toDateString(lastEntry.date) + 'T00:00:00')
     : new Date()
 

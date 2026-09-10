@@ -14,12 +14,17 @@ test('Schedule page shows the three seeded upcoming Tuesdays', async ({ page }) 
   await expect(page.locator('[data-testid="schedule-card-2"]')).toContainText('Led by Priya Shah')
 })
 
-test('"Plan week →" button appears on all three cards for signed-in leaders', async ({ page }) => {
+test('"Plan week →" button appears on the seeded cards for signed-in leaders', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('load')
 
+  // Auto-generation (generateScheduleHorizon, 24-week horizon) fills future weeks
+  // beyond the 3 seeded fixture cards on every leader page load, so the total count
+  // is not fixed. Assert on the 3 known seeded cards and their Plan-week buttons
+  // rather than pinning the total.
   const cards = page.locator('[data-testid^="schedule-card-"]')
-  await expect(cards).toHaveCount(3)
+  await expect(cards.first()).toBeVisible()
+  expect(await cards.count()).toBeGreaterThanOrEqual(3)
 
   for (let i = 0; i < 3; i++) {
     const btn = page.locator(`[data-testid="plan-week-${i}"]`)
