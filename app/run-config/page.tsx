@@ -9,7 +9,6 @@ export default async function RunConfigPage() {
   if (user.publicMetadata?.role !== 'leader') redirect('/')
 
   const runConfig = await getLeaderRun(user.id)
-  console.log('[dbg rc] server currentUser.id=', JSON.stringify(user.id), 'runConfig=', JSON.stringify(runConfig))
   if (!runConfig) redirect('/')
 
   const runLeaders = await getRunRoster(runConfig.id)

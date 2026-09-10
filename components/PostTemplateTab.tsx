@@ -31,15 +31,19 @@ export default function PostTemplateTab({ runConfig }: { runConfig: RunConfig })
 
   const field = (label: string, key: keyof typeof form, multiline = false) => (
     <div className="flex flex-col gap-1">
-      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</label>
+      {/* htmlFor/id association: required for the label to name the control (a11y)
+          and so tests can locate it by label. */}
+      <label htmlFor={key} className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</label>
       {multiline ? (
         <textarea
+          id={key}
           value={form[key]}
           onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
           className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none min-h-[60px] touch-manipulation"
         />
       ) : (
         <input
+          id={key}
           type="text"
           value={form[key]}
           onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}

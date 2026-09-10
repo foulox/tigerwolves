@@ -53,13 +53,11 @@ setup('authenticate as test leader', async ({ page }) => {
   const dbUrl = process.env.DATABASE_URL
   if (clerkUserId && dbUrl) {
     const sql = neon(dbUrl)
-    const upd = await sql`
+    await sql`
       UPDATE run_leaders
       SET clerk_user_id = ${clerkUserId}
       WHERE run_id = 'tigerwolves' AND name = 'Dana Kim'
-      RETURNING id, name, clerk_user_id
     `
-    console.log('[dbg setup] wroteClerkId=', JSON.stringify(clerkUserId), 'updatedRows=', JSON.stringify(upd))
   } else if (!clerkUserId) {
     throw new Error('auth.setup: could not read window.Clerk.user.id after sign-in — cannot link the test leader, /run-config specs would redirect. Failing setup loudly rather than leaving an unlinked roster.')
   }

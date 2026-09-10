@@ -151,12 +151,12 @@ export default function RosterTab({
                       </div>
                     ))}
                     <div className="flex gap-2 items-center">
-                      <label className="text-[10px] font-bold text-yellow-800 w-8">From</label>
-                      <input type="date" value={newFrom} onChange={e => setNewFrom(e.target.value)} className="flex-1 bg-white border border-yellow-200 rounded-lg px-2 py-1.5 text-xs touch-manipulation" />
+                      <label htmlFor={`away-from-${l.id}`} className="text-[10px] font-bold text-yellow-800 w-8">From</label>
+                      <input id={`away-from-${l.id}`} type="date" value={newFrom} onChange={e => setNewFrom(e.target.value)} className="flex-1 bg-white border border-yellow-200 rounded-lg px-2 py-1.5 text-xs touch-manipulation" />
                     </div>
                     <div className="flex gap-2 items-center">
-                      <label className="text-[10px] font-bold text-yellow-800 w-8">To</label>
-                      <input type="date" value={newTo} onChange={e => setNewTo(e.target.value)} className="flex-1 bg-white border border-yellow-200 rounded-lg px-2 py-1.5 text-xs touch-manipulation" />
+                      <label htmlFor={`away-to-${l.id}`} className="text-[10px] font-bold text-yellow-800 w-8">To</label>
+                      <input id={`away-to-${l.id}`} type="date" value={newTo} onChange={e => setNewTo(e.target.value)} className="flex-1 bg-white border border-yellow-200 rounded-lg px-2 py-1.5 text-xs touch-manipulation" />
                     </div>
                     <div className="flex gap-2 justify-end">
                       <button onClick={() => setOpenAwayId(null)} className="bg-white border border-yellow-200 text-yellow-800 rounded-lg px-3 py-1.5 text-xs font-bold touch-manipulation">Cancel</button>
