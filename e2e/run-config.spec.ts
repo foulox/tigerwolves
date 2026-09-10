@@ -45,8 +45,10 @@ test.describe('Run Settings', () => {
     // Open the away panel for the first leader in the list
     await page.getByRole('button', { name: /away/i }).first().click()
 
-    await page.getByLabel('From').fill('2099-01-01')
-    await page.getByLabel('To').fill('2099-01-07')
+    // exact match: getByLabel does substring matching by default, and "To" would
+    // otherwise also match the "How to use this" header button.
+    await page.getByLabel('From', { exact: true }).fill('2099-01-01')
+    await page.getByLabel('To', { exact: true }).fill('2099-01-07')
     await page.getByRole('button', { name: /save away period/i }).click()
 
     await expect(page.getByText(/away period saved/i)).toBeVisible()
