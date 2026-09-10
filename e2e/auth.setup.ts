@@ -1,5 +1,6 @@
 import { test as setup } from '@playwright/test'
 import { clerk } from '@clerk/testing/playwright'
+import { neon } from '@neondatabase/serverless'
 import fs from 'fs'
 import path from 'path'
 
@@ -34,6 +35,32 @@ setup('authenticate as test leader', async ({ page }) => {
   // Wait for the page to finish rendering before saving state — in CI, '/' is
   // slow (generateScheduleHorizon makes several sequential DB calls).
   await page.waitForLoadState('load', { timeout: 60000 })
+
+  // Link the seeded roster to THIS signed-in account's real Clerk user id.
+  // getLeaderRun() (and therefore the whole /run-config surface) only recognizes a
+  // leader whose run_leaders row carries their exact clerk_user_id. seed-e2e.ts seeds
+  // that id from the PLAYWRIGHT_TEST_CLERK_USER_ID secret, but that secret is easy to
+  // leave stale — and the leader account could be recreated with a fresh id. Reading
+  // the id straight from the live session here makes the link self-healing: whatever
+  // account actually signed in becomes the linked leader. No-ops the secret when they
+  // already agree. getLeaderRun/getRunRoster are uncached, so this UPDATE is visible
+  // to the very next request with no cache invalidation.
+  const clerkUserId = await page
+    .waitForFunction(() => (window as unknown as { Clerk?: { user?: { id?: string } } }).Clerk?.user?.id, null, { timeout: 30000 })
+    .then(handle => handle.jsonValue() as Promise<string>)
+    .catch(() => null)
+
+  const dbUrl = process.env.DATABASE_URL
+  if (clerkUserId && dbUrl) {
+    const sql = neon(dbUrl)
+    await sql`
+      UPDATE run_leaders
+      SET clerk_user_id = ${clerkUserId}
+      WHERE run_id = 'tigerwolves' AND name = 'Dana Kim'
+    `
+  } else if (!clerkUserId) {
+    console.warn('auth.setup: could not read window.Clerk.user.id — /run-config specs may redirect if the seeded clerk_user_id is stale.')
+  }
 
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
