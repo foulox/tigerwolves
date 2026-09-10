@@ -471,7 +471,7 @@ export async function generateScheduleHorizon(
   const targetDay = DAY_MAP[dayOfWeek] ?? 2 // default Tuesday
 
   let cursor = lastEntry
-    ? new Date((lastEntry.date as string) + 'T00:00:00')
+    ? new Date(toDateString(lastEntry.date) + 'T00:00:00')
     : new Date()
 
   // Advance cursor to the first occurrence of targetDay on or after cursor
