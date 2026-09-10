@@ -1,5 +1,5 @@
 'use server'
-import { currentUser } from '@clerk/nextjs/server'
+import { currentUser, clerkClient } from '@clerk/nextjs/server'
 import type { User } from '@clerk/nextjs/server'
 import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
@@ -194,16 +194,37 @@ export async function addRunLeaderByEmail(
     } catch {
       return { error: 'Forbidden' }
     }
-    // Look up Clerk user by email to get their name
-    // Note: Clerk Admin API is needed here — use process.env.CLERK_SECRET_KEY
-    // Simplest approach: insert with email, name defaults to email prefix until they sign in
-    const name = email.split('@')[0]
+
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail) return { error: 'Enter an email address' }
+
+    // A leader can only be added if the email already belongs to a Clerk account.
+    // We store their clerk_user_id at add-time so getLeaderRun() recognizes them at
+    // login — a run_leaders row with no clerk_user_id is invisible to the leader
+    // surfaces, which is the linkage gap this rework closes. Reject unknown emails.
+    const client = await clerkClient()
+    const { data: matches } = await client.users.getUserList({ emailAddress: [normalizedEmail] })
+    const clerkUser = matches.find(u =>
+      u.emailAddresses.some(e => e.emailAddress.toLowerCase() === normalizedEmail)
+    )
+    if (!clerkUser) {
+      return { error: 'No account found for that email — they need to sign in once before they can be added.' }
+    }
+
+    const name =
+      [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ').trim() ||
+      clerkUser.username ||
+      normalizedEmail.split('@')[0]
+
     const maxOrder = await sql`SELECT MAX(sort_order) AS m FROM run_leaders WHERE run_id = ${runId}`
     const nextOrder = ((maxOrder[0].m as number | null) ?? 0) + 1
     await sql`
-      INSERT INTO run_leaders (run_id, name, email, sort_order, active)
-      VALUES (${runId}, ${name}, ${email}, ${nextOrder}, true)
-      ON CONFLICT (run_id, name) DO UPDATE SET email = ${email}, active = true
+      INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
+      VALUES (${runId}, ${name}, ${normalizedEmail}, ${clerkUser.id}, ${nextOrder}, true)
+      ON CONFLICT (run_id, name) DO UPDATE SET
+        email = ${normalizedEmail},
+        clerk_user_id = ${clerkUser.id},
+        active = true
     `
     updateTag('tigerwolves-data')
     return {}

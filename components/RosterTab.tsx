@@ -27,6 +27,7 @@ export default function RosterTab({
   const [newTo, setNewTo] = useState('')
   const [banner, setBanner] = useState<{ message: string; isWarning: boolean } | null>(null)
   const [newEmail, setNewEmail] = useState('')
+  const [addError, setAddError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function moveLeader(idx: number, direction: -1 | 1) {
@@ -69,13 +70,16 @@ export default function RosterTab({
 
   function handleAddLeader() {
     if (!newEmail.trim()) return
+    setAddError(null)
     startTransition(async () => {
       try {
-        await addRunLeaderByEmail(runId, newEmail.trim())
+        const result = await addRunLeaderByEmail(runId, newEmail.trim())
+        if (result.error) { setAddError(result.error); return }
         setNewEmail('')
         router.refresh()
       } catch (err) {
         Sentry.captureException(err)
+        setAddError('Something went wrong — please try again.')
       }
     })
   }
@@ -172,7 +176,7 @@ export default function RosterTab({
           <input
             type="email"
             value={newEmail}
-            onChange={e => setNewEmail(e.target.value)}
+            onChange={e => { setNewEmail(e.target.value); setAddError(null) }}
             placeholder="Email address…"
             className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm touch-manipulation"
           />
@@ -182,6 +186,8 @@ export default function RosterTab({
             className="bg-orange-600 text-white rounded-lg px-3 py-2 text-sm font-bold disabled:opacity-50 touch-manipulation"
           >Add</button>
         </div>
+        {addError && <p className="mt-2 text-xs font-medium text-red-600">{addError}</p>}
+        <p className="mt-2 text-[11px] text-gray-400 leading-snug">A leader must have signed in at least once before they can be added.</p>
       </div>
     </div>
   )
