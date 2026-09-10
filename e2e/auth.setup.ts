@@ -59,7 +59,9 @@ setup('authenticate as test leader', async ({ page }) => {
       WHERE run_id = 'tigerwolves' AND name = 'Dana Kim'
     `
     const check = await sql`SELECT name, clerk_user_id FROM run_leaders WHERE run_id = 'tigerwolves' ORDER BY sort_order`
-    console.log('[dbg auth.setup] client window.Clerk id=', clerkUserId, '| roster after update=', JSON.stringify(check))
+    const runsCheck = await sql`SELECT id FROM runs`
+    // TEMP DIAGNOSTIC: throw so the values land in the captured setup-test failure output.
+    throw new Error(`[dbg] clientClerkId=${clerkUserId} | envSecretId=${process.env.PLAYWRIGHT_TEST_CLERK_USER_ID} | roster=${JSON.stringify(check)} | runs=${JSON.stringify(runsCheck)}`)
   } else if (!clerkUserId) {
     console.warn('auth.setup: could not read window.Clerk.user.id — /run-config specs may redirect if the seeded clerk_user_id is stale.')
   }
