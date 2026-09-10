@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
-import { Settings, ChevronLeft } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import HowToUseButton from './HowToUseButton'
 import WhatsNewOverlay from './WhatsNewOverlay'
 import FeedbackButton from './FeedbackButton'
+import LeaderMenu from './LeaderMenu'
 import { PersonIcon } from './icons'
 
 export default function Header({
@@ -44,12 +45,10 @@ export default function Header({
         <WhatsNewOverlay />
         <HowToUseButton />
         {isLeader ? (
-          <UserButton appearance={{ elements: { userButtonAvatarBox: 'w-10 h-10' } }}>
-            <UserButton.MenuItems>
-              <UserButton.Link label="Run Settings" href="/run-config" labelIcon={<Settings size={16} />} />
-              <UserButton.Link label="Admin" href="/admin" labelIcon={<Settings size={16} />} />
-            </UserButton.MenuItems>
-          </UserButton>
+          <>
+            <LeaderMenu />
+            <UserButton appearance={{ elements: { userButtonAvatarBox: 'w-10 h-10' } }} />
+          </>
         ) : (
           <Link
             href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}
