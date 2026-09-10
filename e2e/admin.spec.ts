@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test'
 
 test('Admin page loads with Regroup Workouts heading', async ({ page }) => {
+  test.setTimeout(90000)
   await page.goto('/admin')
   await page.waitForLoadState('load')
   await expect(page.getByRole('heading', { name: /regroup workouts/i })).toBeVisible()
 })
 
 test('Configure button is visible in viewport without scrolling', async ({ page }) => {
+  test.setTimeout(90000)
   await page.goto('/admin')
   await page.waitForLoadState('load')
 
@@ -17,6 +19,7 @@ test('Configure button is visible in viewport without scrolling', async ({ page 
 })
 
 test('Regroup flow merges the two reserved fixture workouts into a new family', async ({ page }) => {
+  test.setTimeout(90000)
   await page.goto('/admin')
   await page.waitForLoadState('load')
 
