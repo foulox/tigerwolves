@@ -1,4 +1,4 @@
-import { describe, it, test, expect, afterAll, beforeEach, afterEach } from 'vitest'
+import { describe, it, test, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import {
   sql, fetchSchedule, fetchRaces, fetchRunGroups, dbSetScheduleWorkout,
   dbInsertWorkoutVariant, dbUpdateWorkoutVariant, WorkoutVariantNotFoundError,
@@ -402,27 +402,68 @@ describe('workout_variants write path additions (#277)', () => {
   })
 })
 
-// These tests require the migration to have been applied to the test DB.
-// They will fail until Task 1 SQL has been run against the staging branch.
-describe('getLeaderRun', () => {
-  test('returns TigerWolves config for a TigerWolves leader clerk_user_id', async () => {
-    // Use the test leader's clerk_user_id from .env.test
-    const run = await getLeaderRun(process.env.PLAYWRIGHT_TEST_CLERK_USER_ID!)
+// These tests require the #310 migration (leader_intro on runs; away_periods/email
+// on run_leaders) to have been applied to the staging branch. They self-seed their
+// own run_leaders rows rather than depend on ambient staging state (which the e2e
+// seed wipes and rewrites) or on a hand-maintained clerk-id secret matching a row.
+// They WRITE, so they only run against staging — never production, which is what
+// .env.local's DATABASE_URL points at during a local run. CI uses staging.
+const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+
+describe.skipIf(!onStaging)('getLeaderRun', () => {
+  // A clerk id that only this test uses, linked to the real 'tigerwolves' run
+  // (its runs row is created by scripts/migrate.sql and always present on staging).
+  const TEST_CLERK_ID = 'user_dbtest310_getleaderrun'
+  const TEST_NAME = 'DB Test — getLeaderRun 310'
+
+  beforeAll(async () => {
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES ('tigerwolves', ${TEST_NAME}, ${TEST_CLERK_ID}, 999, true)
+      ON CONFLICT (run_id, name) DO UPDATE SET clerk_user_id = ${TEST_CLERK_ID}, active = true
+    `
+  })
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves' AND name = ${TEST_NAME}`
+  })
+
+  test('returns the run a leader is linked to via clerk_user_id', async () => {
+    const run = await getLeaderRun(TEST_CLERK_ID)
     expect(run).not.toBeNull()
     expect(run?.id).toBe('tigerwolves')
+    // leader_intro backfilled to 'Run Leaders:' by the migration; getLeaderRun also
+    // falls back to that string, so this holds whether or not the backfill ran.
     expect(run?.leaderIntro).toBe('Run Leaders:')
   })
 
-  test('returns null for unknown userId', async () => {
+  test('returns null for an unknown userId', async () => {
     const run = await getLeaderRun('user_nonexistent')
     expect(run).toBeNull()
   })
 })
 
-describe('getRunRoster', () => {
+describe.skipIf(!onStaging)('getRunRoster', () => {
+  // Fully isolated under a synthetic run_id (run_leaders has no FK to runs, so no
+  // runs row is needed) — independent of the tigerwolves roster the e2e seed rewrites.
+  const RID = 'test-run-310-getrunroster'
+
+  beforeAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RID}`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, sort_order, active) VALUES
+        (${RID}, 'Roster Test A', 1, true),
+        (${RID}, 'Roster Test B', 2, true)
+    `
+  })
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RID}`
+  })
+
   test('returns leaders ordered by sort_order', async () => {
-    const roster = await getRunRoster('tigerwolves')
-    expect(roster.length).toBeGreaterThan(0)
+    const roster = await getRunRoster(RID)
+    expect(roster.length).toBe(2)
     expect(roster[0].sortOrder).toBeLessThan(roster[1].sortOrder!)
+    expect(roster[0].name).toBe('Roster Test A')
   })
 })

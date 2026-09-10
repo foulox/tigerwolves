@@ -38,13 +38,13 @@ setup('authenticate as test leader', async ({ page }) => {
 
   // Link the seeded roster to THIS signed-in account's real Clerk user id.
   // getLeaderRun() (and therefore the whole /run-config surface) only recognizes a
-  // leader whose run_leaders row carries their exact clerk_user_id. seed-e2e.ts seeds
-  // that id from the PLAYWRIGHT_TEST_CLERK_USER_ID secret, but that secret is easy to
-  // leave stale — and the leader account could be recreated with a fresh id. Reading
-  // the id straight from the live session here makes the link self-healing: whatever
-  // account actually signed in becomes the linked leader. No-ops the secret when they
-  // already agree. getLeaderRun/getRunRoster are uncached, so this UPDATE is visible
-  // to the very next request with no cache invalidation.
+  // leader whose run_leaders row carries their exact clerk_user_id. The login is the
+  // source of truth: seed-e2e.ts leaves clerk_user_id NULL, and we read the id straight
+  // from the live session here and stamp it onto the first roster row (Dana Kim). So
+  // whatever account actually signs in becomes the linked leader — no hand-maintained
+  // id secret to drift, and it survives the test account being recreated with a fresh
+  // id. getLeaderRun/getRunRoster are uncached, so this UPDATE is visible to the very
+  // next request with no cache invalidation.
   const clerkUserId = await page
     .waitForFunction(() => (window as unknown as { Clerk?: { user?: { id?: string } } }).Clerk?.user?.id, null, { timeout: 30000 })
     .then(handle => handle.jsonValue() as Promise<string>)
@@ -58,12 +58,8 @@ setup('authenticate as test leader', async ({ page }) => {
       SET clerk_user_id = ${clerkUserId}
       WHERE run_id = 'tigerwolves' AND name = 'Dana Kim'
     `
-    const check = await sql`SELECT name, clerk_user_id FROM run_leaders WHERE run_id = 'tigerwolves' ORDER BY sort_order`
-    const runsCheck = await sql`SELECT id FROM runs`
-    // TEMP DIAGNOSTIC: throw so the values land in the captured setup-test failure output.
-    throw new Error(`[dbg] clientClerkId=${clerkUserId} | envSecretId=${process.env.PLAYWRIGHT_TEST_CLERK_USER_ID} | roster=${JSON.stringify(check)} | runs=${JSON.stringify(runsCheck)}`)
   } else if (!clerkUserId) {
-    console.warn('auth.setup: could not read window.Clerk.user.id — /run-config specs may redirect if the seeded clerk_user_id is stale.')
+    throw new Error('auth.setup: could not read window.Clerk.user.id after sign-in — cannot link the test leader, /run-config specs would redirect. Failing setup loudly rather than leaving an unlinked roster.')
   }
 
   fs.mkdirSync(path.dirname(authFile), { recursive: true })

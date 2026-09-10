@@ -161,15 +161,16 @@ export async function seedE2E(): Promise<void> {
   `
 
   // Roster names match the schedule leaders below so rotation and away-period
-  // reassignment resolve to real names. The CI test-leader Clerk account is linked
-  // to the first roster row (via PLAYWRIGHT_TEST_CLERK_USER_ID) so getLeaderRun()
-  // recognizes it. away_periods/email take their column defaults.
-  const testClerkId = process.env.PLAYWRIGHT_TEST_CLERK_USER_ID ?? null
+  // reassignment resolve to real names. clerk_user_id is left NULL here on purpose:
+  // the login is the source of truth for the leader link. e2e/auth.setup.ts reads the
+  // real Clerk id from the signed-in session and stamps it onto the first row (Dana Kim),
+  // so getLeaderRun() recognizes whatever account actually signs in — no dependency on a
+  // hand-maintained id secret. away_periods/email take their column defaults.
   await sql`
     INSERT INTO run_leaders (run_id, name, sort_order, clerk_user_id, active) VALUES
-      ('tigerwolves', 'Dana Kim',   1, ${testClerkId}, true),
-      ('tigerwolves', 'Marcus Ade', 2, NULL,           true),
-      ('tigerwolves', 'Priya Shah', 3, NULL,           true)
+      ('tigerwolves', 'Dana Kim',   1, NULL, true),
+      ('tigerwolves', 'Marcus Ade', 2, NULL, true),
+      ('tigerwolves', 'Priya Shah', 3, NULL, true)
   `
 
   // workout_type must match the assigned workout's own "type" field (not its
