@@ -62,8 +62,29 @@ export default function RosterTab({
           ? { ...r, awayPeriods: [...r.awayPeriods, { from: newFrom, to: newTo }] }
           : r
         ))
+        // Refresh server data so the reassigned schedule/plan surfaces are up to date.
+        router.refresh()
       } catch (err) {
         Sentry.captureException(err)
+      }
+    })
+  }
+
+  function handleRemove(leaderId: number, name: string) {
+    startTransition(async () => {
+      try {
+        const res = await removeRunLeader(leaderId)
+        if (res.error) { setBanner({ message: res.error, isWarning: true }); return }
+        setLeaders(prev => prev.filter(r => r.id !== leaderId))
+        const weeks = res.reassignedCount === 1 ? 'week' : 'weeks'
+        const msgs = [`✓ ${name} removed · ${res.reassignedCount} upcoming ${weeks} reassigned`]
+        if (res.noLeaderDates.length) msgs.push(`⚠ No available leader for: ${res.noLeaderDates.join(', ')} — assign manually`)
+        setBanner({ message: msgs.join('\n'), isWarning: res.noLeaderDates.length > 0 })
+        setTimeout(() => setBanner(null), 6000)
+        // Refresh server data so the reassigned schedule/plan surfaces are up to date.
+        router.refresh()
+      } catch (e) {
+        Sentry.captureException(e)
       }
     })
   }
@@ -132,7 +153,7 @@ export default function RosterTab({
                       className={`text-[10px] font-bold border rounded-md px-2 py-1 touch-manipulation ${isOpen ? 'border-yellow-300 text-yellow-700 bg-yellow-50' : 'border-gray-200 text-gray-500 bg-white'}`}
                     >Away{isOpen ? ' ▾' : ''}</button>
                     <button
-                      onClick={() => { startTransition(async () => { try { await removeRunLeader(l.id); setLeaders(prev => prev.filter(r => r.id !== l.id)) } catch(e) { Sentry.captureException(e) } }) }}
+                      onClick={() => handleRemove(l.id, l.name)}
                       className="w-6 h-6 rounded-full bg-red-50 text-orange-600 flex items-center justify-center text-sm touch-manipulation"
                       aria-label={`Remove ${l.name}`}
                     >×</button>

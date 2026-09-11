@@ -110,3 +110,54 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
     })
   })
 })
+
+describe.skipIf(!onStaging)('removing a leader reassigns their future weeks', () => {
+  const RUN = 'test-remove-310'
+  const CALLER = 'user_remtest_A_310' // RemA, leads RUN — the caller
+  const FUTURE = '2099-06-16'
+  let remCId: number
+
+  beforeAll(async () => {
+    await sql`INSERT INTO runs (id, name) VALUES (${RUN}, 'Remove Test 310') ON CONFLICT (id) DO NOTHING`
+    await sql`DELETE FROM schedule WHERE run_id = ${RUN}`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RUN}`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active) VALUES
+        (${RUN}, 'RemA', ${CALLER}, 1, true),
+        (${RUN}, 'RemB', NULL, 2, true)
+    `
+    const c = await sql`
+      INSERT INTO run_leaders (run_id, name, sort_order, active)
+      VALUES (${RUN}, 'RemC', 3, true) RETURNING id
+    `
+    remCId = c[0].id
+    // A future week led by the leader we're about to remove.
+    await sql`
+      INSERT INTO schedule (date, run_id, workout_type, leader)
+      VALUES (${FUTURE}::date, ${RUN}, '', 'RemC')
+    `
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM schedule WHERE run_id = ${RUN}`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RUN}`
+    await sql`DELETE FROM runs WHERE id = ${RUN}`
+  })
+
+  test('future week is reassigned to another active leader; removed leader is deactivated', async () => {
+    signInAs(CALLER)
+    const res = await removeRunLeader(remCId)
+    expect(res.error).toBeUndefined()
+    expect(res.reassignedCount).toBe(1)
+    expect(res.noLeaderDates).toEqual([])
+
+    const sched = await sql`SELECT leader, needs_leader FROM schedule WHERE run_id=${RUN} AND date=${FUTURE}::date`
+    const leader = sched[0].leader
+    expect(leader).not.toBe('RemC')
+    expect(['RemA', 'RemB']).toContain(leader)
+    expect(sched[0].needs_leader).not.toBe(true)
+
+    const removed = await sql`SELECT active FROM run_leaders WHERE id=${remCId}`
+    expect(removed[0].active).toBe(false)
+  })
+})

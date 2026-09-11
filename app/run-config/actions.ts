@@ -234,21 +234,67 @@ export async function addRunLeaderByEmail(
   }
 }
 
-export async function removeRunLeader(leaderId: number): Promise<{ error?: string }> {
+export async function removeRunLeader(
+  leaderId: number
+): Promise<{ error?: string; reassignedCount: number; noLeaderDates: string[] }> {
   try {
     const user = await currentUser()
-    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
+    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized', reassignedCount: 0, noLeaderDates: [] }
     // Verify caller owns the targeted leader row
     try {
       await assertCallerOwnsLeaderRow(user, leaderId)
     } catch {
-      return { error: 'Forbidden' }
+      return { error: 'Forbidden', reassignedCount: 0, noLeaderDates: [] }
     }
+
+    // Look up the leader's name + run before deactivating.
+    const leaderRows = await sql`SELECT name, run_id FROM run_leaders WHERE id = ${leaderId}`
+    if (!leaderRows[0]) return { error: 'Not found', reassignedCount: 0, noLeaderDates: [] }
+    const leaderName = leaderRows[0].name as string
+    const runId = leaderRows[0].run_id as string
+
+    // Deactivate first so the reassignment roster excludes the removed leader.
     await sql`UPDATE run_leaders SET active = false WHERE id = ${leaderId}`
+
+    // Roster now excludes the removed leader (getRunRoster filters active = true).
+    const roster = await getRunRoster(runId)
+
+    // Reassign this leader's FUTURE weeks (today onward) to the next available leader
+    // in rotation. Past weeks are left as an audit trail. Mirrors saveAwayPeriod's scan.
+    const affected = await sql`
+      SELECT date FROM schedule
+      WHERE run_id = ${runId} AND leader = ${leaderName} AND date >= CURRENT_DATE
+      ORDER BY date ASC
+    `
+
+    let reassignedCount = 0
+    const noLeaderDates: string[] = []
+
+    for (const row of affected) {
+      const dateStr = (row.date as Date).toISOString().slice(0, 10)
+      // Anchor on the actual leader of the entry immediately before this date so the
+      // rotation continues naturally (and picks up prior reassignments in this loop).
+      const prevEntryRows = await sql`
+        SELECT leader FROM schedule
+        WHERE run_id = ${runId} AND date < ${dateStr}::date
+        ORDER BY date DESC LIMIT 1
+      `
+      const anchorLeader = prevEntryRows[0] ? (prevEntryRows[0].leader as string) : ''
+      const next = getNextLeader(roster, anchorLeader, dateStr)
+
+      if (next === null) {
+        await sql`UPDATE schedule SET needs_leader = true WHERE date = ${dateStr}::date AND run_id = ${runId}`
+        noLeaderDates.push(dateStr)
+      } else {
+        await sql`UPDATE schedule SET leader = ${next}, needs_leader = null WHERE date = ${dateStr}::date AND run_id = ${runId}`
+        reassignedCount++
+      }
+    }
+
     updateTag('tigerwolves-data')
-    return {}
+    return { reassignedCount, noLeaderDates }
   } catch (err) {
     Sentry.captureException(err)
-    return { error: 'Failed to remove leader' }
+    return { error: 'Failed to remove leader', reassignedCount: 0, noLeaderDates: [] }
   }
 }
