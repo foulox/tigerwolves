@@ -14,10 +14,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: 'list',
+  reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
+    trace: 'on',
   },
   projects: [
     {
@@ -36,19 +36,24 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    // In CI: build first so every route is pre-compiled, eliminating the
+    // per-route first-compile delay (60s+ in next dev) that blows the per-test
+    // timeout. Locally: dev server for fast iteration. next start runs with
+    // NODE_ENV=production, so E2E_TEST_MODE=true is forwarded to allow the
+    // e2e-revalidate route handler to bypass its production guard.
+    command: process.env.CI
+      ? 'npm run build && npm run start'
+      : 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-    // The dev server is a separate child process — it doesn't inherit the
-    // dotenv.config() call above, so these are forwarded explicitly: DATABASE_URL
-    // to keep it on the same staging fixture data the seed step just wrote, and
-    // the Clerk keys so e2e/auth.setup.ts's sign-in resolves against the same
-    // Clerk instance PLAYWRIGHT_TEST_EMAIL's leader account actually lives on.
+    timeout: 300000, // 5 min — next build takes ~3 min in CI
+    // The server is a separate child process — these vars don't inherit from
+    // dotenv.config() above, so they're forwarded explicitly.
     env: {
       DATABASE_URL: process.env.DATABASE_URL ?? '',
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '',
       CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY ?? '',
+      E2E_TEST_MODE: 'true',
     },
   },
 })

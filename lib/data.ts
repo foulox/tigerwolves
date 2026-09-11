@@ -60,6 +60,7 @@ export type ScheduleEntry = {
   leader: string
   workoutName: string | null
   selectedVariations: string[]
+  needsLeader?: boolean
 }
 
 export type Race = {
@@ -81,7 +82,28 @@ export type RunGroup = {
   defaultLocation: string | null
 }
 
-export const RUN_LEADERS = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']
+export type RunConfig = {
+  id: string
+  name: string
+  emoji: string | null
+  dayOfWeek: string
+  meetingLocation: string
+  postHeader: string
+  leaderIntro: string
+  closingNotes: string
+}
+
+export type AwayPeriod = { from: string; to: string }
+
+export type RunLeader = {
+  id: number
+  runId: string
+  clerkUserId: string | null
+  name: string
+  email: string | null
+  sortOrder: number | null
+  awayPeriods: AwayPeriod[]
+}
 
 export const TW_WORKOUT_TYPES: WorkoutType[] = [
   'Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold',

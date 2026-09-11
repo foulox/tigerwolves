@@ -7,6 +7,7 @@ import { after } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { isValidDateString } from '@/lib/data'
 import {
+  sql,
   dbSetScheduleWorkout,
   dbInsertRace,
   dbFlagRace,
@@ -20,6 +21,7 @@ import {
   dbFixWorkoutVariantAndClearFlag,
   dbRegroupVariants,
   WorkoutVariantNotFoundError,
+  getLeaderRun,
 } from '@/lib/db'
 import { buildWorkoutVariantInput } from '@/lib/workoutVariant'
 import { captureServerEvent } from '@/lib/analytics'
@@ -164,7 +166,11 @@ function revalidateAll() {
 
 export async function setPlanWorkout(date: string, workoutName: string, selectedVariations: string[]) {
   const userId = await requireAuth()
-  await dbSetScheduleWorkout(date, workoutName, selectedVariations)
+  // Resolve the caller's run server-side (never trust a client-supplied runId) and
+  // scope the write to it — schedule rows are keyed by (date, run_id) since #310.
+  const run = await getLeaderRun(userId)
+  if (!run) throw new Error('Forbidden')
+  await dbSetScheduleWorkout(date, run.id, workoutName, selectedVariations)
   revalidateAll()
   await captureServerEvent('schedule_workout_set', userId, { isLeader: true })
 }
@@ -308,6 +314,24 @@ export async function fixRaceAndClearFlag(
   await dbFixRace(raceId, { name, date, distance: fields.distance.trim(), location: fields.location.trim(), organizer: fields.organizer.trim() })
   revalidateAll()
   await captureServerEvent('race_fixed', userId, { raceId, isLeader: true })
+}
+
+export async function saveScheduleLeader(date: string, leader: string): Promise<void> {
+  try {
+    const user = await currentUser()
+    if (!user || user.publicMetadata?.role !== 'leader') throw new Error('Unauthorized')
+    // Verify the schedule entry belongs to the caller's run
+    const run = await getLeaderRun(user.id)
+    if (!run) throw new Error('Forbidden')
+    const entryRows = await sql`SELECT run_id FROM schedule WHERE date = ${date}::date AND run_id = ${run.id}`
+    if (!entryRows[0]) throw new Error('Forbidden')
+    await sql`UPDATE schedule SET leader = ${leader}, needs_leader = null WHERE date = ${date}::date AND run_id = ${run.id}`
+    updateTag('tigerwolves-data')
+    await captureServerEvent('schedule_leader_changed', user.id, { date, leader })
+  } catch (err) {
+    Sentry.captureException(err)
+    throw err
+  }
 }
 
 // Adds a variant to an existing family — the workout_variants counterpart to

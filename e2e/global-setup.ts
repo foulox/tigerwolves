@@ -8,4 +8,11 @@ export default async function globalSetup() {
   // same production/staging guard scripts/seed-e2e.ts already enforces.
   await clerkSetup()
   await seedE2E()
+
+  // Invalidate fetchData's unstable_cache so tests see the freshly seeded rows.
+  // The webServer is already running at this point (Playwright starts it before
+  // calling globalSetup). In CI, next build && next start is used, so all routes
+  // are pre-compiled — no first-request compilation delay to worry about here.
+  const res = await fetch('http://localhost:3000/api/e2e-revalidate', { method: 'POST' })
+  if (!res.ok) throw new Error(`e2e-revalidate failed with status ${res.status}`)
 }

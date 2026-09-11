@@ -15,7 +15,10 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 // the replacement, which in this Next.js version needs a second cache-life
 // profile argument (see CLAUDE.md's cache-invalidation guardrail).
 export async function POST() {
-  if (process.env.NODE_ENV === 'production') {
+  // Blocked in production unless E2E_TEST_MODE=true (set by playwright.config.ts's
+  // webServer env when CI runs next build && next start). NODE_ENV is 'production'
+  // for next start, so we need the explicit bypass for e2e CI runs.
+  if (process.env.NODE_ENV === 'production' && process.env.E2E_TEST_MODE !== 'true') {
     return NextResponse.json({ error: 'not available in production' }, { status: 403 })
   }
   revalidatePath('/', 'layout')

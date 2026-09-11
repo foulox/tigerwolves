@@ -1,17 +1,18 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { ScheduleEntry, WorkoutVariantRow } from '@/lib/data'
+import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/lib/data'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
-import { buildPost, formatDateLong } from '@/lib/postBuilder'
+import { buildPost, buildVerificationLabel, formatDateLong } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
 import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import Header from '@/components/Header'
 import WorkoutDetails from '@/components/WorkoutDetails'
+import LeaderPicker from '@/components/LeaderPicker'
 import { formatDateShort } from '@/lib/dateUtils'
 
 
@@ -32,9 +33,12 @@ type Props = {
   initialWeekIndex?: number
   isLeader: boolean
   voteData?: Record<string, VoteData | null>
+  runConfig: RunConfig
+  roster: string[]
+  runLeaders: RunLeader[]
 }
 
-export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {} }: Props) {
+export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {}, runConfig, roster, runLeaders }: Props) {
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
   const [selectedWorkouts, setSelectedWorkouts] = useState<WorkoutVariantRow[]>([])
   const [showCount, setShowCount] = useState(3)
@@ -45,6 +49,11 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [activeType, setActiveType] = useState<string | null>(null)
   const [planTab, setPlanTab] = useState<'post' | 'browse'>('post')
+  const [leaderPickerOpen, setLeaderPickerOpen] = useState(false)
+  const [localLeader, setLocalLeader] = useState<string | null>(null)
+  const [verified, setVerified] = useState(false)
+
+  useEffect(() => { setVerified(false) }, [weekIndex])
 
   const entry = upcoming[weekIndex]
 
@@ -151,6 +160,8 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
     setExpandedId(null)
     setActiveType(null)
     setPlanTab('post')
+    setLeaderPickerOpen(false)
+    setLocalLeader(null)
   }
 
   function toggleExpand(id: string) {
@@ -174,7 +185,10 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
     setSaved(false)
   }
 
-  const post = entry && effectiveSelections.length > 0 ? buildPost(entry, effectiveSelections, activeType) : ''
+  const effectiveLeader = localLeader ?? entry?.leader ?? ''
+  const post = entry && effectiveSelections.length > 0 && runConfig
+    ? buildPost({ ...entry, leader: effectiveLeader }, effectiveSelections, runConfig, roster, activeType)
+    : ''
 
   function handleCopy() {
     navigator.clipboard.writeText(post).then(() => {
@@ -191,6 +205,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
     try {
       await setPlanWorkout(entry.date, sorted[0].name, sorted.map(w => w.label ?? ''))
       setSaved(true)
+      setVerified(false)
       setPlanTab('post')
     } catch (err) {
       Sentry.captureException(err, { extra: { date: entry.date, workoutName: sorted[0].name } })
@@ -216,7 +231,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
       <div className="px-4 pb-4" data-tour="heylo-area">
 
         {/* Week nav */}
-        <div className="flex items-center justify-between mb-5 bg-white rounded-2xl border border-gray-100 shadow-sm px-2 py-2">
+        <div className={`flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-2 py-2 ${leaderPickerOpen ? 'mb-2' : 'mb-5'}`}>
           <button
             onClick={() => changeWeek(weekIndex - 1)}
             disabled={weekIndex === 0}
@@ -225,7 +240,21 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
             <ChevronLeft size={20} />
           </button>
           <div className="text-center">
-            <div className="text-sm font-semibold text-gray-900">{entry?.leader || '—'}</div>
+            {isLeader && entry && !leaderPickerOpen ? (
+              <button
+                onClick={() => setLeaderPickerOpen(true)}
+                className="text-left touch-manipulation"
+                aria-label="Change leader for this week"
+              >
+                <div className="text-sm font-semibold text-gray-900 flex items-center gap-1">
+                  {localLeader ?? entry.leader}
+                  {entry.needsLeader && <span className="text-[9px] bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded">Needs leader</span>}
+                  <span className="text-xs text-orange-600">tap to change</span>
+                </div>
+              </button>
+            ) : (
+              <div className="text-sm font-semibold text-gray-900">{entry ? (localLeader ?? entry.leader) : '—'}</div>
+            )}
             <div className="text-xs text-gray-400">{entry ? formatDateShort(new Date(entry.date + 'T00:00:00')) : ''}</div>
           </div>
           <button
@@ -236,6 +265,18 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
             <ChevronRight size={20} />
           </button>
         </div>
+
+        {isLeader && leaderPickerOpen && entry && (
+          <div className="mb-3 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <LeaderPicker
+              date={entry.date}
+              currentLeader={localLeader ?? entry.leader}
+              runLeaders={runLeaders}
+              onClose={() => setLeaderPickerOpen(false)}
+              onSaved={(name) => { setLocalLeader(name); setLeaderPickerOpen(false) }}
+            />
+          </div>
+        )}
 
         {entry && (
           <>
@@ -485,19 +526,28 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
             )}
 
             {(!plannedWorkout || planTab === 'post') && effectiveSelections.length > 0 && (
-              <div>
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-                  <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
-                  <button
-                    onClick={handleCopy}
-                    data-tour="heylo-copy"
-                    className={`mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-colors touch-manipulation cursor-pointer ${
-                      copied ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'
-                    }`}
-                  >
-                    {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
-                  </button>
+              <div className="flex flex-col gap-3 p-4">
+                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
+                <div className="flex items-start gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                  <input
+                    type="checkbox"
+                    id="verify-checkbox"
+                    checked={verified}
+                    onChange={e => setVerified(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 shrink-0 accent-orange-600 touch-manipulation"
+                  />
+                  <label htmlFor="verify-checkbox" className="text-sm text-gray-600 leading-snug cursor-pointer">
+                    {effectiveSelections.length > 0 ? buildVerificationLabel(effectiveSelections[0]) : 'I\'ve verified the key workout details'}
+                  </label>
                 </div>
+                <button
+                  onClick={handleCopy}
+                  disabled={!verified}
+                  data-tour="heylo-copy"
+                  className={`flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-sm touch-manipulation transition-opacity ${verified ? 'bg-orange-600 text-white' : 'bg-orange-600 text-white opacity-35 cursor-not-allowed'}`}
+                >
+                  {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
+                </button>
               </div>
             )}
           </>

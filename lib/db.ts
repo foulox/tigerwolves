@@ -1,8 +1,9 @@
 import { neon } from '@neondatabase/serverless'
 import { unstable_cache } from 'next/cache'
-import type { ScheduleEntry, Race, RunGroup, WorkoutVariantRow } from './data'
+import type { ScheduleEntry, Race, RunGroup, WorkoutVariantRow, RunConfig, RunLeader, AwayPeriod } from './data'
 import { weekOfMonth } from './data'
 import type { WorkoutVariantInput } from './workoutVariant'
+import { getNextLeader } from './rotation'
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is not set')
@@ -18,10 +19,10 @@ function toDateString(val: unknown): string {
 
 // ── Reads ─────────────────────────────────────────────────────────────────────
 
-export async function fetchSchedule(): Promise<ScheduleEntry[]> {
-  const rows = await sql`
-    SELECT * FROM schedule ORDER BY date ASC
-  `
+export async function fetchSchedule(runId?: string): Promise<ScheduleEntry[]> {
+  const rows = runId
+    ? await sql`SELECT * FROM schedule WHERE run_id = ${runId} ORDER BY date ASC`
+    : await sql`SELECT * FROM schedule ORDER BY date ASC`
   return rows.map((r) => {
     const date = toDateString(r.date)
     return {
@@ -31,6 +32,7 @@ export async function fetchSchedule(): Promise<ScheduleEntry[]> {
       leader: r.leader as string,
       workoutName: (r.workout_name as string | null) ?? null,
       selectedVariations: (r.selected_variations as string[]) ?? [''],
+      needsLeader: r.needs_leader === true,
     }
   })
 }
@@ -40,7 +42,8 @@ export async function fetchSchedule(): Promise<ScheduleEntry[]> {
 // this app's own run group (TigerWolves) plus global/unowned families, same as
 // the implicit scope the legacy `workouts` table always had (no run_group concept
 // there at all) — this app doesn't yet serve any other run group's workouts.
-export async function fetchWorkoutVariants(): Promise<WorkoutVariantRow[]> {
+export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVariantRow[]> {
+  const resolvedRunId = runId ?? 'tigerwolves'
   const rows = await sql`
     SELECT
       wv.id AS variant_id,
@@ -69,7 +72,8 @@ export async function fetchWorkoutVariants(): Promise<WorkoutVariantRow[]> {
     FROM workout_variants wv
     JOIN workout_families wf ON wf.id = wv.family_id
     LEFT JOIN run_groups rg ON rg.id = wf.run_group_id
-    WHERE wf.run_group_id IS NULL OR rg.name = 'TigerWolves'
+    WHERE wf.run_group_id IS NULL
+       OR rg.name = (SELECT name FROM runs WHERE id = ${resolvedRunId})
     ORDER BY wf.name, wv.sort_order NULLS LAST
   `
   return rows.map((r) => ({
@@ -112,6 +116,47 @@ export async function fetchRunGroups(): Promise<RunGroup[]> {
   }))
 }
 
+export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | null> {
+  const rows = await sql`
+    SELECT r.id, r.name, r.emoji, r.day_of_week, r.meeting_location,
+           r.post_header, r.leader_intro, r.closing_notes
+    FROM run_leaders rl
+    JOIN runs r ON r.id = rl.run_id
+    WHERE rl.clerk_user_id = ${clerkUserId}
+    LIMIT 1
+  `
+  if (!rows[0]) return null
+  const r = rows[0]
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    emoji: (r.emoji as string | null) ?? null,
+    dayOfWeek: r.day_of_week as string,
+    meetingLocation: r.meeting_location as string,
+    postHeader: r.post_header as string,
+    leaderIntro: (r.leader_intro as string | null) ?? 'Run Leaders:',
+    closingNotes: r.closing_notes as string,
+  }
+}
+
+export async function getRunRoster(runId: string): Promise<RunLeader[]> {
+  const rows = await sql`
+    SELECT id, run_id, clerk_user_id, name, email, sort_order, away_periods
+    FROM run_leaders
+    WHERE run_id = ${runId} AND active = true
+    ORDER BY sort_order ASC NULLS LAST, id ASC
+  `
+  return rows.map(r => ({
+    id: r.id as number,
+    runId: r.run_id as string,
+    clerkUserId: (r.clerk_user_id as string | null) ?? null,
+    name: r.name as string,
+    email: (r.email as string | null) ?? null,
+    sortOrder: (r.sort_order as number | null) ?? null,
+    awayPeriods: (r.away_periods as AwayPeriod[]) ?? [],
+  }))
+}
+
 export async function fetchRaces(): Promise<Race[]> {
   const rows = await sql`
     SELECT * FROM races ORDER BY date ASC
@@ -131,9 +176,12 @@ export async function fetchRaces(): Promise<Race[]> {
 
 // ── Writes ────────────────────────────────────────────────────────────────────
 
-export async function dbSetScheduleWorkout(date: string, workoutName: string, selectedVariations: string[]): Promise<void> {
+export async function dbSetScheduleWorkout(date: string, runId: string, workoutName: string, selectedVariations: string[]): Promise<void> {
+  // Scoped by run_id: since #310 promoted the schedule PK to (date, run_id),
+  // two runs can share a date, so a date-only UPDATE would hit the wrong run's row.
   await sql`
-    UPDATE schedule SET workout_name = ${workoutName}, selected_variations = ${selectedVariations} WHERE date = ${date}::date
+    UPDATE schedule SET workout_name = ${workoutName}, selected_variations = ${selectedVariations}
+    WHERE date = ${date}::date AND run_id = ${runId}
   `
 }
 
@@ -387,6 +435,83 @@ export async function dbRegroupVariants(
     if ((remaining.count as number) === 0) {
       await sql`DELETE FROM workout_families WHERE id = ${familyId}`
     }
+  }
+}
+
+// ── Schedule horizon generation ───────────────────────────────────────────────
+
+const DAY_MAP: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
+  Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+  Thursday: 4, Friday: 5, Saturday: 6,
+}
+
+function toYMD(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
+
+// Idempotent — safe to call on every page load.
+// Creates weekly schedule entries for `runId` up to 24 weeks from today,
+// using the run's day_of_week and rotation roster.
+// (24-week horizon locked with Lou for #310; the cron-driven horizon + unbounded
+// "Show more" button is deferred to its own future story.)
+export async function generateScheduleHorizon(
+  runId: string,
+  dayOfWeek: string,
+  roster: RunLeader[],
+): Promise<void> {
+  const horizonDate = new Date()
+  horizonDate.setDate(horizonDate.getDate() + 24 * 7)
+  const horizon = toYMD(horizonDate)
+
+  // Find last existing entry for this run
+  const lastRows = await sql`
+    SELECT date, leader FROM schedule
+    WHERE run_id = ${runId}
+    ORDER BY date DESC LIMIT 1
+  `
+  const lastEntry = lastRows[0] ?? null
+  const lastLeader = (lastEntry?.leader as string | null) ?? null
+
+  // Existing dates for this run, fetched once up front. Replaces a per-week
+  // SELECT (up to 24 sequential Neon round-trips during the initial fill) with a
+  // single query; membership is then checked in memory. ON CONFLICT (date, run_id)
+  // below is still the backstop for two page loads generating concurrently.
+  const existingRows = await sql`SELECT date FROM schedule WHERE run_id = ${runId}`
+  const existing = new Set(existingRows.map(r => toDateString(r.date)))
+
+  // Find the next date to generate from
+  const targetDay = DAY_MAP[dayOfWeek] ?? 2 // default Tuesday
+
+  // NOTE: getDay()/setDate() are LOCAL-time; toYMD()/horizon use UTC (toISOString).
+  // These agree on Vercel (UTC runtime, where this always runs); they could differ
+  // only if generation ran from a machine in a timezone behind UTC.
+  const cursor = lastEntry
+    ? new Date(toDateString(lastEntry.date) + 'T00:00:00')
+    : new Date()
+
+  // Advance cursor to the first occurrence of targetDay on or after cursor
+  while (cursor.getDay() !== targetDay) {
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  // Move one week forward if we're starting from the last entry's date
+  if (lastEntry) cursor.setDate(cursor.getDate() + 7)
+
+  let currentLeader = lastLeader
+
+  while (toYMD(cursor) <= horizon) {
+    const dateStr = toYMD(cursor)
+
+    if (!existing.has(dateStr)) {
+      const nextLeader = getNextLeader(roster, currentLeader ?? '', dateStr)
+      await sql`
+        INSERT INTO schedule (date, run_id, workout_type, leader, needs_leader)
+        VALUES (${dateStr}::date, ${runId}, '', ${nextLeader ?? ''}, ${nextLeader === null})
+        ON CONFLICT (date, run_id) DO NOTHING
+      `
+      currentLeader = nextLeader ?? currentLeader
+    }
+
+    cursor.setDate(cursor.getDate() + 7)
   }
 }
 

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test('Plan page for the already-planned week shows the Heylo post with fixture content', async ({ page }) => {
   await page.goto('/plan?week=0')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   await expect(page.getByRole('button', { name: 'Post draft', exact: true })).toBeVisible()
   const post = page.locator('pre').first()
@@ -13,7 +13,7 @@ test('Plan page for the already-planned week shows the Heylo post with fixture c
 
 test('Plan page for the unplanned week lets a leader pick a fixture workout and generates its Heylo post', async ({ page }) => {
   await page.goto('/plan?week=2')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   // No workout planned yet for this week — the picker shows directly, no tabs.
   await expect(page.getByRole('button', { name: 'Post draft', exact: true })).toHaveCount(0)
@@ -25,9 +25,32 @@ test('Plan page for the unplanned week lets a leader pick a fixture workout and 
   await expect(post).toContainText('8x90sec hill repeats')
 })
 
+test('verification checkbox is required before copy', async ({ page }) => {
+  await page.goto('/plan?week=0')
+  await page.waitForLoadState('load')
+
+  // Planned week shows Post draft tab with copy button — must be disabled before checkbox
+  const copyBtn = page.getByRole('button', { name: /copy to clipboard/i })
+  await expect(copyBtn).toBeDisabled()
+
+  const checkbox = page.getByRole('checkbox')
+  await checkbox.check()
+  await expect(copyBtn).toBeEnabled()
+})
+
+test('TigerWolves post contains correct branding', async ({ page }) => {
+  await page.goto('/plan?week=0')
+  await page.waitForLoadState('load')
+
+  const post = await page.locator('pre').first().textContent()
+  expect(post).toContain('TigerWolves')
+  expect(post).not.toContain('undefined')
+  expect(post).not.toContain('null')
+})
+
 test('Plan page tab switch: Post draft is default, Change workout reveals the picker, and switching back preserves the post', async ({ page }) => {
   await page.goto('/plan?week=0')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   const postTab = page.getByRole('button', { name: 'Post draft', exact: true })
   const browseTab = page.getByRole('button', { name: 'Change workout', exact: true })

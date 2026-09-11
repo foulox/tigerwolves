@@ -108,11 +108,13 @@ export async function seedE2E(): Promise<void> {
 
   console.log(`Seeding e2e fixtures against ${url!.split('@')[1]}...`)
 
-  // Wipe in FK-safe order, then reinsert.
+  // Wipe in FK-safe order, then reinsert. run_leaders is scoped to the
+  // tigerwolves run so any other seeded runs are left untouched.
   await sql`DELETE FROM schedule`
   await sql`DELETE FROM races`
   await sql`DELETE FROM workout_variants`
   await sql`DELETE FROM workout_families`
+  await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves'`
 
   const [tigerWolves] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
   if (!tigerWolves) {
@@ -137,21 +139,64 @@ export async function seedE2E(): Promise<void> {
     }
   }
 
+  // #310: seed the `runs` row + `run_leaders` roster the leader surfaces depend on.
+  // getLeaderRun() joins run_leaders → runs on clerk_user_id; without a linked row it
+  // returns null and /run-config redirects to /. The runs row is normally created by
+  // scripts/migrate.sql, but we upsert it here so seed-e2e is self-contained and resets
+  // the post-template fields the run-config e2e edits back to a known baseline each run.
+  // post_header is the full opening block (header + app link + prompts), matching
+  // production and lib/postBuilder.ts, which now emits post_header verbatim (#310).
+  const tigerWolvesPostHeader = [
+    '🐯🐺 TigerWolves Tuesday Workout',
+    '',
+    '👉 https://tigerwolves.foulox.me 👈',
+    '👀 See every workout between now and the NYC Marathon in the app',
+    '🗳️ React to let us know what you like — and what you don\'t',
+  ].join('\n')
+  await sql`
+    INSERT INTO runs (id, name, emoji, day_of_week, meeting_time, meeting_location, closing_notes, post_header, leader_intro)
+    VALUES (
+      'tigerwolves', 'TigerWolves', '🐯🐺', 'Tuesday', '6:30 AM',
+      'Tom Stofka Garden, aka "Da Bins"',
+      'Bag Drop: Sorry, Not available',
+      ${tigerWolvesPostHeader},
+      'Run Leaders:'
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      meeting_location = EXCLUDED.meeting_location,
+      closing_notes = EXCLUDED.closing_notes,
+      post_header = EXCLUDED.post_header,
+      leader_intro = EXCLUDED.leader_intro
+  `
+
+  // Roster names match the schedule leaders below so rotation and away-period
+  // reassignment resolve to real names. clerk_user_id is left NULL here on purpose:
+  // the login is the source of truth for the leader link. e2e/auth.setup.ts reads the
+  // real Clerk id from the signed-in session and stamps it onto the first row (Dana Kim),
+  // so getLeaderRun() recognizes whatever account actually signs in — no dependency on a
+  // hand-maintained id secret. away_periods/email take their column defaults.
+  await sql`
+    INSERT INTO run_leaders (run_id, name, sort_order, clerk_user_id, active) VALUES
+      ('tigerwolves', 'Dana Kim',   1, NULL, true),
+      ('tigerwolves', 'Marcus Ade', 2, NULL, true),
+      ('tigerwolves', 'Priya Shah', 3, NULL, true)
+  `
+
   // workout_type must match the assigned workout's own "type" field (not its
   // "category") — PlanClient's suggestion picker filters library workouts by
   // types.includes(w.type) against this column, so a mismatch here silently
   // empties the picker instead of erroring.
   await sql`
-    INSERT INTO schedule (date, workout_type, leader, workout_name)
-    VALUES (${week1}::date, 'Interval', 'Dana Kim', 'Yasso 800s')
+    INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
+    VALUES (${week1}::date, 'tigerwolves', 'Interval', 'Dana Kim', 'Yasso 800s')
   `
   await sql`
-    INSERT INTO schedule (date, workout_type, leader, workout_name)
-    VALUES (${week2}::date, 'Hills', 'Marcus Ade', 'Fort Greene Hills')
+    INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
+    VALUES (${week2}::date, 'tigerwolves', 'Hills', 'Marcus Ade', 'Fort Greene Hills')
   `
   await sql`
-    INSERT INTO schedule (date, workout_type, leader, workout_name)
-    VALUES (${week3}::date, 'Hills', 'Priya Shah', NULL)
+    INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
+    VALUES (${week3}::date, 'tigerwolves', 'Hills', 'Priya Shah', NULL)
   `
 
   for (const r of RACES) {
@@ -161,5 +206,5 @@ export async function seedE2E(): Promise<void> {
     `
   }
 
-  console.log(`  seeded ${FAMILIES.length} workout_families, 3 schedule entries (${week1}, ${week2}, ${week3}), ${RACES.length} races`)
+  console.log(`  seeded ${FAMILIES.length} workout_families, 1 run (tigerwolves) + 3 run_leaders, 3 schedule entries (${week1}, ${week2}, ${week3}), ${RACES.length} races`)
 }

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test('Races page shows both fixture races with correct verified/flagged state', async ({ page }) => {
   await page.goto('/races')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   const verifiedCard = page.locator('[data-testid="race-card-Brooklyn Half Marathon"]')
   await expect(verifiedCard.getByText('Verified', { exact: true })).toBeVisible()
@@ -14,7 +14,7 @@ test('Races page shows both fixture races with correct verified/flagged state', 
 
 test('Opening the reported issue on the flagged race shows its flag note — leader gets the Review & fix sheet', async ({ page }) => {
   await page.goto('/races')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   const flaggedCard = page.locator('[data-testid="race-card-Prospect Park 5K Series #3"]')
   await flaggedCard.getByRole('button', { name: 'Issue reported' }).click()

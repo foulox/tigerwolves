@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test('Schedule page shows the three seeded upcoming Tuesdays', async ({ page }) => {
   await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   await expect(page.locator('[data-testid="schedule-card-0"]')).toContainText('Yasso 800s')
   await expect(page.locator('[data-testid="schedule-card-0"]')).toContainText('Led by Dana Kim')
@@ -14,12 +14,17 @@ test('Schedule page shows the three seeded upcoming Tuesdays', async ({ page }) 
   await expect(page.locator('[data-testid="schedule-card-2"]')).toContainText('Led by Priya Shah')
 })
 
-test('"Plan week →" button appears on all three cards for signed-in leaders', async ({ page }) => {
+test('"Plan week →" button appears on the seeded cards for signed-in leaders', async ({ page }) => {
   await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
+  // Auto-generation (generateScheduleHorizon, 24-week horizon) fills future weeks
+  // beyond the 3 seeded fixture cards on every leader page load, so the total count
+  // is not fixed. Assert on the 3 known seeded cards and their Plan-week buttons
+  // rather than pinning the total.
   const cards = page.locator('[data-testid^="schedule-card-"]')
-  await expect(cards).toHaveCount(3)
+  await expect(cards.first()).toBeVisible()
+  expect(await cards.count()).toBeGreaterThanOrEqual(3)
 
   for (let i = 0; i < 3; i++) {
     const btn = page.locator(`[data-testid="plan-week-${i}"]`)
@@ -30,7 +35,7 @@ test('"Plan week →" button appears on all three cards for signed-in leaders', 
 
 test('"Plan week →" navigates to /plan?week=N', async ({ page }) => {
   await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   await page.locator('[data-testid="plan-week-0"]').click()
   await page.waitForURL(/\/plan\?week=0/)
@@ -39,7 +44,7 @@ test('"Plan week →" navigates to /plan?week=N', async ({ page }) => {
 
 test('card with planned workout expands to show fixture instructions on tap', async ({ page }) => {
   await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   await page.locator('[data-testid="schedule-card-0"]').click()
   const detail = page.locator('[data-testid="schedule-detail-0"]')
@@ -49,7 +54,7 @@ test('card with planned workout expands to show fixture instructions on tap', as
 
 test('expanded card collapses on second tap', async ({ page }) => {
   await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   const card = page.locator('[data-testid="schedule-card-0"]')
   const detail = page.locator('[data-testid="schedule-detail-0"]')
@@ -63,7 +68,7 @@ test('expanded card collapses on second tap', async ({ page }) => {
 
 test('unplanned card has no expand affordance', async ({ page }) => {
   await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   // Card 2 has no workout — clicking it must not reveal a detail panel
   await page.locator('[data-testid="schedule-card-2"]').click()
@@ -72,7 +77,7 @@ test('unplanned card has no expand affordance', async ({ page }) => {
 
 test('fixture has no past history — past-card testids never appear, and upcoming testids never collide with them', async ({ page }) => {
   await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('load')
 
   await expect(page.locator('[data-testid^="past-card-"]')).toHaveCount(0)
 

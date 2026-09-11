@@ -1,11 +1,16 @@
-import { test as setup, expect } from '@playwright/test'
+import { test as setup } from '@playwright/test'
 import { clerk } from '@clerk/testing/playwright'
+import { neon } from '@neondatabase/serverless'
 import fs from 'fs'
 import path from 'path'
 
 const authFile = path.join(__dirname, '.auth/user.json')
 
 setup('authenticate as test leader', async ({ page }) => {
+  // CI renders '/' slowly (several sequential DB calls). 30s is too tight;
+  // 90s gives the server room to breathe without letting a genuine hang hide.
+  setup.setTimeout(90000)
+
   const email = process.env.PLAYWRIGHT_TEST_EMAIL
   if (!email) throw new Error('PLAYWRIGHT_TEST_EMAIL must be set in .env.test')
 
@@ -21,14 +26,42 @@ setup('authenticate as test leader', async ({ page }) => {
   await page.goto('/')
   await clerk.signIn({ page, emailAddress: email })
 
-  await page.goto('/')
+  // clerk.signIn() navigates to /?__clerk_ticket=… then Clerk JS redeems it and
+  // redirects to '/'. Wait for that natural redirect to land — do NOT issue a
+  // competing page.goto('/') here, which races the ongoing redirect and produces
+  // net::ERR_ABORTED ("maybe frame was detached") in CI.
+  await page.waitForURL(url => !url.searchParams.has('__clerk_ticket'), { timeout: 60000 })
+
+  // Wait for the page to finish rendering before saving state — in CI, '/' is
+  // slow (generateScheduleHorizon makes several sequential DB calls).
+  await page.waitForLoadState('load', { timeout: 60000 })
+
+  // Link the seeded roster to THIS signed-in account's real Clerk user id.
+  // getLeaderRun() (and therefore the whole /run-config surface) only recognizes a
+  // leader whose run_leaders row carries their exact clerk_user_id. The login is the
+  // source of truth: seed-e2e.ts leaves clerk_user_id NULL, and we read the id straight
+  // from the live session here and stamp it onto the first roster row (Dana Kim). So
+  // whatever account actually signs in becomes the linked leader — no hand-maintained
+  // id secret to drift, and it survives the test account being recreated with a fresh
+  // id. getLeaderRun/getRunRoster are uncached, so this UPDATE is visible to the very
+  // next request with no cache invalidation.
+  const clerkUserId = await page
+    .waitForFunction(() => (window as unknown as { Clerk?: { user?: { id?: string } } }).Clerk?.user?.id, null, { timeout: 30000 })
+    .then(handle => handle.jsonValue() as Promise<string>)
+    .catch(() => null)
+
+  const dbUrl = process.env.DATABASE_URL
+  if (clerkUserId && dbUrl) {
+    const sql = neon(dbUrl)
+    await sql`
+      UPDATE run_leaders
+      SET clerk_user_id = ${clerkUserId}
+      WHERE run_id = 'tigerwolves' AND name = 'Dana Kim'
+    `
+  } else if (!clerkUserId) {
+    throw new Error('auth.setup: could not read window.Clerk.user.id after sign-in — cannot link the test leader, /run-config specs would redirect. Failing setup loudly rather than leaving an unlinked roster.')
+  }
+
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
-
-  // scripts/seed-e2e.ts writes with raw SQL, which fetchData's unstable_cache
-  // (lib/db.ts) has no way to know about — without this, pages can keep
-  // serving a previous run's cached result for up to 5 minutes. See
-  // app/api/e2e-revalidate/route.ts.
-  const revalidateResponse = await page.request.post('/api/e2e-revalidate')
-  expect(revalidateResponse.ok(), `e2e-revalidate failed: ${revalidateResponse.status()}`).toBe(true)
 })

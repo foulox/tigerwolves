@@ -49,8 +49,7 @@ export function formatMainContent(instructions: string): string {
   return splitRespectParens(mainPart, ' / ').join(' /\n')
 }
 
-import type { ScheduleEntry, WorkoutVariantRow } from './data'
-import { RUN_LEADERS } from './data'
+import type { ScheduleEntry, WorkoutVariantRow, RunConfig } from './data'
 
 // Turnaround is a stored field now (has_turnaround/turnaround, set at write time —
 // AI-suggested, leader-editable), not computed from instructions text. If
@@ -61,16 +60,23 @@ function turnaroundLine(w: WorkoutVariantRow): string | null {
   return w.hasTurnaround && w.turnaround ? `↩️ TURN AROUND: ${w.turnaround}` : null
 }
 
-export function buildPost(entry: ScheduleEntry, selections: WorkoutVariantRow[], activeType: string | null = null): string {
+export function buildPost(
+  entry: ScheduleEntry,
+  selections: WorkoutVariantRow[],
+  runConfig: RunConfig,
+  roster: string[],
+  activeType: string | null = null,
+): string {
   const sorted = [...selections].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
   const primary = sorted[0]
 
   const lines = [
-    '🐯🐺 TigerWolves Tuesday Workout',
-    '',
-    '👉 https://tigerwolves.foulox.me 👈',
-    '👀 See every workout between now and the NYC Marathon in the app',
-    '🗳️ React to let us know what you like — and what you don\'t',
+    // post_header is the FULL editable opening block (run name/emoji, the app link,
+    // any standing prompts) — stored per-run in runs.post_header and edited via the
+    // Post Template UI. Nothing app- or run-specific is hardcoded here anymore (#310):
+    // that previously duplicated the app link/prompt lines against what the DB already
+    // held. buildPost emits post_header verbatim, then the dynamic date/workout block.
+    runConfig.postHeader,
     '',
     `📅 ${formatDateLong(entry.date)}`,
     `🏃🏻‍♂️‍➡️ ${activeType ?? entry.workoutType}: ${primary.name}`,
@@ -78,14 +84,7 @@ export function buildPost(entry: ScheduleEntry, selections: WorkoutVariantRow[],
 
   if (primary.reason) lines.push('', primary.reason)
 
-  lines.push(
-    '',
-    '📍 Starting point and route: Tom Stofka Garden, aka "Da Bins."',
-    'We\'ll warm up by jogging to Marsha P. Johnson which is at the corner of North 8th and Kent',
-    'The run will be along the Kent Avenue Speedway',
-    'We\'ll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track',
-    '',
-  )
+  lines.push('', ...runConfig.meetingLocation.split('\n').map((l, i) => i === 0 ? `📍 ${l}` : l), '')
 
   if (sorted.length === 2) {
     const [standard, longer] = sorted
@@ -113,11 +112,30 @@ export function buildPost(entry: ScheduleEntry, selections: WorkoutVariantRow[],
 
   lines.push(
     '',
-    'Bag Drop: Sorry, Not available',
+    runConfig.closingNotes,
     '',
     `Led by ${entry.leader} — see you out there! 🔥`,
-    `Run Leaders: ${RUN_LEADERS.join(', ')}`,
+    `${runConfig.leaderIntro} ${roster.join(', ')}`,
   )
 
   return lines.join('\n')
+}
+
+const ROUTE_TYPES = new Set(['Route', 'Easy', 'Long'])
+
+export function buildVerificationLabel(workout: WorkoutVariantRow): string {
+  const dist = workout.distTime ? `, ${workout.distTime}` : ''
+
+  if (ROUTE_TYPES.has(workout.type)) {
+    return `I've verified: ${workout.name}${dist}`
+  }
+
+  // Extract main interval details from rawInput
+  const main = extractMain(workout.rawInput)
+  if (main) {
+    const condensed = main.length > 60 ? main.slice(0, 60) + '…' : main
+    return `I've verified: ${condensed}${dist}`
+  }
+
+  return `I've verified: ${workout.name}${dist || ' — key workout details'}`
 }

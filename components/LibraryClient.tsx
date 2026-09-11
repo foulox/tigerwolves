@@ -32,7 +32,7 @@ type DisplayRow = StandaloneRow | FamilyRow
 // Reads workout_variants/workout_families (#277) — replaces the legacy
 // `workouts`-typed version. Family grouping mirrors PlanClient's own
 // familyId-based grouping (#276) rather than the old name-string grouping.
-export default function LibraryClient({ variants, isLeader, voteData = {} }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null> }) {
+export default function LibraryClient({ variants, isLeader, voteData = {}, runId }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null>; runId?: string }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [raceFilter, setRaceFilter] = useState<string | null>(null)
@@ -41,8 +41,15 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
   const [expandedNotes, setExpandedNotes] = useState<number | null>(null)
   const [showAbbrev, setShowAbbrev] = useState(false)
   const [flagSheetFor, setFlagSheetFor] = useState<number | null>(null)
+  const [showAllRuns, setShowAllRuns] = useState(false)
 
   const flaggedWorkout = flagSheetFor ? variants.find(w => w.id === flagSheetFor) ?? null : null
+
+  // When "Your run" toggle is active, show only run-specific variants (runGroupId !== null).
+  // "All runs" shows everything passed in (already scoped to this run + global by the page).
+  const visibleVariants = runId && !showAllRuns
+    ? variants.filter(w => w.runGroupId !== null)
+    : variants
 
   const q = search.toLowerCase()
   function matchesSearch(w: WorkoutVariantRow) {
@@ -57,10 +64,10 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
   }
 
   const types = Array.from(new Set(
-    variants.filter(w => !category || w.category === category).map(w => w.type)
+    visibleVariants.filter(w => !category || w.category === category).map(w => w.type)
   )).sort()
 
-  const filtered = variants
+  const filtered = visibleVariants
     .filter(w => !category || w.category === category)
     .filter(w => !typeFilter || w.type === typeFilter)
     .filter(w => !raceFilter || w.raceTypes.includes(raceFilter))
@@ -73,11 +80,11 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
   // standalone rather than as a one-item "family".
   const familyIds = useMemo(() => {
     const counts = new Map<number, number>()
-    for (const w of variants) counts.set(w.familyId, (counts.get(w.familyId) ?? 0) + 1)
+    for (const w of visibleVariants) counts.set(w.familyId, (counts.get(w.familyId) ?? 0) + 1)
     const s = new Set<number>()
     for (const [id, count] of counts) if (count > 1) s.add(id)
     return s
-  }, [variants])
+  }, [visibleVariants])
 
   const displayRows: DisplayRow[] = []
   const seenFamilies = new Set<number>()
@@ -186,6 +193,20 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
         </div>
       )}
 
+      {/* Your run / All runs toggle */}
+      {runId && (
+        <div className="flex gap-2 px-4 pb-2">
+          <button
+            onClick={() => setShowAllRuns(false)}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+          >Your run</button>
+          <button
+            onClick={() => setShowAllRuns(true)}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+          >All runs</button>
+        </div>
+      )}
+
       {/* Search */}
       <div className="px-4 mb-3">
         <div className="relative">
@@ -227,10 +248,10 @@ export default function LibraryClient({ variants, isLeader, voteData = {} }: { v
       )}
 
       <div className="px-4 flex flex-col gap-3">
-        {variants.length === 0 && (
+        {visibleVariants.length === 0 && (
           <p className="text-gray-400 italic text-sm">No workouts in the library yet.</p>
         )}
-        {variants.length > 0 && displayRows.length === 0 && (
+        {visibleVariants.length > 0 && displayRows.length === 0 && (
           <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
         )}
         {displayRows.map(row => {

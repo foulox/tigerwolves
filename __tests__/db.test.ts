@@ -1,9 +1,10 @@
-import { describe, it, expect, afterAll, beforeEach, afterEach } from 'vitest'
+import { describe, it, test, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import {
   sql, fetchSchedule, fetchRaces, fetchRunGroups, dbSetScheduleWorkout,
   dbInsertWorkoutVariant, dbUpdateWorkoutVariant, WorkoutVariantNotFoundError,
   dbAddWorkoutVariant, dbDeleteWorkoutVariant, dbFlagWorkoutVariant,
   dbFixWorkoutVariantAndClearFlag, dbRegroupVariants,
+  getLeaderRun, getRunRoster,
 } from '../lib/db'
 
 describe('database connection and schema', () => {
@@ -107,13 +108,13 @@ describe('dbSetScheduleWorkout', () => {
     const originalVariations = target.selectedVariations
 
     try {
-      await dbSetScheduleWorkout(target.date, '__test_plan__', [''])
+      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_plan__', [''])
       const updated = await fetchSchedule()
       const row = updated.find(e => e.date === target.date)
       expect(row?.workoutName).toBe('__test_plan__')
       expect(row?.selectedVariations).toEqual([''])
     } finally {
-      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date`
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tigerwolves'`
     }
   })
 
@@ -125,13 +126,13 @@ describe('dbSetScheduleWorkout', () => {
     const originalVariations = target.selectedVariations
 
     try {
-      await dbSetScheduleWorkout(target.date, '__test_family__', ['', 'Longer — 6×4min @ LT'])
+      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_family__', ['', 'Longer — 6×4min @ LT'])
       const updated = await fetchSchedule()
       const row = updated.find(e => e.date === target.date)
       expect(row?.workoutName).toBe('__test_family__')
       expect(row?.selectedVariations).toEqual(['', 'Longer — 6×4min @ LT'])
     } finally {
-      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date`
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tigerwolves'`
     }
   })
 
@@ -143,13 +144,13 @@ describe('dbSetScheduleWorkout', () => {
     const originalVariations = target.selectedVariations
 
     try {
-      await dbSetScheduleWorkout(target.date, '__test_family__', ['', 'Longer'])
-      await dbSetScheduleWorkout(target.date, '__test_standalone__', [''])
+      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_family__', ['', 'Longer'])
+      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_standalone__', [''])
       const updated = await fetchSchedule()
       const row = updated.find(e => e.date === target.date)
       expect(row?.selectedVariations).toEqual([''])
     } finally {
-      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date`
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tigerwolves'`
     }
   })
 })
@@ -398,5 +399,75 @@ describe('workout_variants write path additions (#277)', () => {
     // knows about the original familyId).
     await sql`DELETE FROM workout_variants WHERE family_id = ${newFamily.id}`
     await sql`DELETE FROM workout_families WHERE id = ${newFamily.id}`
+  })
+})
+
+// These tests require the #310 migration (leader_intro on runs; away_periods/email
+// on run_leaders) to have been applied to the staging branch. They self-seed their
+// own run_leaders rows rather than depend on ambient staging state (which the e2e
+// seed wipes and rewrites) or on a hand-maintained clerk-id secret matching a row.
+// They WRITE, so they only run against staging — never production, which is what
+// .env.local's DATABASE_URL points at during a local run. CI uses staging.
+const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+
+describe.skipIf(!onStaging)('getLeaderRun', () => {
+  // A clerk id that only this test uses, linked to the real 'tigerwolves' run
+  // (its runs row is created by scripts/migrate.sql and always present on staging).
+  const TEST_CLERK_ID = 'user_dbtest310_getleaderrun'
+  const TEST_NAME = 'DB Test — getLeaderRun 310'
+
+  beforeAll(async () => {
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES ('tigerwolves', ${TEST_NAME}, ${TEST_CLERK_ID}, 999, true)
+      ON CONFLICT (run_id, name) DO UPDATE SET clerk_user_id = ${TEST_CLERK_ID}, active = true
+    `
+  })
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves' AND name = ${TEST_NAME}`
+  })
+
+  test('returns the run a leader is linked to via clerk_user_id', async () => {
+    const run = await getLeaderRun(TEST_CLERK_ID)
+    expect(run).not.toBeNull()
+    expect(run?.id).toBe('tigerwolves')
+    // leader_intro is a run-level, leader-editable field (the migration backfills
+    // 'Run Leaders:' and getLeaderRun falls back to it when NULL, but a leader may
+    // have since edited it — production reads "Your Favorite Run Leaders: (vote for
+    // us)"). Assert it resolves to a non-empty string, not a specific literal this
+    // test doesn't own.
+    expect(typeof run?.leaderIntro).toBe('string')
+    expect((run?.leaderIntro ?? '').length).toBeGreaterThan(0)
+  })
+
+  test('returns null for an unknown userId', async () => {
+    const run = await getLeaderRun('user_nonexistent')
+    expect(run).toBeNull()
+  })
+})
+
+describe.skipIf(!onStaging)('getRunRoster', () => {
+  // Fully isolated under a synthetic run_id (run_leaders has no FK to runs, so no
+  // runs row is needed) — independent of the tigerwolves roster the e2e seed rewrites.
+  const RID = 'test-run-310-getrunroster'
+
+  beforeAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RID}`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, sort_order, active) VALUES
+        (${RID}, 'Roster Test A', 1, true),
+        (${RID}, 'Roster Test B', 2, true)
+    `
+  })
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RID}`
+  })
+
+  test('returns leaders ordered by sort_order', async () => {
+    const roster = await getRunRoster(RID)
+    expect(roster.length).toBe(2)
+    expect(roster[0].sortOrder).toBeLessThan(roster[1].sortOrder!)
+    expect(roster[0].name).toBe('Roster Test A')
   })
 })
