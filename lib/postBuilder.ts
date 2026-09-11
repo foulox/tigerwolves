@@ -71,11 +71,12 @@ export function buildPost(
   const primary = sorted[0]
 
   const lines = [
+    // post_header is the FULL editable opening block (run name/emoji, the app link,
+    // any standing prompts) — stored per-run in runs.post_header and edited via the
+    // Post Template UI. Nothing app- or run-specific is hardcoded here anymore (#310):
+    // that previously duplicated the app link/prompt lines against what the DB already
+    // held. buildPost emits post_header verbatim, then the dynamic date/workout block.
     runConfig.postHeader,
-    '',
-    '👉 https://tigerwolves.foulox.me 👈',
-    '👀 See every workout between now and the NYC Marathon in the app',
-    '🗳️ React to let us know what you like — and what you don\'t',
     '',
     `📅 ${formatDateLong(entry.date)}`,
     `🏃🏻‍♂️‍➡️ ${activeType ?? entry.workoutType}: ${primary.name}`,

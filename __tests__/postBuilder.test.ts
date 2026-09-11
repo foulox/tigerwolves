@@ -13,12 +13,40 @@ const tigerWolvesConfig: RunConfig = {
     'The run will be along the Kent Avenue Speedway',
     "We'll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track",
   ].join('\n'),
-  postHeader: '🐯🐺 TigerWolves Tuesday Workout',
+  // post_header is the full opening block — header line, then the app link + standing
+  // prompts. These used to be hardcoded in buildPost; they now live here (editable),
+  // matching what runs.post_header stores in the DB (#310).
+  postHeader: [
+    '🐯🐺 TigerWolves Tuesday Workout',
+    '',
+    '👉 https://tigerwolves.foulox.me 👈',
+    '👀 See every workout between now and the NYC Marathon in the app',
+    '🗳️ React to let us know what you like — and what you don\'t',
+  ].join('\n'),
   leaderIntro: 'Run Leaders:',
   closingNotes: 'Bag Drop: Sorry, Not available',
 }
 
 const tigerWolvesRoster = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']
+
+// A second run with entirely different branding — proves buildPost is parameterized
+// from the run config (nothing TigerWolves is hardcoded).
+const mourningDovesConfig: RunConfig = {
+  id: 'mourning-doves',
+  name: 'Mourning Doves',
+  emoji: '🕊️',
+  dayOfWeek: 'Wednesday',
+  meetingLocation: 'Prospect Park — Grand Army Plaza entrance',
+  postHeader: [
+    '🕊️ Mourning Doves Wednesday Run',
+    '',
+    'An easy, social midweek run.',
+  ].join('\n'),
+  leaderIntro: 'Your Mourning Doves leaders:',
+  closingNotes: 'Coffee at the plaza after.',
+}
+
+const mourningDovesRoster = ['Priya', 'Sam']
 
 const entry: ScheduleEntry = {
   date: '2026-06-24',
@@ -175,6 +203,21 @@ describe('buildPost', () => {
     const longerIdx = post.indexOf('Longer')
     expect(standardIdx).toBeGreaterThan(-1)
     expect(longerIdx).toBeGreaterThan(standardIdx)
+  })
+
+  test('a different run produces its own branding — no TigerWolves bleed-through', () => {
+    const post = buildPost(entry, [baseWorkout], mourningDovesConfig, mourningDovesRoster)
+    // Mourning Doves branding, all sourced from its run config
+    expect(post).toContain('🕊️ Mourning Doves Wednesday Run')
+    expect(post).toContain('An easy, social midweek run.')
+    expect(post).toContain('📍 Prospect Park — Grand Army Plaza entrance')
+    expect(post).toContain('Your Mourning Doves leaders: Priya, Sam')
+    expect(post).toContain('Coffee at the plaza after.')
+    // none of TigerWolves' branding leaks in
+    expect(post).not.toContain('TigerWolves')
+    expect(post).not.toContain('Da Bins')
+    expect(post).not.toContain('Run Leaders:')
+    expect(post).not.toContain('NYC Marathon')
   })
 
   test('TigerWolves output matches pre-parameterization snapshot', () => {

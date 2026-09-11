@@ -144,13 +144,22 @@ export async function seedE2E(): Promise<void> {
   // returns null and /run-config redirects to /. The runs row is normally created by
   // scripts/migrate.sql, but we upsert it here so seed-e2e is self-contained and resets
   // the post-template fields the run-config e2e edits back to a known baseline each run.
+  // post_header is the full opening block (header + app link + prompts), matching
+  // production and lib/postBuilder.ts, which now emits post_header verbatim (#310).
+  const tigerWolvesPostHeader = [
+    '🐯🐺 TigerWolves Tuesday Workout',
+    '',
+    '👉 https://tigerwolves.foulox.me 👈',
+    '👀 See every workout between now and the NYC Marathon in the app',
+    '🗳️ React to let us know what you like — and what you don\'t',
+  ].join('\n')
   await sql`
     INSERT INTO runs (id, name, emoji, day_of_week, meeting_time, meeting_location, closing_notes, post_header, leader_intro)
     VALUES (
       'tigerwolves', 'TigerWolves', '🐯🐺', 'Tuesday', '6:30 AM',
       'Tom Stofka Garden, aka "Da Bins"',
       'Bag Drop: Sorry, Not available',
-      '🐯🐺 TigerWolves Tuesday Workout',
+      ${tigerWolvesPostHeader},
       'Run Leaders:'
     )
     ON CONFLICT (id) DO UPDATE SET
