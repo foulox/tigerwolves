@@ -19,6 +19,14 @@ ALTER TABLE run_leaders ADD COLUMN IF NOT EXISTS email TEXT;
 -- 4. Add needs_leader flag to schedule
 ALTER TABLE schedule ADD COLUMN IF NOT EXISTS needs_leader BOOLEAN;
 
+-- 4b. Promote schedule PK from (date) to (date, run_id). The single-column key
+-- allowed only one run per date; two runs sharing a weekday would collide and
+-- generateScheduleHorizon's ON CONFLICT (date, run_id) requires the composite
+-- key to exist. Safe to replay: DROP IF EXISTS then ADD. run_id is NOT NULL
+-- (added with a backfilled default in migrate.sql), so the new key is valid.
+ALTER TABLE schedule DROP CONSTRAINT IF EXISTS schedule_pkey;
+ALTER TABLE schedule ADD PRIMARY KEY (date, run_id);
+
 -- NOTE (post-review): Before relying on the post-generation regression snapshot in
 -- tests, verify:
 --   a) run_leaders seed rows exist for the target run (SELECT * FROM run_leaders WHERE run_id = 'tigerwolves')

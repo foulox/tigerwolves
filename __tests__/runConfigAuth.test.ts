@@ -109,6 +109,19 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
       expect(res.error).toBe('Forbidden')
     })
   })
+
+  describe('a signed-in NON-leader (role !== leader)', () => {
+    // The role gate is the only thing standing between a self-signed-up account and
+    // write access (Clerk runs in Open mode) — prove every run-config action refuses.
+    beforeAll(() => signInAs(LEADER_A, 'member'))
+
+    test('is rejected with Unauthorized on every run-config action', async () => {
+      expect((await saveRotationOrder([leaderAId])).error).toBe('Unauthorized')
+      expect((await saveAwayPeriod(leaderAId, { from: '2099-01-01', to: '2099-01-07' })).error).toBe('Unauthorized')
+      expect((await removeRunLeader(leaderAId)).error).toBe('Unauthorized')
+      expect((await addRunLeaderByEmail('tigerwolves', 'whoever@example.com')).error).toBe('Unauthorized')
+    })
+  })
 })
 
 describe.skipIf(!onStaging)('removing a leader reassigns their future weeks', () => {

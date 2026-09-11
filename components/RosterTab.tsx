@@ -31,6 +31,7 @@ export default function RosterTab({
   const [isPending, startTransition] = useTransition()
 
   function moveLeader(idx: number, direction: -1 | 1) {
+    const prev = leaders
     const next = [...leaders]
     const swap = idx + direction
     if (swap < 0 || swap >= next.length) return
@@ -38,9 +39,13 @@ export default function RosterTab({
     setLeaders(next)
     startTransition(async () => {
       try {
-        await saveRotationOrder(next.map(l => l.id))
+        const res = await saveRotationOrder(next.map(l => l.id))
+        // Roll the optimistic reorder back if the save was rejected/failed, so the
+        // UI never shows an order the DB doesn't actually hold.
+        if (res.error) { setLeaders(prev); setBanner({ message: res.error, isWarning: true }) }
       } catch (err) {
         Sentry.captureException(err)
+        setLeaders(prev)
       }
     })
   }
@@ -50,7 +55,7 @@ export default function RosterTab({
     startTransition(async () => {
       try {
         const result = await saveAwayPeriod(leaderId, { from: newFrom, to: newTo })
-        if (result.error) return
+        if (result.error) { setBanner({ message: result.error, isWarning: true }); setTimeout(() => setBanner(null), 6000); return }
         const msgs = [`✓ Away period saved · ${result.reassignedCount} schedule entries reassigned`]
         if (result.noLeaderDates.length) msgs.push(`⚠ No available leader for: ${result.noLeaderDates.join(', ')} — assign manually`)
         const hasWarning = result.noLeaderDates.length > 0

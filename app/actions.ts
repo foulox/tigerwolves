@@ -166,7 +166,11 @@ function revalidateAll() {
 
 export async function setPlanWorkout(date: string, workoutName: string, selectedVariations: string[]) {
   const userId = await requireAuth()
-  await dbSetScheduleWorkout(date, workoutName, selectedVariations)
+  // Resolve the caller's run server-side (never trust a client-supplied runId) and
+  // scope the write to it — schedule rows are keyed by (date, run_id) since #310.
+  const run = await getLeaderRun(userId)
+  if (!run) throw new Error('Forbidden')
+  await dbSetScheduleWorkout(date, run.id, workoutName, selectedVariations)
   revalidateAll()
   await captureServerEvent('schedule_workout_set', userId, { isLeader: true })
 }

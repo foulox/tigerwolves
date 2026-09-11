@@ -183,6 +183,14 @@ ALTER TABLE schedule ADD COLUMN IF NOT EXISTS run_id TEXT NOT NULL DEFAULT 'tige
 ALTER TABLE schedule DROP CONSTRAINT IF EXISTS schedule_run_id_fk;
 ALTER TABLE schedule ADD CONSTRAINT schedule_run_id_fk FOREIGN KEY (run_id) REFERENCES runs(id);
 
+-- #310: the schedule PK was (date) alone, which allowed only ONE run per date —
+-- two runs sharing a weekday (or a run changing its day) would collide, and
+-- INSERT ... ON CONFLICT (date) would silently drop the second run's week.
+-- Promote to (date, run_id) so runs are truly independent. run_id is NOT NULL
+-- with a backfilled default, so no row blocks the composite key.
+ALTER TABLE schedule DROP CONSTRAINT IF EXISTS schedule_pkey;
+ALTER TABLE schedule ADD PRIMARY KEY (date, run_id);
+
 -- Add clerk_user_id to run_leaders — nullable; Lou backfills with actual Clerk user IDs after migration.
 -- Example: UPDATE run_leaders SET clerk_user_id = 'user_abc123' WHERE name = 'Lou Fox' AND run_id = 'tigerwolves';
 ALTER TABLE run_leaders ADD COLUMN IF NOT EXISTS clerk_user_id TEXT;

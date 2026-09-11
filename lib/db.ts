@@ -176,9 +176,12 @@ export async function fetchRaces(): Promise<Race[]> {
 
 // ── Writes ────────────────────────────────────────────────────────────────────
 
-export async function dbSetScheduleWorkout(date: string, workoutName: string, selectedVariations: string[]): Promise<void> {
+export async function dbSetScheduleWorkout(date: string, runId: string, workoutName: string, selectedVariations: string[]): Promise<void> {
+  // Scoped by run_id: since #310 promoted the schedule PK to (date, run_id),
+  // two runs can share a date, so a date-only UPDATE would hit the wrong run's row.
   await sql`
-    UPDATE schedule SET workout_name = ${workoutName}, selected_variations = ${selectedVariations} WHERE date = ${date}::date
+    UPDATE schedule SET workout_name = ${workoutName}, selected_variations = ${selectedVariations}
+    WHERE date = ${date}::date AND run_id = ${runId}
   `
 }
 
@@ -469,9 +472,19 @@ export async function generateScheduleHorizon(
   const lastEntry = lastRows[0] ?? null
   const lastLeader = (lastEntry?.leader as string | null) ?? null
 
+  // Existing dates for this run, fetched once up front. Replaces a per-week
+  // SELECT (up to 24 sequential Neon round-trips during the initial fill) with a
+  // single query; membership is then checked in memory. ON CONFLICT (date, run_id)
+  // below is still the backstop for two page loads generating concurrently.
+  const existingRows = await sql`SELECT date FROM schedule WHERE run_id = ${runId}`
+  const existing = new Set(existingRows.map(r => toDateString(r.date)))
+
   // Find the next date to generate from
   const targetDay = DAY_MAP[dayOfWeek] ?? 2 // default Tuesday
 
+  // NOTE: getDay()/setDate() are LOCAL-time; toYMD()/horizon use UTC (toISOString).
+  // These agree on Vercel (UTC runtime, where this always runs); they could differ
+  // only if generation ran from a machine in a timezone behind UTC.
   const cursor = lastEntry
     ? new Date(toDateString(lastEntry.date) + 'T00:00:00')
     : new Date()
@@ -488,14 +501,12 @@ export async function generateScheduleHorizon(
   while (toYMD(cursor) <= horizon) {
     const dateStr = toYMD(cursor)
 
-    // Check if entry already exists (idempotency)
-    const exists = await sql`SELECT 1 FROM schedule WHERE date = ${dateStr}::date AND run_id = ${runId}`
-    if (!exists[0]) {
+    if (!existing.has(dateStr)) {
       const nextLeader = getNextLeader(roster, currentLeader ?? '', dateStr)
       await sql`
         INSERT INTO schedule (date, run_id, workout_type, leader, needs_leader)
         VALUES (${dateStr}::date, ${runId}, '', ${nextLeader ?? ''}, ${nextLeader === null})
-        ON CONFLICT (date) DO NOTHING
+        ON CONFLICT (date, run_id) DO NOTHING
       `
       currentLeader = nextLeader ?? currentLeader
     }

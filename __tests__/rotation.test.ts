@@ -62,6 +62,25 @@ describe('getNextLeader', () => {
     ]
     expect(getNextLeader(allAway, 'Luis', '2025-12-30')).toBeNull()
   })
+
+  // Bootstrapping a brand-new run: no prior leader yet, so afterName isn't in the
+  // roster. The rotation must START at the first leader, not skip past it.
+  test('returns the FIRST leader when afterName is unknown (empty bootstrap)', () => {
+    expect(getNextLeader(roster, '', '2025-11-01')).toBe('Luis')
+    expect(getNextLeader(roster, 'NotARealLeader', '2025-11-01')).toBe('Luis')
+  })
+
+  test('bootstrap skips the first leader when they are away on the target date', () => {
+    const rosterWithAway = [
+      makeLeader('Luis', 1, [{ from: '2025-12-23', to: '2026-01-04' }]),
+      makeLeader('Lou', 2),
+    ]
+    expect(getNextLeader(rosterWithAway, '', '2025-12-30')).toBe('Lou')
+  })
+
+  test('returns null for an empty roster', () => {
+    expect(getNextLeader([], 'Luis', '2025-11-01')).toBeNull()
+  })
 })
 
 describe('getNextLeader reassignment', () => {

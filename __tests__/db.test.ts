@@ -108,13 +108,13 @@ describe('dbSetScheduleWorkout', () => {
     const originalVariations = target.selectedVariations
 
     try {
-      await dbSetScheduleWorkout(target.date, '__test_plan__', [''])
+      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_plan__', [''])
       const updated = await fetchSchedule()
       const row = updated.find(e => e.date === target.date)
       expect(row?.workoutName).toBe('__test_plan__')
       expect(row?.selectedVariations).toEqual([''])
     } finally {
-      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date`
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tigerwolves'`
     }
   })
 
@@ -126,13 +126,13 @@ describe('dbSetScheduleWorkout', () => {
     const originalVariations = target.selectedVariations
 
     try {
-      await dbSetScheduleWorkout(target.date, '__test_family__', ['', 'Longer — 6×4min @ LT'])
+      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_family__', ['', 'Longer — 6×4min @ LT'])
       const updated = await fetchSchedule()
       const row = updated.find(e => e.date === target.date)
       expect(row?.workoutName).toBe('__test_family__')
       expect(row?.selectedVariations).toEqual(['', 'Longer — 6×4min @ LT'])
     } finally {
-      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date`
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tigerwolves'`
     }
   })
 
@@ -144,13 +144,13 @@ describe('dbSetScheduleWorkout', () => {
     const originalVariations = target.selectedVariations
 
     try {
-      await dbSetScheduleWorkout(target.date, '__test_family__', ['', 'Longer'])
-      await dbSetScheduleWorkout(target.date, '__test_standalone__', [''])
+      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_family__', ['', 'Longer'])
+      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_standalone__', [''])
       const updated = await fetchSchedule()
       const row = updated.find(e => e.date === target.date)
       expect(row?.selectedVariations).toEqual([''])
     } finally {
-      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date`
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tigerwolves'`
     }
   })
 })
@@ -432,9 +432,13 @@ describe.skipIf(!onStaging)('getLeaderRun', () => {
     const run = await getLeaderRun(TEST_CLERK_ID)
     expect(run).not.toBeNull()
     expect(run?.id).toBe('tigerwolves')
-    // leader_intro backfilled to 'Run Leaders:' by the migration; getLeaderRun also
-    // falls back to that string, so this holds whether or not the backfill ran.
-    expect(run?.leaderIntro).toBe('Run Leaders:')
+    // leader_intro is a run-level, leader-editable field (the migration backfills
+    // 'Run Leaders:' and getLeaderRun falls back to it when NULL, but a leader may
+    // have since edited it — production reads "Your Favorite Run Leaders: (vote for
+    // us)"). Assert it resolves to a non-empty string, not a specific literal this
+    // test doesn't own.
+    expect(typeof run?.leaderIntro).toBe('string')
+    expect((run?.leaderIntro ?? '').length).toBeGreaterThan(0)
   })
 
   test('returns null for an unknown userId', async () => {

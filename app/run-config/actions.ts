@@ -81,6 +81,13 @@ export async function saveAwayPeriod(
     const user = await currentUser()
     if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized', reassignedCount: 0, noLeaderDates: [] }
 
+    // Validate the range before writing — a reversed/blank range would append a
+    // period that matches nothing (dates are compared as ISO strings). from/to
+    // come from <input type="date"> so format is trusted; ordering is not.
+    if (!period.from || !period.to || period.from > period.to) {
+      return { error: 'Enter a valid date range (from on or before to)', reassignedCount: 0, noLeaderDates: [] }
+    }
+
     // Verify caller owns the targeted leader row
     try {
       await assertCallerOwnsLeaderRow(user, leaderId)
@@ -218,6 +225,11 @@ export async function addRunLeaderByEmail(
 
     const maxOrder = await sql`SELECT MAX(sort_order) AS m FROM run_leaders WHERE run_id = ${runId}`
     const nextOrder = ((maxOrder[0].m as number | null) ?? 0) + 1
+    // ON CONFLICT is keyed on (run_id, name), which doubles as the re-add/reactivate
+    // path for a previously-removed leader. Edge case: two distinct Clerk accounts
+    // with the identical display name in one run would collide here and the second
+    // add would overwrite the first's clerk_user_id/email. Acceptable for the trial
+    // (a run's leaders are a handful of known people); revisit if runs get larger.
     await sql`
       INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
       VALUES (${runId}, ${name}, ${normalizedEmail}, ${clerkUser.id}, ${nextOrder}, true)
