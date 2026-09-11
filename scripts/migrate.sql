@@ -202,3 +202,23 @@ ALTER TABLE run_leaders ADD COLUMN IF NOT EXISTS clerk_user_id TEXT;
 ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS warmup_override TEXT;
 ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS route_description TEXT;
 ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS route_link TEXT;
+
+-- #318: per-run profile foundation. Give `runs` its own kind + workout-type allowlist,
+-- and a REAL FK to run_groups so a run's owned workouts resolve by id, not by the
+-- fragile rg.name = runs.name string match fetchWorkoutVariants used to rely on.
+--   kind           — 'Workout' | 'Easy' | ... ; drives downstream post/library shape (F3).
+--   workout_types  — allowlist of workout types this run schedules (empty = no restriction yet).
+--   run_group_id   — the run_groups row that owns this run's workout_families.
+-- Additive + idempotent: ADD COLUMN IF NOT EXISTS backfills existing rows (workout_types
+-- to '{}'), and the TigerWolves UPDATE below is safe to replay.
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS kind TEXT;
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS workout_types TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS run_group_id INT REFERENCES run_groups(id);
+
+-- Seed the TigerWolves profile: it's a quality Workout run, owns the 7 workout types it
+-- rotates through, and is scoped to the TigerWolves run_group (seeded in #274 above).
+UPDATE runs SET
+  kind = 'Workout',
+  workout_types = ARRAY['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold'],
+  run_group_id = (SELECT id FROM run_groups WHERE name = 'TigerWolves')
+WHERE id = 'tigerwolves';

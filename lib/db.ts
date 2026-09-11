@@ -37,11 +37,11 @@ export async function fetchSchedule(runId?: string): Promise<ScheduleEntry[]> {
   })
 }
 
-// Joins workout_variants + workout_families + run_groups (#276) — the read-side
-// counterpart to dbInsertWorkoutVariant/dbUpdateWorkoutVariant (#274). Scoped to
-// this app's own run group (TigerWolves) plus global/unowned families, same as
-// the implicit scope the legacy `workouts` table always had (no run_group concept
-// there at all) — this app doesn't yet serve any other run group's workouts.
+// Joins workout_variants + workout_families (#276) — the read-side counterpart to
+// dbInsertWorkoutVariant/dbUpdateWorkoutVariant (#274). Scopes to the run's own owned
+// families plus global/unowned families. #318 resolves that ownership via the run's
+// real run_group_id FK (runs.run_group_id → run_groups.id), replacing the fragile
+// rg.name = runs.name string match — so the run_groups join is no longer needed.
 export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVariantRow[]> {
   const resolvedRunId = runId ?? 'tigerwolves'
   const rows = await sql`
@@ -71,9 +71,8 @@ export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVaria
       wf.run_group_id
     FROM workout_variants wv
     JOIN workout_families wf ON wf.id = wv.family_id
-    LEFT JOIN run_groups rg ON rg.id = wf.run_group_id
     WHERE wf.run_group_id IS NULL
-       OR rg.name = (SELECT name FROM runs WHERE id = ${resolvedRunId})
+       OR wf.run_group_id = (SELECT run_group_id FROM runs WHERE id = ${resolvedRunId})
     ORDER BY wf.name, wv.sort_order NULLS LAST
   `
   return rows.map((r) => ({
@@ -119,7 +118,8 @@ export async function fetchRunGroups(): Promise<RunGroup[]> {
 export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | null> {
   const rows = await sql`
     SELECT r.id, r.name, r.emoji, r.day_of_week, r.meeting_location,
-           r.post_header, r.leader_intro, r.closing_notes
+           r.post_header, r.leader_intro, r.closing_notes,
+           r.kind, r.workout_types, r.run_group_id
     FROM run_leaders rl
     JOIN runs r ON r.id = rl.run_id
     WHERE rl.clerk_user_id = ${clerkUserId}
@@ -136,6 +136,9 @@ export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | nul
     postHeader: r.post_header as string,
     leaderIntro: (r.leader_intro as string | null) ?? 'Run Leaders:',
     closingNotes: r.closing_notes as string,
+    kind: (r.kind as string | null) ?? '',
+    workoutTypes: (r.workout_types as string[]) ?? [],
+    runGroupId: (r.run_group_id as number | null) ?? null,
   }
 }
 

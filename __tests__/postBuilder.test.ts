@@ -25,6 +25,9 @@ const tigerWolvesConfig: RunConfig = {
   ].join('\n'),
   leaderIntro: 'Run Leaders:',
   closingNotes: 'Bag Drop: Sorry, Not available',
+  kind: 'Workout',
+  workoutTypes: ['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold'],
+  runGroupId: 1,
 }
 
 const tigerWolvesRoster = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']
@@ -44,6 +47,9 @@ const mourningDovesConfig: RunConfig = {
   ].join('\n'),
   leaderIntro: 'Your Mourning Doves leaders:',
   closingNotes: 'Coffee at the plaza after.',
+  kind: 'Easy',
+  workoutTypes: [],
+  runGroupId: null,
 }
 
 const mourningDovesRoster = ['Priya', 'Sam']
