@@ -1,8 +1,10 @@
 import { fetchData, fetchRunGroups } from '@/lib/db'
 import AddWorkoutForm from '@/components/AddWorkoutForm'
 import AddVariationForm from '@/components/AddVariationForm'
+import { requireLeaderPage } from '@/lib/requireLeaderPage'
 
 export default async function AddWorkoutPage({ searchParams }: { searchParams: Promise<{ parent?: string }> }) {
+  await requireLeaderPage() // #337: route-level leader gate in front of the write actions
   const { parent } = await searchParams
 
   if (parent) {

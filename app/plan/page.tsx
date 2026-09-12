@@ -1,12 +1,13 @@
-import { currentUser } from '@clerk/nextjs/server'
 import { fetchData, fetchSchedule, getLeaderRun, getRunRoster, generateScheduleHorizon } from '@/lib/db'
 import PlanClient from '@/components/PlanClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
+import { requireLeaderPage } from '@/lib/requireLeaderPage'
 import type { RunConfig } from '@/lib/data'
 
 export default async function PlanPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
-  const user = await currentUser()
-  const isLeader = user?.publicMetadata?.role === 'leader'
+  // #337: block signed-in non-leaders at the route, not just at the write actions.
+  // Past this line `user` is always a leader, so there are no non-leader branches below.
+  const user = await requireLeaderPage()
 
   // Identify this leader's run (falls back to TigerWolves config if not found)
   const tigerWolvesConfig: RunConfig = {
@@ -17,22 +18,20 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
     closingNotes: 'Bag Drop: Sorry, Not available',
     kind: 'Workout',
     workoutTypes: ['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold'],
-    // Fallback only serves anonymous/non-leader views (no workout scoping); the real
-    // run_group_id comes from getLeaderRun for signed-in leaders.
+    // Fallback serves a leader not yet linked to a run (no workout scoping); a linked
+    // leader's real run_group_id comes from getLeaderRun.
     runGroupId: null,
     cycleMode: 'none',
     cycle: {},
   }
-  const runConfig = (user && isLeader ? await getLeaderRun(user.id) : null) ?? tigerWolvesConfig
-  const runLeaders = isLeader ? await getRunRoster(runConfig.id) : []
+  const runConfig = (await getLeaderRun(user.id)) ?? tigerWolvesConfig
+  const runLeaders = await getRunRoster(runConfig.id)
   const roster = runLeaders
     .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999))
     .map(l => l.name)
 
   // Auto-generate schedule horizon (idempotent, runs outside cache)
-  if (isLeader) {
-    await generateScheduleHorizon(runConfig.id, runConfig.dayOfWeek, runLeaders)
-  }
+  await generateScheduleHorizon(runConfig.id, runConfig.dayOfWeek, runLeaders)
 
   // Schedule filtered to this leader's run; workout variants still come from the cached
   // aggregate since they're global/run-group-scoped and benefit from the 5-min cache.
@@ -55,7 +54,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
     upcoming={upcoming}
     variants={workoutVariants}
     initialWeekIndex={initialWeekIndex}
-    isLeader={isLeader}
+    isLeader={true}
     voteData={voteData}
     runConfig={runConfig}
     roster={roster}

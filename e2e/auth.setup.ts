@@ -5,6 +5,7 @@ import fs from 'fs'
 import path from 'path'
 
 const authFile = path.join(__dirname, '.auth/user.json')
+const runnerAuthFile = path.join(__dirname, '.auth/runner.json')
 
 setup('authenticate as test leader', async ({ page }) => {
   // #332: '/' is now a thin router (getFollowedRunIds + redirect), no longer the
@@ -66,4 +67,31 @@ setup('authenticate as test leader', async ({ page }) => {
 
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
+})
+
+setup('authenticate as test runner (non-leader)', async ({ page }) => {
+  // #337: a signed-in account with NO leader role, for the route-gating specs
+  // (gating.spec.ts). Same ticket-based sign-in as the leader above (no password,
+  // no Device Trust — see that block's comment), but we deliberately do NOT link
+  // it to any run_leaders row and it must never be granted the 'leader' role in
+  // Clerk — its publicMetadata.role stays non-leader so requireLeaderPage()/the
+  // run-config gate redirect it. Provision a dedicated account and set
+  // PLAYWRIGHT_RUNNER_EMAIL (foulox+runner@gmail.com).
+  setup.setTimeout(90000)
+
+  const email = process.env.PLAYWRIGHT_RUNNER_EMAIL
+  if (!email) throw new Error('PLAYWRIGHT_RUNNER_EMAIL must be set in .env.test — the #337 gating specs need a signed-in non-leader fixture. Failing loudly rather than silently skipping a security test.')
+
+  await page.goto('/')
+  await clerk.signIn({ page, emailAddress: email })
+
+  // Same redirect-chain settle as the leader setup: clerk.signIn lands on
+  // /?__clerk_ticket=… then redeems and redirects to '/', which server-redirects a
+  // 0-follow account onward to /all-runs. Wait for the ticket param to clear; do
+  // not issue a competing goto() that would race the in-flight redirect.
+  await page.waitForURL(url => !url.searchParams.has('__clerk_ticket'), { timeout: 60000 })
+  await page.waitForLoadState('load', { timeout: 60000 })
+
+  fs.mkdirSync(path.dirname(runnerAuthFile), { recursive: true })
+  await page.context().storageState({ path: runnerAuthFile })
 })
