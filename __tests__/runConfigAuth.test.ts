@@ -123,6 +123,7 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
       expect((await removeRunLeader(leaderAId)).error).toBe('Unauthorized')
       expect((await addRunLeaderByEmail('tigerwolves', 'whoever@example.com')).error).toBe('Unauthorized')
       expect((await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills'] })).error).toBe('Unauthorized')
+      expect((await saveRunCycle({ cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })).error).toBe('Unauthorized')
     })
   })
 })
