@@ -2,37 +2,10 @@ import type { DriveStep } from 'driver.js'
 
 export const VISITOR_STEPS: DriveStep[] = [
   {
-    element: '[data-tour="schedule"]',
+    element: '[data-tour="my-week"]',
     popover: {
-      title: 'Schedule',
-      description: 'See upcoming workouts — what type of run is planned, who\'s leading, and the chosen workout for each week.',
-      side: 'bottom',
-      align: 'start',
-    },
-  },
-  {
-    element: '[data-tour="schedule-detail"]',
-    popover: {
-      title: 'Tap any card to expand',
-      description: 'Tap a workout card to see the full details — instructions, lap structure, HR zone, training phases, and more.',
-      side: 'bottom',
-      align: 'start',
-    },
-  },
-  {
-    element: '[data-tour="schedule-reactions"]',
-    popover: {
-      title: 'React to a workout',
-      description: 'Tell us how you feel about this workout — tap an emoji to vote. You\'ll see how the group feels too.',
-      side: 'top',
-      align: 'end',
-    },
-  },
-  {
-    element: '[data-tour="schedule-flag"]',
-    popover: {
-      title: 'Flag an issue',
-      description: 'Something off with a workout — bad distance, unclear instructions? Tap here to flag it and we\'ll fix it.',
+      title: 'My Week',
+      description: 'Your home — this week\'s workouts across every run you follow. Tap any card to expand it for the full details, and react with an emoji to tell us how you feel.',
       side: 'top',
       align: 'start',
     },

@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { VISITOR_STEPS, LEADER_STEPS } from '@/lib/tourSteps'
 
 describe('tourSteps', () => {
-  it('VISITOR_STEPS has 10 entries', () => {
-    expect(VISITOR_STEPS).toHaveLength(10)
+  it('VISITOR_STEPS has 7 entries', () => {
+    expect(VISITOR_STEPS).toHaveLength(7)
   })
 
   it('LEADER_STEPS has 3 entries', () => {
@@ -28,10 +28,12 @@ describe('tourSteps', () => {
 
   it('visitor steps cover the expected data-tour targets', () => {
     const elements = VISITOR_STEPS.map(s => s.element)
-    expect(elements).toContain('[data-tour="schedule"]')
-    expect(elements).toContain('[data-tour="schedule-detail"]')
-    expect(elements).toContain('[data-tour="schedule-reactions"]')
-    expect(elements).toContain('[data-tour="schedule-flag"]')
+    // #332: the standalone schedule* steps retired into a single My Week step.
+    expect(elements).toContain('[data-tour="my-week"]')
+    expect(elements).not.toContain('[data-tour="schedule"]')
+    expect(elements).not.toContain('[data-tour="schedule-detail"]')
+    expect(elements).not.toContain('[data-tour="schedule-reactions"]')
+    expect(elements).not.toContain('[data-tour="schedule-flag"]')
     expect(elements).toContain('[data-tour="library"]')
     expect(elements).toContain('[data-tour="library-variations"]')
     expect(elements).toContain('[data-tour="races"]')
@@ -40,12 +42,12 @@ describe('tourSteps', () => {
     expect(elements).toContain('[data-tour="how-to-use"]')
   })
 
-  it('visitor step at index 1 targets schedule-detail (card expand trigger)', () => {
-    expect(VISITOR_STEPS[1].element).toBe('[data-tour="schedule-detail"]')
+  it('visitor step at index 0 targets my-week (home)', () => {
+    expect(VISITOR_STEPS[0].element).toBe('[data-tour="my-week"]')
   })
 
-  it('visitor step at index 5 targets library-variations', () => {
-    expect(VISITOR_STEPS[5].element).toBe('[data-tour="library-variations"]')
+  it('visitor step at index 2 targets library-variations (OnboardingTour LIBRARY_VARIATIONS_STEP)', () => {
+    expect(VISITOR_STEPS[2].element).toBe('[data-tour="library-variations"]')
   })
 
   it('leader steps cover the expected data-tour targets', () => {

@@ -1,20 +1,16 @@
-'use client'
-
-import { usePathname } from 'next/navigation'
 import BottomNav from './BottomNav'
 import TourMount from './TourMount'
 
 type Props = { isLeader: boolean }
 
-// Suppresses the TigerWolves BottomNav and tour on /runner/* routes.
-// RunnerNav is rendered by app/runner/layout.tsx instead.
+// #332 Home flip — with the /runner prototype and its separate RunnerNav removed,
+// BottomNav is the single app nav on every route. This wrapper just co-mounts the
+// tour with it; the old /runner path-suppression is gone.
 export default function ConditionalBottomNav({ isLeader }: Props) {
-  const pathname = usePathname()
-  if (pathname.startsWith('/runner')) return null
   return (
     <>
       <TourMount isLeader={isLeader} />
-      <BottomNav />
+      <BottomNav isLeader={isLeader} />
     </>
   )
 }

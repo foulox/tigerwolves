@@ -5,7 +5,9 @@ test.describe('Run Settings', () => {
   // The seeded test leader has the 'leader' role set in Clerk publicMetadata.
 
   test('Run Settings + Admin appear in the leader hamburger menu', async ({ page }) => {
-    await page.goto('/')
+    // #332: '/' redirects now — go to the owning leader's per-run page, which
+    // renders the Header (and its Leader menu) with owning-leader affordances.
+    await page.goto('/runs/tigerwolves')
     await page.waitForLoadState('load')
     // Run Settings + Admin live in the leader-only hamburger (LeaderMenu.tsx),
     // opened from the header button labelled "Leader menu".

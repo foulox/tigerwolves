@@ -7,8 +7,10 @@ import path from 'path'
 const authFile = path.join(__dirname, '.auth/user.json')
 
 setup('authenticate as test leader', async ({ page }) => {
-  // CI renders '/' slowly (several sequential DB calls). 30s is too tight;
-  // 90s gives the server room to breathe without letting a genuine hang hide.
+  // #332: '/' is now a thin router (getFollowedRunIds + redirect), no longer the
+  // schedule page. Post-sign-in it redirects a fresh leader (0 follows) onward to
+  // /all-runs — a stable authenticated surface to save storage state from. 90s
+  // still gives CI room without letting a genuine hang hide.
   setup.setTimeout(90000)
 
   const email = process.env.PLAYWRIGHT_TEST_EMAIL
@@ -27,13 +29,13 @@ setup('authenticate as test leader', async ({ page }) => {
   await clerk.signIn({ page, emailAddress: email })
 
   // clerk.signIn() navigates to /?__clerk_ticket=… then Clerk JS redeems it and
-  // redirects to '/'. Wait for that natural redirect to land — do NOT issue a
-  // competing page.goto('/') here, which races the ongoing redirect and produces
-  // net::ERR_ABORTED ("maybe frame was detached") in CI.
+  // redirects to '/', which now server-redirects onward to /all-runs. Wait for
+  // that natural redirect chain to settle — do NOT issue a competing page.goto()
+  // here, which races the ongoing redirect and produces net::ERR_ABORTED ("maybe
+  // frame was detached") in CI. The ticket param is gone once redemption lands.
   await page.waitForURL(url => !url.searchParams.has('__clerk_ticket'), { timeout: 60000 })
 
-  // Wait for the page to finish rendering before saving state — in CI, '/' is
-  // slow (generateScheduleHorizon makes several sequential DB calls).
+  // Wait for the landing page to finish rendering before saving state.
   await page.waitForLoadState('load', { timeout: 60000 })
 
   // Link the seeded roster to THIS signed-in account's real Clerk user id.

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { currentUser } from '@clerk/nextjs/server'
-import { getFollowedRunIds, getMyWeek } from '@/lib/db'
+import { getFollowedRunIds, getMyWeek, ensureLeaderSelfFollow } from '@/lib/db'
 import { addDays } from '@/lib/myWeek'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 import Header from '@/components/Header'
@@ -17,6 +17,12 @@ export default async function MyWeekPage() {
   if (!user) return null
 
   const isLeader = user.publicMetadata?.role === 'leader'
+
+  // #332: a leader always follows the run they lead. Idempotent write-on-load,
+  // ordered before getFollowedRunIds so the read below (uncached) reflects it —
+  // this is what lands the routing for leaders (≥1 follow → My Week, not the
+  // empty state). No-op for runners and for a leader already self-followed.
+  if (isLeader) await ensureLeaderSelfFollow(user.id)
 
   // 0 follows is distinct from "follows but nothing scheduled this window" — the
   // empty state is specifically the new-runner prompt, so key it on follow count.

@@ -6,11 +6,9 @@ import { VISITOR_STEPS, LEADER_STEPS } from '@/lib/tourSteps'
 
 const SEEN_KEY = 'tw_tour_seen'
 
-// Step index that needs the first schedule card auto-expanded before it can highlight.
-const EXPAND_CARD_STEP = 1
-
 // Step index that expands the first family card so a variation is visible once navigated.
-const LIBRARY_VARIATIONS_STEP = 5
+// #332: was 5; the four schedule* steps collapsed into a single My Week step at index 0.
+const LIBRARY_VARIATIONS_STEP = 2
 
 // driver.js tears down and repositions the popover on every step transition. A tap that
 // lands in that gap (on the overlay, or on the outgoing/incoming highlighted element)
@@ -21,11 +19,15 @@ const STEP_TRANSITION_GRACE_MS = 400
 // Steps that live on a route other than the one the tour started on — single
 // source of truth for both triggering the navigation and finding the target
 // once the new page has rendered.
+// #332 indices after the schedule* steps collapsed to one My Week step at 0:
+// visitor 0 my-week · 1 library · 2 library-variations · 3 races · 4 roadmap ·
+// 5 feedback · 6 how-to-use, then leader 7 plan · 8 heylo-area · 9 library-manage.
+// feedback/how-to-use live in the Header (present on every page), so they need no
+// nav entry — they highlight in place on whatever page the tour is already on.
 const NAV_STEPS: Record<number, { path: string; selector: string }> = {
   [LIBRARY_VARIATIONS_STEP]: { path: '/library', selector: '[data-tour="library-variations"]' },
-  8: { path: '/', selector: '[data-tour="feedback"]' },
-  11: { path: '/plan', selector: '[data-tour="heylo-area"]' },
-  12: { path: '/library', selector: '[data-tour="library-manage"]' },
+  8: { path: '/plan', selector: '[data-tour="heylo-area"]' },
+  9: { path: '/library', selector: '[data-tour="library-manage"]' },
 }
 
 export type TourRef = { launch: () => void }
@@ -82,15 +84,6 @@ export default function OnboardingTour({ isLeader, tourRef }: Props) {
       onHighlightStarted: (_el, _step, { state }) => {
         lastHighlightAt.current = Date.now()
         const idx = state.activeIndex ?? 0
-
-        // Expand first schedule card so the flag button (step 3) is in DOM
-        if (idx === EXPAND_CARD_STEP) {
-          const card = document.querySelector('[data-tour="schedule-detail"]')
-          if (card && card.getAttribute('aria-expanded') !== 'true') {
-            (card as HTMLElement).click()
-          }
-          return
-        }
 
         // Navigate to the correct page for steps that live on other routes
         const nav = NAV_STEPS[idx]
