@@ -60,3 +60,6 @@ scripts/backfill-review.json
 /dispatch/
 /.agent-sessions/
 /SESSION.md
+
+# Brainstorming visual companion
+.superpowers/

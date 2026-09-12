@@ -1,0 +1,35 @@
+name: Seed preview DB
+
+# Phase 2 of #327 — zero-touch preview seeding. When Vercel reports a successful
+# Preview deployment, POST its /api/preview-seed so the two test leaders
+# (foulox@gmail.com → tigerwolves, foulox+mmer@gmail.com → mmer) are linked
+# automatically. The in-app "Set up this preview" button remains the fallback if
+# this ever doesn't fire, so the job is non-blocking on purpose.
+on:
+  deployment_status: {}
+
+jobs:
+  seed:
+    # Only successful, non-production Vercel deployments. The endpoint also
+    # self-guards on VERCEL_ENV, so a stray production trigger is a harmless 403.
+    if: >
+      github.event.deployment_status.state == 'success' &&
+      !startsWith(github.event.deployment_status.environment, 'Production')
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: POST /api/preview-seed
+        env:
+          URL: ${{ github.event.deployment_status.target_url }}
+          # Optional: set this repo secret if Preview deployments have Vercel
+          # deployment protection ("Protection Bypass for Automation"). Harmless
+          # empty header when protection is off / secret unset.
+          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          if [ -z "$URL" ]; then echo "no target_url on this deployment_status; skipping"; exit 0; fi
+          echo "Seeding $URL/api/preview-seed"
+          curl -fsS -X POST \
+            -H "x-vercel-protection-bypass: $BYPASS" \
+            -H "x-vercel-set-bypass-cookie: true" \
+            "$URL/api/preview-seed" && echo "" && echo "seed ok" \
+            || echo "seed call failed — use the in-app 'Set up this preview' button as fallback"
