@@ -5,6 +5,7 @@ import * as Sentry from '@sentry/nextjs'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/lib/data'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
+import { resolveAllowedTypes } from '@/lib/runProfile'
 import { buildPost, buildVerificationLabel, formatDateLong } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
@@ -60,9 +61,15 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
   const scheduledTypes = entry ? entry.workoutType.split(' or ').map(t => t.trim()) : []
   const effectiveType = activeType ?? scheduledTypes[0] ?? ''
 
+  // #322: the picker offers the run's workout-type allowlist intersected with the
+  // types present in its library. An empty allowlist falls back (inside
+  // resolveAllowedTypes) to every present Quality type — today's behavior.
   const availableTypes = useMemo(() =>
-    [...new Set(variants.filter(w => w.category === 'Quality').map(w => w.type))].sort()
-  , [variants])
+    resolveAllowedTypes(
+      variants.filter(w => w.category === 'Quality').map(w => w.type),
+      runConfig.workoutTypes,
+    )
+  , [variants, runConfig.workoutTypes])
 
   // A family is "multi-version" (Standard/Longer picker UI) when it has more
   // than one variant row — label alone isn't the signal, since a lone variant

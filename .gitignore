@@ -63,3 +63,5 @@ scripts/backfill-review.json
 
 # Brainstorming visual companion
 .superpowers/
+Playwright Report.zip
+*.zip

@@ -10,6 +10,7 @@ import ReactionPicker from '@/components/ReactionPicker'
 import WorkoutFlagSheet, { FlagBadge } from '@/components/WorkoutFlagSheet'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
+import { resolveAllowedTypes } from '@/lib/runProfile'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -32,7 +33,7 @@ type DisplayRow = StandaloneRow | FamilyRow
 // Reads workout_variants/workout_families (#277) — replaces the legacy
 // `workouts`-typed version. Family grouping mirrors PlanClient's own
 // familyId-based grouping (#276) rather than the old name-string grouping.
-export default function LibraryClient({ variants, isLeader, voteData = {}, runId }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null>; runId?: string }) {
+export default function LibraryClient({ variants, isLeader, voteData = {}, runId, allowedTypes }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[] }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [raceFilter, setRaceFilter] = useState<string | null>(null)
@@ -63,9 +64,14 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
     )
   }
 
-  const types = Array.from(new Set(
-    visibleVariants.filter(w => !category || w.category === category).map(w => w.type)
-  )).sort()
+  // #322: in "Your run" mode the type-filter options are the run's allowlist
+  // (∩ types present); "All runs" mode shows every present type as before. An
+  // empty allowlist falls back (inside resolveAllowedTypes) to present types.
+  const inYourRun = !!runId && !showAllRuns
+  const presentTypes = visibleVariants.filter(w => !category || w.category === category).map(w => w.type)
+  const types = inYourRun
+    ? resolveAllowedTypes(presentTypes, allowedTypes ?? [])
+    : Array.from(new Set(presentTypes)).sort()
 
   const filtered = visibleVariants
     .filter(w => !category || w.category === category)
@@ -110,6 +116,16 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
 
   function setcat(c: string | null) {
     setCategory(c)
+    setTypeFilter(null)
+  }
+
+  // #322: the "Your run" and "All runs" type-filter option sets can differ (the
+  // former is allowlist-intersected), so a type selected in one mode may not
+  // exist in the other. Reset the type filter on toggle — same as setcat does on
+  // category change — so a stale filter can't silently empty the list with no
+  // visible pill to clear it.
+  function setScope(all: boolean) {
+    setShowAllRuns(all)
     setTypeFilter(null)
   }
 
@@ -197,11 +213,11 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
       {runId && (
         <div className="flex gap-2 px-4 pb-2">
           <button
-            onClick={() => setShowAllRuns(false)}
+            onClick={() => setScope(false)}
             className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
           >Your run</button>
           <button
-            onClick={() => setShowAllRuns(true)}
+            onClick={() => setScope(true)}
             className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
           >All runs</button>
         </div>
