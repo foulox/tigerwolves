@@ -11,6 +11,7 @@ import ReactionPicker from '@/components/ReactionPicker'
 import WorkoutFlagSheet, { FlagBadge, FlagGhostButton, FlagWorkoutDrawer } from '@/components/WorkoutFlagSheet'
 import { captureClientEvent } from '@/lib/analyticsClient'
 import WorkoutDetails, { DetailRow, ChipRow } from '@/components/WorkoutDetails'
+import { compactCardFields } from '@/lib/myWeek'
 
 const TYPE_COLORS: Record<string, string> = {
   Hills: 'bg-green-100 text-green-800',
@@ -29,14 +30,20 @@ interface Props {
   isLeader: boolean
   voteData?: VoteData | null
   isPast?: boolean
+  // #331: when provided, the compact body becomes kind-aware (Workout → type pill +
+  // short set line; Easy/route → distance + "View route ↗", no type pill). Omitted
+  // on the live `/` Schedule page so it keeps today's look; the per-run page passes
+  // its run's kind.
+  kind?: string
 }
 
-export default function ScheduleCard({ entry, workout, index, isLeader, voteData, isPast = false }: Props) {
+export default function ScheduleCard({ entry, workout, index, isLeader, voteData, isPast = false, kind }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [flagDrawerOpen, setFlagDrawerOpen] = useState(false)
   const [flagSheetOpen, setFlagSheetOpen] = useState(false)
   const isNext = !isPast && index === 0
   const hasWorkout = workout !== null
+  const compact = kind ? compactCardFields(kind, entry, workout) : null
   const filteredVariations = entry.selectedVariations.filter(v => v !== '')
   const cardTestId = isPast ? `past-card-${index}` : `schedule-card-${index}`
   const detailTestId = isPast ? `past-detail-${index}` : `schedule-detail-${index}`
@@ -78,19 +85,44 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
             <div className={`mt-0.5 truncate ${isPast ? 'text-sm font-semibold text-[#8b8f97]' : 'text-base font-bold text-gray-900'}`}>
               {entry.workoutName ?? <span className="text-gray-400 font-normal italic">Not planned yet</span>}
             </div>
+            {/* #331: kind-aware compact body (only when a kind is supplied). */}
+            {compact?.shape === 'workout' && compact.setLine && (
+              <div className="mt-0.5 truncate text-sm text-gray-600" data-testid={`schedule-set-${index}`}>
+                {compact.setLine}
+              </div>
+            )}
+            {compact?.shape === 'route' && (
+              <div className="mt-0.5 flex items-center gap-2 text-sm text-gray-600">
+                {compact.distance && <span data-testid={`schedule-distance-${index}`}>{compact.distance}</span>}
+                {compact.routeLink && (
+                  <a
+                    href={compact.routeLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    data-testid={`schedule-route-${index}`}
+                    className="font-semibold text-orange-600 touch-manipulation"
+                  >
+                    View route ↗
+                  </a>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <div className="flex items-center gap-1.5">
               {workout && workout.flagged && (
                 <FlagBadge onClick={(e) => { e.stopPropagation(); setFlagSheetOpen(true) }} />
               )}
-              <span
-                className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
-                  isPast ? 'bg-[#e9eaec] text-[#9ca3af]' : (TYPE_COLORS[entry.workoutType] ?? 'bg-gray-100 text-gray-600')
-                }`}
-              >
-                {entry.workoutType}
-              </span>
+              {compact?.shape !== 'route' && (
+                <span
+                  className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                    isPast ? 'bg-[#e9eaec] text-[#9ca3af]' : (TYPE_COLORS[entry.workoutType] ?? 'bg-gray-100 text-gray-600')
+                  }`}
+                >
+                  {entry.workoutType}
+                </span>
+              )}
             </div>
             {isLeader && isPast && hasWorkout && (
               <Link

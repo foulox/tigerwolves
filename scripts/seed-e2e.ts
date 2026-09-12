@@ -32,6 +32,21 @@ function nextTuesdays(count: number): string[] {
   return dates
 }
 
+/** Next N Mondays from today (inclusive if today is a Monday), as YYYY-MM-DD — for the MMER (Monday) fixture. */
+function nextMondays(count: number): string[] {
+  const dates: string[] = []
+  const d = new Date()
+  d.setUTCHours(0, 0, 0, 0)
+  const dayOfWeek = d.getUTCDay() // 0 = Sunday, 1 = Monday
+  const daysUntilMonday = (1 - dayOfWeek + 7) % 7
+  d.setUTCDate(d.getUTCDate() + daysUntilMonday)
+  for (let i = 0; i < count; i++) {
+    dates.push(d.toISOString().slice(0, 10))
+    d.setUTCDate(d.getUTCDate() + 7)
+  }
+  return dates
+}
+
 /** N days from today, as YYYY-MM-DD — used for race dates, which don't need to fall on a Tuesday. */
 function daysFromNow(days: number): string {
   const d = new Date()
@@ -103,6 +118,7 @@ const FAMILIES: FamilyFixture[] = [
 
 export async function seedE2E(): Promise<void> {
   const [week1, week2, week3] = nextTuesdays(3)
+  const [mon1] = nextMondays(1)
   RACES[0].date = daysFromNow(10)
   RACES[1].date = daysFromNow(24)
 
@@ -114,10 +130,13 @@ export async function seedE2E(): Promise<void> {
   await sql`DELETE FROM races`
   await sql`DELETE FROM workout_variants`
   await sql`DELETE FROM workout_families`
-  await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves'`
-  // #330: clear follows on the MMER fixture so each join/leave e2e run starts clean
-  // (runner_follows is never wiped otherwise; a mid-test failure could leave a stray row).
-  await sql`DELETE FROM runner_follows WHERE run_id = 'mmer'`
+  await sql`DELETE FROM run_leaders WHERE run_id IN ('tigerwolves', 'mmer')`
+  // #330/#331: clear follows on the fixture runs so each run starts from a known
+  // clean slate (runner_follows is never wiped otherwise; a mid-test failure could
+  // leave a stray row). #331 My Week is follow-based, so the test-leader must start
+  // following nothing — both the join/leave e2e and the My Week zero-follows e2e
+  // depend on this.
+  await sql`DELETE FROM runner_follows WHERE run_id IN ('mmer', 'tigerwolves')`
 
   const [tigerWolves] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
   if (!tigerWolves) {
@@ -126,6 +145,22 @@ export async function seedE2E(): Promise<void> {
     )
   }
   const tigerWolvesId = tigerWolves.id as number
+
+  // #331: MMER's own run_group so its Easy workout family is scoped to it
+  // (fetchWorkoutVariants('mmer') resolves run_group_id = this id + global families).
+  // Select-then-insert rather than a try/catch around the insert: idempotent whether
+  // or not the staging branch actually carries the UNIQUE(name) constraint (a bare
+  // catch would either swallow a real insert failure — then crash with a misleading
+  // "undefined id" on the next line — or, without the constraint, silently accumulate
+  // duplicate rows across runs).
+  const existingMmerGroup = await sql`SELECT id FROM run_groups WHERE name = 'MMER'`
+  const mmerGroupId = existingMmerGroup.length > 0
+    ? (existingMmerGroup[0].id as number)
+    : ((await sql`
+        INSERT INTO run_groups (name, venue, default_location)
+        VALUES ('MMER', 'road', 'McCarren Park')
+        RETURNING id
+      `)[0].id as number)
 
   for (const f of FAMILIES) {
     const [family] = await sql`
@@ -174,15 +209,40 @@ export async function seedE2E(): Promise<void> {
 
   // #330: a second platform run (MMER, Monday) so All Runs has a run the
   // tigerwolves test-leader does NOT own — the join target for the join/leave
-  // e2e. Maps from NBR_RUNS 'mon-morning-easy' via NBR_TO_DB_RUN. Idempotent.
+  // e2e. Maps from NBR_RUNS 'mon-morning-easy' via NBR_TO_DB_RUN.
+  // #331: now a fully-realized Easy run — run_group_id set so its Easy workout
+  // resolves, and a schedule + leader below — so My Week shows a real cross-run,
+  // kind-driven (Easy/route) card alongside TigerWolves' Workout card.
   await sql`
-    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind)
+    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind, run_group_id)
     VALUES (
       'mmer', 'Monday Morning Easy Run', '🌅',
       'North Brooklyn Runners'' Monday morning easy run.',
-      'Monday', '6:45 AM', 'McCarren Park', 'Easy'
+      'Monday', '6:45 AM', 'McCarren Park', 'Easy', ${mmerGroupId}
     )
-    ON CONFLICT (id) DO NOTHING
+    ON CONFLICT (id) DO UPDATE SET
+      kind = EXCLUDED.kind,
+      run_group_id = EXCLUDED.run_group_id
+  `
+
+  // #331: MMER's Easy workout — an Easy/route-kind family so the My Week card
+  // renders the route shape (distance from dist_time + "View route ↗" from
+  // map_link), the read-side mirror of #322. Owned by the MMER run_group.
+  const [mmerFamily] = await sql`
+    INSERT INTO workout_families (name, category, type, reason, author, run_group_id, map_link)
+    VALUES (
+      'McCarren Easy Loop', 'Easy', 'Easy', 'Relaxed conversational miles.',
+      'MMER', ${mmerGroupId}, 'https://maps.app.goo.gl/mccarren-easy-loop'
+    )
+    RETURNING id
+  `
+  await sql`
+    INSERT INTO workout_variants (family_id, label, sort_order, raw_input, dist_time, has_turnaround, turnaround, flagged, flag_note)
+    VALUES (
+      ${mmerFamily.id as number}, NULL, NULL,
+      'Easy conversational pace around McCarren Park and the waterfront.',
+      '4 miles', false, '', false, ''
+    )
   `
 
   // Roster names match the schedule leaders below so rotation and away-period
@@ -196,6 +256,12 @@ export async function seedE2E(): Promise<void> {
       ('tigerwolves', 'Dana Kim',   1, NULL, true),
       ('tigerwolves', 'Marcus Ade', 2, NULL, true),
       ('tigerwolves', 'Priya Shah', 3, NULL, true)
+  `
+  // #331: MMER's leader — the "Led by" name on its My Week card. (R4 wires
+  // foulox+mmer as MMER's signed-in owning leader; for R3 this is just a name.)
+  await sql`
+    INSERT INTO run_leaders (run_id, name, sort_order, clerk_user_id, active) VALUES
+      ('mmer', 'Sam Rivera', 1, NULL, true)
   `
 
   // workout_type must match the assigned workout's own "type" field (not its
@@ -214,6 +280,13 @@ export async function seedE2E(): Promise<void> {
     INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
     VALUES (${week3}::date, 'tigerwolves', 'Hills', 'Priya Shah', NULL)
   `
+  // #331: MMER's next-Monday entry — inside the My Week default forward window, so
+  // a follower sees it interleaved with TigerWolves' Tuesday. workout_type matches
+  // the Easy family's own "type" (see note above).
+  await sql`
+    INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
+    VALUES (${mon1}::date, 'mmer', 'Easy', 'Sam Rivera', 'McCarren Easy Loop')
+  `
 
   for (const r of RACES) {
     await sql`
@@ -222,5 +295,5 @@ export async function seedE2E(): Promise<void> {
     `
   }
 
-  console.log(`  seeded ${FAMILIES.length} workout_families, 1 run (tigerwolves) + 3 run_leaders, 3 schedule entries (${week1}, ${week2}, ${week3}), ${RACES.length} races`)
+  console.log(`  seeded ${FAMILIES.length + 1} workout_families, 2 runs (tigerwolves + mmer) + 4 run_leaders, 4 schedule entries (tigerwolves: ${week1}, ${week2}, ${week3}; mmer: ${mon1}), ${RACES.length} races`)
 }

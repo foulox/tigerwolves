@@ -5,6 +5,8 @@ import { weekOfMonth } from './data'
 import { resolveWorkoutType } from './cycle'
 import type { WorkoutVariantInput } from './workoutVariant'
 import { getNextLeader } from './rotation'
+import { resolveWorkoutVariant } from './scheduleUtils'
+import type { MyWeekItem } from './myWeek'
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is not set')
@@ -604,3 +606,48 @@ export async function getFollowedRunIds(clerkUserId: string): Promise<string[]> 
   `
   return rows.map(r => r.run_id as string)
 }
+
+// #331 My Week — cross-run assembly over the runs a user follows, for the date
+// window [windowStart, windowEnd] (inclusive). Deliberately does NOT use
+// fetchData(): that path is scoped to a single run group's variants and would
+// silently drop other followed runs' workouts. Each run is resolved independently
+// against its own variant set (fetchWorkoutVariants(runId), which scopes to that
+// run's group + global families) so a Workout run and an Easy run both resolve
+// correctly. N per-run queries (N = followed runs, small at trial scale); cached
+// under the 'tigerwolves-data' tag so follow changes (toggleRunFollow's
+// updateTag) and workout edits both invalidate it.
+async function assembleMyWeek(
+  clerkUserId: string,
+  windowStart: string,
+  windowEnd: string,
+): Promise<MyWeekItem[]> {
+  const runIds = await getFollowedRunIds(clerkUserId)
+  if (runIds.length === 0) return []
+
+  const perRun = await Promise.all(
+    runIds.map(async (runId): Promise<MyWeekItem[]> => {
+      const run = await getRunById(runId)
+      if (!run) return []
+      const [schedule, variants] = await Promise.all([
+        fetchSchedule(runId),
+        fetchWorkoutVariants(runId),
+      ])
+      return schedule
+        .filter(e => e.date >= windowStart && e.date <= windowEnd)
+        .map(entry => ({
+          run,
+          date: entry.date,
+          entry,
+          workout: resolveWorkoutVariant(variants, entry.workoutName, entry.selectedVariations),
+        }))
+    }),
+  )
+  return perRun.flat()
+}
+
+export const getMyWeek = unstable_cache(
+  (clerkUserId: string, windowStart: string, windowEnd: string) =>
+    assembleMyWeek(clerkUserId, windowStart, windowEnd),
+  ['getMyWeek'],
+  { revalidate: 300, tags: ['tigerwolves-data'] },
+)

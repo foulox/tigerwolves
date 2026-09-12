@@ -97,3 +97,20 @@ test.describe('per-run page (/runs/[id]) — follow toggle (#330)', () => {
     await expect(page.locator('[data-testid="run-follow-toggle"]')).toContainText('Join')
   })
 })
+
+test.describe('per-run page (/runs/[id]) — kind-aware rendering (#331)', () => {
+  // MMER is a seeded Easy run owning its OWN workout family (run_group_id = MMER's
+  // group). The page must resolve variants via fetchWorkoutVariants(id), not
+  // fetchData() (which is tigerwolves-scoped and would drop MMER's workout, leaving
+  // the card stuck on "Not planned yet"). Asserts the Easy/route compact shape.
+  test('MMER (Easy kind) card shows its resolved workout — distance + route link, no type pill', async ({ page }) => {
+    await page.goto('/runs/mmer')
+    await page.waitForLoadState('load')
+
+    const card = page.locator('[data-testid="schedule-card-0"]')
+    await expect(card).toBeVisible()
+    await expect(card).toContainText('McCarren Easy Loop') // workout resolved, not "Not planned yet"
+    await expect(page.locator('[data-testid="schedule-distance-0"]')).toContainText('4 miles')
+    await expect(page.locator('[data-testid="schedule-route-0"]')).toContainText('View route')
+  })
+})
