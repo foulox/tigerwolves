@@ -4,6 +4,7 @@ import { getLeaderRun, getRunRoster } from '@/lib/db'
 import RunConfigClient from '@/components/RunConfigClient'
 import RunConfigUnlinked from '@/components/RunConfigUnlinked'
 import { runConfigGate } from '@/lib/runConfigGate'
+import { isSeedAllowed } from '@/lib/seedFixtures'
 
 export default async function RunConfigPage() {
   const user = await currentUser()
@@ -16,7 +17,7 @@ export default async function RunConfigPage() {
   // bouncing to Schedule (see runConfigGate for the decision table).
   const gate = runConfigGate({ isSignedIn: !!user, isLeader, hasRun: !!runConfig })
   if (gate === 'signin') redirect('/sign-in')
-  if (gate === 'diagnostic') return <RunConfigUnlinked canSeed={process.env.VERCEL_ENV !== 'production'} />
+  if (gate === 'diagnostic') return <RunConfigUnlinked canSeed={isSeedAllowed(process.env.VERCEL_ENV)} />
   if (gate !== 'ok' || !user || !runConfig) redirect('/')
 
   const runLeaders = await getRunRoster(runConfig.id)

@@ -23,31 +23,39 @@ export async function POST() {
     return NextResponse.json({ error: 'not available in production' }, { status: 403 })
   }
 
-  // Ensure both runs exist. tigerwolves is normally already present on the branch
-  // (DO NOTHING keeps its real config); mmer is created blank for the
-  // "configure a new run" flow.
-  for (const { runId, runName } of PREVIEW_LEADERS) {
-    await ensureRun({ id: runId, name: runName })
-  }
-
-  const client = await clerkClient()
-  const results: { email: string; runId: string; linked: boolean; note?: string }[] = []
-  for (const { email, runId } of PREVIEW_LEADERS) {
-    const { data } = await client.users.getUserList({ emailAddress: [email] })
-    const found = data[0]
-    if (!found) {
-      results.push({ email, runId, linked: false, note: 'no Clerk user for this email on this instance' })
-      continue
+  try {
+    // Ensure both runs exist. tigerwolves is normally already present on the branch
+    // (DO NOTHING keeps its real config); mmer is created blank for the
+    // "configure a new run" flow.
+    for (const { runId, runName } of PREVIEW_LEADERS) {
+      await ensureRun({ id: runId, name: runName })
     }
-    const created = await ensureLeaderLink({ runId, clerkUserId: found.id, name: email })
-    results.push({ email, runId, linked: true, note: created ? 'link created' : 'already linked' })
+
+    const client = await clerkClient()
+    const results: { email: string; runId: string; linked: boolean; note?: string }[] = []
+    for (const { email, runId } of PREVIEW_LEADERS) {
+      const { data } = await client.users.getUserList({ emailAddress: [email] })
+      const found = data[0]
+      if (!found) {
+        results.push({ email, runId, linked: false, note: 'no Clerk user for this email on this instance' })
+        continue
+      }
+      const created = await ensureLeaderLink({ runId, clerkUserId: found.id, name: email })
+      results.push({ email, runId, linked: true, note: created ? 'link created' : 'already linked' })
+    }
+
+    // Fixture rows are written with raw SQL, bypassing the app's mutation paths —
+    // invalidate the read cache the same way a Server Action write would (see the
+    // e2e-revalidate route + CLAUDE.md's cache-invalidation guardrail).
+    revalidatePath('/', 'layout')
+    revalidateTag('tigerwolves-data', 'max')
+
+    return NextResponse.json({ ok: true, results })
+  } catch (e) {
+    // Surface a readable reason to the "Set up this preview" button / curl instead
+    // of a bare 500. Common causes: an unmigrated preview branch (missing runs
+    // columns) or Clerk keys absent on the deployment.
+    const message = e instanceof Error ? e.message : 'unknown error'
+    return NextResponse.json({ error: `preview seed failed: ${message}` }, { status: 500 })
   }
-
-  // Fixture rows are written with raw SQL, bypassing the app's mutation paths —
-  // invalidate the read cache the same way a Server Action write would (see the
-  // e2e-revalidate route + CLAUDE.md's cache-invalidation guardrail).
-  revalidatePath('/', 'layout')
-  revalidateTag('tigerwolves-data', 'max')
-
-  return NextResponse.json({ ok: true, results })
 }
