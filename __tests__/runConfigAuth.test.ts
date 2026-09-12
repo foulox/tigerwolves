@@ -29,6 +29,7 @@ import {
   removeRunLeader,
   addRunLeaderByEmail,
   saveRunProfile,
+  saveRunCycle,
 } from '../app/run-config/actions'
 
 // These tests write run_leaders/runs rows, so they only run against the staging
@@ -122,6 +123,7 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
       expect((await removeRunLeader(leaderAId)).error).toBe('Unauthorized')
       expect((await addRunLeaderByEmail('tigerwolves', 'whoever@example.com')).error).toBe('Unauthorized')
       expect((await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills'] })).error).toBe('Unauthorized')
+      expect((await saveRunCycle({ cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })).error).toBe('Unauthorized')
     })
   })
 })
@@ -175,6 +177,78 @@ describe.skipIf(!onStaging)('saveRunProfile persists to the caller’s own run',
     expect(res.error).toBeUndefined()
     const row = await sql`SELECT workout_types FROM runs WHERE id = ${RUN}`
     expect(row[0].workout_types).toEqual(['Hills'])
+  })
+})
+
+// saveRunCycle writes the caller's own runs.cycle_mode / runs.cycle (#323). Like
+// saveRunProfile, the role gate short-circuits before any DB access, so the
+// Unauthorized case runs without a staging DB.
+describe('saveRunCycle authorization', () => {
+  test('returns Unauthorized when caller is not a leader', async () => {
+    signInAs('user_notaleader_323', 'member')
+    const res = await saveRunCycle({ cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })
+    expect(res.error).toBe('Unauthorized')
+  })
+})
+
+describe.skipIf(!onStaging)('saveRunCycle persists to the caller’s own run', () => {
+  // Dedicated run + leader with a known allowlist, so the allowlist-drop assertion
+  // is meaningful and the write never touches a shared fixture row.
+  const RUN = 'test-cycle-323'
+  const CYC_LEADER = 'user_cyctest_A_323'
+  const CYC_NAME = 'CycleTest LeaderA 323'
+
+  beforeAll(async () => {
+    await sql`INSERT INTO runs (id, name) VALUES (${RUN}, 'Cycle Test 323') ON CONFLICT (id) DO NOTHING`
+    // A restricted allowlist: Hills, Ladder, Superset are allowed; everything else is not.
+    await sql`UPDATE runs SET workout_types = ${['Hills', 'Ladder', 'Superset']}::text[] WHERE id = ${RUN}`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RUN}`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${RUN}, ${CYC_NAME}, ${CYC_LEADER}, 1, true)
+    `
+    signInAs(CYC_LEADER)
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RUN}`
+    await sql`DELETE FROM runs WHERE id = ${RUN}`
+  })
+
+  test('persists cycle_mode + cycle to the caller’s run', async () => {
+    const res = await saveRunCycle({
+      cycleMode: 'week_of_month',
+      cycle: { '1': 'Hills', '4': 'Ladder or Superset' },
+    })
+    expect(res.error).toBeUndefined()
+    const row = await sql`SELECT cycle_mode, cycle FROM runs WHERE id = ${RUN}`
+    expect(row[0].cycle_mode).toBe('week_of_month')
+    expect(row[0].cycle).toEqual({ '1': 'Hills', '4': 'Ladder or Superset' })
+  })
+
+  test('drops slot values outside the run’s allowlist', async () => {
+    const res = await saveRunCycle({
+      cycleMode: 'week_of_month',
+      // Threshold is not in this run's allowlist; the compound slot keeps only Ladder.
+      cycle: { '1': 'Threshold', '2': 'Ladder or Threshold' },
+    })
+    expect(res.error).toBeUndefined()
+    const row = await sql`SELECT cycle FROM runs WHERE id = ${RUN}`
+    // Slot 1 becomes empty (dropped entirely), slot 2 keeps only the allowed part.
+    expect(row[0].cycle).toEqual({ '2': 'Ladder' })
+  })
+
+  test('cycleMode none clears the cycle map', async () => {
+    const res = await saveRunCycle({ cycleMode: 'none', cycle: { '1': 'Hills' } })
+    expect(res.error).toBeUndefined()
+    const row = await sql`SELECT cycle_mode, cycle FROM runs WHERE id = ${RUN}`
+    expect(row[0].cycle_mode).toBe('none')
+    expect(row[0].cycle).toEqual({})
+  })
+
+  test('rejects an unknown cycle mode', async () => {
+    const res = await saveRunCycle({ cycleMode: 'bogus', cycle: {} })
+    expect(res.error).toBe('Invalid cycle mode')
   })
 })
 

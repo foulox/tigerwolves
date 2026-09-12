@@ -120,7 +120,7 @@ export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | nul
   const rows = await sql`
     SELECT r.id, r.name, r.emoji, r.day_of_week, r.meeting_location,
            r.post_header, r.leader_intro, r.closing_notes,
-           r.kind, r.workout_types, r.run_group_id
+           r.kind, r.workout_types, r.run_group_id, r.cycle_mode, r.cycle
     FROM run_leaders rl
     JOIN runs r ON r.id = rl.run_id
     WHERE rl.clerk_user_id = ${clerkUserId}
@@ -140,6 +140,8 @@ export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | nul
     kind: (r.kind as string | null) ?? '',
     workoutTypes: (r.workout_types as string[]) ?? [],
     runGroupId: (r.run_group_id as number | null) ?? null,
+    cycleMode: (r.cycle_mode as string | null) ?? 'none',
+    cycle: (r.cycle as Record<string, string> | null) ?? {},
   }
 }
 

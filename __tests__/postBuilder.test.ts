@@ -28,6 +28,8 @@ const tigerWolvesConfig: RunConfig = {
   kind: 'Workout',
   workoutTypes: ['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold'],
   runGroupId: 1,
+  cycleMode: 'none',
+  cycle: {},
 }
 
 const tigerWolvesRoster = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']
@@ -50,6 +52,8 @@ const mourningDovesConfig: RunConfig = {
   kind: 'Easy',
   workoutTypes: [],
   runGroupId: null,
+  cycleMode: 'none',
+  cycle: {},
 }
 
 const mourningDovesRoster = ['Priya', 'Sam']

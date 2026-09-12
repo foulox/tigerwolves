@@ -5,7 +5,7 @@ import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
 import { sql, getLeaderRun, getRunRoster } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
-import { RUN_KINDS, WORKOUT_TYPE_OPTIONS } from '@/lib/runProfile'
+import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
 
 /** Throws 'Forbidden' if the caller's run does not match runId. */
 async function assertCallerOwnsRun(user: User, runId: string): Promise<void> {
@@ -70,6 +70,48 @@ export async function saveRunProfile(data: {
     // touches the two fields the About tab edits.
     await sql`
       UPDATE runs SET kind = ${data.kind}, workout_types = ${workoutTypes}::text[]
+      WHERE id = ${run.id}
+    `
+    updateTag('tigerwolves-data')
+    return {}
+  } catch (err) {
+    Sentry.captureException(err)
+    return { error: 'Failed to save' }
+  }
+}
+
+export async function saveRunCycle(data: {
+  cycleMode: string
+  cycle: Record<string, string>
+}): Promise<{ error?: string }> {
+  try {
+    const user = await currentUser()
+    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
+    const run = await getLeaderRun(user.id)
+    if (!run) return { error: 'Run not found' }
+
+    if (data.cycleMode !== 'none' && data.cycleMode !== 'week_of_month') {
+      return { error: 'Invalid cycle mode' }
+    }
+
+    // Sanitize the slot map server-side: keep only real week slots ("1".."5") and,
+    // within each, only types on this run's own allowlist (#323 AC). A compound slot
+    // keeps just its allowed parts; a slot left with nothing is dropped entirely.
+    // 'none' carries no cadence, so it always stores an empty map — switching modes
+    // never leaves a stale slot map behind.
+    const cycle: Record<string, string> = {}
+    if (data.cycleMode === 'week_of_month') {
+      const allowed = new Set(run.workoutTypes)
+      const validSlots = new Set<string>(WEEK_SLOTS.map(String))
+      for (const [slot, value] of Object.entries(data.cycle)) {
+        if (!validSlots.has(slot)) continue
+        const kept = parseSlotValue(value).filter(t => allowed.has(t))
+        if (kept.length > 0) cycle[slot] = joinSlotValue(kept)
+      }
+    }
+
+    await sql`
+      UPDATE runs SET cycle_mode = ${data.cycleMode}, cycle = ${JSON.stringify(cycle)}::jsonb
       WHERE id = ${run.id}
     `
     updateTag('tigerwolves-data')

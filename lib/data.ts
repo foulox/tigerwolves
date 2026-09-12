@@ -97,6 +97,12 @@ export type RunConfig = {
   kind: string
   workoutTypes: string[]
   runGroupId: number | null
+  // #323: workout-type cadence the leader configures in Run Settings and #319's
+  // engine auto-applies. `cycleMode` is 'none' | 'week_of_month'; `cycle` is a
+  // slot→type map keyed by week-of-month ("1".."5"), values possibly compound
+  // ("Ladder or Superset"). Empty map / 'none' means every generated week is blank.
+  cycleMode: string
+  cycle: Record<string, string>
 }
 
 export type AwayPeriod = { from: string; to: string }
