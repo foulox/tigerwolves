@@ -222,3 +222,21 @@ UPDATE runs SET
   workout_types = ARRAY['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold'],
   run_group_id = (SELECT id FROM run_groups WHERE name = 'TigerWolves')
 WHERE id = 'tigerwolves';
+
+-- #319: per-run workout-type cycle. Give `runs` a cadence config so newly generated
+-- schedule weeks auto-fill their workout_type instead of coming up blank.
+--   cycle_mode — 'none' (no cadence, weeks stay blank as before) | 'week_of_month'
+--                (cycle is keyed by week-of-month, "1".."5").
+--   cycle      — slot→type map, e.g. {"1":"Hills","2":"Broken Tempo",...}.
+-- Additive + idempotent: ADD COLUMN IF NOT EXISTS backfills existing rows to the
+-- 'none' / '{}' defaults (unchanged generation behavior), and the TigerWolves UPDATE
+-- below is safe to replay. Runs are the only writer of workout_type via generation.
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS cycle_mode TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS cycle JSONB NOT NULL DEFAULT '{}';
+
+-- Reproduce the real TigerWolves cadence from config: week 1 Hills, 2 Broken Tempo,
+-- 3 Progression, 4 Ladder or Superset, 5 Straight Tempo.
+UPDATE runs SET
+  cycle_mode = 'week_of_month',
+  cycle = '{"1":"Hills","2":"Broken Tempo","3":"Progression","4":"Ladder or Superset","5":"Straight Tempo"}'::jsonb
+WHERE id = 'tigerwolves';

@@ -2,6 +2,7 @@ import { neon } from '@neondatabase/serverless'
 import { unstable_cache } from 'next/cache'
 import type { ScheduleEntry, Race, RunGroup, WorkoutVariantRow, RunConfig, RunLeader, AwayPeriod } from './data'
 import { weekOfMonth } from './data'
+import { resolveWorkoutType } from './cycle'
 import type { WorkoutVariantInput } from './workoutVariant'
 import { getNextLeader } from './rotation'
 
@@ -482,6 +483,13 @@ export async function generateScheduleHorizon(
   const existingRows = await sql`SELECT date FROM schedule WHERE run_id = ${runId}`
   const existing = new Set(existingRows.map(r => toDateString(r.date)))
 
+  // #319: fetch this run's workout-type cycle once up front. Each newly generated
+  // week's workout_type is resolved from it (blank for cycle_mode 'none'). Folds a
+  // single SELECT into a function that already issues per-run queries on page load.
+  const cycleRows = await sql`SELECT cycle_mode, cycle FROM runs WHERE id = ${runId}`
+  const cycleMode = (cycleRows[0]?.cycle_mode as string | null) ?? null
+  const cycle = (cycleRows[0]?.cycle as Record<string, string> | null) ?? null
+
   // Find the next date to generate from
   const targetDay = DAY_MAP[dayOfWeek] ?? 2 // default Tuesday
 
@@ -506,9 +514,10 @@ export async function generateScheduleHorizon(
 
     if (!existing.has(dateStr)) {
       const nextLeader = getNextLeader(roster, currentLeader ?? '', dateStr)
+      const workoutType = resolveWorkoutType(cycleMode, cycle, dateStr)
       await sql`
         INSERT INTO schedule (date, run_id, workout_type, leader, needs_leader)
-        VALUES (${dateStr}::date, ${runId}, '', ${nextLeader ?? ''}, ${nextLeader === null})
+        VALUES (${dateStr}::date, ${runId}, ${workoutType}, ${nextLeader ?? ''}, ${nextLeader === null})
         ON CONFLICT (date, run_id) DO NOTHING
       `
       currentLeader = nextLeader ?? currentLeader
