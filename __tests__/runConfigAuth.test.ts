@@ -28,6 +28,7 @@ import {
   saveAwayPeriod,
   removeRunLeader,
   addRunLeaderByEmail,
+  saveRunProfile,
 } from '../app/run-config/actions'
 
 // These tests write run_leaders/runs rows, so they only run against the staging
@@ -121,6 +122,57 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
       expect((await removeRunLeader(leaderAId)).error).toBe('Unauthorized')
       expect((await addRunLeaderByEmail('tigerwolves', 'whoever@example.com')).error).toBe('Unauthorized')
     })
+  })
+})
+
+// saveRunProfile writes the caller's own runs.kind / runs.workout_types (#321).
+// The role gate short-circuits before any DB access, so the Unauthorized case runs
+// without a staging DB; persistence is proven against staging like its siblings.
+describe('saveRunProfile authorization', () => {
+  test('returns Unauthorized when caller is not a leader', async () => {
+    signInAs('user_notaleader_321', 'member')
+    const res = await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills'] })
+    expect(res.error).toBe('Unauthorized')
+  })
+})
+
+describe.skipIf(!onStaging)('saveRunProfile persists to the caller’s own run', () => {
+  const PROF_LEADER = 'user_proftest_A_321' // leads tigerwolves
+  const PROF_NAME = 'ProfTest LeaderA 321'
+  let origKind: string
+  let origTypes: string[]
+
+  beforeAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE name = ${PROF_NAME}`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES ('tigerwolves', ${PROF_NAME}, ${PROF_LEADER}, 991, true)
+    `
+    const cur = await sql`SELECT kind, workout_types FROM runs WHERE id = 'tigerwolves'`
+    origKind = (cur[0].kind as string | null) ?? ''
+    origTypes = (cur[0].workout_types as string[] | null) ?? []
+    signInAs(PROF_LEADER)
+  })
+
+  afterAll(async () => {
+    // Restore tigerwolves' profile so this suite leaves no trace.
+    await sql`UPDATE runs SET kind = ${origKind}, workout_types = ${origTypes}::text[] WHERE id = 'tigerwolves'`
+    await sql`DELETE FROM run_leaders WHERE name = ${PROF_NAME}`
+  })
+
+  test('persists kind + workout_types to the caller’s run', async () => {
+    const res = await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills', 'Threshold'] })
+    expect(res.error).toBeUndefined()
+    const row = await sql`SELECT kind, workout_types FROM runs WHERE id = 'tigerwolves'`
+    expect(row[0].kind).toBe('Workout')
+    expect(row[0].workout_types).toEqual(['Hills', 'Threshold'])
+  })
+
+  test('drops workout types outside WORKOUT_TYPE_OPTIONS', async () => {
+    const res = await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills', 'NotARealType'] })
+    expect(res.error).toBeUndefined()
+    const row = await sql`SELECT workout_types FROM runs WHERE id = 'tigerwolves'`
+    expect(row[0].workout_types).toEqual(['Hills'])
   })
 })
 

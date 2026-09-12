@@ -5,6 +5,7 @@ import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
 import { sql, getLeaderRun, getRunRoster } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
+import { RUN_KINDS, WORKOUT_TYPE_OPTIONS } from '@/lib/runProfile'
 
 /** Throws 'Forbidden' if the caller's run does not match runId. */
 async function assertCallerOwnsRun(user: User, runId: string): Promise<void> {
@@ -37,6 +38,35 @@ export async function savePostTemplate(data: {
         meeting_location = ${data.meetingLocation},
         leader_intro = ${data.leaderIntro},
         closing_notes = ${data.closingNotes}
+      WHERE id = ${run.id}
+    `
+    updateTag('tigerwolves-data')
+    return {}
+  } catch (err) {
+    Sentry.captureException(err)
+    return { error: 'Failed to save' }
+  }
+}
+
+export async function saveRunProfile(data: {
+  kind: string
+  workoutTypes: string[]
+}): Promise<{ error?: string }> {
+  try {
+    const user = await currentUser()
+    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
+    const run = await getLeaderRun(user.id)
+    if (!run) return { error: 'Run not found' }
+
+    if (!(RUN_KINDS as readonly string[]).includes(data.kind)) return { error: 'Invalid run kind' }
+    // The allowlist only applies to Workout runs — drop unknown types, and clear it
+    // entirely for any other kind so a non-Workout run never carries a stale allowlist.
+    const allowed = new Set<string>(WORKOUT_TYPE_OPTIONS)
+    const workoutTypes =
+      data.kind === 'Workout' ? data.workoutTypes.filter(t => allowed.has(t)) : []
+
+    await sql`
+      UPDATE runs SET kind = ${data.kind}, workout_types = ${workoutTypes}::text[]
       WHERE id = ${run.id}
     `
     updateTag('tigerwolves-data')
