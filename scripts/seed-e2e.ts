@@ -148,12 +148,15 @@ export async function seedE2E(): Promise<void> {
 
   // #331: MMER's own run_group so its Easy workout family is scoped to it
   // (fetchWorkoutVariants('mmer') resolves run_group_id = this id + global families).
-  // Idempotent; RETURNING is empty on conflict, so re-select to get the id either way.
-  await sql`
-    INSERT INTO run_groups (name, venue, default_location)
-    VALUES ('MMER', 'road', 'McCarren Park')
-    ON CONFLICT (name) DO NOTHING
-  `
+  // Idempotent: try to insert, then select (exists or was just created).
+  try {
+    await sql`
+      INSERT INTO run_groups (name, venue, default_location)
+      VALUES ('MMER', 'road', 'McCarren Park')
+    `
+  } catch {
+    // Row already exists; safe to ignore and proceed to SELECT
+  }
   const [mmerGroup] = await sql`SELECT id FROM run_groups WHERE name = 'MMER'`
   const mmerGroupId = mmerGroup.id as number
 
