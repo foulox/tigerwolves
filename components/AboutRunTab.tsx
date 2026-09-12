@@ -13,7 +13,11 @@ export default function AboutRunTab({
   runLeaders: RunLeader[]
 }) {
   const [kind, setKind] = useState(runConfig.kind)
-  const [workoutTypes, setWorkoutTypes] = useState<string[]>(runConfig.workoutTypes)
+  // Drop any stored type outside the current vocabulary up front, so the UI only
+  // ever holds values it can render a toggle for (and the server would keep on save).
+  const [workoutTypes, setWorkoutTypes] = useState<string[]>(() =>
+    runConfig.workoutTypes.filter(t => (WORKOUT_TYPE_OPTIONS as readonly string[]).includes(t))
+  )
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()

@@ -111,10 +111,6 @@ export type RunLeader = {
   awayPeriods: AwayPeriod[]
 }
 
-export const TW_WORKOUT_TYPES: WorkoutType[] = [
-  'Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold',
-]
-
 export function weekOfMonth(dateStr: string): number {
   const d = new Date(dateStr + 'T00:00:00')
   return Math.ceil(d.getDate() / 7)

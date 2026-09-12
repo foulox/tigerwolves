@@ -65,6 +65,9 @@ export async function saveRunProfile(data: {
     const workoutTypes =
       data.kind === 'Workout' ? data.workoutTypes.filter(t => allowed.has(t)) : []
 
+    // run_group_id is intentionally not written here — it's foundational (set at
+    // provisioning in #318), not a leader-editable profile field. This action only
+    // touches the two fields the About tab edits.
     await sql`
       UPDATE runs SET kind = ${data.kind}, workout_types = ${workoutTypes}::text[]
       WHERE id = ${run.id}
