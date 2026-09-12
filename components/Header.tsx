@@ -8,6 +8,7 @@ import HowToUseButton from './HowToUseButton'
 import WhatsNewOverlay from './WhatsNewOverlay'
 import FeedbackButton from './FeedbackButton'
 import LeaderMenu from './LeaderMenu'
+import FollowToggle from './FollowToggle'
 import { PersonIcon } from './icons'
 
 export default function Header({
@@ -15,11 +16,17 @@ export default function Header({
   subtitle,
   isLeader,
   showBack,
+  runId,
+  isLoggedIn,
+  isFollowing,
 }: {
   title: string
   subtitle?: string
   isLeader: boolean
   showBack?: boolean
+  runId?: string
+  isLoggedIn?: boolean
+  isFollowing?: boolean
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -44,11 +51,16 @@ export default function Header({
       <div className="flex items-center gap-2.5">
         <WhatsNewOverlay />
         <HowToUseButton />
+        {runId && isLoggedIn && (
+          <FollowToggle runId={runId} initialFollowing={isFollowing ?? false} />
+        )}
         {isLeader ? (
           <>
             <LeaderMenu />
             <UserButton appearance={{ elements: { userButtonAvatarBox: 'w-10 h-10' } }} />
           </>
+        ) : isLoggedIn ? (
+          <UserButton appearance={{ elements: { userButtonAvatarBox: 'w-10 h-10' } }} />
         ) : (
           <Link
             href={`/sign-in?redirect_url=${encodeURIComponent(pathname)}`}

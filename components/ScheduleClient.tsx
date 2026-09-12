@@ -16,10 +16,11 @@ interface Props {
   upcoming: ScheduleEntry[]
   upcomingWorkouts: (WorkoutVariantRow | null)[]
   isLeader: boolean
+  canEditRun?: boolean
   voteData: Record<string, VoteData | null>
 }
 
-export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingWorkouts, isLeader, voteData }: Props) {
+export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingWorkouts, isLeader, canEditRun = true, voteData }: Props) {
   // True once scrolled up above the NEXT UP landing spot (i.e. viewing past weeks).
   // A boolean, not raw scrollY — updated only when the boundary is actually
   // crossed, so a scroll listener firing every frame doesn't force a re-render
@@ -130,6 +131,7 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
             workout={workout}
             index={i}
             isLeader={isLeader}
+            canEditRun={canEditRun}
             isPast
             voteData={workout ? (voteData[workoutVoteId(workout.name, workout.label ?? '')] ?? null) : null}
           />
@@ -148,6 +150,7 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
             workout={workout}
             index={i}
             isLeader={isLeader}
+            canEditRun={canEditRun}
             voteData={workout ? (voteData[workoutVoteId(workout.name, workout.label ?? '')] ?? null) : null}
           />
         )
