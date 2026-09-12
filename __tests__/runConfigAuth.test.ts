@@ -28,6 +28,7 @@ import {
   saveAwayPeriod,
   removeRunLeader,
   addRunLeaderByEmail,
+  saveRunProfile,
 } from '../app/run-config/actions'
 
 // These tests write run_leaders/runs rows, so they only run against the staging
@@ -120,7 +121,60 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
       expect((await saveAwayPeriod(leaderAId, { from: '2099-01-01', to: '2099-01-07' })).error).toBe('Unauthorized')
       expect((await removeRunLeader(leaderAId)).error).toBe('Unauthorized')
       expect((await addRunLeaderByEmail('tigerwolves', 'whoever@example.com')).error).toBe('Unauthorized')
+      expect((await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills'] })).error).toBe('Unauthorized')
     })
+  })
+})
+
+// saveRunProfile writes the caller's own runs.kind / runs.workout_types (#321).
+// The role gate short-circuits before any DB access, so the Unauthorized case runs
+// without a staging DB; persistence is proven against staging like its siblings.
+describe('saveRunProfile authorization', () => {
+  test('returns Unauthorized when caller is not a leader', async () => {
+    signInAs('user_notaleader_321', 'member')
+    const res = await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills'] })
+    expect(res.error).toBe('Unauthorized')
+  })
+})
+
+describe.skipIf(!onStaging)('saveRunProfile persists to the caller’s own run', () => {
+  // Provision a dedicated run + leader so this suite never mutates a shared fixture
+  // row. tigerwolves' kind/workout_types are read and asserted on by db.test.ts's
+  // #318 suite; since vitest runs test files in parallel, writing them here would
+  // race that read. saveRunProfile always targets the caller's own run, so an
+  // isolated run + leader keeps the write fully contained (mirrors the remove suite).
+  const RUN = 'test-profile-321'
+  const PROF_LEADER = 'user_proftest_A_321' // leads RUN
+  const PROF_NAME = 'ProfTest LeaderA 321'
+
+  beforeAll(async () => {
+    await sql`INSERT INTO runs (id, name) VALUES (${RUN}, 'Profile Test 321') ON CONFLICT (id) DO NOTHING`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RUN}`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${RUN}, ${PROF_NAME}, ${PROF_LEADER}, 1, true)
+    `
+    signInAs(PROF_LEADER)
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RUN}`
+    await sql`DELETE FROM runs WHERE id = ${RUN}`
+  })
+
+  test('persists kind + workout_types to the caller’s run', async () => {
+    const res = await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills', 'Threshold'] })
+    expect(res.error).toBeUndefined()
+    const row = await sql`SELECT kind, workout_types FROM runs WHERE id = ${RUN}`
+    expect(row[0].kind).toBe('Workout')
+    expect(row[0].workout_types).toEqual(['Hills', 'Threshold'])
+  })
+
+  test('drops workout types outside WORKOUT_TYPE_OPTIONS', async () => {
+    const res = await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills', 'NotARealType'] })
+    expect(res.error).toBeUndefined()
+    const row = await sql`SELECT workout_types FROM runs WHERE id = ${RUN}`
+    expect(row[0].workout_types).toEqual(['Hills'])
   })
 })
 
