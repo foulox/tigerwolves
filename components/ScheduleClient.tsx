@@ -17,9 +17,12 @@ interface Props {
   upcomingWorkouts: (WorkoutVariantRow | null)[]
   isLeader: boolean
   voteData: Record<string, VoteData | null>
+  // #331: forwarded to ScheduleCard to enable kind-aware compact rendering on the
+  // per-run page. Omitted on the live `/` Schedule page, which keeps today's look.
+  kind?: string
 }
 
-export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingWorkouts, isLeader, voteData }: Props) {
+export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingWorkouts, isLeader, voteData, kind }: Props) {
   // True once scrolled up above the NEXT UP landing spot (i.e. viewing past weeks).
   // A boolean, not raw scrollY — updated only when the boundary is actually
   // crossed, so a scroll listener firing every frame doesn't force a re-render
@@ -131,6 +134,7 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
             index={i}
             isLeader={isLeader}
             isPast
+            kind={kind}
             voteData={workout ? (voteData[workoutVoteId(workout.name, workout.label ?? '')] ?? null) : null}
           />
         )
@@ -148,6 +152,7 @@ export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingW
             workout={workout}
             index={i}
             isLeader={isLeader}
+            kind={kind}
             voteData={workout ? (voteData[workoutVoteId(workout.name, workout.label ?? '')] ?? null) : null}
           />
         )

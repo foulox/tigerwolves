@@ -93,6 +93,7 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
         upcoming={upcoming}
         upcomingWorkouts={upcomingWorkouts}
         isLeader={isOwningLeader}
+        kind={runConfig.kind}
         voteData={voteData}
       />
     </div>
