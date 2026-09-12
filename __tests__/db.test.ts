@@ -542,10 +542,17 @@ describe.skipIf(!onStaging)('#319 per-run workout-type cycle engine', () => {
   })
 
   it('generateScheduleHorizon fills workout_type from the cycle', async () => {
-    // Run generation for the real tigerwolves run. It's insert-only for missing
-    // dates, so this only creates rows out to the 24-week horizon that don't exist
-    // yet (idempotent — safe to re-run). Then assert a newly generated future week's
-    // workout_type matches resolveWorkoutType for its date: non-empty and cadence-correct.
+    // Clear future tigerwolves rows first so generation produces a fresh, fully
+    // cycle-derived horizon. generateScheduleHorizon is insert-only, so any pre-existing
+    // future row — a stale pre-cycle blank, or an e2e fixture with a hardcoded type —
+    // would otherwise survive and break the "every future week matches the resolver"
+    // assertion below. This test runs before the e2e seed (test:unit precedes test:e2e
+    // in CI), so it can't assume a clean schedule and must establish its own precondition.
+    // Safe: onStaging-gated (never production), and the e2e seed wipes `schedule` wholesale.
+    await sql`DELETE FROM schedule WHERE run_id = 'tigerwolves' AND date > CURRENT_DATE`
+
+    // Now generate out to the 24-week horizon: every future row is freshly created and
+    // must carry resolveWorkoutType for its own date — non-empty and cadence-correct.
     const roster = await getRunRoster('tigerwolves')
     await generateScheduleHorizon('tigerwolves', 'Tuesday', roster)
 
