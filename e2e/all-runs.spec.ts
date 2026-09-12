@@ -126,3 +126,51 @@ test('header is standard Header.tsx — no Join NBR, no NORTH BROOKLYN RUNNERS e
   await expect(page.locator('a[href*="sign-in"]')).toBeVisible()
   await context.close()
 })
+
+// ── #330: auth-aware personalization (join/leave + tiers) ──────────────────────
+
+test('logged-out: no follow toggles, no Following tier, no "not on the app" markers', async ({ browser }) => {
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  const page = await context.newPage()
+  await page.goto('/all-runs')
+  await page.waitForLoadState('load')
+  await expect(page.locator('[data-testid="following-tier"]')).toHaveCount(0)
+  await expect(page.locator('[data-testid^="follow-toggle-"]')).toHaveCount(0)
+  await expect(page.locator('[data-testid^="not-on-app-"]')).toHaveCount(0)
+  await context.close()
+})
+
+test('signed-in: a directory-only NBR run is muted "Not on the app yet"', async ({ page }) => {
+  // Default context is the signed-in TigerWolves leader. tue-bushwick is a real
+  // NBR run with no platform mapping → not joinable.
+  await page.goto('/all-runs')
+  await page.waitForLoadState('load')
+  await expect(page.locator('[data-testid="not-on-app-tue-bushwick"]')).toBeVisible()
+  await expect(page.locator('[data-testid="follow-toggle-tue-bushwick"]')).toHaveCount(0)
+})
+
+test('signed-in: join MMER → appears in Following tier; leave → removed (AC: join/leave)', async ({ page }) => {
+  await page.goto('/all-runs')
+  await page.waitForLoadState('load')
+
+  const rowToggle = page.locator('[data-testid="follow-toggle-mmer"]')
+  await expect(rowToggle).toBeVisible()
+  await expect(rowToggle).toContainText('Join')
+
+  // Join
+  await rowToggle.click()
+  await expect(page.locator('[data-testid="following-run-mmer"]')).toBeVisible()
+  await expect(rowToggle).toContainText('Joined')
+
+  // Leave (from the row toggle) — Following tier entry disappears
+  await rowToggle.click()
+  await expect(page.locator('[data-testid="following-run-mmer"]')).toHaveCount(0)
+  await expect(rowToggle).toContainText('Join')
+})
+
+test('/runner/all-runs redirects to the one real /all-runs surface', async ({ page }) => {
+  await page.goto('/runner/all-runs')
+  await page.waitForURL(/\/all-runs$/)
+  expect(page.url()).toContain('/all-runs')
+  expect(page.url()).not.toContain('/runner')
+})
