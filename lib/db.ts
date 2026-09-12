@@ -588,3 +588,19 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
     cycle: (r.cycle as Record<string, string> | null) ?? {},
   }
 }
+
+// #330: the set of run ids that exist on the platform (the `runs` table). All
+// Runs uses this to mark which entries in the NBR directory are joinable —
+// only platform runs can be followed, so My Week never surfaces a dead run.
+export async function getAllRunIds(): Promise<string[]> {
+  const rows = await sql`SELECT id FROM runs ORDER BY id`
+  return rows.map(r => r.id as string)
+}
+
+// #330: run ids a signed-in user currently follows (their runner_follows rows).
+export async function getFollowedRunIds(clerkUserId: string): Promise<string[]> {
+  const rows = await sql`
+    SELECT run_id FROM runner_follows WHERE clerk_user_id = ${clerkUserId}
+  `
+  return rows.map(r => r.run_id as string)
+}
