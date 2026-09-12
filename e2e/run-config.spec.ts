@@ -18,15 +18,20 @@ test.describe('Run Settings', () => {
     await page.goto('/run-config')
     await page.waitForLoadState('load')
 
+    // Run Settings opens on the "About the run" tab (#321); the post-template
+    // fields live under the "Post template" tab, so switch to it first.
+    await page.getByRole('button', { name: 'Post template' }).click()
+
     const input = page.getByLabel(/meeting location/i)
     const original = await input.inputValue()
     await input.fill('Test Location Updated')
     await page.getByRole('button', { name: /save changes/i }).click()
     await expect(page.getByRole('button', { name: /saved/i })).toBeVisible()
 
-    // Reload and verify persistence
+    // Reload and verify persistence — reload lands back on About, so switch again.
     await page.reload()
     await page.waitForLoadState('load')
+    await page.getByRole('button', { name: 'Post template' }).click()
     await expect(page.getByLabel(/meeting location/i)).toHaveValue('Test Location Updated')
 
     // Restore original value
