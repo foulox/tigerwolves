@@ -66,4 +66,34 @@ test.describe('per-run page (/runs/[id]) — anonymous read-only', () => {
 
     await expect(page.locator('[data-testid^="plan-week-"]')).toHaveCount(0)
   })
+
+  test('shows no follow toggle for a logged-out visitor', async ({ page }) => {
+    await page.goto('/runs/tigerwolves')
+    await page.waitForLoadState('load')
+    await expect(page.locator('[data-testid="run-follow-toggle"]')).toHaveCount(0)
+  })
+})
+
+test.describe('per-run page (/runs/[id]) — follow toggle (#330)', () => {
+  // Default context is the signed-in TigerWolves test-leader. MMER is a seeded
+  // platform run the test-leader does NOT own, so join/leave has a live target.
+  test('signed-in: join MMER from its page → toggle flips; leave → flips back', async ({ page }) => {
+    await page.goto('/runs/mmer')
+    await page.waitForLoadState('load')
+
+    const toggle = page.locator('[data-testid="run-follow-toggle"]')
+    await expect(toggle).toBeVisible()
+    await expect(toggle).toContainText('Join')
+
+    // Join — persists across reload
+    await toggle.click()
+    await expect(toggle).toContainText('Joined')
+    await page.reload()
+    await page.waitForLoadState('load')
+    await expect(page.locator('[data-testid="run-follow-toggle"]')).toContainText('Joined')
+
+    // Leave — flips back
+    await page.locator('[data-testid="run-follow-toggle"]').click()
+    await expect(page.locator('[data-testid="run-follow-toggle"]')).toContainText('Join')
+  })
 })
