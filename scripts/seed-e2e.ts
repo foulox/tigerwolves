@@ -115,6 +115,9 @@ export async function seedE2E(): Promise<void> {
   await sql`DELETE FROM workout_variants`
   await sql`DELETE FROM workout_families`
   await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves'`
+  // #330: clear follows on the MMER fixture so each join/leave e2e run starts clean
+  // (runner_follows is never wiped otherwise; a mid-test failure could leave a stray row).
+  await sql`DELETE FROM runner_follows WHERE run_id = 'mmer'`
 
   const [tigerWolves] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
   if (!tigerWolves) {
@@ -167,6 +170,19 @@ export async function seedE2E(): Promise<void> {
       closing_notes = EXCLUDED.closing_notes,
       post_header = EXCLUDED.post_header,
       leader_intro = EXCLUDED.leader_intro
+  `
+
+  // #330: a second platform run (MMER, Monday) so All Runs has a run the
+  // tigerwolves test-leader does NOT own — the join target for the join/leave
+  // e2e. Maps from NBR_RUNS 'mon-morning-easy' via NBR_TO_DB_RUN. Idempotent.
+  await sql`
+    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind)
+    VALUES (
+      'mmer', 'Monday Morning Easy Run', '🌅',
+      'North Brooklyn Runners'' Monday morning easy run.',
+      'Monday', '6:45 AM', 'McCarren Park', 'Easy'
+    )
+    ON CONFLICT (id) DO NOTHING
   `
 
   // Roster names match the schedule leaders below so rotation and away-period

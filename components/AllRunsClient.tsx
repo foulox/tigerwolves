@@ -1,8 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import Link from 'next/link'
+import { Check } from 'lucide-react'
 import FeedbackDrawer from './FeedbackDrawer'
 import type { NBRRun } from '@/lib/allRunsData'
+import type { PlatformInfo } from '@/lib/allRuns'
+import { toggleRunFollow } from '@/app/actions'
 import { formatDateShort } from '@/lib/dateUtils'
 
 type Day = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
@@ -44,15 +48,45 @@ type Props = {
   // ISO date string from the server (e.g. "2026-09-05") — used as the stable
   // "today" anchor for both SSR and hydration to prevent React mismatch warnings.
   serverDate: string
+  // #330: auth-aware personalization. Logged out → today's marketing directory
+  // (no Following tier, no join affordances). Logged in → platform maps NBR id →
+  // { runId, following } for entries that exist on the platform (joinable).
+  isLoggedIn?: boolean
+  platform?: Record<string, PlatformInfo>
 }
 
-export default function AllRunsClient({ runs, serverDate }: Props) {
+export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, platform = {} }: Props) {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const [catFilter, setCatFilter] = useState<Category>('All')
   const [feedbackOpen, setFeedbackOpen] = useState(false)
 
+  // Follow state seeded from the server, then updated optimistically on toggle.
+  const [followed, setFollowed] = useState<Record<string, boolean>>(() => {
+    const seed: Record<string, boolean> = {}
+    for (const info of Object.values(platform)) seed[info.runId] = info.following
+    return seed
+  })
+  const [pendingRunId, setPendingRunId] = useState<string | null>(null)
+  const [, startTransition] = useTransition()
+
+  function toggleFollow(runId: string) {
+    setPendingRunId(runId)
+    startTransition(async () => {
+      const res = await toggleRunFollow(runId)
+      if (!res.error) {
+        setFollowed(prev => ({ ...prev, [runId]: res.following ?? !prev[runId] }))
+      }
+      setPendingRunId(null)
+    })
+  }
+
   // Interpret serverDate as midnight local time — intentional, see page.tsx comment.
   const today = new Date(`${serverDate}T00:00:00`)
+
+  // Runs the user currently follows (platform runs only), for the Following tier.
+  const followingRuns = isLoggedIn
+    ? runs.filter(r => { const p = platform[r.id]; return p && followed[p.runId] })
+    : []
 
   function orderedDays(): { day: Day; date: Date; isLead: boolean; label: string }[] {
     if (timeFilter === 'wknd') {
@@ -89,10 +123,74 @@ export default function AllRunsClient({ runs, serverDate }: Props) {
     return true
   }
 
+  // Right-side affordance on a run row (logged-in only): a Join/Joined toggle for
+  // platform runs, a muted "Not on the app yet" for directory-only runs.
+  function runAffordance(run: NBRRun) {
+    if (!isLoggedIn) return null
+    const p = platform[run.id]
+    if (!p) {
+      return (
+        <span
+          data-testid={`not-on-app-${run.id}`}
+          className="flex-shrink-0 text-[11px] font-semibold text-[#a7adb8] whitespace-nowrap"
+        >
+          Not on the app yet
+        </span>
+      )
+    }
+    const isFollowing = !!followed[p.runId]
+    return (
+      <button
+        data-testid={`follow-toggle-${p.runId}`}
+        aria-label={isFollowing ? `Leave ${run.name}` : `Join ${run.name}`}
+        onClick={() => toggleFollow(p.runId)}
+        disabled={pendingRunId === p.runId}
+        className={`flex-shrink-0 text-[12.5px] font-bold rounded-full px-3.5 py-1.5 touch-manipulation disabled:opacity-50 whitespace-nowrap flex items-center gap-1 ${
+          isFollowing
+            ? 'bg-green-100 text-green-800'
+            : 'bg-orange-500 text-white shadow-sm'
+        }`}
+      >
+        {isFollowing ? <><Check size={12} strokeWidth={3} /> Joined</> : '+ Join'}
+      </button>
+    )
+  }
+
   const days = orderedDays()
 
   return (
     <div className="pb-4">
+      {/* Following tier (signed-in, when the user follows at least one platform run) */}
+      {isLoggedIn && followingRuns.length > 0 && (
+        <div className="px-4 pb-3 flex flex-col gap-2" data-testid="following-tier">
+          <div className="text-[11px] font-bold tracking-widest uppercase text-gray-400">Following</div>
+          {followingRuns.map(run => {
+            const p = platform[run.id]!
+            return (
+              <div
+                key={run.id}
+                data-testid={`following-run-${p.runId}`}
+                className="bg-white border border-green-200 rounded-2xl px-4 py-3 flex gap-3 items-center"
+              >
+                <Link href={`/runs/${p.runId}`} className="flex-1 min-w-0 touch-manipulation">
+                  <div className="text-[15px] font-bold text-gray-900 truncate">{run.name}</div>
+                  <div className="text-[12.5px] text-gray-400">{DAY_NAMES[run.day]}s · {run.startTime}</div>
+                </Link>
+                <button
+                  data-testid={`following-toggle-${p.runId}`}
+                  aria-label={`Leave ${run.name}`}
+                  onClick={() => toggleFollow(p.runId)}
+                  disabled={pendingRunId === p.runId}
+                  className="flex-shrink-0 text-[12.5px] font-bold rounded-full px-3.5 py-1.5 bg-green-100 text-green-800 touch-manipulation disabled:opacity-50 flex items-center gap-1"
+                >
+                  <Check size={12} strokeWidth={3} /> Joined
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Standfirst */}
       <p className="px-4 pb-2.5 text-[13px] leading-[1.45] text-[#8b93a1]">
         Over 20 weekly runs, every pace welcome. All paces, all distances.
@@ -207,6 +305,7 @@ export default function AllRunsClient({ runs, serverDate }: Props) {
                         {run.category}
                       </span>
                     </div>
+                    {runAffordance(run)}
                   </div>
                 ))
               )}

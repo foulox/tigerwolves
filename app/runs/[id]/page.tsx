@@ -1,15 +1,17 @@
 import { currentUser } from '@clerk/nextjs/server'
-import { getRunById, fetchSchedule, fetchData, getLeaderRun } from '@/lib/db'
+import { getRunById, fetchSchedule, fetchData, getLeaderRun, getFollowedRunIds } from '@/lib/db'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import Header from '@/components/Header'
 import ScheduleClient from '@/components/ScheduleClient'
+import RunFollowToggle from '@/components/RunFollowToggle'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 
 // Run-scoped schedule page (#329). Readable by anyone — logged-out visitors,
 // runners, and non-owning leaders all see it read-only. Only the owning leader
 // (the run returned by getLeaderRun matches this run's id) sees the edit
 // affordances ("Plan week →" / "Edit in library →"), gated via isLeader below.
-// Nav to reach this page and the follow toggle come later (R4 #332 / R2 #330).
+// Signed-in visitors also get a join/leave toggle (#330). Nav to reach this
+// page comes later (R4 #332).
 export default async function PerRunPage({ params }: { params: Promise<{ id: string }> }) {
   // Next 16: params is a Promise and must be awaited before use.
   const { id } = await params
@@ -29,9 +31,14 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
   // read-only.
   const user = await currentUser()
   let isOwningLeader = false
-  if (user?.publicMetadata?.role === 'leader') {
-    const leaderRun = await getLeaderRun(user.id)
-    isOwningLeader = leaderRun?.id === id
+  let isFollowing = false
+  if (user) {
+    if (user.publicMetadata?.role === 'leader') {
+      const leaderRun = await getLeaderRun(user.id)
+      isOwningLeader = leaderRun?.id === id
+    }
+    const followed = await getFollowedRunIds(user.id)
+    isFollowing = followed.includes(id)
   }
 
   const { workoutVariants } = await fetchData()
@@ -69,6 +76,12 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
         subtitle={subtitleParts.join(' · ')}
         isLeader={isOwningLeader}
       />
+
+      {user && (
+        <div className="px-4 -mt-1 mb-3">
+          <RunFollowToggle runId={id} runName={runConfig.name} initialFollowing={isFollowing} />
+        </div>
+      )}
 
       {runConfig.description && (
         <p className="px-4 -mt-2 mb-3 text-sm text-gray-500">{runConfig.description}</p>

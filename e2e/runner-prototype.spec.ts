@@ -74,54 +74,14 @@ test.describe('Runner prototype — #302', () => {
     await expect(page.getByText('Wednesday, Sep 9').first()).toBeVisible()
   })
 
-  test.describe('All Runs — /runner/all-runs', () => {
-    test.beforeEach(async ({ page }) => {
-      await page.goto('/runner/all-runs')
-    })
-
-    // AC6
-    test('shows joined runs with joined badge and Hellkatz as available-to-join', async ({ page }) => {
-      // Joined runs should be visible
-      await expect(page.getByText('TigerWolves')).toBeVisible()
-      await expect(page.getByText('Mourning Doves')).toBeVisible()
-      // Helkatz shown as available
-      await expect(page.getByText('Helkatz')).toBeVisible()
-    })
-
-    // AC7
-    test('tapping Hellkatz opens join confirmation sheet', async ({ page }) => {
-      await page.getByText('Helkatz').click()
-      // Use heading role to avoid matching both the h2 and the identically-named button
-      await expect(page.getByRole('heading', { name: 'Join the Helkatz Train' })).toBeVisible()
-    })
-
-    // AC8
-    test('confirming join adds Hellkatz to My Week via localStorage', async ({ page }) => {
-      await page.getByText('Helkatz').click()
-      await page.getByRole('button', { name: 'Join the Helkatz Train' }).click()
-      // Navigate to My Week — localStorage persists within same test context
-      await page.goto('/runner')
-      // Helkatz should now appear in My Week
-      await expect(page.getByText('Helkatz')).toBeVisible()
-    })
-
-    // AC9 — all runs tappable (TigerWolves links to /, Mourning Doves to its run page)
-    test('TigerWolves card links to the main schedule page', async ({ page }) => {
-      const twLink = page.getByRole('link', { name: /TigerWolves/i })
-      await expect(twLink).toBeVisible()
-    })
-  })
+  // #330: the /runner/all-runs prototype was retired — its route now redirects to
+  // /all-runs (the real, auth-aware surface), and its behavior is covered by
+  // e2e/all-runs.spec.ts. The prototype's My Week (/runner) and Mourning Doves run
+  // page remain until R4 (#332) retires them.
 
   // AC10 — RunnerNav appears on /runner/run/mourning-doves too
   test('RunnerNav appears on Mourning Doves run page', async ({ page }) => {
     await page.goto('/runner/run/mourning-doves')
     await expect(page.getByRole('link', { name: 'My Week' })).toBeVisible()
-  })
-
-  // AC12 — also check All Runs at 390px
-  test('/runner/all-runs loads without horizontal scroll at 390px', async ({ page }) => {
-    await page.goto('/runner/all-runs')
-    const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth)
-    expect(overflow).toBe(false)
   })
 })

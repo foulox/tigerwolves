@@ -22,6 +22,7 @@ import {
   dbRegroupVariants,
   WorkoutVariantNotFoundError,
   getLeaderRun,
+  getRunById,
 } from '@/lib/db'
 import { buildWorkoutVariantInput } from '@/lib/workoutVariant'
 import { captureServerEvent } from '@/lib/analytics'
@@ -156,6 +157,14 @@ export async function createFeedbackIssue(data: {
 async function requireAuth(): Promise<string> {
   const user = await currentUser()
   if (!user || user.publicMetadata?.role !== 'leader') throw new Error('Unauthorized')
+  return user.id
+}
+
+// Any signed-in user (runner OR leader) — the follow surfaces are open to every
+// authenticated account, unlike requireAuth() which gates leader-only writes.
+async function requireUser(): Promise<string> {
+  const user = await currentUser()
+  if (!user) throw new Error('Unauthorized')
   return user.id
 }
 
@@ -366,4 +375,39 @@ export async function addVariation(
   revalidateAll()
   await captureServerEvent('workout_added', userId, { isVariation: true, isLeader: true })
   redirect('/library')
+}
+
+// #330: follow / unfollow a run. Open to any signed-in user (runners follow;
+// leaders follow other runs too — the superset model). Writes runner_follows and
+// invalidates the data cache so All Runs / My Week read-your-own-write. Only an
+// existing platform run can be followed, so a follow never dangles.
+export async function toggleRunFollow(runId: string): Promise<{ error?: string; following?: boolean }> {
+  try {
+    const userId = await requireUser()
+    const run = await getRunById(runId)
+    if (!run) return { error: 'Run not found' }
+
+    const existing = await sql`
+      SELECT 1 FROM runner_follows
+      WHERE clerk_user_id = ${userId} AND run_id = ${runId} LIMIT 1
+    `
+    let following: boolean
+    if (existing.length > 0) {
+      await sql`DELETE FROM runner_follows WHERE clerk_user_id = ${userId} AND run_id = ${runId}`
+      following = false
+    } else {
+      await sql`
+        INSERT INTO runner_follows (clerk_user_id, run_id)
+        VALUES (${userId}, ${runId})
+        ON CONFLICT (clerk_user_id, run_id) DO NOTHING
+      `
+      following = true
+    }
+    updateTag('tigerwolves-data')
+    return { following }
+  } catch (err) {
+    if (err instanceof Error && err.message === 'Unauthorized') return { error: 'Unauthorized' }
+    Sentry.captureException(err)
+    return { error: 'Failed to update follow status' }
+  }
 }
