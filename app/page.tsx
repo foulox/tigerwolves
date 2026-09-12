@@ -17,6 +17,11 @@ export default async function SchedulePage() {
     meetingLocation: 'Starting point and route: Tom Stofka Garden, aka "Da Bins."\nWe\'ll warm up by jogging to Marsha P. Johnson which is at the corner of North 8th and Kent\nThe run will be along the Kent Avenue Speedway\nWe\'ll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track',
     leaderIntro: 'Run Leaders:',
     closingNotes: 'Bag Drop: Sorry, Not available',
+    kind: 'Workout',
+    workoutTypes: ['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold'],
+    // Fallback only serves anonymous/non-leader views (no workout scoping); the real
+    // run_group_id comes from getLeaderRun for signed-in leaders.
+    runGroupId: null,
   }
   const runConfig = (user && isLeader ? await getLeaderRun(user.id) : null) ?? tigerWolvesConfig
   const runLeaders = isLeader ? await getRunRoster(runConfig.id) : []

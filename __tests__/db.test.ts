@@ -4,7 +4,7 @@ import {
   dbInsertWorkoutVariant, dbUpdateWorkoutVariant, WorkoutVariantNotFoundError,
   dbAddWorkoutVariant, dbDeleteWorkoutVariant, dbFlagWorkoutVariant,
   dbFixWorkoutVariantAndClearFlag, dbRegroupVariants,
-  getLeaderRun, getRunRoster,
+  getLeaderRun, getRunRoster, fetchWorkoutVariants,
 } from '../lib/db'
 
 describe('database connection and schema', () => {
@@ -469,5 +469,46 @@ describe.skipIf(!onStaging)('getRunRoster', () => {
     expect(roster.length).toBe(2)
     expect(roster[0].sortOrder).toBeLessThan(roster[1].sortOrder!)
     expect(roster[0].name).toBe('Roster Test A')
+  })
+})
+
+// #318 per-run profile foundation: kind + workout-type allowlist columns on `runs`,
+// and the run↔run_group reconciliation that lets fetchWorkoutVariants scope by a real
+// FK (runs.run_group_id) instead of the fragile rg.name = runs.name string match.
+// Guarded skipIf(!onStaging) for the same reason as the #310 tests above: these depend
+// on the migration + TigerWolves seed, which are only guaranteed on staging (CI) — a
+// local run points at un-migrated production (.env.local), where the new columns don't
+// exist yet (production migration timing is Lou's call, not part of this story's gate).
+describe.skipIf(!onStaging)('#318 per-run profile foundation', () => {
+  const TW_TYPES = ['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold']
+
+  it('runs table has kind, workout_types, run_group_id columns', async () => {
+    const rows = await sql`
+      SELECT column_name FROM information_schema.columns WHERE table_name = 'runs'
+    `
+    const cols = rows.map((r) => r.column_name as string)
+    expect(cols).toContain('kind')
+    expect(cols).toContain('workout_types')
+    expect(cols).toContain('run_group_id')
+  })
+
+  it('TigerWolves run resolves kind, workout_types, and run_group_id from the seed', async () => {
+    const [tw] = await sql`
+      SELECT kind, workout_types, run_group_id FROM runs WHERE id = 'tigerwolves'
+    `
+    expect(tw.kind).toBe('Workout')
+    expect((tw.workout_types as string[]).sort()).toEqual([...TW_TYPES].sort())
+    const [group] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
+    expect(tw.run_group_id).toBe(group.id)
+  })
+
+  it("fetchWorkoutVariants('tigerwolves') returns TW-owned + global variants via the FK", async () => {
+    const [group] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
+    const tigerWolvesId = group.id as number
+    const variants = await fetchWorkoutVariants('tigerwolves')
+    expect(variants.length).toBeGreaterThan(0)
+    for (const v of variants) {
+      expect(v.runGroupId === null || v.runGroupId === tigerWolvesId).toBe(true)
+    }
   })
 })

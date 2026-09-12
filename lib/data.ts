@@ -91,6 +91,12 @@ export type RunConfig = {
   postHeader: string
   leaderIntro: string
   closingNotes: string
+  // #318: per-run profile. `kind` drives downstream post/library shape; `workoutTypes`
+  // is the run's workout-type allowlist; `runGroupId` is the run_groups row that owns
+  // this run's workout_families (null = not yet reconciled to a group).
+  kind: string
+  workoutTypes: string[]
+  runGroupId: number | null
 }
 
 export type AwayPeriod = { from: string; to: string }
