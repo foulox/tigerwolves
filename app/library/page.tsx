@@ -21,6 +21,8 @@ export default async function LibraryPage() {
     // Fallback only serves anonymous/non-leader views (no workout scoping); the real
     // run_group_id comes from getLeaderRun for signed-in leaders.
     runGroupId: null,
+    cycleMode: 'none',
+    cycle: {},
   }
   const runConfig = (user && isLeader ? await getLeaderRun(user.id) : null) ?? tigerWolvesConfig
   const workoutVariants = await fetchWorkoutVariants(isLeader ? runConfig.id : undefined)

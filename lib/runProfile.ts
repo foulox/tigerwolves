@@ -34,6 +34,29 @@ export function isWorkoutKind(kind: string): boolean {
   return kind === 'Workout'
 }
 
+// Per-run workout-type cycle slots (#323). `week_of_month` cadence assigns a type
+// to each of the 1st–5th occurrences of the run's day within a month. A slot's
+// stored value may be compound ("Ladder or Superset") — matching how workout_type
+// is split on ' or ' throughout the Plan/post code — so parse/join here are the
+// single split/join point shared by the editor (AboutRunTab) and the server action
+// (saveRunCycle), keeping the storage format from drifting between the two.
+export const WEEK_SLOTS = [1, 2, 3, 4, 5] as const
+
+const SLOT_SEPARATOR = ' or '
+
+/** Split a stored slot value into its component types (trimmed, no empties). */
+export function parseSlotValue(v: string): string[] {
+  return v
+    .split(SLOT_SEPARATOR)
+    .map(t => t.trim())
+    .filter(Boolean)
+}
+
+/** Join selected types back into a stored slot value. */
+export function joinSlotValue(types: string[]): string {
+  return types.map(t => t.trim()).filter(Boolean).join(SLOT_SEPARATOR)
+}
+
 // Resolve the workout types a run should surface (#322): the run's allowlist
 // intersected with the types actually present in its library, deduped and sorted.
 // An empty allowlist means "no profile configured" — fall back to every present
