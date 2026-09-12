@@ -8,6 +8,12 @@ import {
 } from '../lib/db'
 import { resolveWorkoutType } from '../lib/cycle'
 
+// Tests that depend on the e2e seed data (fetchSchedule/fetchRaces/dbSetScheduleWorkout),
+// or that WRITE, only run against the staging branch — never a fresh local DB (where the
+// e2e seed hasn't run) or production. Module-scoped so every describe.skipIf below sees it.
+const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+
 describe('database connection and schema', () => {
   it('connects to the database', async () => {
     const result = await sql`SELECT 1 AS ok`
@@ -61,12 +67,6 @@ describe('database connection and schema', () => {
     expect(cols).toContain('flag_note')
   })
 
-// These tests DEPEND on the e2e seed data, which runs on the staging database.
-// They're guarded to skip on local development or non-staging databases.
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
-
-
   it('run_leaders table exists', async () => {
     const rows = await sql`
       SELECT column_name FROM information_schema.columns WHERE table_name = 'run_leaders'
@@ -75,7 +75,7 @@ const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
   })
 })
 
-describe.skipIf(!onStaging)('fetchSchedule'
+describe.skipIf(!onStaging)('fetchSchedule', () => {
   it('returns schedule entries with date and weekOfMonth', async () => {
     const entries = await fetchSchedule()
     expect(Array.isArray(entries)).toBe(true)
@@ -89,7 +89,7 @@ describe.skipIf(!onStaging)('fetchSchedule'
   })
 })
 
-describe.skipIf(!onStaging)('fetchRaces'
+describe.skipIf(!onStaging)('fetchRaces', () => {
   it('returns race entries with expected shape', async () => {
     const races = await fetchRaces()
     expect(Array.isArray(races)).toBe(true)
@@ -106,7 +106,7 @@ describe.skipIf(!onStaging)('fetchRaces'
   })
 })
 
-describe.skipIf(!onStaging)('dbSetScheduleWorkout'
+describe.skipIf(!onStaging)('dbSetScheduleWorkout', () => {
   it('saves workout_name and a single variation (standalone)', async () => {
     const rows = await fetchSchedule()
     expect(rows.length).toBeGreaterThan(0)

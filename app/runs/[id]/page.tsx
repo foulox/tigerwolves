@@ -1,5 +1,5 @@
 import { currentUser } from '@clerk/nextjs/server'
-import { getRunById, fetchSchedule, fetchData, getLeaderRun, getFollowedRunIds } from '@/lib/db'
+import { getRunById, fetchSchedule, fetchWorkoutVariants, getLeaderRun, getFollowedRunIds } from '@/lib/db'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import Header from '@/components/Header'
 import ScheduleClient from '@/components/ScheduleClient'
@@ -41,7 +41,11 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
     isFollowing = followed.includes(id)
   }
 
-  const { workoutVariants } = await fetchData()
+  // Scope variants to THIS run's group (+ global families), not fetchData() — which
+  // defaults to the tigerwolves group and silently drops any other run's owned
+  // workouts (e.g. MMER's Easy family), leaving their cards stuck on "Not planned
+  // yet". Mirrors assembleMyWeek's per-run resolution.
+  const workoutVariants = await fetchWorkoutVariants(id)
   const schedule = await fetchSchedule(id)
   const today = new Date().toISOString().slice(0, 10)
 

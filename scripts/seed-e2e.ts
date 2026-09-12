@@ -148,17 +148,19 @@ export async function seedE2E(): Promise<void> {
 
   // #331: MMER's own run_group so its Easy workout family is scoped to it
   // (fetchWorkoutVariants('mmer') resolves run_group_id = this id + global families).
-  // Idempotent: try to insert, then select (exists or was just created).
-  try {
-    await sql`
-      INSERT INTO run_groups (name, venue, default_location)
-      VALUES ('MMER', 'road', 'McCarren Park')
-    `
-  } catch {
-    // Row already exists; safe to ignore and proceed to SELECT
-  }
-  const [mmerGroup] = await sql`SELECT id FROM run_groups WHERE name = 'MMER'`
-  const mmerGroupId = mmerGroup.id as number
+  // Select-then-insert rather than a try/catch around the insert: idempotent whether
+  // or not the staging branch actually carries the UNIQUE(name) constraint (a bare
+  // catch would either swallow a real insert failure — then crash with a misleading
+  // "undefined id" on the next line — or, without the constraint, silently accumulate
+  // duplicate rows across runs).
+  const existingMmerGroup = await sql`SELECT id FROM run_groups WHERE name = 'MMER'`
+  const mmerGroupId = existingMmerGroup.length > 0
+    ? (existingMmerGroup[0].id as number)
+    : ((await sql`
+        INSERT INTO run_groups (name, venue, default_location)
+        VALUES ('MMER', 'road', 'McCarren Park')
+        RETURNING id
+      `)[0].id as number)
 
   for (const f of FAMILIES) {
     const [family] = await sql`
