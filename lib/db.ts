@@ -607,6 +607,23 @@ export async function getFollowedRunIds(clerkUserId: string): Promise<string[]> 
   return rows.map(r => r.run_id as string)
 }
 
+// #332: a leader always follows the run they lead, so it appears on their My Week
+// without manually joining. Idempotent write-on-load — mirrors generateScheduleHorizon's
+// precedent (INSERT during page render, no updateTag, which throws outside a Server
+// Action). Callers must run this BEFORE reading getFollowedRunIds so the read
+// reflects it (getFollowedRunIds is uncached; the ON CONFLICT makes repeat loads
+// a no-op). Returns the auto-followed run id, or null if the user leads no run.
+export async function ensureLeaderSelfFollow(clerkUserId: string): Promise<string | null> {
+  const leaderRun = await getLeaderRun(clerkUserId)
+  if (!leaderRun) return null
+  await sql`
+    INSERT INTO runner_follows (clerk_user_id, run_id)
+    VALUES (${clerkUserId}, ${leaderRun.id})
+    ON CONFLICT (clerk_user_id, run_id) DO NOTHING
+  `
+  return leaderRun.id
+}
+
 // #331 My Week — cross-run assembly over the runs a user follows, for the date
 // window [windowStart, windowEnd] (inclusive). Deliberately does NOT use
 // fetchData(): that path is scoped to a single run group's variants and would

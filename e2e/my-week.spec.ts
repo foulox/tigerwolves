@@ -3,13 +3,15 @@ import { test, expect, type Page } from '@playwright/test'
 // My Week (#331) — the cross-run home at /my-week. Auth-required; follow-based.
 //
 // The default project runs signed in as the TigerWolves test-leader (see
-// playwright.config.ts storageState + e2e/auth.setup.ts). My Week is purely
-// follow-driven in R3 (no auto-present-own-run — that's R4), so the leader must
-// explicitly follow runs to see them. The seed (scripts/seed-e2e.ts) clears the
-// leader's tigerwolves + mmer follows at the start of each run, and seeds MMER as
-// a real Easy run (Monday schedule + route) alongside TigerWolves (Workout).
+// playwright.config.ts storageState + e2e/auth.setup.ts). #332 adds leader
+// auto-follow: /my-week idempotently follows the run this leader leads
+// (TigerWolves) on load, so the led run always appears without a manual join.
+// Other runs (MMER) still require an explicit follow. The seed (scripts/seed-e2e.ts)
+// clears the leader's tigerwolves + mmer follows at the start of each run, and
+// seeds MMER as a real Easy run (Monday schedule + route) alongside TigerWolves.
 //
-// Each test sets its own follow state via /all-runs so order doesn't matter.
+// Each test sets its own follow state via /all-runs (which does NOT trigger the
+// auto-follow — only /my-week does) so order doesn't matter.
 
 // Join/leave a platform run from the All Runs directory to reach a known state.
 async function setFollow(page: Page, runId: string, shouldFollow: boolean) {
@@ -24,19 +26,21 @@ async function setFollow(page: Page, runId: string, shouldFollow: boolean) {
   }
 }
 
-test.describe('My Week (/my-week) — signed-in runner', () => {
-  test('zero follows → empty prompt linking to /all-runs', async ({ page }) => {
+test.describe('My Week (/my-week) — signed-in leader', () => {
+  // #332: the test-leader owns TigerWolves, so /my-week auto-follows it on load —
+  // a leader can no longer reach the zero-follows empty state. Clearing every
+  // manual follow and loading /my-week still surfaces the led run without a join.
+  // (The empty-state path now needs a non-leader fixture, deferred to R4b #337.)
+  test('leader auto-follows their led run — it appears on /my-week without a manual join', async ({ page }) => {
     await setFollow(page, 'tigerwolves', false)
     await setFollow(page, 'mmer', false)
 
     await page.goto('/my-week')
     await page.waitForLoadState('load')
 
-    const empty = page.locator('[data-testid="my-week-empty"]')
-    await expect(empty).toBeVisible()
-    await expect(page.locator('[data-testid="my-week-empty-cta"]')).toHaveAttribute('href', '/all-runs')
-    // No feed when following nothing.
-    await expect(page.locator('[data-testid^="my-week-card-"]')).toHaveCount(0)
+    // Not the empty prompt — the led run was auto-followed on load.
+    await expect(page.locator('[data-testid="my-week-empty"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid^="my-week-card-tigerwolves-"]').first()).toBeVisible()
   })
 
   test('shows cross-run cards grouped by day, with kind-aware compact bodies', async ({ page }) => {

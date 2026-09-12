@@ -43,6 +43,54 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
     await expect(detail).toContainText('10x800m @ 5K effort')
   })
 
+  // #332: migrated from the retired schedule.spec.ts (the old `/` Schedule page).
+  // Same seeded-fixture fidelity assertions, now against the per-run page.
+  test('shows the three seeded upcoming Tuesdays with their leaders', async ({ page }) => {
+    await page.goto('/runs/tigerwolves')
+    await page.waitForLoadState('load')
+
+    await expect(page.locator('[data-testid="schedule-card-0"]')).toContainText('Yasso 800s')
+    await expect(page.locator('[data-testid="schedule-card-0"]')).toContainText('Led by Dana Kim')
+    await expect(page.locator('[data-testid="schedule-card-1"]')).toContainText('Fort Greene Hills')
+    await expect(page.locator('[data-testid="schedule-card-1"]')).toContainText('Led by Marcus Ade')
+    await expect(page.locator('[data-testid="schedule-card-2"]')).toContainText('Not planned yet')
+    await expect(page.locator('[data-testid="schedule-card-2"]')).toContainText('Led by Priya Shah')
+  })
+
+  test('expanded card collapses on second tap', async ({ page }) => {
+    await page.goto('/runs/tigerwolves')
+    await page.waitForLoadState('load')
+
+    const card = page.locator('[data-testid="schedule-card-0"]')
+    const detail = page.locator('[data-testid="schedule-detail-0"]')
+    await card.click()
+    await expect(detail).toBeVisible()
+    await card.click()
+    await expect(detail).not.toBeVisible()
+  })
+
+  test('unplanned card has no expand affordance', async ({ page }) => {
+    await page.goto('/runs/tigerwolves')
+    await page.waitForLoadState('load')
+
+    // Card 2 has no workout — clicking it must not reveal a detail panel.
+    await page.locator('[data-testid="schedule-card-2"]').click()
+    await expect(page.locator('[data-testid="schedule-detail-2"]')).toHaveCount(0)
+  })
+
+  test('fixture has no past history — past-card testids never appear', async ({ page }) => {
+    await page.goto('/runs/tigerwolves')
+    await page.waitForLoadState('load')
+
+    await expect(page.locator('[data-testid^="past-card-"]')).toHaveCount(0)
+    const scheduleCards = page.locator('[data-testid^="schedule-card-"]')
+    const count = await scheduleCards.count()
+    for (let i = 0; i < count; i++) {
+      const testId = await scheduleCards.nth(i).getAttribute('data-testid')
+      expect(testId).not.toContain('past')
+    }
+  })
+
   test('unknown run id shows "Run not found"', async ({ page }) => {
     await page.goto('/runs/nonexistent-12345')
     await expect(page.locator('text=Run not found')).toBeVisible()

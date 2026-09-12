@@ -5,7 +5,8 @@ import { test, expect } from '@playwright/test'
 const ALWAYS_EMPTY_LEAD_DAY_CATEGORY = '[data-testid="category-chip-food-runs"]'
 
 test('BottomNav has All Runs tab pointing to /all-runs (AC1)', async ({ page }) => {
-  await page.goto('/')
+  // #332: '/' redirects now; go straight to a stable page that renders BottomNav.
+  await page.goto('/all-runs')
   await page.waitForLoadState('load')
   const tab = page.locator('a[href="/all-runs"]')
   await expect(tab).toBeVisible()
@@ -166,11 +167,4 @@ test('signed-in: join MMER → appears in Following tier; leave → removed (AC:
   await rowToggle.click()
   await expect(page.locator('[data-testid="following-run-mmer"]')).toHaveCount(0)
   await expect(rowToggle).toContainText('Join')
-})
-
-test('/runner/all-runs redirects to the one real /all-runs surface', async ({ page }) => {
-  await page.goto('/runner/all-runs')
-  await page.waitForURL(/\/all-runs$/)
-  expect(page.url()).toContain('/all-runs')
-  expect(page.url()).not.toContain('/runner')
 })
