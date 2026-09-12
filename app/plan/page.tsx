@@ -1,12 +1,13 @@
-import { currentUser } from '@clerk/nextjs/server'
 import { fetchData, fetchSchedule, getLeaderRun, getRunRoster, generateScheduleHorizon } from '@/lib/db'
 import PlanClient from '@/components/PlanClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
+import { requireLeaderPage } from '@/lib/requireLeaderPage'
 import type { RunConfig } from '@/lib/data'
 
 export default async function PlanPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
-  const user = await currentUser()
-  const isLeader = user?.publicMetadata?.role === 'leader'
+  // #337: block signed-in non-leaders at the route, not just at the write actions.
+  const user = await requireLeaderPage()
+  const isLeader = user.publicMetadata?.role === 'leader'
 
   // Identify this leader's run (falls back to TigerWolves config if not found)
   const tigerWolvesConfig: RunConfig = {
