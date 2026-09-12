@@ -61,6 +61,12 @@ describe('database connection and schema', () => {
     expect(cols).toContain('flag_note')
   })
 
+// These tests DEPEND on the e2e seed data, which runs on the staging database.
+// They're guarded to skip on local development or non-staging databases.
+const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+
+
   it('run_leaders table exists', async () => {
     const rows = await sql`
       SELECT column_name FROM information_schema.columns WHERE table_name = 'run_leaders'
@@ -69,7 +75,7 @@ describe('database connection and schema', () => {
   })
 })
 
-describe('fetchSchedule', () => {
+describe.skipIf(!onStaging)('fetchSchedule'
   it('returns schedule entries with date and weekOfMonth', async () => {
     const entries = await fetchSchedule()
     expect(Array.isArray(entries)).toBe(true)
@@ -83,7 +89,7 @@ describe('fetchSchedule', () => {
   })
 })
 
-describe('fetchRaces', () => {
+describe.skipIf(!onStaging)('fetchRaces'
   it('returns race entries with expected shape', async () => {
     const races = await fetchRaces()
     expect(Array.isArray(races)).toBe(true)
@@ -100,7 +106,7 @@ describe('fetchRaces', () => {
   })
 })
 
-describe('dbSetScheduleWorkout', () => {
+describe.skipIf(!onStaging)('dbSetScheduleWorkout'
   it('saves workout_name and a single variation (standalone)', async () => {
     const rows = await fetchSchedule()
     expect(rows.length).toBeGreaterThan(0)
@@ -407,10 +413,7 @@ describe('workout_variants write path additions (#277)', () => {
 // on run_leaders) to have been applied to the staging branch. They self-seed their
 // own run_leaders rows rather than depend on ambient staging state (which the e2e
 // seed wipes and rewrites) or on a hand-maintained clerk-id secret matching a row.
-// They WRITE, so they only run against staging — never production, which is what
 // .env.local's DATABASE_URL points at during a local run. CI uses staging.
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
 
 describe.skipIf(!onStaging)('getLeaderRun', () => {
   // A clerk id that only this test uses, linked to the real 'tigerwolves' run
