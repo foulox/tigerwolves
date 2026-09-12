@@ -108,7 +108,7 @@ describe.skipIf(!onStaging)('fetchRaces', () => {
 
 describe.skipIf(!onStaging)('dbSetScheduleWorkout', () => {
   it('saves workout_name and a single variation (standalone)', async () => {
-    const rows = await fetchSchedule()
+    const rows = await fetchSchedule('tigerwolves')
     expect(rows.length).toBeGreaterThan(0)
     const target = rows[0]
     const originalName = target.workoutName
@@ -116,7 +116,7 @@ describe.skipIf(!onStaging)('dbSetScheduleWorkout', () => {
 
     try {
       await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_plan__', [''])
-      const updated = await fetchSchedule()
+      const updated = await fetchSchedule('tigerwolves')
       const row = updated.find(e => e.date === target.date)
       expect(row?.workoutName).toBe('__test_plan__')
       expect(row?.selectedVariations).toEqual([''])
@@ -126,7 +126,7 @@ describe.skipIf(!onStaging)('dbSetScheduleWorkout', () => {
   })
 
   it('saves two variations when Standard + Longer are both selected', async () => {
-    const rows = await fetchSchedule()
+    const rows = await fetchSchedule('tigerwolves')
     expect(rows.length).toBeGreaterThan(0)
     const target = rows[0]
     const originalName = target.workoutName
@@ -134,7 +134,7 @@ describe.skipIf(!onStaging)('dbSetScheduleWorkout', () => {
 
     try {
       await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_family__', ['', 'Longer — 6×4min @ LT'])
-      const updated = await fetchSchedule()
+      const updated = await fetchSchedule('tigerwolves')
       const row = updated.find(e => e.date === target.date)
       expect(row?.workoutName).toBe('__test_family__')
       expect(row?.selectedVariations).toEqual(['', 'Longer — 6×4min @ LT'])
@@ -144,7 +144,7 @@ describe.skipIf(!onStaging)('dbSetScheduleWorkout', () => {
   })
 
   it('overwrites to a single variation after previously saving two', async () => {
-    const rows = await fetchSchedule()
+    const rows = await fetchSchedule('tigerwolves')
     expect(rows.length).toBeGreaterThan(0)
     const target = rows[0]
     const originalName = target.workoutName
@@ -153,7 +153,7 @@ describe.skipIf(!onStaging)('dbSetScheduleWorkout', () => {
     try {
       await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_family__', ['', 'Longer'])
       await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_standalone__', [''])
-      const updated = await fetchSchedule()
+      const updated = await fetchSchedule('tigerwolves')
       const row = updated.find(e => e.date === target.date)
       expect(row?.selectedVariations).toEqual([''])
     } finally {
