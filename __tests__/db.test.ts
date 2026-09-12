@@ -4,8 +4,9 @@ import {
   dbInsertWorkoutVariant, dbUpdateWorkoutVariant, WorkoutVariantNotFoundError,
   dbAddWorkoutVariant, dbDeleteWorkoutVariant, dbFlagWorkoutVariant,
   dbFixWorkoutVariantAndClearFlag, dbRegroupVariants,
-  getLeaderRun, getRunRoster, fetchWorkoutVariants,
+  getLeaderRun, getRunRoster, fetchWorkoutVariants, generateScheduleHorizon,
 } from '../lib/db'
+import { resolveWorkoutType } from '../lib/cycle'
 
 describe('database connection and schema', () => {
   it('connects to the database', async () => {
@@ -510,5 +511,67 @@ describe.skipIf(!onStaging)('#318 per-run profile foundation', () => {
     for (const v of variants) {
       expect(v.runGroupId === null || v.runGroupId === tigerWolvesId).toBe(true)
     }
+  })
+})
+
+// #319 per-run workout-type cycle engine: cycle_mode + cycle columns on `runs`, the
+// TigerWolves cadence seed, and generateScheduleHorizon filling newly generated weeks'
+// workout_type from the cycle. Staging-gated for the same reason as #310/#318 above:
+// depends on the migration + seed, only guaranteed on staging (CI). The integration
+// test also WRITES (generates schedule rows), so it must never touch production.
+describe.skipIf(!onStaging)('#319 per-run workout-type cycle engine', () => {
+  const TW_CYCLE = {
+    '1': 'Hills',
+    '2': 'Broken Tempo',
+    '3': 'Progression',
+    '4': 'Ladder or Superset',
+    '5': 'Straight Tempo',
+  }
+
+  it('runs table has cycle_mode + cycle columns; TigerWolves seed populated', async () => {
+    const rows = await sql`
+      SELECT column_name FROM information_schema.columns WHERE table_name = 'runs'
+    `
+    const cols = rows.map((r) => r.column_name as string)
+    expect(cols).toContain('cycle_mode')
+    expect(cols).toContain('cycle')
+
+    const [tw] = await sql`SELECT cycle_mode, cycle FROM runs WHERE id = 'tigerwolves'`
+    expect(tw.cycle_mode).toBe('week_of_month')
+    expect(tw.cycle).toEqual(TW_CYCLE)
+  })
+
+  it('generateScheduleHorizon fills workout_type from the cycle', async () => {
+    // Clear future tigerwolves rows first so generation produces a fresh, fully
+    // cycle-derived horizon. generateScheduleHorizon is insert-only, so any pre-existing
+    // future row — a stale pre-cycle blank, or an e2e fixture with a hardcoded type —
+    // would otherwise survive and break the "every future week matches the resolver"
+    // assertion below. This test runs before the e2e seed (test:unit precedes test:e2e
+    // in CI), so it can't assume a clean schedule and must establish its own precondition.
+    // Safe: onStaging-gated (never production), and the e2e seed wipes `schedule` wholesale.
+    await sql`DELETE FROM schedule WHERE run_id = 'tigerwolves' AND date > CURRENT_DATE`
+
+    // Now generate out to the 24-week horizon: every future row is freshly created and
+    // must carry resolveWorkoutType for its own date — non-empty and cadence-correct.
+    const roster = await getRunRoster('tigerwolves')
+    await generateScheduleHorizon('tigerwolves', 'Tuesday', roster)
+
+    const rows = await sql`
+      SELECT to_char(date, 'YYYY-MM-DD') AS date, workout_type FROM schedule
+      WHERE run_id = 'tigerwolves' AND date > CURRENT_DATE
+      ORDER BY date ASC
+    `
+    expect(rows.length).toBeGreaterThan(0)
+
+    // At least one future week must carry a non-empty, cadence-correct type, and every
+    // future week's stored type must agree with the pure resolver for its own date.
+    let sawNonEmpty = false
+    for (const r of rows) {
+      const dateStr = r.date as string
+      const expected = resolveWorkoutType('week_of_month', TW_CYCLE, dateStr)
+      expect(r.workout_type).toBe(expected)
+      if (expected !== '') sawNonEmpty = true
+    }
+    expect(sawNonEmpty).toBe(true)
   })
 })
