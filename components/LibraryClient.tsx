@@ -119,6 +119,16 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
     setTypeFilter(null)
   }
 
+  // #322: the "Your run" and "All runs" type-filter option sets can differ (the
+  // former is allowlist-intersected), so a type selected in one mode may not
+  // exist in the other. Reset the type filter on toggle — same as setcat does on
+  // category change — so a stale filter can't silently empty the list with no
+  // visible pill to clear it.
+  function setScope(all: boolean) {
+    setShowAllRuns(all)
+    setTypeFilter(null)
+  }
+
   // #288: instructions + coaching notes are always visible in the card body.
   // Race types/training phases/author stay always visible as pills above the
   // toggle (#290); the expandable section uses WorkoutDetails with those fields
@@ -203,11 +213,11 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
       {runId && (
         <div className="flex gap-2 px-4 pb-2">
           <button
-            onClick={() => setShowAllRuns(false)}
+            onClick={() => setScope(false)}
             className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
           >Your run</button>
           <button
-            onClick={() => setShowAllRuns(true)}
+            onClick={() => setScope(true)}
             className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
           >All runs</button>
         </div>

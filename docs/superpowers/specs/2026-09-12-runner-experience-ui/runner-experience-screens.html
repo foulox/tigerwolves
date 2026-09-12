@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Runner Experience — approved screens (2026-09-12)</title>
+<style>
+  body { margin:0; padding:32px 16px 64px; background:#ebebed; font-family:-apple-system,system-ui,sans-serif; color:#111827; }
+  .wrap { max-width: 860px; margin:0 auto; }
+  h1 { font-size:24px; font-weight:800; letter-spacing:-0.02em; }
+  .lead { color:#6b7280; font-size:14px; line-height:1.5; margin-top:4px; }
+  h2.sec { font-size:13px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#9ca3af; margin:42px 0 4px; }
+  .note { font-size:13px; color:#6b7280; line-height:1.5; margin-bottom:14px; }
+  .stage { display:flex; gap:22px; flex-wrap:wrap; justify-content:center; }
+
+  .phone { width: 390px; background: #f4f4f5; border-radius: 28px; border: 1px solid #e5e7eb; padding: 14px 12px 22px; }
+  .phone .cap { text-align:center; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#9ca3af; margin-bottom:8px; }
+  .mw-h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: #111827; }
+  .mw-sub { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+  .strip { display: flex; gap: 5px; margin: 14px 0 6px; }
+  .cell { flex: 1; border-radius: 14px; padding: 6px 0; display: flex; flex-direction: column; align-items: center; gap: 5px; background: #fff; border: 1px solid #f0f0f1; }
+  .cell.today { background: #111827; }
+  .cell .d { font-size: 9.5px; font-weight: 700; color: #9ca3af; }
+  .cell .n { font-size: 12.5px; font-weight: 700; color: #111827; }
+  .cell.today .n { color: #fff; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin: 15px 0 7px; display: flex; align-items: center; gap: 8px; }
+  .eyebrow .rule { flex: 1; height: 1px; background: #eaeaeb; }
+  .card { background:#fff; border-radius:16px; border:1px solid #f0f0f1; box-shadow:0 1px 2px rgba(0,0,0,.03); padding:14px; margin-bottom:11px; }
+  .card.next { border-color:#fdba74; }
+  .nextup { font-size:11px; font-weight:800; color:#f97316; letter-spacing:.04em; margin-bottom:5px; }
+  .crow { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+  .cdate { font-size:13px; font-weight:600; color:#6b7280; }
+  .cname { font-size:16px; font-weight:800; color:#111827; margin-top:2px; line-height:1.15; }
+  .runlink { font-size:16px; font-weight:800; color:#111827; display:inline-flex; align-items:center; gap:4px; text-decoration:none; }
+  .runlink .chev { color:#c4c7cc; }
+  .typepill { font-size:11px; font-weight:700; padding:4px 9px; border-radius:99px; white-space:nowrap; }
+  .planbtn { font-size:11px; font-weight:700; color:#ea580c; border:1px solid #fdba74; border-radius:99px; padding:4px 10px; white-space:nowrap; }
+  .ledby { font-size:13px; color:#6b7280; margin-top:9px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .rpill { font-size:12.5px; background:#f6f6f7; border:1px solid #eee; border-radius:99px; padding:3px 9px; color:#6b7280; }
+  .detail { border-top:1px solid #f1f1f2; margin-top:11px; padding-top:11px; display:flex; flex-direction:column; gap:7px; }
+  .drow { font-size:13.5px; line-height:1.4; } .drow b{color:#111827;} .drow span{color:#6b7280;}
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .chip { font-size:11px; font-weight:600; background:#f3f4f6; color:#6b7280; border-radius:99px; padding:3px 8px; }
+  .maplink { font-size:13px; font-weight:700; color:#ea580c; text-decoration:none; }
+  .ph-title { font-size:23px; font-weight:800; letter-spacing:-0.02em; color:#111827; }
+  .ph-sub { font-size:13px; color:#9ca3af; margin-top:2px; }
+  .back { font-size:13px; color:#9ca3af; font-weight:600; padding:0 2px; }
+
+  /* All Runs */
+  .ar-h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: #111827; padding:0 4px; }
+  .ar-sub { font-size: 12.5px; color: #9ca3af; margin-top: 2px; padding:0 4px; }
+  .filters { display:flex; gap:6px; margin:13px 4px 4px; flex-wrap:wrap; }
+  .fchip { font-size:11.5px; font-weight:600; border-radius:99px; padding:5px 11px; background:#fff; border:1px solid #e5e7eb; color:#6b7280; }
+  .fchip.on { background:#111827; color:#fff; border-color:#111827; }
+  .ar-sec { font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#9ca3af; margin:18px 4px 8px; display:flex; align-items:center; gap:8px;}
+  .ar-sec .rule { flex:1; height:1px; background:#eaeaeb; }
+  .row { background:#fff; border:1px solid #f0f0f1; border-radius:14px; padding:12px 13px; display:flex; align-items:center; gap:11px; margin-bottom:9px; }
+  .row.muted { background:#fafafa; border-style:dashed; border-color:#e5e7eb; }
+  .bar { width:4px; align-self:stretch; min-height:34px; border-radius:99px; flex:none; }
+  .rname { font-size:15.5px; font-weight:800; color:#111827; }
+  .rname.muted { color:#9ca3af; }
+  .rmeta { font-size:12px; color:#6b7280; margin-top:2px; }
+  .rmeta.muted { color:#b6bac0; }
+  .catpill { font-size:10.5px; font-weight:700; border-radius:99px; padding:2px 8px; }
+  .btn { font-size:12px; font-weight:700; border-radius:99px; padding:6px 13px; white-space:nowrap; flex:none; }
+  .btn-joined { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+  .btn-join { background:#111827; color:#fff; }
+  .soon { font-size:11px; font-weight:700; color:#b6bac0; white-space:nowrap; flex:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Runner Experience — approved screens</h1>
+  <p class="lead">Design reference for stories R1–R4. Built at 390px (mobile). These are the screens approved in the 2026-09-12 brainstorm; see <code>../2026-09-12-runner-experience-redesign-design.md</code> for the reasoning. Open this file in a browser to inspect.</p>
+
+  <h2 class="sec">1 · My Week (home) + TigerWolves per-run page</h2>
+  <p class="note">Left: My Week — cross-run hub, full workout specifics, rate-in-place, run name links out, body shaped by <code>kind</code> (TigerWolves = Workout → intervals; Mourning Doves = Easy → route + map link). Right: the per-run page = today's Schedule page, run-scoped, in <strong>leader</strong> view ("Plan week →" per entry). A runner sees the right page without the "Plan week →" buttons.</p>
+  <div class="stage">
+
+    <div class="phone">
+      <div class="cap">Home · My Week</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:0 4px;">
+        <div><div class="mw-h1">My Week</div><div class="mw-sub">Sep 15 – 21 · 2 runs</div></div>
+        <div style="width:34px;height:34px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-weight:700;color:#6b7280;font-size:13px;">C</div>
+      </div>
+      <div class="strip">
+        <div class="cell today"><span class="d">T</span><span class="n">16</span><span class="dot" style="background:#fb923c"></span></div>
+        <div class="cell"><span class="d">W</span><span class="n">17</span><span class="dot" style="background:#a78bfa"></span></div>
+        <div class="cell"><span class="d">T</span><span class="n">18</span><span class="dot"></span></div>
+        <div class="cell"><span class="d">F</span><span class="n">19</span><span class="dot"></span></div>
+        <div class="cell"><span class="d">S</span><span class="n">20</span><span class="dot"></span></div>
+        <div class="cell"><span class="d">S</span><span class="n">21</span><span class="dot"></span></div>
+        <div class="cell"><span class="d">M</span><span class="n">22</span><span class="dot"></span></div>
+      </div>
+      <div class="eyebrow" style="color:#f97316;">Today · Tuesday <span class="rule"></span></div>
+      <div class="card next">
+        <div class="crow">
+          <div style="min-width:0;">
+            <div class="cdate">Tue, Sep 16 · 6:30 AM</div>
+            <a class="runlink" href="#">🐯🐺 TigerWolves <span class="chev">›</span></a>
+            <div style="font-size:14.5px; font-weight:700; color:#1f2937; margin-top:3px;">Broken Tempo Intervals</div>
+          </div>
+          <span class="typepill" style="background:#dbeafe; color:#1e40af;">Broken Tempo</span>
+        </div>
+        <div class="detail">
+          <p class="drow"><b>Workout: </b><span>3 × (5 min tempo / 2 min float), then 4 × 400m</span></p>
+          <p class="drow"><b>Why: </b><span>Threshold volume with a turn of speed to close.</span></p>
+          <div class="chips"><span class="chip">5–6 mi</span><span class="chip">Quality</span></div>
+        </div>
+        <div class="ledby"><span>Led by Lou</span><span class="rpill">🔥 ❤️ 👏 · 13</span></div>
+      </div>
+      <div class="eyebrow" style="color:#6b7280;">Wednesday <span class="rule"></span></div>
+      <div class="card">
+        <div class="crow">
+          <div style="min-width:0;">
+            <div class="cdate">Wed, Sep 17 · 7:00 AM</div>
+            <a class="runlink" href="#">Mourning Doves <span class="chev">›</span></a>
+            <div style="font-size:14.5px; font-weight:700; color:#1f2937; margin-top:3px;">Waterfront Easy</div>
+          </div>
+          <span class="typepill" style="background:#e0e7ff; color:#4338ca;">Easy</span>
+        </div>
+        <div class="detail">
+          <p class="drow"><b>Route: </b><span>Kent Ave waterfront out-and-back to Greenpoint Piers</span></p>
+          <div style="display:flex; justify-content:space-between; align-items:center;"><span class="chip">4 mi</span><a class="maplink" href="#">View route ↗</a></div>
+        </div>
+        <div class="ledby"><span>Led by Priya</span><span class="rpill">❤️ · 3</span></div>
+      </div>
+    </div>
+
+    <div class="phone">
+      <div class="cap">Run page · = today's Schedule page (leader view)</div>
+      <div class="back">‹ My Week</div>
+      <div style="padding:6px 4px 0;">
+        <div class="ph-title">🐯🐺 TigerWolves</div>
+        <div class="ph-sub">Upcoming Tuesdays · 6:30 AM · Da Bins</div>
+      </div>
+      <div style="margin-top:14px;"></div>
+      <div class="card next">
+        <div class="nextup">NEXT UP</div>
+        <div class="crow">
+          <div style="min-width:0;">
+            <div class="cdate">Tue, Sep 16</div>
+            <div class="cname">Broken Tempo Intervals</div>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:7px;">
+            <span class="typepill" style="background:#dbeafe; color:#1e40af;">Broken Tempo</span>
+            <span class="planbtn">Plan week →</span>
+          </div>
+        </div>
+        <div class="detail">
+          <p class="drow"><b>Instructions: </b><span>3 × (5 min tempo / 2 min float), then 4 × 400m @ 5k effort</span></p>
+          <p class="drow"><b>Coach Notes: </b><span>Hold the floats honest — don't jog them.</span></p>
+          <div class="chips"><span class="chip">5–6 mi</span><span class="chip">Threshold system</span><span class="chip">RPE 7–8</span></div>
+        </div>
+        <div class="ledby"><span>Led by Lou</span><span class="rpill">🔥 ❤️ 👏 · 13</span></div>
+      </div>
+      <div class="card">
+        <div class="crow">
+          <div style="min-width:0;">
+            <div class="cdate">Tue, Sep 23</div>
+            <div class="cname">Hill Repeats</div>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:7px;">
+            <span class="typepill" style="background:#dcfce7; color:#166534;">Hills</span>
+            <span class="planbtn">Plan week →</span>
+          </div>
+        </div>
+        <div class="ledby"><span>Led by Marcus</span><span class="rpill">❤️ · 6</span></div>
+      </div>
+      <div class="card">
+        <div class="crow">
+          <div style="min-width:0;">
+            <div class="cdate">Tue, Sep 30</div>
+            <div class="cname" style="color:#9ca3af; font-weight:500; font-style:italic;">Not planned yet</div>
+          </div>
+          <span class="planbtn">Plan week →</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <h2 class="sec">2 · All Runs (logged in) — picker + directory</h2>
+  <p class="note">First login lands here. Three tiers: <strong>Following</strong> (join/leave toggle), <strong>On the app</strong> (joinable platform runs), <strong>More NBR runs</strong> (the rest of the club directory, muted, not yet joinable). Logged-out = today's #303 marketing view (no Following tier, no toggles).</p>
+  <div class="stage">
+    <div class="phone">
+      <div class="cap">All Runs · logged in</div>
+      <div class="ar-h1">All Runs</div>
+      <div class="ar-sub">Follow runs to see them in My Week.</div>
+      <div class="filters">
+        <span class="fchip on">All week</span><span class="fchip">Morning</span><span class="fchip">Weekend</span><span class="fchip">Workouts</span><span class="fchip">Easy</span>
+      </div>
+      <div class="ar-sec">Following · 2 <span class="rule"></span></div>
+      <div class="row" style="border-color:#fed7aa;">
+        <div class="bar" style="background:#fb923c;"></div>
+        <div style="flex:1; min-width:0;"><div class="rname">🐯🐺 TigerWolves</div><div class="rmeta">Tue · 6:30 AM · Da Bins</div></div>
+        <span class="catpill" style="background:#dbeafe;color:#1e40af;">Workouts</span>
+        <span class="btn btn-joined">Joined ✓</span>
+      </div>
+      <div class="row" style="border-color:#c7d2fe;">
+        <div class="bar" style="background:#818cf8;"></div>
+        <div style="flex:1; min-width:0;"><div class="rname">Mourning Doves</div><div class="rmeta">Wed · 7:00 AM · WNYC Transmitter Park</div></div>
+        <span class="catpill" style="background:#e0e7ff;color:#4338ca;">Easy</span>
+        <span class="btn btn-joined">Joined ✓</span>
+      </div>
+      <div class="ar-sec">On the app · join to follow <span class="rule"></span></div>
+      <div class="row">
+        <div class="bar" style="background:#34d399;"></div>
+        <div style="flex:1; min-width:0;"><div class="rname">MMER</div><div class="rmeta">Mon · 6:30 AM · McCarren Park</div></div>
+        <span class="catpill" style="background:#dcfce7;color:#166534;">Easy</span>
+        <span class="btn btn-join">+ Join</span>
+      </div>
+      <div class="ar-sec">More NBR runs <span class="rule"></span></div>
+      <div class="row muted">
+        <div class="bar" style="background:#e5e7eb;"></div>
+        <div style="flex:1; min-width:0;"><div class="rname muted">Helkatz</div><div class="rmeta muted">Thu · 6:30 AM · Bushwick</div></div>
+        <span class="soon">Not on the app yet</span>
+      </div>
+      <div class="row muted">
+        <div class="bar" style="background:#e5e7eb;"></div>
+        <div style="flex:1; min-width:0;"><div class="rname muted">Prospect Park Track</div><div class="rmeta muted">Sat · 8:00 AM · PPTC Track</div></div>
+        <span class="soon">Not on the app yet</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
