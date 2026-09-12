@@ -103,6 +103,10 @@ export type RunConfig = {
   // ("Ladder or Superset"). Empty map / 'none' means every generated week is blank.
   cycleMode: string
   cycle: Record<string, string>
+  // #329: run-identity fields shown on the per-run page header. Optional because
+  // getLeaderRun (post-building path) doesn't select them; getRunById does.
+  description?: string | null
+  meetingTime?: string | null
 }
 
 export type AwayPeriod = { from: string; to: string }

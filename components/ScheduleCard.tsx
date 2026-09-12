@@ -27,12 +27,11 @@ interface Props {
   workout: WorkoutVariantRow | null
   index: number
   isLeader: boolean
-  canEditRun?: boolean
   voteData?: VoteData | null
   isPast?: boolean
 }
 
-export default function ScheduleCard({ entry, workout, index, isLeader, canEditRun = true, voteData, isPast = false }: Props) {
+export default function ScheduleCard({ entry, workout, index, isLeader, voteData, isPast = false }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [flagDrawerOpen, setFlagDrawerOpen] = useState(false)
   const [flagSheetOpen, setFlagSheetOpen] = useState(false)
@@ -103,7 +102,7 @@ export default function ScheduleCard({ entry, workout, index, isLeader, canEditR
                 Edit in library →
               </Link>
             )}
-            {isLeader && canEditRun && !isPast && (
+            {isLeader && !isPast && (
               <Link
                 href={`/plan?week=${index}`}
                 className="text-xs font-semibold text-orange-600 border border-orange-300 rounded-full px-3 py-1 active:bg-orange-50 touch-manipulation whitespace-nowrap"

@@ -1,45 +1,69 @@
 import { test, expect } from '@playwright/test'
 
-// Per-run page tests (#329). Verifies:
-// - Logged-out users can view a run's schedule read-only
-// - Page renders run name and day in header
-// - Schedule cards display correctly
-// - "Plan week →" is hidden for non-owning users
+// Per-run page (#329). The run-scoped Schedule page at /runs/[id]:
+// - anyone can read it; only the owning leader sees edit affordances
+// - an unknown run id shows a "Run not found" state (no crash)
+//
+// The default project runs signed in as the TigerWolves test-leader (see
+// playwright.config.ts storageState + e2e/auth.setup.ts, which links that Clerk
+// account to the tigerwolves roster). So the default context IS the owning
+// leader; the read-only cases use a fresh anonymous context.
 
-test.describe('per-run page (/runs/[id])', () => {
-  test('displays run header with name, day, and emoji', async ({ page }) => {
+test.describe('per-run page (/runs/[id]) — owning leader', () => {
+  test('renders run identity header (emoji + name, day) and schedule cards', async ({ page }) => {
     await page.goto('/runs/tigerwolves')
-    // Header should show the run name
+    await page.waitForLoadState('load')
+
     await expect(page.locator('header h1')).toContainText('TigerWolves')
-    // Subtitle should contain day
     await expect(page.locator('header p')).toContainText('Tuesday')
-  })
 
-  test('displays schedule cards for logged-out user (read-only)', async ({ page }) => {
-    await page.goto('/runs/tigerwolves')
-    // Should see at least one schedule card
     const cards = page.locator('[data-testid^="schedule-card-"]')
-    const count = await cards.count()
-    expect(count).toBeGreaterThan(0)
-    // Logged-out users should not see "Plan week →" buttons
-    const planButtons = page.locator('[data-testid^="plan-week-"]')
-    const planCount = await planButtons.count()
-    expect(planCount).toBe(0)
-  })
-
-  test('shows 404-like message for nonexistent run', async ({ page }) => {
-    await page.goto('/runs/nonexistent-12345')
-    // Should show "Run not found" message
-    await expect(page.locator('text=Run not found')).toBeVisible()
-  })
-
-  test('signed-in leader sees "Plan week →" on their own run', async ({ page }) => {
-    // Use authenticated context from auth.setup
-    await page.goto('/runs/tigerwolves')
-    // If authenticated as the TigerWolves leader, should see "Plan week →"
-    // buttons (one per card). If not authenticated, cards should be read-only.
-    // This test verifies the page renders correctly regardless of auth state.
-    const cards = page.locator('[data-testid^="schedule-card-"]')
+    await expect(cards.first()).toBeVisible()
     expect(await cards.count()).toBeGreaterThan(0)
+  })
+
+  test('sees "Plan week →" on upcoming cards and it navigates to /plan?week=N', async ({ page }) => {
+    await page.goto('/runs/tigerwolves')
+    await page.waitForLoadState('load')
+
+    const planBtn = page.locator('[data-testid="plan-week-0"]')
+    await expect(planBtn).toBeVisible()
+    await planBtn.click()
+    await page.waitForURL(/\/plan\?week=0/)
+    expect(page.url()).toContain('/plan?week=0')
+  })
+
+  test('expanded card shows fixture instructions (parity with Schedule page)', async ({ page }) => {
+    await page.goto('/runs/tigerwolves')
+    await page.waitForLoadState('load')
+
+    await page.locator('[data-testid="schedule-card-0"]').click()
+    const detail = page.locator('[data-testid="schedule-detail-0"]')
+    await expect(detail).toBeVisible()
+    await expect(detail).toContainText('10x800m @ 5K effort')
+  })
+
+  test('unknown run id shows "Run not found"', async ({ page }) => {
+    await page.goto('/runs/nonexistent-12345')
+    await expect(page.locator('text=Run not found')).toBeVisible()
+    await expect(page.locator('[data-testid^="schedule-card-"]')).toHaveCount(0)
+  })
+})
+
+test.describe('per-run page (/runs/[id]) — anonymous read-only', () => {
+  // Fresh context with no stored auth — a logged-out visitor.
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('shows the schedule but no "Plan week →" affordances', async ({ page }) => {
+    await page.goto('/runs/tigerwolves')
+    await page.waitForLoadState('load')
+
+    await expect(page.locator('header h1')).toContainText('TigerWolves')
+
+    const cards = page.locator('[data-testid^="schedule-card-"]')
+    await expect(cards.first()).toBeVisible()
+    expect(await cards.count()).toBeGreaterThan(0)
+
+    await expect(page.locator('[data-testid^="plan-week-"]')).toHaveCount(0)
   })
 })

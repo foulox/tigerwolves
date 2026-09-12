@@ -3,7 +3,7 @@ import { currentUser, clerkClient } from '@clerk/nextjs/server'
 import type { User } from '@clerk/nextjs/server'
 import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
-import { sql, getLeaderRun, getRunRoster, getRunById } from '@/lib/db'
+import { sql, getLeaderRun, getRunRoster } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
 
@@ -383,47 +383,5 @@ export async function removeRunLeader(
   } catch (err) {
     Sentry.captureException(err)
     return { error: 'Failed to remove leader', reassignedCount: 0, noLeaderDates: [] }
-  }
-}
-
-export async function toggleRunFollow(runId: string): Promise<{ error?: string }> {
-  try {
-    const user = await currentUser()
-    if (!user) return { error: 'Unauthorized' }
-
-    // Verify the run exists and is readable
-    const run = await getRunById(runId)
-    if (!run) return { error: 'Run not found' }
-
-    const clerkUserId = user.id
-    const now = new Date().toISOString()
-
-    // Check if already following
-    const existing = await sql`
-      SELECT 1 FROM runner_follows
-      WHERE clerk_user_id = ${clerkUserId} AND run_id = ${runId}
-      LIMIT 1
-    `
-
-    if (existing.length > 0) {
-      // Already following — remove
-      await sql`
-        DELETE FROM runner_follows
-        WHERE clerk_user_id = ${clerkUserId} AND run_id = ${runId}
-      `
-    } else {
-      // Not following — add
-      await sql`
-        INSERT INTO runner_follows (clerk_user_id, run_id, joined_at)
-        VALUES (${clerkUserId}, ${runId}, ${now})
-        ON CONFLICT (clerk_user_id, run_id) DO NOTHING
-      `
-    }
-
-    updateTag('tigerwolves-data')
-    return {}
-  } catch (err) {
-    Sentry.captureException(err)
-    return { error: 'Failed to update follow status' }
   }
 }

@@ -1,39 +1,41 @@
 import { currentUser } from '@clerk/nextjs/server'
-import { getRunById, fetchSchedule, fetchData, getLeaderRun, isUserFollowingRun } from '@/lib/db'
+import { getRunById, fetchSchedule, fetchData, getLeaderRun } from '@/lib/db'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import Header from '@/components/Header'
 import ScheduleClient from '@/components/ScheduleClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 
-export default async function PerRunPage({ params }: { params: { id: string } }) {
-  const user = await currentUser()
-  const runConfig = await getRunById(params.id)
+// Run-scoped schedule page (#329). Readable by anyone — logged-out visitors,
+// runners, and non-owning leaders all see it read-only. Only the owning leader
+// (the run returned by getLeaderRun matches this run's id) sees the edit
+// affordances ("Plan week →" / "Edit in library →"), gated via isLeader below.
+// Nav to reach this page and the follow toggle come later (R4 #332 / R2 #330).
+export default async function PerRunPage({ params }: { params: Promise<{ id: string }> }) {
+  // Next 16: params is a Promise and must be awaited before use.
+  const { id } = await params
+  const runConfig = await getRunById(id)
 
   if (!runConfig) {
     return (
-      <div className="p-4 text-center">
-        <p className="text-gray-500">Run not found</p>
+      <div>
+        <Header title="Run not found" isLeader={false} />
+        <p className="px-4 text-gray-500">We couldn&apos;t find that run.</p>
       </div>
     )
   }
 
-  // Determine if the signed-in user owns this run (and is therefore the owning leader).
-  // Only leaders can own runs; determine ownership by checking if their run (from getLeaderRun)
-  // matches this run's ID.
+  // Ownership: only leaders can own a run, and only of the one run getLeaderRun
+  // resolves them to. Everyone else (runner, non-owning leader, logged out) is
+  // read-only.
+  const user = await currentUser()
   let isOwningLeader = false
-  if (user && user.publicMetadata?.role === 'leader') {
+  if (user?.publicMetadata?.role === 'leader') {
     const leaderRun = await getLeaderRun(user.id)
-    isOwningLeader = leaderRun?.id === params.id
-  }
-
-  // Check if the user is following this run
-  let isFollowing = false
-  if (user) {
-    isFollowing = await isUserFollowingRun(user.id, params.id)
+    isOwningLeader = leaderRun?.id === id
   }
 
   const { workoutVariants } = await fetchData()
-  const schedule = await fetchSchedule(params.id)
+  const schedule = await fetchSchedule(id)
   const today = new Date().toISOString().slice(0, 10)
 
   const PAST_WEEKS_SHOWN = 8
@@ -58,16 +60,19 @@ export default async function PerRunPage({ params }: { params: { id: string } })
     .map(w => workoutVoteId(w!.name, w!.label ?? ''))
   const voteData = await getVoteData(workoutIds)
 
+  const subtitleParts = [runConfig.dayOfWeek, runConfig.meetingTime].filter(Boolean)
+
   return (
     <div>
       <Header
-        title={runConfig.name}
-        subtitle={`${runConfig.dayOfWeek} • ${runConfig.emoji || ''}`}
+        title={`${runConfig.emoji ? `${runConfig.emoji} ` : ''}${runConfig.name}`}
+        subtitle={subtitleParts.join(' · ')}
         isLeader={isOwningLeader}
-        runId={params.id}
-        isLoggedIn={!!user}
-        isFollowing={isFollowing}
       />
+
+      {runConfig.description && (
+        <p className="px-4 -mt-2 mb-3 text-sm text-gray-500">{runConfig.description}</p>
+      )}
 
       <ScheduleClient
         past={past}
@@ -75,7 +80,6 @@ export default async function PerRunPage({ params }: { params: { id: string } })
         upcoming={upcoming}
         upcomingWorkouts={upcomingWorkouts}
         isLeader={isOwningLeader}
-        canEditRun={isOwningLeader}
         voteData={voteData}
       />
     </div>

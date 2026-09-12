@@ -561,7 +561,7 @@ export const fetchData = unstable_cache(
 // that are readable by any user (logged out, runner, non-owning leader).
 export async function getRunById(runId: string): Promise<RunConfig | null> {
   const rows = await sql`
-    SELECT id, name, emoji, day_of_week, meeting_location,
+    SELECT id, name, emoji, description, day_of_week, meeting_time, meeting_location,
            post_header, leader_intro, closing_notes,
            kind, workout_types, run_group_id, cycle_mode, cycle
     FROM runs
@@ -574,7 +574,9 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
     id: r.id as string,
     name: r.name as string,
     emoji: (r.emoji as string | null) ?? null,
+    description: (r.description as string | null) ?? null,
     dayOfWeek: r.day_of_week as string,
+    meetingTime: (r.meeting_time as string | null) ?? null,
     meetingLocation: r.meeting_location as string,
     postHeader: r.post_header as string,
     leaderIntro: (r.leader_intro as string | null) ?? 'Run Leaders:',
@@ -585,14 +587,4 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
     cycleMode: (r.cycle_mode as string | null) ?? 'none',
     cycle: (r.cycle as Record<string, string> | null) ?? {},
   }
-}
-
-// Check if a Clerk user is currently following a run.
-export async function isUserFollowingRun(clerkUserId: string, runId: string): Promise<boolean> {
-  const rows = await sql`
-    SELECT 1 FROM runner_follows
-    WHERE clerk_user_id = ${clerkUserId} AND run_id = ${runId}
-    LIMIT 1
-  `
-  return rows.length > 0
 }

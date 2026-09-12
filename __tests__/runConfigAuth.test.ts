@@ -47,13 +47,8 @@ const NAME_B = 'AuthTest LeaderB 310'
 let leaderAId: number
 let leaderBId: number
 
-function signInAs(clerkId: string | null, role: string = 'leader') {
-  // A falsy clerkId models a signed-out session: real Clerk currentUser() returns
-  // null then, not a user object with a null id. The follow-toggle sign-out test
-  // relies on this to exercise the `if (!user)` Unauthorized guard.
-  vi.mocked(currentUser).mockResolvedValue(
-    clerkId ? ({ id: clerkId, publicMetadata: { role } } as never) : (null as never),
-  )
+function signInAs(clerkId: string, role: string = 'leader') {
+  vi.mocked(currentUser).mockResolvedValue({ id: clerkId, publicMetadata: { role } } as never)
 }
 
 describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', () => {
@@ -305,51 +300,5 @@ describe.skipIf(!onStaging)('removing a leader reassigns their future weeks', ()
 
     const removed = await sql`SELECT active FROM run_leaders WHERE id=${remCId}`
     expect(removed[0].active).toBe(false)
-  })
-})
-
-describe.skipIf(!onStaging)('toggleRunFollow — runner follow/unfollow', () => {
-  const RUN = 'test-follow-329'
-  const RUNNER = 'user_runner_329'
-
-  beforeAll(async () => {
-    await sql`INSERT INTO runs (id, name) VALUES (${RUN}, 'Test Follow 329') ON CONFLICT (id) DO NOTHING`
-    await sql`DELETE FROM runner_follows WHERE clerk_user_id = ${RUNNER} AND run_id = ${RUN}`
-  })
-
-  afterAll(async () => {
-    await sql`DELETE FROM runner_follows WHERE clerk_user_id = ${RUNNER} AND run_id = ${RUN}`
-    await sql`DELETE FROM runs WHERE id = ${RUN}`
-  })
-
-  test('allows any logged-in user to toggle follow on a public run', async () => {
-    const { toggleRunFollow } = await import('../app/run-config/actions')
-    signInAs(RUNNER)  // non-leader, just a signed-in user
-
-    // First toggle — follow
-    let res = await toggleRunFollow(RUN)
-    expect(res.error).toBeUndefined()
-    let rows = await sql`SELECT 1 FROM runner_follows WHERE clerk_user_id = ${RUNNER} AND run_id = ${RUN}`
-    expect(rows.length).toBe(1)
-
-    // Second toggle — unfollow
-    res = await toggleRunFollow(RUN)
-    expect(res.error).toBeUndefined()
-    rows = await sql`SELECT 1 FROM runner_follows WHERE clerk_user_id = ${RUNNER} AND run_id = ${RUN}`
-    expect(rows.length).toBe(0)
-  })
-
-  test('rejects unauthenticated toggle', async () => {
-    const { toggleRunFollow } = await import('../app/run-config/actions')
-    signInAs(null)  // sign out
-    const res = await toggleRunFollow(RUN)
-    expect(res.error).toBe('Unauthorized')
-  })
-
-  test('rejects toggle on nonexistent run', async () => {
-    const { toggleRunFollow } = await import('../app/run-config/actions')
-    signInAs(RUNNER)
-    const res = await toggleRunFollow('nonexistent-run-329')
-    expect(res.error).toBe('Run not found')
   })
 })
