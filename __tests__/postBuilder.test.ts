@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { buildPost, buildVerificationLabel, formatMainContent } from '../lib/postBuilder'
+import { buildPost, buildVerificationLabel, formatMainContent, formatDateLong } from '../lib/postBuilder'
 import type { ScheduleEntry, WorkoutVariantRow, RunConfig } from '../lib/data'
 
 const tigerWolvesConfig: RunConfig = {
@@ -224,6 +224,25 @@ describe('buildPost', () => {
     expect(post).not.toContain('Da Bins')
     expect(post).not.toContain('Run Leaders:')
     expect(post).not.toContain('NYC Marathon')
+  })
+
+  test('omits the WORKOUT section for a non-workout (Easy) kind, even with no selections', () => {
+    const post = buildPost(entry, [], mourningDovesConfig, mourningDovesRoster)
+    // no structured workout block or type: name / reason lines
+    expect(post).not.toContain('WORKOUT')
+    expect(post).not.toContain('Ladder: Tempo Ladder')
+    expect(post).not.toContain('Build lactate threshold')
+    // the run's non-workout content is all still present
+    expect(post).toContain('🕊️ Mourning Doves Wednesday Run')
+    expect(post).toContain(`📅 ${formatDateLong(entry.date)}`)
+    expect(post).toContain('📍 Prospect Park — Grand Army Plaza entrance')
+    expect(post).toContain('Coffee at the plaza after.')
+    expect(post).toContain('Led by Lou')
+    expect(post).toContain('Your Mourning Doves leaders: Priya, Sam')
+  })
+
+  test('does not throw when a non-workout run has empty selections', () => {
+    expect(() => buildPost(entry, [], mourningDovesConfig, mourningDovesRoster)).not.toThrow()
   })
 
   test('TigerWolves output matches pre-parameterization snapshot', () => {

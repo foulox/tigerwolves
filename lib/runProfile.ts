@@ -27,3 +27,19 @@ export const WORKOUT_TYPE_OPTIONS = [
 
 export type RunKind = (typeof RUN_KINDS)[number]
 export type WorkoutTypeOption = (typeof WORKOUT_TYPE_OPTIONS)[number]
+
+// Only the `Workout` kind emits a structured WORKOUT section in the post and
+// exposes a workout-type filter/picker (#322). Every other kind is a plain run.
+export function isWorkoutKind(kind: string): boolean {
+  return kind === 'Workout'
+}
+
+// Resolve the workout types a run should surface (#322): the run's allowlist
+// intersected with the types actually present in its library, deduped and sorted.
+// An empty allowlist means "no profile configured" — fall back to every present
+// type so the behavior matches the pre-allowlist app.
+export function resolveAllowedTypes(presentTypes: string[], allowlist: string[]): string[] {
+  const present = Array.from(new Set(presentTypes))
+  const resolved = allowlist.length === 0 ? present : present.filter(t => allowlist.includes(t))
+  return resolved.sort()
+}

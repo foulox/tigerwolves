@@ -50,6 +50,7 @@ export function formatMainContent(instructions: string): string {
 }
 
 import type { ScheduleEntry, WorkoutVariantRow, RunConfig } from './data'
+import { isWorkoutKind } from './runProfile'
 
 // Turnaround is a stored field now (has_turnaround/turnaround, set at write time —
 // AI-suggested, leader-editable), not computed from instructions text. If
@@ -70,6 +71,12 @@ export function buildPost(
   const sorted = [...selections].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
   const primary = sorted[0]
 
+  // #322: only a Workout-kind run emits the structured WORKOUT section (the
+  // type:name line, the reason, and the workout block). A non-workout run
+  // (Easy/Long/Beginner-Friendly/Food) may legitimately have no selections at
+  // all, so never dereference `primary` outside this guard.
+  const showWorkout = isWorkoutKind(runConfig.kind) && primary != null
+
   const lines = [
     // post_header is the FULL editable opening block (run name/emoji, the app link,
     // any standing prompts) — stored per-run in runs.post_header and edited via the
@@ -79,35 +86,39 @@ export function buildPost(
     runConfig.postHeader,
     '',
     `📅 ${formatDateLong(entry.date)}`,
-    `🏃🏻‍♂️‍➡️ ${activeType ?? entry.workoutType}: ${primary.name}`,
   ]
 
-  if (primary.reason) lines.push('', primary.reason)
+  if (showWorkout) {
+    lines.push(`🏃🏻‍♂️‍➡️ ${activeType ?? entry.workoutType}: ${primary.name}`)
+    if (primary.reason) lines.push('', primary.reason)
+  }
 
   lines.push('', ...runConfig.meetingLocation.split('\n').map((l, i) => i === 0 ? `📍 ${l}` : l), '')
 
-  if (sorted.length === 2) {
-    const [standard, longer] = sorted
-    const stdContent = formatMainContent(standard.rawInput)
-    const lngContent = formatMainContent(longer.rawInput)
-    const stdTa = turnaroundLine(standard)
-    const lngTa = turnaroundLine(longer)
-    lines.push(
-      '🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁',
-      '',
-      'Standard',
-      stdContent,
-      ...(stdTa ? [stdTa] : []),
-      '',
-      'Longer',
-      lngContent,
-      ...(lngTa ? [lngTa] : []),
-    )
-  } else {
-    const w = sorted[0]
-    const ta = turnaroundLine(w)
-    lines.push(formatMainSection(w.rawInput))
-    if (ta) lines.push('', ta)
+  if (showWorkout) {
+    if (sorted.length === 2) {
+      const [standard, longer] = sorted
+      const stdContent = formatMainContent(standard.rawInput)
+      const lngContent = formatMainContent(longer.rawInput)
+      const stdTa = turnaroundLine(standard)
+      const lngTa = turnaroundLine(longer)
+      lines.push(
+        '🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁',
+        '',
+        'Standard',
+        stdContent,
+        ...(stdTa ? [stdTa] : []),
+        '',
+        'Longer',
+        lngContent,
+        ...(lngTa ? [lngTa] : []),
+      )
+    } else {
+      const w = sorted[0]
+      const ta = turnaroundLine(w)
+      lines.push(formatMainSection(w.rawInput))
+      if (ta) lines.push('', ta)
+    }
   }
 
   lines.push(
