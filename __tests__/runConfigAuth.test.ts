@@ -47,8 +47,13 @@ const NAME_B = 'AuthTest LeaderB 310'
 let leaderAId: number
 let leaderBId: number
 
-function signInAs(clerkId: string, role: string = 'leader') {
-  vi.mocked(currentUser).mockResolvedValue({ id: clerkId, publicMetadata: { role } } as never)
+function signInAs(clerkId: string | null, role: string = 'leader') {
+  // A falsy clerkId models a signed-out session: real Clerk currentUser() returns
+  // null then, not a user object with a null id. The follow-toggle sign-out test
+  // relies on this to exercise the `if (!user)` Unauthorized guard.
+  vi.mocked(currentUser).mockResolvedValue(
+    clerkId ? ({ id: clerkId, publicMetadata: { role } } as never) : (null as never),
+  )
 }
 
 describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', () => {
@@ -336,7 +341,7 @@ describe.skipIf(!onStaging)('toggleRunFollow — runner follow/unfollow', () => 
 
   test('rejects unauthenticated toggle', async () => {
     const { toggleRunFollow } = await import('../app/run-config/actions')
-    signInAs(null as any)  // sign out
+    signInAs(null)  // sign out
     const res = await toggleRunFollow(RUN)
     expect(res.error).toBe('Unauthorized')
   })
