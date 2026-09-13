@@ -30,7 +30,7 @@ export default async function LibraryPage() {
   return (
     <div>
       <Header title="Library" isLeader={isLeader} />
-      <LibraryClient variants={workoutVariants} isLeader={isLeader} voteData={voteData} runId={runConfig.id} allowedTypes={runConfig.workoutTypes} />
+      <LibraryClient variants={workoutVariants} isLeader={isLeader} voteData={voteData} runId={runConfig.id} allowedTypes={runConfig.workoutTypes} runKind={runConfig.kind} />
     </div>
   )
 }

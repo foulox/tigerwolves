@@ -10,7 +10,7 @@ import ReactionPicker from '@/components/ReactionPicker'
 import WorkoutFlagSheet, { FlagBadge } from '@/components/WorkoutFlagSheet'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
-import { resolveAllowedTypes } from '@/lib/runProfile'
+import { resolveAllowedTypes, kindToCategory } from '@/lib/runProfile'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -33,7 +33,7 @@ type DisplayRow = StandaloneRow | FamilyRow
 // Reads workout_variants/workout_families (#277) — replaces the legacy
 // `workouts`-typed version. Family grouping mirrors PlanClient's own
 // familyId-based grouping (#276) rather than the old name-string grouping.
-export default function LibraryClient({ variants, isLeader, voteData = {}, runId, allowedTypes }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[] }) {
+export default function LibraryClient({ variants, isLeader, voteData = {}, runId, allowedTypes, runKind }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runKind?: string }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [raceFilter, setRaceFilter] = useState<string | null>(null)
@@ -46,11 +46,19 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
 
   const flaggedWorkout = flagSheetFor ? variants.find(w => w.id === flagSheetFor) ?? null : null
 
-  // When "Your run" toggle is active, show only run-specific variants (runGroupId !== null).
-  // "All runs" shows everything passed in (already scoped to this run + global by the page).
-  const visibleVariants = runId && !showAllRuns
-    ? variants.filter(w => w.runGroupId !== null)
+  // #347: the server now returns the full shared catalog. "Your run" scopes it
+  // to the run's own category (kind→category); "All runs" browses everything.
+  // A run with no category mapping (Food/unknown) falls back to the full catalog
+  // so the screen is never empty.
+  const runCategory = runKind ? kindToCategory(runKind) : null
+  const inYourRun = !!runId && !showAllRuns
+  const visibleVariants = inYourRun && runCategory
+    ? variants.filter(w => w.category === runCategory)
     : variants
+
+  // effectiveCategory: in "Your run" mode the category selector is hidden, so
+  // drive filtering off the run's mapped category instead of the category state.
+  const effectiveCategory = inYourRun && runCategory ? runCategory : category
 
   const q = search.toLowerCase()
   function matchesSearch(w: WorkoutVariantRow) {
@@ -67,14 +75,13 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
   // #322: in "Your run" mode the type-filter options are the run's allowlist
   // (∩ types present); "All runs" mode shows every present type as before. An
   // empty allowlist falls back (inside resolveAllowedTypes) to present types.
-  const inYourRun = !!runId && !showAllRuns
-  const presentTypes = visibleVariants.filter(w => !category || w.category === category).map(w => w.type)
+  const presentTypes = visibleVariants.filter(w => !effectiveCategory || w.category === effectiveCategory).map(w => w.type)
   const types = inYourRun
     ? resolveAllowedTypes(presentTypes, allowedTypes ?? [])
     : Array.from(new Set(presentTypes)).sort()
 
   const filtered = visibleVariants
-    .filter(w => !category || w.category === category)
+    .filter(w => !effectiveCategory || w.category === effectiveCategory)
     .filter(w => !typeFilter || w.type === typeFilter)
     .filter(w => !raceFilter || w.raceTypes.includes(raceFilter))
     .filter(matchesSearch)
@@ -237,13 +244,15 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
         </div>
       </div>
 
-      {/* Category filter */}
-      <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-        <button onClick={() => setcat(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!category ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All</button>
-        {CATEGORIES.map(c => (
-          <button key={c} onClick={() => setcat(category === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${category === c ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{c}</button>
-        ))}
-      </div>
+      {/* Category filter — hidden in "Your run" mode when the run has a mapped category */}
+      {!(inYourRun && runCategory) && (
+        <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
+          <button onClick={() => setcat(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!category ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All</button>
+          {CATEGORIES.map(c => (
+            <button key={c} onClick={() => setcat(category === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${category === c ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{c}</button>
+          ))}
+        </div>
+      )}
 
       {/* Race type filter */}
       <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
@@ -253,8 +262,8 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
         ))}
       </div>
 
-      {/* Type filter (only when category selected) */}
-      {category && types.length > 1 && (
+      {/* Type filter (only when category selected or effective in "Your run" mode) */}
+      {effectiveCategory && types.length > 1 && (
         <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: 'none' }}>
           <button onClick={() => setTypeFilter(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!typeFilter ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All types</button>
           {types.map(t => (
