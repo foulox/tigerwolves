@@ -1,38 +1,57 @@
 import { test, expect } from '@playwright/test'
 
-test('Library page loads with all 8 fixture workout names', async ({ page }) => {
+test('Library "Your run" mode shows only the 6 Quality-category fixtures (kind→category scoping, #347)', async ({ page }) => {
   await page.goto('/library')
   await page.waitForLoadState('load')
 
+  // Default view is "Your run" mode: TigerWolves is kind=Workout → category=Quality.
+  // The category selector is hidden in this mode (category is pinned to Quality).
   const countEl = page.locator('p').filter({ hasText: /workouts · oldest first/ })
-  await expect(countEl).toHaveText('8 workouts · oldest first')
+  await expect(countEl).toHaveText('6 workouts · oldest first')
 
-  await expect(page.getByText('Easy Recovery Run')).toBeVisible()
-  await expect(page.getByText('Long Run — Progressive')).toBeVisible()
   await expect(page.getByText('Yasso 800s')).toBeVisible()
   await expect(page.getByText('Fort Greene Hills')).toBeVisible()
   await expect(page.getByText('Prospect Park Tempo')).toBeVisible()
   await expect(page.getByText('Track Ladder 400-800-1200')).toBeVisible()
+
+  // Easy/Long are TigerWolves-owned but non-Quality — not visible in "Your run" mode.
+  // They are reachable via "All runs" (verified in the next test — AC4).
+  await expect(page.getByText('Easy Recovery Run')).toHaveCount(0)
+  await expect(page.getByText('Long Run — Progressive')).toHaveCount(0)
+
   // The two McCarren Loop Repeats rows are reserved for admin.spec.ts's regroup
   // test and asserted there — not here. admin.spec.ts renames them in place,
   // and since these specs share one seeded suite run (not reset per test),
   // asserting their original name here would be order-dependent.
 })
 
-test('Library category filter narrows to exactly the 6 Quality-category rows', async ({ page }) => {
+test('Library "All runs" mode reveals the full shared catalog incl. other runs, and the category filter narrows to Quality (#347)', async ({ page }) => {
   await page.goto('/library')
   await page.waitForLoadState('load')
 
-  const countEl = page.locator('p').filter({ hasText: /workouts · oldest first/ })
-  await expect(countEl).toHaveText('8 workouts · oldest first')
+  // Switch to "All runs" — shared catalog, all categories, category selector visible.
+  await page.getByRole('button', { name: 'All runs', exact: true }).click()
 
+  // TigerWolves' own Easy/Long families now appear (AC4: no content loss).
+  await expect(page.getByText('Easy Recovery Run')).toBeVisible()
+  await expect(page.getByText('Long Run — Progressive')).toBeVisible()
+
+  // Another run's workout also appears (AC2: shared pool).
+  await expect(page.getByText('McCarren Easy Loop')).toBeVisible()
+
+  // Category selector is now visible in "All runs" mode — filter to Quality.
   await page.getByRole('button', { name: 'Quality', exact: true }).click()
-  await expect(countEl).toHaveText('6 workouts · oldest first')
 
-  // Easy/Long baseline workouts must drop out of the filtered view
+  // Easy, Long, and the other run's Easy workout drop out of the Quality-filtered view.
   await expect(page.getByText('Easy Recovery Run')).toHaveCount(0)
   await expect(page.getByText('Long Run — Progressive')).toHaveCount(0)
+  await expect(page.getByText('McCarren Easy Loop')).toHaveCount(0)
+
+  // Quality rows stay visible — spot-check one.
   await expect(page.getByText('Fort Greene Hills')).toBeVisible()
+
+  // No exact total-count assertion here: the shared catalog can grow as more runs
+  // are added, so a hard number would become a maintenance burden.
 })
 
 // Appended below the count-assertion tests above (not interspersed) — these two
