@@ -107,6 +107,7 @@ export type RunConfig = {
   // getLeaderRun (post-building path) doesn't select them; getRunById does.
   description?: string | null
   meetingTime?: string | null
+  warmupDescription?: string | null
 }
 
 export type AwayPeriod = { from: string; to: string }
