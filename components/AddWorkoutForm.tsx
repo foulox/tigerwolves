@@ -4,7 +4,6 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { addWorkout } from '@/app/actions'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
-import type { RunGroup } from '@/lib/data'
 import { FORM_CATEGORIES, typesForCategory, chipBase, chipDark, chipOrange, chipOff, toggleItem, findCollidingFamily } from '@/lib/workoutForm'
 import type { InferredFields } from '@/lib/workoutInference'
 
@@ -21,12 +20,14 @@ type EntryData = {
   hasTurnaroundHint: boolean
 }
 
-export default function AddWorkoutForm({ runGroups, existingFamilies = [] }: { runGroups: RunGroup[]; existingFamilies?: { familyId: number; name: string }[] }) {
+export default function AddWorkoutForm({ existingFamilies = [] }: { existingFamilies?: { familyId: number; name: string }[] }) {
   const [step, setStep] = useState<Step>('entry')
   const [collision, setCollision] = useState<{ familyId: number; name: string } | null>(null)
   const [entry, setEntry] = useState<EntryData>({
     name: '', category: '', type: '', instructions: '', reason: '', route: '',
-    runGroupId: runGroups.length === 1 ? runGroups[0].id : null,
+    // #347: run_group_id no longer affects visibility (shared library by category/type),
+    // so new workouts aren't tied to a group — the picker is gone.
+    runGroupId: null,
     hasTurnaroundHint: false,
   })
   const [review, setReview] = useState<InferredFields | null>(null)
@@ -44,11 +45,10 @@ export default function AddWorkoutForm({ runGroups, existingFamilies = [] }: { r
     if (collide) { setCollision(collide); return }
     setStep('loading')
     try {
-      const selectedGroup = runGroups.find(g => g.id === entry.runGroupId)
       const res = await fetch('/api/workout/infer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...entry, venue: selectedGroup?.venue ?? null }),
+        body: JSON.stringify({ ...entry, venue: null }),
       })
       if (!res.ok) throw new Error('Inference failed')
       const inferred: InferredFields = await res.json()
@@ -284,19 +284,6 @@ export default function AddWorkoutForm({ runGroups, existingFamilies = [] }: { r
               <button type="button" key={t} onClick={() => setEntry(v => ({ ...v, type: t }))}
                 className={`${chipBase} ${entry.type === t ? chipOrange : chipOff}`}>{t}</button>
             ))}
-          </div>
-        </Field>
-      )}
-
-      {runGroups.length > 0 && (
-        <Field label="Run group">
-          <div className="flex flex-wrap gap-2">
-            {runGroups.map(g => (
-              <button type="button" key={g.id} onClick={() => setEntry(v => ({ ...v, runGroupId: g.id }))}
-                className={`${chipBase} ${entry.runGroupId === g.id ? chipDark : chipOff}`}>{g.name}</button>
-            ))}
-            <button type="button" onClick={() => setEntry(v => ({ ...v, runGroupId: null }))}
-              className={`${chipBase} ${entry.runGroupId === null ? chipDark : chipOff}`}>Global</button>
           </div>
         </Field>
       )}

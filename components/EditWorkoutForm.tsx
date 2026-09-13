@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { updateWorkout } from '@/app/actions'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
-import type { RunGroup, WorkoutVariantRow } from '@/lib/data'
+import type { WorkoutVariantRow } from '@/lib/data'
 import { FORM_CATEGORIES, typesForCategory, chipBase, chipDark, chipOrange, chipOff, toggleItem } from '@/lib/workoutForm'
 import type { InferredFields } from '@/lib/workoutInference'
 
@@ -25,7 +25,7 @@ type EntryData = {
 // Rebuilt against workout_variants/variant_id (#277) — mirrors AddWorkoutForm's
 // entry → AI-inference → review flow exactly, pre-filled from the existing
 // variant, rather than the old pre-#274 form's separate re-inference path.
-export default function EditWorkoutForm({ variant, runGroups }: { variant: WorkoutVariantRow; runGroups: RunGroup[] }) {
+export default function EditWorkoutForm({ variant }: { variant: WorkoutVariantRow }) {
   const [step, setStep] = useState<Step>('entry')
   const [entry, setEntry] = useState<EntryData>({
     name: variant.name,
@@ -50,11 +50,10 @@ export default function EditWorkoutForm({ variant, runGroups }: { variant: Worko
     setError('')
     setStep('loading')
     try {
-      const selectedGroup = runGroups.find(g => g.id === entry.runGroupId)
       const res = await fetch('/api/workout/infer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...entry, venue: selectedGroup?.venue ?? null }),
+        body: JSON.stringify({ ...entry, venue: null }),
       })
       if (!res.ok) throw new Error('Inference failed')
       const inferred: InferredFields = await res.json()
@@ -274,18 +273,8 @@ export default function EditWorkoutForm({ variant, runGroups }: { variant: Worko
         )
       })()}
 
-      {runGroups.length > 0 && (
-        <Field label="Run group">
-          <div className="flex flex-wrap gap-2">
-            {runGroups.map(g => (
-              <button type="button" key={g.id} onClick={() => setEntry(v => ({ ...v, runGroupId: g.id }))}
-                className={`${chipBase} ${entry.runGroupId === g.id ? chipDark : chipOff}`}>{g.name}</button>
-            ))}
-            <button type="button" onClick={() => setEntry(v => ({ ...v, runGroupId: null }))}
-              className={`${chipBase} ${entry.runGroupId === null ? chipDark : chipOff}`}>Global</button>
-          </div>
-        </Field>
-      )}
+      {/* #347: run group no longer affects visibility — no picker. The existing
+          run_group_id is preserved on save (dormant), just not editable here. */}
 
       <Field label="Instructions">
         <textarea required value={entry.instructions} onChange={e => setEntry(v => ({ ...v, instructions: e.target.value }))}
