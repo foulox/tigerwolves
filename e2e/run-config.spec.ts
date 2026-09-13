@@ -8,10 +8,19 @@ test.describe('Run Settings', () => {
     // #342: leader menu items moved from LeaderMenu button to UserButton
     await page.goto('/runs/tigerwolves')
     await page.waitForLoadState('load')
-    // Run Settings + Edit Workouts live in the UserButton menu
+    // Run Settings + Edit Workouts live in the UserButton menu. Clerk's
+    // UserButton.Link items are NOT exposed as role="menuitem" (the popover isn't
+    // a strict ARIA menu), so match by accessible name across the roles Clerk may
+    // render them as — link/button/menuitem — rather than assuming one. getByRole
+    // with a name matches exactly one element per role, avoiding strict-mode churn.
     await page.locator('.cl-userButtonTrigger').click()
-    await expect(page.getByRole('menuitem', { name: /run settings/i })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: /edit workouts/i })).toBeVisible()
+    const menuItem = (name: RegExp) =>
+      page
+        .getByRole('menuitem', { name })
+        .or(page.getByRole('link', { name }))
+        .or(page.getByRole('button', { name }))
+    await expect(menuItem(/run settings/i)).toBeVisible()
+    await expect(menuItem(/edit workouts/i)).toBeVisible()
     // Verify the old Leader menu button is gone
     await page.locator('.cl-userButtonTrigger').click()  // close the menu
     await expect(page.getByRole('button', { name: 'Leader menu' })).toHaveCount(0)
