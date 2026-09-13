@@ -33,8 +33,9 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
   // Auto-generate schedule horizon (idempotent, runs outside cache)
   await generateScheduleHorizon(runConfig.id, runConfig.dayOfWeek, runLeaders)
 
-  // Schedule filtered to this leader's run; workout variants still come from the cached
-  // aggregate since they're global/run-group-scoped and benefit from the 5-min cache.
+  // Schedule filtered to this leader's run; workout variants come from the cached
+  // aggregate (fetchData), which as of #347 returns the full shared catalog — PlanClient
+  // scopes it client-side by category + the run's types. Benefits from the 5-min cache.
   const [schedule, { workoutVariants }] = await Promise.all([
     fetchSchedule(runConfig.id),
     fetchData(),
