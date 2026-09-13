@@ -1,0 +1,21 @@
+name: Fast-forward staging to main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ff-staging
+  cancel-in-progress: false
+
+jobs:
+  ff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fast-forward staging to main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PATCH repos/${{ github.repository }}/git/refs/heads/staging -f sha=${{ github.sha }} -F force=false
