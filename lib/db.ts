@@ -46,6 +46,7 @@ export async function fetchSchedule(runId?: string): Promise<ScheduleEntry[]> {
 // happens client-side. The runId? param stays in the signature for callers (now
 // informational only); per-run resolution is by matching schedule entries to workouts
 // in the shared set.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for callers/tests as intent; #347 read is the full shared catalog and ignores it
 export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVariantRow[]> {
   const rows = await sql`
     SELECT
