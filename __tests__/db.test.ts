@@ -506,14 +506,22 @@ describe.skipIf(!onStaging)('#318 per-run profile foundation', () => {
     expect(tw.run_group_id).toBe(group.id)
   })
 
-  it("fetchWorkoutVariants('tigerwolves') returns TW-owned + global variants via the FK", async () => {
+  it("fetchWorkoutVariants('tigerwolves') now returns the full shared catalog, including other runs' families (not group-scoped)", async () => {
     const [group] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
     const tigerWolvesId = group.id as number
     const variants = await fetchWorkoutVariants('tigerwolves')
     expect(variants.length).toBeGreaterThan(0)
-    for (const v of variants) {
-      expect(v.runGroupId === null || v.runGroupId === tigerWolvesId).toBe(true)
-    }
+    // MMER's McCarren Easy Loop is seeded with run_group_id = MMER's group (not TW, not null)
+    expect(variants.some(v => v.name === 'McCarren Easy Loop')).toBe(true)
+    // At least one returned variant has a runGroupId that is neither null nor TigerWolves'
+    // — directly proves the read is no longer group-scoped
+    expect(variants.some(v => v.runGroupId !== null && v.runGroupId !== tigerWolvesId)).toBe(true)
+  })
+
+  it('still returns the seeded TigerWolves Quality families (existing content preserved)', async () => {
+    const variants = await fetchWorkoutVariants('tigerwolves')
+    expect(variants.some(v => v.category === 'Quality')).toBe(true)
+    expect(variants.filter(v => v.category === 'Quality').length).toBeGreaterThan(0)
   })
 })
 
