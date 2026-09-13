@@ -39,8 +39,10 @@ export default defineConfig({
     // In CI: build first so every route is pre-compiled, eliminating the
     // per-route first-compile delay (60s+ in next dev) that blows the per-test
     // timeout. Locally: dev server for fast iteration. next start runs with
-    // NODE_ENV=production, so E2E_TEST_MODE=true is forwarded to allow the
-    // e2e-revalidate route handler to bypass its production guard.
+    // NODE_ENV=production, but the e2e-revalidate route is gated by
+    // isSeedAllowed(VERCEL_ENV), and VERCEL_ENV is unset when Playwright runs
+    // next start locally or in CI — so isSeedAllowed(undefined) returns true
+    // and the route is reachable for e2e cache invalidation.
     command: process.env.CI
       ? 'npm run build && npm run start'
       : 'npm run dev',
@@ -53,7 +55,6 @@ export default defineConfig({
       DATABASE_URL: process.env.DATABASE_URL ?? '',
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '',
       CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY ?? '',
-      E2E_TEST_MODE: 'true',
     },
   },
 })
