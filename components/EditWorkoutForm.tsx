@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { updateWorkout } from '@/app/actions'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
 import type { RunGroup, WorkoutVariantRow } from '@/lib/data'
-import { FORM_CATEGORIES, FORM_TYPES, chipBase, chipDark, chipOrange, chipOff, toggleItem } from '@/lib/workoutForm'
+import { FORM_CATEGORIES, typesForCategory, chipBase, chipDark, chipOrange, chipOff, toggleItem } from '@/lib/workoutForm'
 import type { InferredFields } from '@/lib/workoutInference'
 
 type Step = 'entry' | 'loading' | 'review'
@@ -246,20 +246,33 @@ export default function EditWorkoutForm({ variant, runGroups }: { variant: Worko
       <Field label="Category">
         <div className="flex gap-2">
           {FORM_CATEGORIES.map(c => (
-            <button type="button" key={c} onClick={() => setEntry(v => ({ ...v, category: c }))}
+            <button type="button" key={c}
+              onClick={() => setEntry(v => {
+                if (v.category === c) return v
+                const opts = typesForCategory(c)
+                return { ...v, category: c, type: opts.length === 1 ? opts[0] : '' }
+              })}
               className={`${chipBase} ${entry.category === c ? chipDark : chipOff}`}>{c}</button>
           ))}
         </div>
       </Field>
 
-      <Field label="Type">
-        <div className="flex flex-wrap gap-2">
-          {FORM_TYPES.map(t => (
-            <button type="button" key={t} onClick={() => setEntry(v => ({ ...v, type: t }))}
-              className={`${chipBase} ${entry.type === t ? chipOrange : chipOff}`}>{t}</button>
-          ))}
-        </div>
-      </Field>
+      {/* category's types, plus the workout's current type if it isn't in that set
+          (so an existing, oddly-typed workout keeps its value selectable). Hidden
+          when there's only one option — it's auto-set, a lone chip is noise. */}
+      {(() => {
+        const typeOptions = Array.from(new Set([...typesForCategory(entry.category), ...(entry.type ? [entry.type] : [])]))
+        return typeOptions.length > 1 && (
+          <Field label="Type">
+            <div className="flex flex-wrap gap-2">
+              {typeOptions.map(t => (
+                <button type="button" key={t} onClick={() => setEntry(v => ({ ...v, type: t }))}
+                  className={`${chipBase} ${entry.type === t ? chipOrange : chipOff}`}>{t}</button>
+              ))}
+            </div>
+          </Field>
+        )
+      })()}
 
       {runGroups.length > 0 && (
         <Field label="Run group">

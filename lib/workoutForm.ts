@@ -5,6 +5,22 @@ export const FORM_TYPES = [
   'Ladder', 'Superset', 'Straight Tempo', 'Threshold',
 ] as const
 
+// #347: the workout-type vocabulary depends on the category. Quality (Workout
+// runs) has the rich set above; Easy/Long runs use their own small vocabularies.
+// Without this, the create/edit form only offered Quality types, so an Easy or
+// Long workout could never be given a valid type and the form couldn't submit.
+// Types may overlap across categories (e.g. Progression is both Quality and Long).
+export const TYPES_BY_CATEGORY: Record<string, readonly string[]> = {
+  Quality: FORM_TYPES,
+  Easy: ['Easy'],
+  Long: ['Long'],
+}
+
+/** The type chips to offer for a given category (empty until a category is picked). */
+export function typesForCategory(category: string): readonly string[] {
+  return TYPES_BY_CATEGORY[category] ?? []
+}
+
 export const chipBase = 'px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors touch-manipulation'
 export const chipDark = 'bg-gray-900 text-white border-gray-900'
 export const chipOrange = 'bg-orange-500 text-white border-orange-500'

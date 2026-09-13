@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { addWorkout } from '@/app/actions'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
 import type { RunGroup } from '@/lib/data'
-import { FORM_CATEGORIES, FORM_TYPES, chipBase, chipDark, chipOrange, chipOff, toggleItem, findCollidingFamily } from '@/lib/workoutForm'
+import { FORM_CATEGORIES, typesForCategory, chipBase, chipDark, chipOrange, chipOff, toggleItem, findCollidingFamily } from '@/lib/workoutForm'
 import type { InferredFields } from '@/lib/workoutInference'
 
 type Step = 'entry' | 'loading' | 'review'
@@ -265,20 +265,28 @@ export default function AddWorkoutForm({ runGroups, existingFamilies = [] }: { r
       <Field label="Category">
         <div className="flex gap-2">
           {FORM_CATEGORIES.map(c => (
-            <button type="button" key={c} onClick={() => setEntry(v => ({ ...v, category: c }))}
+            <button type="button" key={c}
+              onClick={() => setEntry(v => {
+                // Auto-select the type when a category has exactly one (e.g. Long) —
+                // a lone chip is noise; the leader shouldn't have to tap it.
+                const opts = typesForCategory(c)
+                return { ...v, category: c, type: opts.length === 1 ? opts[0] : '' }
+              })}
               className={`${chipBase} ${entry.category === c ? chipDark : chipOff}`}>{c}</button>
           ))}
         </div>
       </Field>
 
-      <Field label="Type">
-        <div className="flex flex-wrap gap-2">
-          {FORM_TYPES.map(t => (
-            <button type="button" key={t} onClick={() => setEntry(v => ({ ...v, type: t }))}
-              className={`${chipBase} ${entry.type === t ? chipOrange : chipOff}`}>{t}</button>
-          ))}
-        </div>
-      </Field>
+      {typesForCategory(entry.category).length > 1 && (
+        <Field label="Type">
+          <div className="flex flex-wrap gap-2">
+            {typesForCategory(entry.category).map(t => (
+              <button type="button" key={t} onClick={() => setEntry(v => ({ ...v, type: t }))}
+                className={`${chipBase} ${entry.type === t ? chipOrange : chipOff}`}>{t}</button>
+            ))}
+          </div>
+        </Field>
+      )}
 
       {runGroups.length > 0 && (
         <Field label="Run group">

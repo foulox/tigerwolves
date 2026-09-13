@@ -1,5 +1,28 @@
 import { describe, test, expect } from 'vitest'
-import { findCollidingFamily, toggleItem } from '../lib/workoutForm'
+import { findCollidingFamily, toggleItem, typesForCategory } from '../lib/workoutForm'
+
+describe('typesForCategory (#347)', () => {
+  test('Quality offers the full workout-type set', () => {
+    expect(typesForCategory('Quality')).toContain('Hills')
+    expect(typesForCategory('Quality')).toContain('Progression')
+    expect(typesForCategory('Quality').length).toBeGreaterThan(1)
+  })
+
+  test('Easy and Long are single-type (auto-selected, no picker)', () => {
+    expect(typesForCategory('Easy')).toEqual(['Easy'])
+    expect(typesForCategory('Long')).toEqual(['Long'])
+  })
+
+  test('Progression is a Quality type, not a Long one', () => {
+    expect(typesForCategory('Quality')).toContain('Progression')
+    expect(typesForCategory('Long')).not.toContain('Progression')
+  })
+
+  test('an unknown or empty category yields no types', () => {
+    expect(typesForCategory('')).toEqual([])
+    expect(typesForCategory('Food')).toEqual([])
+  })
+})
 
 describe('findCollidingFamily (#354)', () => {
   const families = [
