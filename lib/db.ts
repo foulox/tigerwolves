@@ -41,12 +41,13 @@ export async function fetchSchedule(runId?: string): Promise<ScheduleEntry[]> {
 }
 
 // Joins workout_variants + workout_families (#276) — the read-side counterpart to
-// dbInsertWorkoutVariant/dbUpdateWorkoutVariant (#274). Scopes to the run's own owned
-// families plus global/unowned families. #318 resolves that ownership via the run's
-// real run_group_id FK (runs.run_group_id → run_groups.id), replacing the fragile
-// rg.name = runs.name string match — so the run_groups join is no longer needed.
+// dbInsertWorkoutVariant/dbUpdateWorkoutVariant (#274). As of #347 this returns the
+// full shared catalog — no run_group_id scoping. kind→category + type filtering now
+// happens client-side. The runId? param stays in the signature for callers (now
+// informational only); per-run resolution is by matching schedule entries to workouts
+// in the shared set.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for callers/tests as intent; #347 read is the full shared catalog and ignores it
 export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVariantRow[]> {
-  const resolvedRunId = runId ?? 'tigerwolves'
   const rows = await sql`
     SELECT
       wv.id AS variant_id,
@@ -74,8 +75,6 @@ export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVaria
       wf.run_group_id
     FROM workout_variants wv
     JOIN workout_families wf ON wf.id = wv.family_id
-    WHERE wf.run_group_id IS NULL
-       OR wf.run_group_id = (SELECT run_group_id FROM runs WHERE id = ${resolvedRunId})
     ORDER BY wf.name, wv.sort_order NULLS LAST
   `
   return rows.map((r) => ({
@@ -626,13 +625,13 @@ export async function ensureLeaderSelfFollow(clerkUserId: string): Promise<strin
 
 // #331 My Week — cross-run assembly over the runs a user follows, for the date
 // window [windowStart, windowEnd] (inclusive). Deliberately does NOT use
-// fetchData(): that path is scoped to a single run group's variants and would
-// silently drop other followed runs' workouts. Each run is resolved independently
-// against its own variant set (fetchWorkoutVariants(runId), which scopes to that
-// run's group + global families) so a Workout run and an Easy run both resolve
-// correctly. N per-run queries (N = followed runs, small at trial scale); cached
-// under the 'tigerwolves-data' tag so follow changes (toggleRunFollow's
-// updateTag) and workout edits both invalidate it.
+// fetchData(): that path defaults to the tigerwolves run and would silently drop
+// other followed runs' workouts. Each run is resolved independently via
+// fetchWorkoutVariants(runId), which as of #347 returns the full shared catalog
+// (no group scoping) — per-run resolution is by matching each run's schedule
+// entries against that shared set. N per-run queries (N = followed runs, small at
+// trial scale); cached under the 'tigerwolves-data' tag so follow changes
+// (toggleRunFollow's updateTag) and workout edits both invalidate it.
 async function assembleMyWeek(
   clerkUserId: string,
   windowStart: string,

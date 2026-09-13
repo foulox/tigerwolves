@@ -1,4 +1,4 @@
-import { fetchData, fetchRunGroups } from '@/lib/db'
+import { fetchData } from '@/lib/db'
 import AddWorkoutForm from '@/components/AddWorkoutForm'
 import AddVariationForm from '@/components/AddVariationForm'
 import { requireLeaderPage } from '@/lib/requireLeaderPage'
@@ -19,6 +19,12 @@ export default async function AddWorkoutPage({ searchParams }: { searchParams: P
     }
   }
 
-  const runGroups = await fetchRunGroups()
-  return <AddWorkoutForm runGroups={runGroups} />
+  // #354: the existing shared-catalog families, so the form can catch a
+  // duplicate name before creating a second family and offer to add a variation
+  // to the existing one instead. Deduped by familyId (one entry per family).
+  const { workoutVariants } = await fetchData()
+  const existingFamilies = Array.from(
+    new Map(workoutVariants.map(w => [w.familyId, w.name])).entries(),
+  ).map(([familyId, name]) => ({ familyId, name }))
+  return <AddWorkoutForm existingFamilies={existingFamilies} />
 }

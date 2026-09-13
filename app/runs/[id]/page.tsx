@@ -41,10 +41,9 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
     isFollowing = followed.includes(id)
   }
 
-  // Scope variants to THIS run's group (+ global families), not fetchData() — which
-  // defaults to the tigerwolves group and silently drops any other run's owned
-  // workouts (e.g. MMER's Easy family), leaving their cards stuck on "Not planned
-  // yet". Mirrors assembleMyWeek's per-run resolution.
+  // As of #347, fetchWorkoutVariants(id) returns the full shared catalog — no
+  // run_group_id scoping. Per-run resolution happens by matching the run's schedule
+  // entries against that catalog. The runId arg is kept for callers (now informational).
   const workoutVariants = await fetchWorkoutVariants(id)
   const schedule = await fetchSchedule(id)
   const today = new Date().toISOString().slice(0, 10)

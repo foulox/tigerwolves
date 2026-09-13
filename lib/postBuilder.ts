@@ -72,10 +72,14 @@ export function buildPost(
   const primary = sorted[0]
 
   // #322: only a Workout-kind run emits the structured WORKOUT section (the
-  // type:name line, the reason, and the workout block). A non-workout run
+  // type:name line, the reason, and the interval block). A non-workout run
   // (Easy/Long/Beginner-Friendly/Food) may legitimately have no selections at
-  // all, so never dereference `primary` outside this guard.
+  // all, so never dereference `primary` outside these guards.
   const showWorkout = isWorkoutKind(runConfig.kind) && primary != null
+  // #347: a non-Workout run can still pick a route/easy workout — emit a light
+  // line (name + reason, no type prefix and no interval block) so the pick shows
+  // in the post. Only when one is actually selected.
+  const showLightWorkout = !isWorkoutKind(runConfig.kind) && primary != null
 
   const lines = [
     // post_header is the FULL editable opening block (run name/emoji, the app link,
@@ -90,6 +94,9 @@ export function buildPost(
 
   if (showWorkout) {
     lines.push(`🏃🏻‍♂️‍➡️ ${activeType ?? entry.workoutType}: ${primary.name}`)
+    if (primary.reason) lines.push('', primary.reason)
+  } else if (showLightWorkout) {
+    lines.push(`🏃🏻‍♂️‍➡️ ${primary.name}`)
     if (primary.reason) lines.push('', primary.reason)
   }
 

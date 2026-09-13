@@ -477,8 +477,10 @@ describe.skipIf(!onStaging)('getRunRoster', () => {
 })
 
 // #318 per-run profile foundation: kind + workout-type allowlist columns on `runs`,
-// and the run↔run_group reconciliation that lets fetchWorkoutVariants scope by a real
-// FK (runs.run_group_id) instead of the fragile rg.name = runs.name string match.
+// and the run↔run_group reconciliation. #318 originally used runs.run_group_id as an
+// FK to scope fetchWorkoutVariants; #347 retired that read filter (the reads below now
+// assert the full shared catalog, not FK-scoped), but the kind/workout_types columns
+// and the run_group_id column itself remain and are still exercised here.
 // Guarded skipIf(!onStaging) for the same reason as the #310 tests above: these depend
 // on the migration + TigerWolves seed, which are only guaranteed on staging (CI) — a
 // local run points at un-migrated production (.env.local), where the new columns don't
@@ -506,14 +508,22 @@ describe.skipIf(!onStaging)('#318 per-run profile foundation', () => {
     expect(tw.run_group_id).toBe(group.id)
   })
 
-  it("fetchWorkoutVariants('tigerwolves') returns TW-owned + global variants via the FK", async () => {
+  it("fetchWorkoutVariants('tigerwolves') now returns the full shared catalog, including other runs' families (not group-scoped)", async () => {
     const [group] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
     const tigerWolvesId = group.id as number
     const variants = await fetchWorkoutVariants('tigerwolves')
     expect(variants.length).toBeGreaterThan(0)
-    for (const v of variants) {
-      expect(v.runGroupId === null || v.runGroupId === tigerWolvesId).toBe(true)
-    }
+    // MMER's McCarren Easy Loop is seeded with run_group_id = MMER's group (not TW, not null)
+    expect(variants.some(v => v.name === 'McCarren Easy Loop')).toBe(true)
+    // At least one returned variant has a runGroupId that is neither null nor TigerWolves'
+    // — directly proves the read is no longer group-scoped
+    expect(variants.some(v => v.runGroupId !== null && v.runGroupId !== tigerWolvesId)).toBe(true)
+  })
+
+  it('still returns the seeded TigerWolves Quality families (existing content preserved)', async () => {
+    const variants = await fetchWorkoutVariants('tigerwolves')
+    expect(variants.some(v => v.category === 'Quality')).toBe(true)
+    expect(variants.filter(v => v.category === 'Quality').length).toBeGreaterThan(0)
   })
 })
 

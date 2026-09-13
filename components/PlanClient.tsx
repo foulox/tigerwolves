@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/nextjs'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/lib/data'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
-import { resolveAllowedTypes } from '@/lib/runProfile'
+import { resolveAllowedTypes, isWorkoutKind, kindToCategory } from '@/lib/runProfile'
 import { buildPost, buildVerificationLabel, formatDateLong } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
@@ -58,18 +58,28 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
 
   const entry = upcoming[weekIndex]
 
+  // #347: a Workout-kind run picks by workout TYPE (the Quality type chips); a
+  // non-Workout run (Easy/Long/Beginner-Friendly/Food) has no typing, so it picks
+  // from its whole category (kind→category) instead. Both still pick a workout and
+  // it goes in the post — buildPost renders a light line (name + reason) for the
+  // non-Workout case.
+  const isWorkout = isWorkoutKind(runConfig.kind)
+  const runCategory = kindToCategory(runConfig.kind)
+
   const scheduledTypes = entry ? entry.workoutType.split(' or ').map(t => t.trim()) : []
   const effectiveType = activeType ?? scheduledTypes[0] ?? ''
 
-  // #322: the picker offers the run's workout-type allowlist intersected with the
-  // types present in its library. An empty allowlist falls back (inside
-  // resolveAllowedTypes) to every present Quality type — today's behavior.
+  // #322: the type chips offer the run's workout-type allowlist intersected with the
+  // types present in its library. Workout runs only — a non-Workout run has no type
+  // chips (it scopes by category instead), so leave this empty for them.
   const availableTypes = useMemo(() =>
-    resolveAllowedTypes(
-      variants.filter(w => w.category === 'Quality').map(w => w.type),
-      runConfig.workoutTypes,
-    )
-  , [variants, runConfig.workoutTypes])
+    isWorkout
+      ? resolveAllowedTypes(
+          variants.filter(w => w.category === 'Quality').map(w => w.type),
+          runConfig.workoutTypes,
+        )
+      : []
+  , [variants, runConfig.workoutTypes, isWorkout])
 
   // A family is "multi-version" (Standard/Longer picker UI) when it has more
   // than one variant row — label alone isn't the signal, since a lone variant
@@ -96,12 +106,19 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
 
   const allSuggestions = useMemo(() => {
     if (!entry) return []
-    const types = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
-    return variants
-      .filter(w => types.includes(w.type))
+    // Workout runs suggest by the week's type(s); non-Workout runs suggest from
+    // their whole category (they have no per-week type), so an Easy run offers all
+    // its Easy workouts. Runs with no category mapping fall back to everything.
+    const pool = isWorkout
+      ? variants.filter(w => {
+          const types = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
+          return types.includes(w.type)
+        })
+      : variants.filter(w => !runCategory || w.category === runCategory)
+    return pool
       .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
-  }, [entry, variants, activeType, plannedWorkout])
+  }, [entry, variants, activeType, plannedWorkout, isWorkout, runCategory])
 
   const pickerSource = useMemo(() => {
     const q = pickerSearch.toLowerCase()
@@ -287,6 +304,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
 
         {entry && (
           <>
+            {isWorkout && (
             <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6">
               <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">WORKOUT TYPE</div>
               <div className="text-2xl font-bold text-gray-900">{activeType ?? entry.workoutType}</div>
@@ -294,22 +312,27 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                 <div className="text-xs text-gray-500 mt-0.5">Scheduled: {entry.workoutType}</div>
               )}
               <div className="text-xs text-gray-400 mt-1">{formatDateLong(entry.date)}</div>
-              <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 -mx-1 px-1">
-                {availableTypes.map(t => {
-                  const isActive = activeType === null ? scheduledTypes.includes(t) : t === activeType
-                  return (
-                    <button key={t} type="button"
-                      onClick={() => setActiveType(scheduledTypes.includes(t) ? null : t)}
-                      className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
-                        isActive ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border border-gray-200'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  )
-                })}
-              </div>
+              {/* Only offer the type picker when there's a real choice — a lone
+                  chip is just noise (mirrors the Library's types.length > 1 gate). */}
+              {availableTypes.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 -mx-1 px-1">
+                  {availableTypes.map(t => {
+                    const isActive = activeType === null ? scheduledTypes.includes(t) : t === activeType
+                    return (
+                      <button key={t} type="button"
+                        onClick={() => setActiveType(scheduledTypes.includes(t) ? null : t)}
+                        className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
+                          isActive ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border border-gray-200'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
+            )}
 
             {plannedNotFound && (
               <div className="bg-red-50 border border-red-200 rounded-2xl p-3 mb-4 text-sm text-red-700">
@@ -397,9 +420,13 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
 
                 {allSuggestions.length === 0 && !pickerSearch ? (
                   <p className="text-gray-400 italic text-sm">
-                    {plannedWorkout
-                      ? `No other ${entry.workoutType} workouts to switch to yet.`
-                      : `No ${entry.workoutType} workouts in the library yet.`}
+                    {isWorkout
+                      ? (plannedWorkout
+                          ? `No other ${entry.workoutType} workouts to switch to yet.`
+                          : `No ${entry.workoutType} workouts in the library yet.`)
+                      : (plannedWorkout
+                          ? 'No other workouts to switch to yet.'
+                          : 'No workouts in your library yet.')}
                   </p>
                 ) : displayRows.length === 0 ? (
                   <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
