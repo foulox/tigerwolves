@@ -30,6 +30,7 @@ import {
   addRunLeaderByEmail,
   saveRunProfile,
   saveRunCycle,
+  saveRunIdentity,
 } from '../app/run-config/actions'
 
 // These tests write run_leaders/runs rows, so they only run against the staging
@@ -124,6 +125,17 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
       expect((await addRunLeaderByEmail('tigerwolves', 'whoever@example.com')).error).toBe('Unauthorized')
       expect((await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills'] })).error).toBe('Unauthorized')
       expect((await saveRunCycle({ cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })).error).toBe('Unauthorized')
+      expect(
+        (await saveRunIdentity({
+          name: 'TigerWolves',
+          dayOfWeek: 'Tuesday',
+          emoji: '🐯',
+          meetingTime: '6:30am',
+          meetingLocation: 'The Gate',
+          description: 'desc',
+          warmupDescription: 'warmup',
+        })).error
+      ).toBe('Unauthorized')
     })
   })
 })
@@ -300,5 +312,129 @@ describe.skipIf(!onStaging)('removing a leader reassigns their future weeks', ()
 
     const removed = await sql`SELECT active FROM run_leaders WHERE id=${remCId}`
     expect(removed[0].active).toBe(false)
+  })
+})
+
+// saveRunIdentity writes the caller's own run's seven identity fields (#348).
+// The role gate short-circuits before any DB access, so the Unauthorized case
+// runs without a staging DB.
+describe('saveRunIdentity authorization', () => {
+  test('returns Unauthorized when caller is not a leader', async () => {
+    signInAs('user_notaleader_348', 'member')
+    const res = await saveRunIdentity({
+      name: 'TigerWolves',
+      dayOfWeek: 'Tuesday',
+      emoji: '🐯',
+      meetingTime: '6:30am',
+      meetingLocation: 'The Gate',
+      description: 'A quality workout run',
+      warmupDescription: 'Easy jog to warm up',
+    })
+    expect(res.error).toBe('Unauthorized')
+  })
+})
+
+describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run', () => {
+  // Dedicated run + leader to avoid mutating shared fixture rows.
+  const RUN = 'test-identity-348'
+  const IDENT_LEADER = 'user_identtest_A_348'
+  const IDENT_NAME = 'IdentTest LeaderA 348'
+
+  // Track original runs.id to verify slug-immutability after a name edit.
+  let originalRunId: string
+
+  beforeAll(async () => {
+    await sql`INSERT INTO runs (id, name, day_of_week) VALUES (${RUN}, 'Identity Test 348', 'Monday') ON CONFLICT (id) DO NOTHING`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RUN}`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${RUN}, ${IDENT_NAME}, ${IDENT_LEADER}, 1, true)
+    `
+    const row = await sql`SELECT id FROM runs WHERE id = ${RUN}`
+    originalRunId = row[0].id as string
+    signInAs(IDENT_LEADER)
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RUN}`
+    await sql`DELETE FROM runs WHERE id = ${RUN}`
+  })
+
+  test('persists all seven identity columns to the caller’s run', async () => {
+    const res = await saveRunIdentity({
+      name: 'New Run Name',
+      dayOfWeek: 'Wednesday',
+      emoji: '🌊',
+      meetingTime: '7:00am',
+      meetingLocation: 'The Arch',
+      description: 'A fun social run',
+      warmupDescription: 'Dynamic stretches',
+    })
+    expect(res.error).toBeUndefined()
+
+    const row = await sql`
+      SELECT name, day_of_week, emoji, meeting_time, meeting_location, description, warmup_description
+      FROM runs WHERE id = ${RUN}
+    `
+    expect(row[0].name).toBe('New Run Name')
+    expect(row[0].day_of_week).toBe('Wednesday')
+    expect(row[0].emoji).toBe('🌊')
+    expect(row[0].meeting_time).toBe('7:00am')
+    expect(row[0].meeting_location).toBe('The Arch')
+    expect(row[0].description).toBe('A fun social run')
+    expect(row[0].warmup_description).toBe('Dynamic stretches')
+
+    // getLeaderRun round-trips the fields that were added in Task 2
+    const run = await getLeaderRun(IDENT_LEADER)
+    expect(run?.description).toBe('A fun social run')
+    expect(run?.meetingTime).toBe('7:00am')
+    expect(run?.warmupDescription).toBe('Dynamic stretches')
+  })
+
+  test('editing name leaves runs.id (slug) unchanged — AC2', async () => {
+    // runs.id is the slug and must be structurally immutable: the UPDATE ... SET
+    // must never include the id column.
+    const before = (await sql`SELECT id FROM runs WHERE id = ${RUN}`)[0].id as string
+    expect(before).toBe(originalRunId)
+
+    await saveRunIdentity({
+      name: 'Completely Different Name',
+      dayOfWeek: 'Friday',
+      emoji: '🔥',
+      meetingTime: '6:00am',
+      meetingLocation: 'South Entrance',
+      description: 'Changed',
+      warmupDescription: 'Changed',
+    })
+
+    const after = (await sql`SELECT id FROM runs WHERE id = ${RUN}`)[0].id as string
+    expect(after).toBe(originalRunId)
+    expect(after).toBe(before)
+  })
+
+  test('rejects empty name with "Name is required"', async () => {
+    const res = await saveRunIdentity({
+      name: '   ',
+      dayOfWeek: 'Tuesday',
+      emoji: '',
+      meetingTime: '',
+      meetingLocation: '',
+      description: '',
+      warmupDescription: '',
+    })
+    expect(res.error).toBe('Name is required')
+  })
+
+  test('rejects invalid day with "Invalid day"', async () => {
+    const res = await saveRunIdentity({
+      name: 'Valid Name',
+      dayOfWeek: 'Funday',
+      emoji: '',
+      meetingTime: '',
+      meetingLocation: '',
+      description: '',
+      warmupDescription: '',
+    })
+    expect(res.error).toBe('Invalid day')
   })
 })

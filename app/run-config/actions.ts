@@ -6,6 +6,7 @@ import * as Sentry from '@sentry/nextjs'
 import { sql, getLeaderRun, getRunRoster } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
+import { RunIdentityValues, validateRunIdentity } from '@/lib/runIdentity'
 
 /** Throws 'Forbidden' if the caller's run does not match runId. */
 async function assertCallerOwnsRun(user: User, runId: string): Promise<void> {
@@ -70,6 +71,34 @@ export async function saveRunProfile(data: {
     // touches the two fields the About tab edits.
     await sql`
       UPDATE runs SET kind = ${data.kind}, workout_types = ${workoutTypes}::text[]
+      WHERE id = ${run.id}
+    `
+    updateTag('tigerwolves-data')
+    return {}
+  } catch (err) {
+    Sentry.captureException(err)
+    return { error: 'Failed to save' }
+  }
+}
+
+export async function saveRunIdentity(data: RunIdentityValues): Promise<{ error?: string }> {
+  try {
+    const user = await currentUser()
+    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
+    const run = await getLeaderRun(user.id)
+    if (!run) return { error: 'Run not found' }
+    const invalid = validateRunIdentity(data)
+    if (invalid.error) return { error: invalid.error }
+
+    await sql`
+      UPDATE runs SET
+        name = ${data.name.trim()},
+        day_of_week = ${data.dayOfWeek},
+        emoji = ${data.emoji},
+        meeting_time = ${data.meetingTime},
+        meeting_location = ${data.meetingLocation},
+        description = ${data.description},
+        warmup_description = ${data.warmupDescription}
       WHERE id = ${run.id}
     `
     updateTag('tigerwolves-data')
