@@ -19,10 +19,11 @@ test('Library "Your run" mode shows only the 6 Quality-category fixtures (kind�
   await expect(page.getByText('Easy Recovery Run')).toHaveCount(0)
   await expect(page.getByText('Long Run — Progressive')).toHaveCount(0)
 
-  // The two McCarren Loop Repeats rows are reserved for admin.spec.ts's regroup
-  // test and asserted there — not here. admin.spec.ts renames them in place,
-  // and since these specs share one seeded suite run (not reset per test),
-  // asserting their original name here would be order-dependent.
+  // The 6 count includes the two McCarren Loop Repeats variant rows (also Quality),
+  // but their NAME is intentionally not asserted here: admin.spec.ts's regroup test
+  // renames them in place, and since these specs share one seeded suite run (not
+  // reset per test), a name assertion here would be order-dependent. So they are
+  // counted, just not named.
 })
 
 test('Library "All runs" mode reveals the full shared catalog incl. other runs, and the category filter narrows to Quality (#347)', async ({ page }) => {

@@ -33,6 +33,9 @@ type DisplayRow = StandaloneRow | FamilyRow
 // Reads workout_variants/workout_families (#277) — replaces the legacy
 // `workouts`-typed version. Family grouping mirrors PlanClient's own
 // familyId-based grouping (#276) rather than the old name-string grouping.
+// #347: `variants` is the full shared catalog. "Your run" mode scopes it to the
+// run's category (kindToCategory(runKind)) and hides the category selector;
+// "All runs" browses the whole catalog. See visibleVariants/effectiveCategory below.
 export default function LibraryClient({ variants, isLeader, voteData = {}, runId, allowedTypes, runKind }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runKind?: string }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
@@ -131,9 +134,14 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
   // exist in the other. Reset the type filter on toggle — same as setcat does on
   // category change — so a stale filter can't silently empty the list with no
   // visible pill to clear it.
+  // #347: also reset the category. In "Your run" mode the category selector is
+  // hidden and category is pinned via effectiveCategory, so a category picked in
+  // "All runs" would otherwise persist (invisibly) and silently re-narrow the list
+  // on the way back. Clearing it on every toggle keeps the two modes independent.
   function setScope(all: boolean) {
     setShowAllRuns(all)
     setTypeFilter(null)
+    setCategory(null)
   }
 
   // #288: instructions + coaching notes are always visible in the card body.

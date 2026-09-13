@@ -477,8 +477,10 @@ describe.skipIf(!onStaging)('getRunRoster', () => {
 })
 
 // #318 per-run profile foundation: kind + workout-type allowlist columns on `runs`,
-// and the run↔run_group reconciliation that lets fetchWorkoutVariants scope by a real
-// FK (runs.run_group_id) instead of the fragile rg.name = runs.name string match.
+// and the run↔run_group reconciliation. #318 originally used runs.run_group_id as an
+// FK to scope fetchWorkoutVariants; #347 retired that read filter (the reads below now
+// assert the full shared catalog, not FK-scoped), but the kind/workout_types columns
+// and the run_group_id column itself remain and are still exercised here.
 // Guarded skipIf(!onStaging) for the same reason as the #310 tests above: these depend
 // on the migration + TigerWolves seed, which are only guaranteed on staging (CI) — a
 // local run points at un-migrated production (.env.local), where the new columns don't
