@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test'
 
-test('Admin page loads with Regroup Workouts heading', async ({ page }) => {
+test('Edit Workouts page loads with Edit Workouts heading', async ({ page }) => {
   test.setTimeout(90000)
   await page.goto('/admin')
   await page.waitForLoadState('load')
   await expect(page.getByRole('heading', { name: /regroup workouts/i })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: /edit workouts/i })).toBeVisible()
 })
 
 test('Configure button is visible in viewport without scrolling', async ({ page }) => {

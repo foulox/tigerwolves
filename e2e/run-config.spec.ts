@@ -4,16 +4,26 @@ test.describe('Run Settings', () => {
   // storageState defaults to e2e/.auth/user.json via playwright.config.ts project config
   // The seeded test leader has the 'leader' role set in Clerk publicMetadata.
 
-  test('Run Settings + Admin appear in the leader hamburger menu', async ({ page }) => {
-    // #332: '/' redirects now — go to the owning leader's per-run page, which
-    // renders the Header (and its Leader menu) with owning-leader affordances.
+  test('Run Settings + Edit Workouts appear in the leader UserButton menu', async ({ page }) => {
+    // #342: leader menu items moved from LeaderMenu button to UserButton
     await page.goto('/runs/tigerwolves')
     await page.waitForLoadState('load')
-    // Run Settings + Admin live in the leader-only hamburger (LeaderMenu.tsx),
-    // opened from the header button labelled "Leader menu".
-    await page.getByRole('button', { name: 'Leader menu' }).click()
-    await expect(page.getByRole('menuitem', { name: /run settings/i })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: /admin/i })).toBeVisible()
+    // Run Settings + Edit Workouts live in the UserButton menu. Clerk's
+    // UserButton.Link items are NOT exposed as role="menuitem" (the popover isn't
+    // a strict ARIA menu), so match by accessible name across the roles Clerk may
+    // render them as — link/button/menuitem — rather than assuming one. getByRole
+    // with a name matches exactly one element per role, avoiding strict-mode churn.
+    await page.locator('.cl-userButtonTrigger').click()
+    const menuItem = (name: RegExp) =>
+      page
+        .getByRole('menuitem', { name })
+        .or(page.getByRole('link', { name }))
+        .or(page.getByRole('button', { name }))
+    await expect(menuItem(/run settings/i)).toBeVisible()
+    await expect(menuItem(/edit workouts/i)).toBeVisible()
+    // Verify the old Leader menu button is gone
+    await page.locator('.cl-userButtonTrigger').click()  // close the menu
+    await expect(page.getByRole('button', { name: 'Leader menu' })).toHaveCount(0)
   })
 
   test('post template saves and persists', async ({ page }) => {
@@ -40,6 +50,16 @@ test.describe('Run Settings', () => {
     await input.fill(original)
     await page.getByRole('button', { name: /save changes/i }).click()
     await expect(page.getByRole('button', { name: /saved/i })).toBeVisible()
+  })
+
+  test('post template field is resizable', async ({ page }) => {
+    // #342: post template textareas are now draggable via resize-y
+    await page.goto('/run-config')
+    await page.waitForLoadState('load')
+    await page.getByRole('button', { name: 'Post template' }).click()
+    
+    const postHeaderField = page.getByLabel(/post header/i)
+    await expect(postHeaderField).toHaveCSS('resize', 'vertical')
   })
 
   test('away period save shows confirmation banner', async ({ page }) => {

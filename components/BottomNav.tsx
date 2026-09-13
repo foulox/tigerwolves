@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { CalendarDays, BookOpen, Flag, Map, List } from 'lucide-react'
+import { CalendarDays, BookOpen, Flag, List } from 'lucide-react'
 import { ClipboardCheckIcon } from './icons'
 
 // #332 Home flip — the single app nav for everyone (runners + leaders). The old
@@ -15,7 +15,6 @@ const allTabs = [
   { href: '/all-runs', label: 'All Runs', icon: List,               tour: 'all-runs', leaderOnly: false },
   { href: '/library',  label: 'Library',  icon: BookOpen,           tour: 'library',  leaderOnly: false },
   { href: '/races',    label: 'Races',    icon: Flag,               tour: 'races',    leaderOnly: false },
-  { href: '/roadmap',  label: 'Roadmap',  icon: Map,                tour: 'roadmap',  leaderOnly: false },
 ]
 
 type Props = { isLeader: boolean }
