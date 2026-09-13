@@ -249,6 +249,23 @@ describe('buildPost', () => {
     expect(() => buildPost(entry, [], mourningDovesConfig, mourningDovesRoster)).not.toThrow()
   })
 
+  test('#347: a non-workout run WITH a selection shows a light workout line (name + reason), no type prefix or interval block', () => {
+    const easyWorkout = {
+      ...baseWorkout,
+      name: 'Easy Run',
+      type: 'Easy',
+      reason: '4–6 mi easy (Z2), conversational pace.',
+      rawInput: 'WU: none. Main: 4-6mi easy. CD: none.',
+    }
+    const post = buildPost(entry, [easyWorkout], mourningDovesConfig, mourningDovesRoster)
+    // the pick is present as a light line…
+    expect(post).toContain('Easy Run')
+    expect(post).toContain('4–6 mi easy (Z2), conversational pace.')
+    // …but NOT the Workout type-prefix ("Easy: Easy Run") or the interval WORKOUT block
+    expect(post).not.toContain('Easy: Easy Run')
+    expect(post).not.toContain('WORKOUT')
+  })
+
   test('TigerWolves output matches pre-parameterization snapshot', () => {
     // Run this test against the OLD buildPost first to create the snapshot,
     // then update buildPost signature — the snapshot must still match.
