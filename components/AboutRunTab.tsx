@@ -219,7 +219,7 @@ export default function AboutRunTab({
                   return (
                     <div key={key} className="flex flex-col gap-1.5">
                       <span className="text-xs font-semibold text-gray-700">
-                        {ORDINALS[slot]} {runConfig.dayOfWeek}
+                        {ORDINALS[slot]} {identityValues.dayOfWeek}
                         {slot === 5 && (
                           <span className="font-normal text-gray-400"> (some months)</span>
                         )}

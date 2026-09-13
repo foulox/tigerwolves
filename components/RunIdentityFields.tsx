@@ -33,7 +33,7 @@ export default function RunIdentityFields(props: {
           id="run-identity-day"
           value={values.dayOfWeek}
           onChange={e => onChange({ dayOfWeek: e.target.value })}
-          className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 touch-manipulation"
+          className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 touch-manipulation appearance-none"
         >
           {DAYS_OF_WEEK.map(day => (
             <option key={day} value={day}>{day}</option>

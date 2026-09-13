@@ -104,7 +104,7 @@ export type RunConfig = {
   cycleMode: string
   cycle: Record<string, string>
   // #329: run-identity fields shown on the per-run page header. Optional because
-  // getLeaderRun (post-building path) doesn't select them; getRunById does.
+  // some construction paths don't set them; both getLeaderRun and getRunById now select them.
   description?: string | null
   meetingTime?: string | null
   warmupDescription?: string | null
