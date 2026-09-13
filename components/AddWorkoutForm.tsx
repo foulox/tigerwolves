@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { addWorkout } from '@/app/actions'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
 import type { RunGroup } from '@/lib/data'
-import { FORM_CATEGORIES, FORM_TYPES, chipBase, chipDark, chipOrange, chipOff, toggleItem } from '@/lib/workoutForm'
+import { FORM_CATEGORIES, FORM_TYPES, chipBase, chipDark, chipOrange, chipOff, toggleItem, findCollidingFamily } from '@/lib/workoutForm'
 import type { InferredFields } from '@/lib/workoutInference'
 
 type Step = 'entry' | 'loading' | 'review'
@@ -20,8 +21,9 @@ type EntryData = {
   hasTurnaroundHint: boolean
 }
 
-export default function AddWorkoutForm({ runGroups }: { runGroups: RunGroup[] }) {
+export default function AddWorkoutForm({ runGroups, existingFamilies = [] }: { runGroups: RunGroup[]; existingFamilies?: { familyId: number; name: string }[] }) {
   const [step, setStep] = useState<Step>('entry')
+  const [collision, setCollision] = useState<{ familyId: number; name: string } | null>(null)
   const [entry, setEntry] = useState<EntryData>({
     name: '', category: '', type: '', instructions: '', reason: '', route: '',
     runGroupId: runGroups.length === 1 ? runGroups[0].id : null,
@@ -36,6 +38,10 @@ export default function AddWorkoutForm({ runGroups }: { runGroups: RunGroup[] })
   async function handleEntry(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
+    // #354: block a duplicate name before spending an AI-inference call — surface
+    // the existing family and let the leader add a variation to it instead.
+    const collide = findCollidingFamily(existingFamilies, entry.name)
+    if (collide) { setCollision(collide); return }
     setStep('loading')
     try {
       const selectedGroup = runGroups.find(g => g.id === entry.runGroupId)
@@ -88,6 +94,38 @@ export default function AddWorkoutForm({ runGroups }: { runGroups: RunGroup[] })
         setError(err instanceof Error ? err.message : 'Something went wrong')
       }
     })
+  }
+
+  if (collision) {
+    return (
+      <div className="px-4 pt-10 pb-10">
+        <header className="mb-2">
+          <h1 className="text-2xl font-bold text-gray-900">Already in the library</h1>
+        </header>
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6">
+          <p className="text-sm text-gray-700">
+            A workout called <span className="font-semibold">&ldquo;{collision.name}&rdquo;</span> already
+            exists in the shared library. Add your version as a <span className="font-semibold">variation</span> of
+            it so everyone finds it in one place — or use a different name.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <Link
+            href={`/library/add?parent=${collision.familyId}`}
+            className="w-full py-4 rounded-xl bg-orange-500 text-white font-semibold text-sm text-center touch-manipulation"
+          >
+            Add a variation to &ldquo;{collision.name}&rdquo;
+          </Link>
+          <button
+            type="button"
+            onClick={() => setCollision(null)}
+            className="w-full py-4 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm touch-manipulation"
+          >
+            Use a different name
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (step === 'loading') {

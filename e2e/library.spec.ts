@@ -55,6 +55,33 @@ test('Library "All runs" mode reveals the full shared catalog incl. other runs, 
   // are added, so a hard number would become a maintenance burden.
 })
 
+// #354: duplicate-name detection on create. Non-mutating (never saves), so it's
+// safe to run alongside the count tests above and before the mutating ones below.
+test('Add workout: a duplicate name surfaces the existing family and offers to add a variation (#354)', async ({ page }) => {
+  await page.goto('/library/add')
+  await page.waitForLoadState('load')
+
+  // Enter a name that already exists (a seeded TigerWolves family). Category +
+  // Type are required before "Next" is enabled; Instructions is a required field.
+  await page.getByPlaceholder('e.g. Hills', { exact: false }).fill('Yasso 800s')
+  await page.getByRole('button', { name: 'Quality', exact: true }).click()
+  await page.getByRole('button', { name: 'Intervals', exact: true }).click()
+  await page.getByPlaceholder('WU:', { exact: false }).fill('WU 10; Main 8x800; CD 10')
+  await page.getByRole('button', { name: 'Next', exact: false }).click()
+
+  // The collision surface appears instead of the AI-inference step.
+  await expect(page.getByRole('heading', { name: 'Already in the library' })).toBeVisible()
+  await expect(page.getByText(/A workout called/)).toBeVisible()
+
+  // "Add a variation" routes into the existing family's add-variation flow.
+  const cta = page.getByRole('link', { name: /Add a variation to/ })
+  await expect(cta).toHaveAttribute('href', /\/library\/add\?parent=\d+/)
+
+  // "Use a different name" returns to the entry form (no workout created).
+  await page.getByRole('button', { name: 'Use a different name' }).click()
+  await expect(page.getByRole('heading', { name: 'New Workout' })).toBeVisible()
+})
+
 // Appended below the count-assertion tests above (not interspersed) — these two
 // mutate fixture state (adds a variant, clears a flag), so they must run after
 // anything in this file/suite that counts fixture rows by name.

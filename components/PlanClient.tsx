@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/nextjs'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/lib/data'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
-import { resolveAllowedTypes } from '@/lib/runProfile'
+import { resolveAllowedTypes, isWorkoutKind } from '@/lib/runProfile'
 import { buildPost, buildVerificationLabel, formatDateLong } from '@/lib/postBuilder'
 import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
@@ -57,6 +57,12 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
   useEffect(() => { setVerified(false) }, [weekIndex])
 
   const entry = upcoming[weekIndex]
+
+  // #347: only a Workout-kind run uses the typed-workout picker (Quality types,
+  // "Set as plan", etc.). A non-Workout run (Easy/Long/Beginner-Friendly/Food)
+  // has no workout typing — buildPost already omits the WORKOUT section for it —
+  // so its Plan is just: pick the week, set the leader, copy the post.
+  const isWorkout = isWorkoutKind(runConfig.kind)
 
   const scheduledTypes = entry ? entry.workoutType.split(' or ').map(t => t.trim()) : []
   const effectiveType = activeType ?? scheduledTypes[0] ?? ''
@@ -193,8 +199,10 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
   }
 
   const effectiveLeader = localLeader ?? entry?.leader ?? ''
-  const post = entry && effectiveSelections.length > 0 && runConfig
-    ? buildPost({ ...entry, leader: effectiveLeader }, effectiveSelections, runConfig, roster, activeType)
+  // A Workout run needs a selection before there's a post to show; a non-Workout
+  // run's post has no workout block, so it renders from the entry + leader alone.
+  const post = entry && runConfig && (isWorkout ? effectiveSelections.length > 0 : true)
+    ? buildPost({ ...entry, leader: effectiveLeader }, isWorkout ? effectiveSelections : [], runConfig, roster, activeType)
     : ''
 
   function handleCopy() {
@@ -285,7 +293,7 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
           </div>
         )}
 
-        {entry && (
+        {entry && isWorkout && (
           <>
             <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6">
               <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">WORKOUT TYPE</div>
@@ -294,21 +302,25 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
                 <div className="text-xs text-gray-500 mt-0.5">Scheduled: {entry.workoutType}</div>
               )}
               <div className="text-xs text-gray-400 mt-1">{formatDateLong(entry.date)}</div>
-              <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 -mx-1 px-1">
-                {availableTypes.map(t => {
-                  const isActive = activeType === null ? scheduledTypes.includes(t) : t === activeType
-                  return (
-                    <button key={t} type="button"
-                      onClick={() => setActiveType(scheduledTypes.includes(t) ? null : t)}
-                      className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
-                        isActive ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border border-gray-200'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  )
-                })}
-              </div>
+              {/* Only offer the type picker when there's a real choice — a lone
+                  chip is just noise (mirrors the Library's types.length > 1 gate). */}
+              {availableTypes.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 -mx-1 px-1">
+                  {availableTypes.map(t => {
+                    const isActive = activeType === null ? scheduledTypes.includes(t) : t === activeType
+                    return (
+                      <button key={t} type="button"
+                        onClick={() => setActiveType(scheduledTypes.includes(t) ? null : t)}
+                        className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
+                          isActive ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border border-gray-200'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {plannedNotFound && (
@@ -558,6 +570,23 @@ export default function PlanClient({ upcoming, variants, initialWeekIndex = 0, i
               </div>
             )}
           </>
+        )}
+
+        {/* #347: non-Workout runs (Easy/Long/Beginner-Friendly/Food) have no typed
+            workout to pick — their post is header + date + location + leader. Show it
+            directly with a copy button; the leader is set via the week nav above. */}
+        {entry && !isWorkout && post && (
+          <div className="flex flex-col gap-3 p-4">
+            <div className="text-sm font-bold text-gray-700">Post draft</div>
+            <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
+            <button
+              onClick={handleCopy}
+              data-tour="heylo-copy"
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-sm touch-manipulation bg-orange-600 text-white active:bg-orange-700"
+            >
+              {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
+            </button>
+          </div>
         )}
       </div>
     </>
