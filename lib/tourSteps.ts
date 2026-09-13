@@ -38,15 +38,6 @@ export const VISITOR_STEPS: DriveStep[] = [
     },
   },
   {
-    element: '[data-tour="roadmap"]',
-    popover: {
-      title: 'Roadmap',
-      description: 'See where TigerWolves is headed — what\'s live now, what\'s coming next, and what\'s on the horizon.',
-      side: 'top',
-      align: 'start',
-    },
-  },
-  {
     element: '[data-tour="feedback"]',
     popover: {
       title: 'Report a workout issue',

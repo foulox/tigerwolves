@@ -29,7 +29,7 @@ export default function PostTemplateTab({ runConfig }: { runConfig: RunConfig })
     })
   }
 
-  const field = (label: string, key: keyof typeof form, multiline = false) => (
+  const field = (label: string, key: keyof typeof form, multiline = false, minHeight = 'min-h-[60px]') => (
     <div className="flex flex-col gap-1">
       {/* htmlFor/id association: required for the label to name the control (a11y)
           and so tests can locate it by label. */}
@@ -39,7 +39,7 @@ export default function PostTemplateTab({ runConfig }: { runConfig: RunConfig })
           id={key}
           value={form[key]}
           onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-          className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none min-h-[60px] touch-manipulation"
+          className={`bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-y ${minHeight} touch-manipulation`}
         />
       ) : (
         <input
@@ -56,10 +56,10 @@ export default function PostTemplateTab({ runConfig }: { runConfig: RunConfig })
   return (
     <div className="p-4 flex flex-col gap-4">
       <div className="bg-white rounded-xl p-4 flex flex-col gap-3 shadow-sm">
-        {field('Post header', 'postHeader', true)}
-        {field('Meeting location', 'meetingLocation', true)}
-        {field('Leader intro', 'leaderIntro')}
-        {field('Closing notes', 'closingNotes', true)}
+        {field('Post header', 'postHeader', true, 'min-h-[120px]')}
+        {field('Meeting location', 'meetingLocation', true, 'min-h-[120px]')}
+        {field('Leader intro', 'leaderIntro', true, 'min-h-[72px]')}
+        {field('Closing notes', 'closingNotes', true, 'min-h-[120px]')}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           onClick={handleSave}

@@ -19,15 +19,15 @@ const STEP_TRANSITION_GRACE_MS = 400
 // Steps that live on a route other than the one the tour started on — single
 // source of truth for both triggering the navigation and finding the target
 // once the new page has rendered.
-// #332 indices after the schedule* steps collapsed to one My Week step at 0:
-// visitor 0 my-week · 1 library · 2 library-variations · 3 races · 4 roadmap ·
-// 5 feedback · 6 how-to-use, then leader 7 plan · 8 heylo-area · 9 library-manage.
+// #342 indices after the Roadmap step (was visitor 4) was dropped:
+// visitor 0 my-week · 1 library · 2 library-variations · 3 races · 4 feedback ·
+// 5 how-to-use, then leader 6 plan · 7 heylo-area · 8 library-manage.
 // feedback/how-to-use live in the Header (present on every page), so they need no
 // nav entry — they highlight in place on whatever page the tour is already on.
 const NAV_STEPS: Record<number, { path: string; selector: string }> = {
   [LIBRARY_VARIATIONS_STEP]: { path: '/library', selector: '[data-tour="library-variations"]' },
-  8: { path: '/plan', selector: '[data-tour="heylo-area"]' },
-  9: { path: '/library', selector: '[data-tour="library-manage"]' },
+  7: { path: '/plan', selector: '[data-tour="heylo-area"]' },
+  8: { path: '/library', selector: '[data-tour="library-manage"]' },
 }
 
 export type TourRef = { launch: () => void }

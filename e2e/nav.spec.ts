@@ -20,10 +20,13 @@ test.describe('unified nav — signed-in leader', () => {
     await expect(nav.locator('a[href="/"]')).toHaveCount(0)
 
     // Plan is visible for a leader; the rest of the superset is present.
+    
+    // #342: Leader menu button is gone; leader links moved to UserButton
+    await expect(page.getByRole('button', { name: 'Leader menu' })).toHaveCount(0)
     await expect(nav.locator('a[href="/plan"]')).toBeVisible()
     await expect(nav.locator('a[href="/library"]')).toBeVisible()
     await expect(nav.locator('a[href="/races"]')).toBeVisible()
-    await expect(nav.locator('a[href="/roadmap"]')).toBeVisible()
+    await expect(nav.locator('a[href="/roadmap"]')).toHaveCount(0)
   })
 })
 

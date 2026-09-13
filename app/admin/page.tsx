@@ -12,7 +12,7 @@ export default async function AdminPage() {
   const { workoutVariants } = await fetchData()
   return (
     <div>
-      <Header title="Admin" isLeader={true} />
+      <Header title="Edit Workouts" isLeader={true} />
       <Suspense fallback={<p className="px-4 text-gray-400 italic text-sm">Loading…</p>}>
         <RegroupWorkoutsForm variants={workoutVariants} />
       </Suspense>
