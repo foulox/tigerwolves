@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { resolveAllowedTypes, isWorkoutKind, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '../lib/runProfile'
+import { resolveAllowedTypes, isWorkoutKind, WEEK_SLOTS, parseSlotValue, joinSlotValue, kindToCategory } from '../lib/runProfile'
 
 describe('resolveAllowedTypes', () => {
   test('intersects present types with the allowlist, sorted', () => {
@@ -57,5 +57,31 @@ describe('week-of-month cycle slots', () => {
   test('parse/join round-trip is stable', () => {
     const types = ['Ladder', 'Superset']
     expect(parseSlotValue(joinSlotValue(types))).toEqual(types)
+  })
+})
+
+describe('kindToCategory', () => {
+  test('maps Workout to Quality', () => {
+    expect(kindToCategory('Workout')).toBe('Quality')
+  })
+
+  test('maps Easy to Easy', () => {
+    expect(kindToCategory('Easy')).toBe('Easy')
+  })
+
+  test('maps Long to Long', () => {
+    expect(kindToCategory('Long')).toBe('Long')
+  })
+
+  test('maps Beginner-Friendly to Easy', () => {
+    expect(kindToCategory('Beginner-Friendly')).toBe('Easy')
+  })
+
+  test('maps Food to null', () => {
+    expect(kindToCategory('Food')).toBe(null)
+  })
+
+  test('maps unknown kind to null', () => {
+    expect(kindToCategory('SomethingUnknown')).toBe(null)
   })
 })

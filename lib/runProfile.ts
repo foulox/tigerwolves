@@ -34,6 +34,20 @@ export function isWorkoutKind(kind: string): boolean {
   return kind === 'Workout'
 }
 
+// Map a run's `kind` to the workout-library `category` used for shared-catalog
+// client-side scoping (#347). `Beginner-Friendly` and `Easy` both map to `'Easy'`;
+// `Food` has no library category.
+export function kindToCategory(kind: string): string | null {
+  const categoryMap: Record<string, string | null> = {
+    'Workout': 'Quality',
+    'Easy': 'Easy',
+    'Long': 'Long',
+    'Beginner-Friendly': 'Easy',
+    'Food': null,
+  }
+  return categoryMap[kind] ?? null
+}
+
 // Per-run workout-type cycle slots (#323). `week_of_month` cadence assigns a type
 // to each of the 1st–5th occurrences of the run's day within a month. A slot's
 // stored value may be compound ("Ladder or Superset") — matching how workout_type
