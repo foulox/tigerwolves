@@ -11,3 +11,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS runs_nbr_directory_id_key
 -- Backfill the two legacy links (was the hardcoded NBR_TO_DB_RUN map).
 UPDATE runs SET nbr_directory_id = 'tue-tigerwolves' WHERE id = 'tigerwolves';
 UPDATE runs SET nbr_directory_id = 'mon-morning-easy' WHERE id = 'mmer';
+

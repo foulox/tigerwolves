@@ -56,6 +56,8 @@ export function mergeDirectory(
   // Build the set of run IDs that already have a directory card (are linked).
   const linkedRunIds = new Set(Object.values(links))
   const synthesized = dbRuns
+    // Both guards agree in practice (links is derived from these same rows in page.tsx);
+    // belt-and-suspenders against a stale link.
     .filter(run => !run.nbr_directory_id && !linkedRunIds.has(run.id))
     .map(dbRunToNbrCard)
   return [...nbrRuns, ...synthesized]
