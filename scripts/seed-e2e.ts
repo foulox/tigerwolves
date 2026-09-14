@@ -117,6 +117,9 @@ const FAMILIES: FamilyFixture[] = [
 ]
 
 export async function seedE2E(): Promise<void> {
+  // #360: Ensure nbr_directory_id column exists before fixture seeding (idempotent).
+  await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS nbr_directory_id TEXT`
+
   const [week1, week2, week3] = nextTuesdays(3)
   const [mon1] = nextMondays(1)
   RACES[0].date = daysFromNow(10)
@@ -224,6 +227,10 @@ export async function seedE2E(): Promise<void> {
       kind = EXCLUDED.kind,
       run_group_id = EXCLUDED.run_group_id
   `
+
+  // #360: Set directory links for the fixture runs (migration backfill wiped on each seed).
+  await sql`UPDATE runs SET nbr_directory_id = 'tue-tigerwolves' WHERE id = 'tigerwolves'`
+  await sql`UPDATE runs SET nbr_directory_id = 'mon-morning-easy' WHERE id = 'mmer'`
 
   // #331: MMER's Easy workout — an Easy/route-kind family so the My Week card
   // renders the route shape (distance from dist_time + "View route ↗" from
