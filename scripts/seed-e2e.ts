@@ -17,9 +17,6 @@ if (!url.includes(STAGING_HOST)) {
 
 const sql = neon(url)
 
-// #360: Ensure nbr_directory_id column exists before fixture seeding (idempotent).
-await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS nbr_directory_id TEXT`
-
 /** Next N Tuesdays from today (inclusive if today is a Tuesday), as YYYY-MM-DD. */
 function nextTuesdays(count: number): string[] {
   const dates: string[] = []
@@ -120,6 +117,9 @@ const FAMILIES: FamilyFixture[] = [
 ]
 
 export async function seedE2E(): Promise<void> {
+  // #360: Ensure nbr_directory_id column exists before fixture seeding (idempotent).
+  await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS nbr_directory_id TEXT`
+
   const [week1, week2, week3] = nextTuesdays(3)
   const [mon1] = nextMondays(1)
   RACES[0].date = daysFromNow(10)
