@@ -3,8 +3,9 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 // createRun is the admin-only Server Action that provisions a new run row.
 // This suite proves:
 //   1. The admin gate: non-admin members and leaders-without-admin:true are refused.
-//   2. Staging persistence: round-trip via getRunById, slug generation, collision
-//      handling, validation rejections, and kind/workoutTypes handling.
+//   2. Staging persistence: round-trip via getRunById, slug generation, slug
+//      collision handling, duplicate-name rejection, validation rejections, and
+//      kind/workoutTypes handling.
 //
 // currentUser() is Clerk server context (no session in vitest), so it's mocked.
 // updateTag() is a Server-Action-only Next primitive that throws outside a request,
@@ -176,53 +177,68 @@ describe.skipIf(!onStaging)('createRun staging persistence', () => {
     expect(res.runId!.startsWith('mourning-doves')).toBe(true)
   })
 
-  test('collision: two same-name creates → distinct ids, second gets -2, both rows exist', async () => {
-    // First create — should already exist from previous test, so we expect the
-    // slug collision path to kick in for our second create below. But the previous
-    // test may have produced 'mourning-doves-349', so let's create a fresh
-    // collision pair with a unique-enough name to be deterministic.
-    const collisionName = `${PREFIX}-collision`
+  test('slug collision: two DIFFERENT names that slugify identically → distinct ids, second gets -2, both rows exist', async () => {
+    // Duplicate *names* are rejected (see the next test), so the slug collision
+    // path is exercised with two genuinely different names that slugify to the
+    // same id — e.g. "St. Marks" vs "St Marks" → the same slug.
+    const nameA = `${PREFIX} St Marks`
+    const nameB = `${PREFIX} St. Marks!`
     const first = await createRun({
-      identity: {
-        name: collisionName,
-        dayOfWeek: 'Monday',
-        emoji: '⚡',
-        meetingTime: '6:00am',
-        meetingLocation: 'Fort Greene',
-        description: '',
-        warmupDescription: '',
-      },
+      identity: { ...BASE_IDENTITY, name: nameA },
       kind: 'Easy',
       workoutTypes: [],
     })
+    expect(first.error).toBeUndefined()
     expect(first.runId).toBeTruthy()
     createdIds.push(first.runId!)
 
     const second = await createRun({
-      identity: {
-        name: collisionName,
-        dayOfWeek: 'Monday',
-        emoji: '⚡',
-        meetingTime: '6:00am',
-        meetingLocation: 'Fort Greene',
-        description: '',
-        warmupDescription: '',
-      },
+      identity: { ...BASE_IDENTITY, name: nameB },
       kind: 'Easy',
       workoutTypes: [],
     })
+    expect(second.error).toBeUndefined()
     expect(second.runId).toBeTruthy()
     createdIds.push(second.runId!)
 
-    // IDs must be distinct.
+    // Different names, so the name-uniqueness guard allows both …
     expect(first.runId).not.toBe(second.runId)
-
-    // Second id should be the first id with '-2' appended.
+    // … but they slugify to the same base, so the second gets a '-2' suffix.
     expect(second.runId).toBe(`${first.runId}-2`)
 
     // Both rows must exist in the DB.
     const rows = await sql`SELECT id FROM runs WHERE id IN (${first.runId!}, ${second.runId!})`
     expect(rows.length).toBe(2)
+  })
+
+  test('duplicate name (case-insensitive, trimmed) → "A run with this name already exists"', async () => {
+    const dupName = `${PREFIX}-dup`
+    const first = await createRun({
+      identity: { ...BASE_IDENTITY, name: dupName },
+      kind: 'Easy',
+      workoutTypes: [],
+    })
+    expect(first.error).toBeUndefined()
+    expect(first.runId).toBeTruthy()
+    createdIds.push(first.runId!)
+
+    // Exact same name → rejected, no row created.
+    const exact = await createRun({
+      identity: { ...BASE_IDENTITY, name: dupName },
+      kind: 'Easy',
+      workoutTypes: [],
+    })
+    expect(exact.error).toBe('A run with this name already exists')
+    expect(exact.runId).toBeUndefined()
+
+    // Different case + surrounding whitespace, same name → also rejected.
+    const casey = await createRun({
+      identity: { ...BASE_IDENTITY, name: `  ${dupName.toUpperCase()}  ` },
+      kind: 'Easy',
+      workoutTypes: [],
+    })
+    expect(casey.error).toBe('A run with this name already exists')
+    expect(casey.runId).toBeUndefined()
   })
 
   test('invalid kind → "Invalid run kind"', async () => {

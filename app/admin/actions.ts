@@ -23,14 +23,22 @@ export async function createRun(data: {
     // 3. Validate kind
     if (!(RUN_KINDS as readonly string[]).includes(data.kind)) return { error: 'Invalid run kind' }
 
-    // 4. Filter workoutTypes — only keep valid types for Workout runs, empty otherwise
+    // 4. Reject duplicate names (case-insensitive) — a run's display name must be unique so
+    //    the app never shows two identically-named runs. This is distinct from the slug
+    //    collision handling below: two *different* names can still slugify to the same id
+    //    (e.g. "St. Marks" and "St Marks" → "st-marks"), and that case still gets a -2 suffix.
+    const name = data.identity.name.trim()
+    const dup = await sql`SELECT 1 FROM runs WHERE LOWER(name) = LOWER(${name}) LIMIT 1`
+    if (dup.length > 0) return { error: 'A run with this name already exists' }
+
+    // 5. Filter workoutTypes — only keep valid types for Workout runs, empty otherwise
     const workoutTypes =
       data.kind === 'Workout'
         ? data.workoutTypes.filter(t => (WORKOUT_TYPE_OPTIONS as readonly string[]).includes(t))
         : []
 
-    // 5. Slug: base from name, probe for collisions and append -2, -3, … until free
-    const base = slugifyRunName(data.identity.name) || 'run'
+    // 6. Slug: base from name, probe for collisions and append -2, -3, … until free
+    const base = slugifyRunName(name) || 'run'
     let candidate = base
     let suffix = 2
     // eslint-disable-next-line no-constant-condition
@@ -42,13 +50,13 @@ export async function createRun(data: {
     }
     const runId = candidate
 
-    // 6. INSERT — leave run_group_id, post_header, closing_notes, leader_intro NULL;
+    // 7. INSERT — leave run_group_id, post_header, closing_notes, leader_intro NULL;
     //    cycle_mode/cycle take their NOT NULL DEFAULT values ('none'/'{}').
     await sql`
       INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, warmup_description, kind, workout_types)
       VALUES (
         ${runId},
-        ${data.identity.name.trim()},
+        ${name},
         ${data.identity.emoji},
         ${data.identity.description},
         ${data.identity.dayOfWeek},
@@ -60,10 +68,10 @@ export async function createRun(data: {
       )
     `
 
-    // 7. Invalidate cache
+    // 8. Invalidate cache
     updateTag('tigerwolves-data')
 
-    // 8. Return the new run's slug id
+    // 9. Return the new run's slug id
     return { runId }
   } catch (err) {
     Sentry.captureException(err)
