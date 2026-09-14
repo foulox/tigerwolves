@@ -228,6 +228,8 @@ describe('activateNbrRun leader validation', () => {
 
   test('empty leaderEmail → error, no run created, updateUser not called', async () => {
     mockClerkUser()
+    mockGetUserList.mockClear()
+    mockUpdateUser.mockClear()
     const res = await activateNbrRun({
       nbrId: 'wed-mourning-doves',
       identity: VALID_IDENTITY,
@@ -300,8 +302,8 @@ describe.skipIf(!onStaging)('activateNbrRun staging persistence', () => {
     await sql`DELETE FROM runs WHERE id LIKE ${PREFIX + '%'}`
     // Also sweep by the specific nbrIds used in these tests to catch any
     // rows where the name-derived slug doesn't start with PREFIX.
-    await sql`DELETE FROM run_leaders WHERE run_id IN (SELECT id FROM runs WHERE nbr_directory_id IN ('wed-night-beginner', 'wed-night-road', 'fri-salmon', 'fri-donut'))`
-    await sql`DELETE FROM runs WHERE nbr_directory_id IN ('wed-night-beginner', 'wed-night-road', 'fri-salmon', 'fri-donut')`
+    await sql`DELETE FROM run_leaders WHERE run_id IN (SELECT id FROM runs WHERE nbr_directory_id IN ('wed-night-beginner', 'wed-night-road', 'fri-salmon', 'fri-donut', 'thu-hellkatz'))`
+    await sql`DELETE FROM runs WHERE nbr_directory_id IN ('wed-night-beginner', 'wed-night-road', 'fri-salmon', 'fri-donut', 'thu-hellkatz')`
   })
 
   test('admin activates un-activated entry → runId returned; round-trips name/day_of_week/kind; nbr_directory_id stored', async () => {
@@ -357,6 +359,9 @@ describe.skipIf(!onStaging)('activateNbrRun staging persistence', () => {
     expect(roster[0].name).toBe('Test Leader')
     expect(roster[0].sortOrder).toBe(1)
     expect(roster[0].email).toBe(LEADER_EMAIL)
+    // getRunRoster filters by active=true but doesn't return the field; assert via direct query
+    const activeRows = await sql`SELECT active FROM run_leaders WHERE run_id = ${res.runId!} AND clerk_user_id = ${LEADER_CLERK_ID}`
+    expect(activeRows[0]?.active).toBe(true)
 
     // Assert Clerk role grant was called with merged publicMetadata
     expect(mockUpdateUser).toHaveBeenCalledOnce()
@@ -420,16 +425,8 @@ describe.skipIf(!onStaging)('activateNbrRun staging persistence', () => {
   })
 
   test('name derivation: email-only user (no firstName/lastName/username) → roster name is the email prefix', async () => {
-    const nbrId = 'wed-night-beginner'
-    // Only run this if wed-night-beginner wasn't created above — use a different nbrId
-    // Actually we need a fresh nbrId — skip if this is already activated
-    // Use a direct SQL check to pick a safe nbrId
-    const alreadyActivated = await sql`SELECT 1 FROM runs WHERE nbr_directory_id = ${nbrId} LIMIT 1`
-    if (alreadyActivated.length > 0) {
-      // Skip gracefully — this nbrId was used above, already created
-      return
-    }
-
+    // Dedicated nbrId for this test only — no other test in this file activates thu-hellkatz.
+    const nbrId = 'thu-hellkatz'
     const nbrEntry = NBR_RUNS.find(r => r.id === nbrId)!
     const { identity, kind } = nbrRunToIdentity(nbrEntry)
     const emailOnlyEmail = 'jdoe@nbr.example.com'
