@@ -144,11 +144,16 @@ describe.skipIf(!onStaging)('createRun staging persistence', () => {
     expect(res.runId).toBeTruthy()
     createdIds.push(res.runId!)
 
-    const row = await sql`SELECT run_group_id FROM runs WHERE id = ${res.runId!}`
-    expect(row[0].run_group_id).toBeNull()
-
-    // No workout_families rows reference the new run (inherits shared library).
-    const families = await sql`SELECT 1 FROM workout_families WHERE run_id = ${res.runId!}`
+    const created = await getRunById(res.runId!)
+    // AC4: a new run gets no run_group and no seeded workout_families —
+    // it inherits the shared catalog by kind/type (fetchWorkoutVariants no longer scopes by run_group_id, #347).
+    expect(created?.runGroupId).toBeNull()
+    // workout_families link to a run only via run_group_id; a NULL group means zero families are scoped to this run.
+    const families = await sql`
+      SELECT 1 FROM workout_families wf
+      JOIN runs r ON r.run_group_id = wf.run_group_id
+      WHERE r.id = ${res.runId!}
+    `
     expect(families.length).toBe(0)
   })
 
@@ -172,7 +177,6 @@ describe.skipIf(!onStaging)('createRun staging persistence', () => {
   })
 
   test('collision: two same-name creates → distinct ids, second gets -2, both rows exist', async () => {
-    const name = 'Mourning Doves 349'
     // First create — should already exist from previous test, so we expect the
     // slug collision path to kick in for our second create below. But the previous
     // test may have produced 'mourning-doves-349', so let's create a fresh
