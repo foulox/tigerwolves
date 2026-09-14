@@ -1,5 +1,5 @@
 'use server'
-import { currentUser, clerkClient } from '@clerk/nextjs/server'
+import { currentUser } from '@clerk/nextjs/server'
 import type { User } from '@clerk/nextjs/server'
 import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
@@ -7,6 +7,7 @@ import { sql, getLeaderRun, getRunRoster } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity } from '@/lib/runIdentity'
+import { resolveClerkUserByEmail, leaderDisplayName } from '@/lib/runLeaders'
 
 /** Throws 'Forbidden' if the caller's run does not match runId. */
 async function assertCallerOwnsRun(user: User, runId: string): Promise<void> {
@@ -313,19 +314,12 @@ export async function addRunLeaderByEmail(
     // We store their clerk_user_id at add-time so getLeaderRun() recognizes them at
     // login — a run_leaders row with no clerk_user_id is invisible to the leader
     // surfaces, which is the linkage gap this rework closes. Reject unknown emails.
-    const client = await clerkClient()
-    const { data: matches } = await client.users.getUserList({ emailAddress: [normalizedEmail] })
-    const clerkUser = matches.find(u =>
-      u.emailAddresses.some(e => e.emailAddress.toLowerCase() === normalizedEmail)
-    )
+    const clerkUser = await resolveClerkUserByEmail(normalizedEmail)
     if (!clerkUser) {
       return { error: 'No account found for that email — they need to sign in once before they can be added.' }
     }
 
-    const name =
-      [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ').trim() ||
-      clerkUser.username ||
-      normalizedEmail.split('@')[0]
+    const name = leaderDisplayName(clerkUser, normalizedEmail)
 
     const maxOrder = await sql`SELECT MAX(sort_order) AS m FROM run_leaders WHERE run_id = ${runId}`
     const nextOrder = ((maxOrder[0].m as number | null) ?? 0) + 1

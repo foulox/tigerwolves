@@ -618,6 +618,14 @@ export async function getDirectoryRuns(): Promise<DirectoryRun[]> {
   return rows as DirectoryRun[]
 }
 
+// #361: NBR directory ids that already have a linked run, so the picker can exclude them.
+export async function getActivatedNbrDirectoryIds(): Promise<string[]> {
+  const rows = await sql`
+    SELECT nbr_directory_id FROM runs WHERE nbr_directory_id IS NOT NULL
+  `
+  return rows.map(r => r.nbr_directory_id as string)
+}
+
 // #330: run ids a signed-in user currently follows (their runner_follows rows).
 export async function getFollowedRunIds(clerkUserId: string): Promise<string[]> {
   const rows = await sql`

@@ -119,6 +119,13 @@ const FAMILIES: FamilyFixture[] = [
 export async function seedE2E(): Promise<void> {
   // #360: Ensure nbr_directory_id column exists before fixture seeding (idempotent).
   await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS nbr_directory_id TEXT`
+  // #361: Ensure the partial unique index exists too, so the E2E DB schema matches
+  // production and activateNbrRun's race backstop (pg 23505 on runs_nbr_directory_id_key)
+  // is actually enforced/exercised here, not only guarded by the pre-check.
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS runs_nbr_directory_id_key
+      ON runs (nbr_directory_id) WHERE nbr_directory_id IS NOT NULL
+  `
 
   const [week1, week2, week3] = nextTuesdays(3)
   const [mon1] = nextMondays(1)
