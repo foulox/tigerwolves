@@ -38,8 +38,7 @@ async function insertRun(
   const base = slugifyRunName(name) || 'run'
   let candidate = base
   let suffix = 2
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
+  for (;;) {
     const existing = await sql`SELECT 1 FROM runs WHERE id = ${candidate}`
     if (existing.length === 0) break
     candidate = `${base}-${suffix}`
@@ -133,11 +132,12 @@ export async function activateNbrRun(data: {
       typeof err === 'object' &&
       err !== null &&
       'code' in err &&
-      (err as { code: string }).code === '23505'
+      (err as { code: string }).code === '23505' &&
+      (err as { constraint?: string }).constraint === 'runs_nbr_directory_id_key'
     ) {
       return { error: 'This run is already activated' }
     }
     Sentry.captureException(err)
-    return { error: 'Failed to create run' }
+    return { error: 'Failed to activate run' }
   }
 }
