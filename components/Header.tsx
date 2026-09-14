@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { UserButton } from '@clerk/nextjs'
-import { ChevronLeft, Settings, Wrench } from 'lucide-react'
+import { UserButton, useUser } from '@clerk/nextjs'
+import { ChevronLeft, Settings, Wrench, Plus, Zap } from 'lucide-react'
 import HowToUseButton from './HowToUseButton'
 import WhatsNewOverlay from './WhatsNewOverlay'
 import FeedbackButton from './FeedbackButton'
@@ -22,6 +22,8 @@ export default function Header({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { user } = useUser()
+  const isAdmin = user?.publicMetadata?.admin === true
 
   return (
     <header className="sticky top-0 z-30 bg-gray-50 px-4 pt-10 pb-4 flex items-start justify-between">
@@ -43,11 +45,21 @@ export default function Header({
       <div className="flex items-center gap-2.5">
         <WhatsNewOverlay />
         <HowToUseButton />
-        {isLeader ? (
+        {isLeader || isAdmin ? (
           <UserButton appearance={{ elements: { userButtonAvatarBox: "w-10 h-10" } }}>
             <UserButton.MenuItems>
-              <UserButton.Link label="Run Settings" labelIcon={<Settings size={16} />} href="/run-config" />
-              <UserButton.Link label="Edit Workouts" labelIcon={<Wrench size={16} />} href="/admin" />
+              {isLeader && (
+                <UserButton.Link label="Run Settings" labelIcon={<Settings size={16} />} href="/run-config" />
+              )}
+              {isLeader && (
+                <UserButton.Link label="Edit Workouts" labelIcon={<Wrench size={16} />} href="/admin" />
+              )}
+              {isAdmin && (
+                <UserButton.Link label="Create a Run" labelIcon={<Plus size={16} />} href="/admin/create-run" />
+              )}
+              {isAdmin && (
+                <UserButton.Link label="Activate an NBR Run" labelIcon={<Zap size={16} />} href="/admin/activate-run" />
+              )}
             </UserButton.MenuItems>
           </UserButton>
         ) : (
