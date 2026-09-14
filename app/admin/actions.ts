@@ -1,11 +1,12 @@
 'use server'
-import { currentUser } from '@clerk/nextjs/server'
+import { currentUser, clerkClient } from '@clerk/nextjs/server'
 import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
 import { sql } from '@/lib/db'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity, slugifyRunName } from '@/lib/runIdentity'
 import { NBR_RUNS } from '@/lib/allRunsData'
+import { resolveClerkUserByEmail, leaderDisplayName } from '@/lib/runLeaders'
 
 // Private helper — no admin gate, no cache invalidation. Called by both createRun
 // and activateNbrRun after each performs its own auth + pre-checks.
@@ -98,6 +99,7 @@ export async function activateNbrRun(data: {
   identity: RunIdentityValues
   kind: string
   workoutTypes: string[]
+  leaderEmail: string
 }): Promise<{ error?: string; runId?: string }> {
   try {
     // 1. Admin gate — identical inline check to createRun
@@ -114,17 +116,45 @@ export async function activateNbrRun(data: {
     `
     if (alreadyActivated.length > 0) return { error: 'This run is already activated' }
 
-    // 4. Insert
+    // 4. Resolve the initial leader BEFORE creating anything — a bad email must
+    //    leave no orphan run behind.
+    const normalizedEmail = data.leaderEmail.trim().toLowerCase()
+    if (!normalizedEmail) return { error: "Enter the run leader's email" }
+
+    const clerkUser = await resolveClerkUserByEmail(normalizedEmail)
+    if (!clerkUser) {
+      return { error: 'No account found for that email — they need to sign in once before they can be added.' }
+    }
+    const leaderName = leaderDisplayName(clerkUser, normalizedEmail)
+
+    // 5. Insert run row
     const result = await insertRun(data, data.nbrId)
 
-    // 5. Surface insertRun's returned errors (invalid identity/kind, duplicate name).
+    // 6. Surface insertRun's returned errors (invalid identity/kind, duplicate name).
     //    The concurrent-race case (pg 23505) is handled by the outer catch below.
     if (result.error) return result
 
-    // 6. Invalidate cache on success
+    const runId = result.runId!
+
+    // 7. Insert the roster row — brand-new run, so sort_order = 1; no ON CONFLICT needed.
+    await sql`
+      INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
+      VALUES (${runId}, ${leaderName}, ${normalizedEmail}, ${clerkUser.id}, 1, true)
+    `
+
+    // 8. Grant the Clerk role — MERGE with existing publicMetadata so we never
+    //    clobber an existing admin: true. Clerk's updateUser REPLACES publicMetadata
+    //    in full; the spread is mandatory.
+    const existing = clerkUser.publicMetadata ?? {}
+    const client = await clerkClient()
+    await client.users.updateUser(clerkUser.id, {
+      publicMetadata: { ...existing, role: 'leader' },
+    })
+
+    // 9. Invalidate cache on success
     updateTag('tigerwolves-data')
 
-    return { runId: result.runId }
+    return { runId }
   } catch (err: unknown) {
     // Catch pg unique-violation on nbr_directory_id (concurrent race — the pre-check
     // covers the common case; the partial unique index covers concurrent requests).

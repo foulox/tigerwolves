@@ -25,6 +25,7 @@ export default function ActivateRunForm({ runs }: { runs: NBRRun[] }): React.JSX
   const [identity, setIdentity] = useState<RunIdentityValues>(EMPTY_IDENTITY)
   const [kind, setKind] = useState('')
   const [workoutTypes, setWorkoutTypes] = useState<string[]>([])
+  const [leaderEmail, setLeaderEmail] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -40,10 +41,12 @@ export default function ActivateRunForm({ runs }: { runs: NBRRun[] }): React.JSX
       setIdentity(prefill.identity)
       setKind(prefill.kind)
       setWorkoutTypes([])
+      setLeaderEmail('')
     } else {
       setIdentity(EMPTY_IDENTITY)
       setKind('')
       setWorkoutTypes([])
+      setLeaderEmail('')
     }
   }
 
@@ -60,7 +63,7 @@ export default function ActivateRunForm({ runs }: { runs: NBRRun[] }): React.JSX
     setIsSubmitting(true)
     setError('')
     try {
-      const result = await activateNbrRun({ nbrId: selectedRun.id, identity, kind, workoutTypes })
+      const result = await activateNbrRun({ nbrId: selectedRun.id, identity, kind, workoutTypes, leaderEmail })
       if (result.runId) {
         router.push('/runs/' + result.runId)
       } else if (result.error) {
@@ -171,11 +174,28 @@ export default function ActivateRunForm({ runs }: { runs: NBRRun[] }): React.JSX
             </div>
           )}
 
+          {/* Initial run leader — required before activation */}
+          <div className="flex flex-col gap-1">
+            <label htmlFor="leader-email" className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+              Initial run leader (email)
+            </label>
+            <input
+              id="leader-email"
+              type="email"
+              required
+              value={leaderEmail}
+              onChange={e => setLeaderEmail(e.target.value)}
+              placeholder="leader@example.com"
+              className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 touch-manipulation"
+            />
+            <p className="text-[11px] text-gray-400">Must be someone who&apos;s already signed in at least once.</p>
+          </div>
+
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button
             type="submit"
-            disabled={!selectedRun || isSubmitting}
+            disabled={!selectedRun || !leaderEmail.trim() || isSubmitting}
             className="bg-orange-600 text-white rounded-xl py-3 font-bold text-sm disabled:opacity-50 touch-manipulation"
           >
             {isSubmitting ? 'Activating…' : 'Activate run'}
