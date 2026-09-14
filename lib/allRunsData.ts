@@ -1,3 +1,6 @@
+import { NBR_CATEGORY_TO_KIND, DAY_ABBREV_TO_FULL } from './runProfile'
+import type { RunIdentityValues } from './runIdentity'
+
 export type NBRRun = {
   id: string
   name: string
@@ -7,6 +10,23 @@ export type NBRRun = {
   location: string
   distance: string    // display string e.g. "4–7 mi" or "Strength & Cross-Training"
   category: 'Beginner-Friendly' | 'Easy Runs' | 'Long Runs' | 'Food Runs' | 'Workouts'
+}
+
+// #361: Pre-fill identity + kind from an NBR directory entry. Name/day/time/location/kind
+// come from the directory; emoji/description/warmup are left blank for the admin to fill.
+export function nbrRunToIdentity(run: NBRRun): { identity: RunIdentityValues; kind: string } {
+  return {
+    identity: {
+      name: run.name,
+      dayOfWeek: DAY_ABBREV_TO_FULL[run.day],
+      emoji: '',
+      meetingTime: run.startTime,
+      meetingLocation: run.location,
+      description: '',
+      warmupDescription: '',
+    },
+    kind: NBR_CATEGORY_TO_KIND[run.category],
+  }
 }
 
 // Source: northbrooklynrunners.org/nbr-schedule (24 active runs; "Wednesday 'Just Central' Run" excluded — listed as No Longer Active)
