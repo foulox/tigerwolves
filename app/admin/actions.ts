@@ -117,8 +117,8 @@ export async function activateNbrRun(data: {
     // 4. Insert
     const result = await insertRun(data, data.nbrId)
 
-    // 5. Race safety: catch partial-unique-index violation (pg error code 23505)
-    //    on nbr_directory_id. insertRun throws — we catch it here.
+    // 5. Surface insertRun's returned errors (invalid identity/kind, duplicate name).
+    //    The concurrent-race case (pg 23505) is handled by the outer catch below.
     if (result.error) return result
 
     // 6. Invalidate cache on success
