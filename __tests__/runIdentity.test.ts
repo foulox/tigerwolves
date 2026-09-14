@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { DAYS_OF_WEEK, validateRunIdentity } from '@/lib/runIdentity'
+import { DAYS_OF_WEEK, validateRunIdentity, slugifyRunName } from '@/lib/runIdentity'
 
 describe('DAYS_OF_WEEK', () => {
   it('has 7 entries with Monday first', () => {
@@ -57,5 +57,23 @@ describe('validateRunIdentity', () => {
       warmupDescription: 'null',
     })
     expect(result).toEqual({})
+  })
+})
+
+describe('slugifyRunName', () => {
+  it("slugifyRunName('Mourning Doves') → 'mourning-doves'", () => {
+    expect(slugifyRunName('Mourning Doves')).toEqual('mourning-doves')
+  })
+
+  it("slugifyRunName('TigerWolves') → 'tigerwolves'", () => {
+    expect(slugifyRunName('TigerWolves')).toEqual('tigerwolves')
+  })
+
+  it("slugifyRunName('  Spaces  &  Symbols!! ') → 'spaces-symbols'", () => {
+    expect(slugifyRunName('  Spaces  &  Symbols!! ')).toEqual('spaces-symbols')
+  })
+
+  it("slugifyRunName('🕊️🕊️') → ''", () => {
+    expect(slugifyRunName('🕊️🕊️')).toEqual('')
   })
 })
