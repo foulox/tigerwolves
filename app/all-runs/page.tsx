@@ -2,8 +2,9 @@ import { currentUser } from '@clerk/nextjs/server'
 import Header from '@/components/Header'
 import AllRunsClient from '@/components/AllRunsClient'
 import { NBR_RUNS } from '@/lib/allRunsData'
-import { getAllRunIds, getFollowedRunIds } from '@/lib/db'
-import { computePlatformMap, type PlatformInfo } from '@/lib/allRuns'
+import type { NBRRun } from '@/lib/allRunsData'
+import { getDirectoryRuns, getFollowedRunIds } from '@/lib/db'
+import { computePlatformMap, mergeDirectory, type PlatformInfo } from '@/lib/allRuns'
 
 export const metadata = { title: 'All Runs — TigerWolves' }
 
@@ -14,22 +15,26 @@ export default async function AllRunsPage() {
   // preventing React hydration mismatches from server/client timezone drift.
   const serverDate = new Date().toISOString().slice(0, 10)
 
-  // Signed in → mark which NBR entries are joinable platform runs (+ follow state).
-  // Signed out → empty map, so AllRunsClient renders today's marketing directory unchanged.
+  // Signed in → fetch real DB runs; build links from nbr_directory_id; merge + compute platform.
+  // Signed out → runs stays NBR_RUNS, platform stays {} — directory-only, unchanged (AC5).
+  let runs: NBRRun[] = NBR_RUNS
   let platform: Record<string, PlatformInfo> = {}
   if (user) {
-    const [runIds, followedIds] = await Promise.all([
-      getAllRunIds(),
+    const [dbRuns, followedIds] = await Promise.all([
+      getDirectoryRuns(),
       getFollowedRunIds(user.id),
     ])
-    // #360 Task 3 will pass real DB-sourced links (nbr_directory_id → runId) here.
-    platform = computePlatformMap(runIds, followedIds, {})
+    const links: Record<string, string> = {}
+    for (const r of dbRuns) if (r.nbr_directory_id) links[r.nbr_directory_id] = r.id
+    const existingRunIds = dbRuns.map(r => r.id)
+    platform = computePlatformMap(existingRunIds, followedIds, links)
+    runs = mergeDirectory(NBR_RUNS, dbRuns, links)
   }
 
   return (
     <div>
       <Header title="All Runs" isLeader={isLeader} />
-      <AllRunsClient runs={NBR_RUNS} serverDate={serverDate} isLoggedIn={!!user} platform={platform} />
+      <AllRunsClient runs={runs} serverDate={serverDate} isLoggedIn={!!user} platform={platform} />
     </div>
   )
 }
