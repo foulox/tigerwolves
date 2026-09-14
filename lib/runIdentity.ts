@@ -26,3 +26,12 @@ export function validateRunIdentity(v: RunIdentityValues): { error?: string } {
   // All other fields are free text — no validation
   return {}
 }
+
+export function slugifyRunName(name: string): string {
+  // Lowercase, then replace runs of non-alphanumerics with single dash
+  const lowercased = name.toLowerCase()
+  const withDashes = lowercased.replace(/[^a-z0-9]+/g, '-')
+  // Strip leading/trailing dashes
+  const trimmed = withDashes.replace(/^-+|-+$/g, '')
+  return trimmed
+}
