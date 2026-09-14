@@ -5,7 +5,9 @@ import {
   dbAddWorkoutVariant, dbDeleteWorkoutVariant, dbFlagWorkoutVariant,
   dbFixWorkoutVariantAndClearFlag, dbRegroupVariants,
   getLeaderRun, getRunRoster, fetchWorkoutVariants, generateScheduleHorizon,
+  getDirectoryRuns,
 } from '../lib/db'
+import type { DirectoryRun } from '../lib/db'
 import { resolveWorkoutType } from '../lib/cycle'
 
 // Tests that depend on the e2e seed data (fetchSchedule/fetchRaces/dbSetScheduleWorkout),
@@ -524,6 +526,48 @@ describe.skipIf(!onStaging)('#318 per-run profile foundation', () => {
     const variants = await fetchWorkoutVariants('tigerwolves')
     expect(variants.some(v => v.category === 'Quality')).toBe(true)
     expect(variants.filter(v => v.category === 'Quality').length).toBeGreaterThan(0)
+  })
+})
+
+// #360: getDirectoryRuns returns the runs table rows needed to render All Runs cards
+// and link to the NBR directory. Staging-gated: depends on the nbr_directory_id column
+// and the Task 1 seed that sets it on the two fixtures (runs locally when DATABASE_URL
+// is the staging host; no-ops otherwise).
+describe.skipIf(!onStaging)('#360 getDirectoryRuns', () => {
+  const DIRECTORY_RUN_KEYS: (keyof DirectoryRun)[] = [
+    'id', 'name', 'day_of_week', 'meeting_time', 'meeting_location', 'kind', 'emoji', 'nbr_directory_id',
+  ]
+
+  it('returns an array that includes tigerwolves and mmer rows', async () => {
+    const runs = await getDirectoryRuns()
+    expect(Array.isArray(runs)).toBe(true)
+    const ids = runs.map(r => r.id)
+    expect(ids).toContain('tigerwolves')
+    expect(ids).toContain('mmer')
+  })
+
+  it('each returned row has all DirectoryRun keys present', async () => {
+    const runs = await getDirectoryRuns()
+    expect(runs.length).toBeGreaterThan(0)
+    for (const row of runs) {
+      for (const key of DIRECTORY_RUN_KEYS) {
+        expect(Object.prototype.hasOwnProperty.call(row, key)).toBe(true)
+      }
+    }
+  })
+
+  it('tigerwolves row has nbr_directory_id === "tue-tigerwolves"', async () => {
+    const runs = await getDirectoryRuns()
+    const tw = runs.find(r => r.id === 'tigerwolves')
+    expect(tw).toBeDefined()
+    expect(tw?.nbr_directory_id).toBe('tue-tigerwolves')
+  })
+
+  it('mmer row has nbr_directory_id === "mon-morning-easy"', async () => {
+    const runs = await getDirectoryRuns()
+    const mmer = runs.find(r => r.id === 'mmer')
+    expect(mmer).toBeDefined()
+    expect(mmer?.nbr_directory_id).toBe('mon-morning-easy')
   })
 })
 

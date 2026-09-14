@@ -595,6 +595,29 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
   }
 }
 
+// #360: all runs in the platform's runs table, with the fields needed to render
+// a directory card and link out to the NBR directory entry. Plain un-cached read
+// (mirrors getAllRunIds — no unstable_cache; the All Runs page is already dynamic
+// via currentUser() and doesn't need an additional cache layer here).
+export type DirectoryRun = {
+  id: string
+  name: string
+  day_of_week: string | null
+  meeting_time: string | null
+  meeting_location: string | null
+  kind: string | null
+  emoji: string | null
+  nbr_directory_id: string | null
+}
+
+export async function getDirectoryRuns(): Promise<DirectoryRun[]> {
+  const rows = await sql`
+    SELECT id, name, day_of_week, meeting_time, meeting_location, kind, emoji, nbr_directory_id
+    FROM runs ORDER BY id
+  `
+  return rows as DirectoryRun[]
+}
+
 // #330: the set of run ids that exist on the platform (the `runs` table). All
 // Runs uses this to mark which entries in the NBR directory are joinable —
 // only platform runs can be followed, so My Week never surfaces a dead run.
