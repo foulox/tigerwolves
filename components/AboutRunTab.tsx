@@ -1,9 +1,11 @@
 'use client'
 import { useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
-import { saveRunProfile, saveRunCycle } from '@/app/run-config/actions'
+import { saveRunIdentity, saveRunProfile, saveRunCycle } from '@/app/run-config/actions'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
+import type { RunIdentityValues } from '@/lib/runIdentity'
 import type { RunConfig, RunLeader } from '@/lib/data'
+import RunIdentityFields from '@/components/RunIdentityFields'
 
 const ORDINALS: Record<number, string> = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th', 5: '5th' }
 
@@ -14,6 +16,15 @@ export default function AboutRunTab({
   runConfig: RunConfig
   runLeaders: RunLeader[]
 }) {
+  const [identityValues, setIdentityValues] = useState<RunIdentityValues>({
+    name: runConfig.name,
+    dayOfWeek: runConfig.dayOfWeek,
+    emoji: runConfig.emoji ?? '',
+    meetingTime: runConfig.meetingTime ?? '',
+    meetingLocation: runConfig.meetingLocation,
+    description: runConfig.description ?? '',
+    warmupDescription: runConfig.warmupDescription ?? '',
+  })
   const [kind, setKind] = useState(runConfig.kind)
   // Drop any stored type outside the current vocabulary up front, so the UI only
   // ever holds values it can render a toggle for (and the server would keep on save).
@@ -59,6 +70,10 @@ export default function AboutRunTab({
     startTransition(async () => {
       try {
         setError('')
+        // Save identity fields first; bail before profile/cycle if this fails.
+        const identityResult = await saveRunIdentity(identityValues)
+        if (identityResult.error) { setError(identityResult.error); return }
+
         const profileResult = await saveRunProfile({ kind, workoutTypes })
         if (profileResult.error) { setError(profileResult.error); return }
 
@@ -95,12 +110,14 @@ export default function AboutRunTab({
 
   return (
     <div className="p-4 flex flex-col gap-4">
-      {/* At a glance — read-only. Editing name/day/leaders is out of scope (#321);
-          leaders are managed in the Roster tab. */}
+      {/* Identity fields — editable (#348). Leaders are managed in the Roster tab
+          and remain read-only here. */}
       <div className="bg-white rounded-xl p-4 flex flex-col gap-3 shadow-sm">
         <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">At a glance</h2>
-        {summaryRow('Run', runConfig.name)}
-        {summaryRow('Day', runConfig.dayOfWeek)}
+        <RunIdentityFields
+          values={identityValues}
+          onChange={patch => setIdentityValues(prev => ({ ...prev, ...patch }))}
+        />
         {summaryRow('Leaders', leaderNames)}
       </div>
 
@@ -202,7 +219,7 @@ export default function AboutRunTab({
                   return (
                     <div key={key} className="flex flex-col gap-1.5">
                       <span className="text-xs font-semibold text-gray-700">
-                        {ORDINALS[slot]} {runConfig.dayOfWeek}
+                        {ORDINALS[slot]} {identityValues.dayOfWeek}
                         {slot === 5 && (
                           <span className="font-normal text-gray-400"> (some months)</span>
                         )}
