@@ -81,3 +81,64 @@ export function resolveAllowedTypes(presentTypes: string[], allowlist: string[])
   const resolved = allowlist.length === 0 ? present : present.filter(t => allowlist.includes(t))
   return resolved.sort()
 }
+
+// #360: NBR directory category maps. KIND_TO_NBR_CATEGORY maps a run's `kind`
+// (DB column) to the NBRRun.category value used by the All Runs directory.
+// This is distinct from kindToCategory() above which maps to workout-library categories.
+export type NBRCategory = 'Beginner-Friendly' | 'Easy Runs' | 'Long Runs' | 'Food Runs' | 'Workouts'
+
+export const KIND_TO_NBR_CATEGORY: Record<string, NBRCategory> = {
+  'Beginner-Friendly': 'Beginner-Friendly',
+  'Easy': 'Easy Runs',
+  'Long': 'Long Runs',
+  'Food': 'Food Runs',
+  'Workout': 'Workouts',
+}
+
+export const NBR_CATEGORY_TO_KIND: Record<NBRCategory, string> = {
+  'Beginner-Friendly': 'Beginner-Friendly',
+  'Easy Runs': 'Easy',
+  'Long Runs': 'Long',
+  'Food Runs': 'Food',
+  'Workouts': 'Workout',
+}
+
+// #360: day-name ↔ abbreviation maps. day_of_week in the DB uses full names
+// ('Monday', 'Tuesday', …); NBRRun.day uses 3-letter abbreviations ('mon', 'tue', …).
+export type DayAbbrev = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
+
+export const DAY_FULL_TO_ABBREV: Record<string, DayAbbrev> = {
+  'Monday': 'mon',
+  'Tuesday': 'tue',
+  'Wednesday': 'wed',
+  'Thursday': 'thu',
+  'Friday': 'fri',
+  'Saturday': 'sat',
+  'Sunday': 'sun',
+}
+
+export const DAY_ABBREV_TO_FULL: Record<DayAbbrev, string> = {
+  'mon': 'Monday',
+  'tue': 'Tuesday',
+  'wed': 'Wednesday',
+  'thu': 'Thursday',
+  'fri': 'Friday',
+  'sat': 'Saturday',
+  'sun': 'Sunday',
+}
+
+// #360: Parse a display time string into a 24h float for sort/filter.
+// Handles the space-before-meridiem, uppercase forms the DB uses ('6:30 AM')
+// and the lowercase no-space forms the NBR static data uses ('6:30am', '7pm').
+// Unparseable / null / empty → 99 so such cards sort last.
+export function parseStartHour(displayTime: string | null | undefined): number {
+  if (!displayTime) return 99
+  const m = displayTime.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i)
+  if (!m) return 99
+  let hours = parseInt(m[1], 10)
+  const minutes = m[2] ? parseInt(m[2], 10) : 0
+  const meridiem = m[3].toLowerCase()
+  if (meridiem === 'pm' && hours !== 12) hours += 12
+  if (meridiem === 'am' && hours === 12) hours = 0
+  return hours + minutes / 60
+}

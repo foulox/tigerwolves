@@ -22,7 +22,8 @@ export default async function AllRunsPage() {
       getAllRunIds(),
       getFollowedRunIds(user.id),
     ])
-    platform = computePlatformMap(runIds, followedIds)
+    // #360 Task 3 will pass real DB-sourced links (nbr_directory_id → runId) here.
+    platform = computePlatformMap(runIds, followedIds, {})
   }
 
   return (
