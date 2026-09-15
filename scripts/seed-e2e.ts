@@ -156,8 +156,10 @@ export async function seedE2E(): Promise<void> {
   }
   const tigerWolvesId = tigerWolves.id as number
 
-  // #331: MMER's own run_group so its Easy workout family is scoped to it
-  // (fetchWorkoutVariants('mmer') resolves run_group_id = this id + global families).
+  // #331: MMER's own run_group records ownership of its Easy workout family.
+  // NOTE: run_group_id does NOT scope library reads — since #347 fetchWorkoutVariants
+  // returns the full shared catalog (no run_group filter; its runId arg is ignored)
+  // and visibility is filtered client-side by category. Group = ownership only.
   // Select-then-insert rather than a try/catch around the insert: idempotent whether
   // or not the staging branch actually carries the UNIQUE(name) constraint (a bare
   // catch would either swallow a real insert failure — then crash with a misleading
