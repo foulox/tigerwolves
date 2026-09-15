@@ -728,3 +728,50 @@ export const getMyPlan = unstable_cache(
   ['getMyPlan'],
   { revalidate: 300, tags: ['tigerwolves-data'] },
 )
+
+// ── Admin index helpers (#378) ────────────────────────────────────────────────
+
+// Returns per-run follower counts for the given run ids, keyed by runId.
+// Runs with no followers in runner_follows are included with count 0 — the
+// caller must not have to handle missing keys. One grouped query, not N queries.
+export async function getFollowerCounts(runIds: string[]): Promise<Record<string, number>> {
+  if (runIds.length === 0) return {}
+  const rows = await sql`
+    SELECT run_id, COUNT(*)::int AS count
+    FROM runner_follows
+    WHERE run_id = ANY(${runIds})
+    GROUP BY run_id
+  `
+  const result: Record<string, number> = {}
+  for (const id of runIds) {
+    result[id] = 0
+  }
+  for (const r of rows) {
+    result[r.run_id as string] = r.count as number
+  }
+  return result
+}
+
+// Returns active leaders grouped by run id for the given run ids.
+// Only active = true rows are included; deactivated leaders are omitted.
+// Each leader is shaped as { name, email }. One grouped query, not N queries.
+export async function getActiveLeadersByRun(runIds: string[]): Promise<Record<string, { name: string; email: string | null }[]>> {
+  if (runIds.length === 0) return {}
+  const rows = await sql`
+    SELECT run_id, name, email
+    FROM run_leaders
+    WHERE run_id = ANY(${runIds}) AND active = true
+    ORDER BY run_id, sort_order ASC NULLS LAST, id ASC
+  `
+  const result: Record<string, { name: string; email: string | null }[]> = {}
+  for (const id of runIds) {
+    result[id] = []
+  }
+  for (const r of rows) {
+    result[r.run_id as string].push({
+      name: r.name as string,
+      email: (r.email as string | null) ?? null,
+    })
+  }
+  return result
+}
