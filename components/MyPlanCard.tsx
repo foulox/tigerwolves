@@ -49,6 +49,7 @@ export default function MyPlanCard({
     const next = !expanded
     setExpanded(next)
     if (next) {
+      // #356: event name intentionally kept (renaming would split PostHog dashboard continuity)
       captureClientEvent('my_week_card_expanded', {
         runId: run.id,
         workoutName: workout?.name ?? entry.workoutName ?? '',
