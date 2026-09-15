@@ -1,19 +1,19 @@
 import type { RunConfig, ScheduleEntry, WorkoutVariantRow } from './data'
 
-// #331 My Week — pure helpers shared by the server page, MyWeekClient, and
-// ScheduleCard's kind-aware compact body. Deliberately dependency-free (types
+// #331 My Plan — pure helpers shared by the server page, MyPlanClient, and
+// GroupRunCard's kind-aware compact body. Deliberately dependency-free (types
 // only) so it unit-tests without a DB, Clerk, or React in scope.
 
 // One followed run's schedule entry, tagged with run identity, for the cross-run
-// My Week feed. `workout` is the resolved variant (null when nothing is planned).
-export type MyWeekItem = {
+// My Plan feed. `workout` is the resolved variant (null when nothing is planned).
+export type MyPlanItem = {
   run: RunConfig
   date: string
   entry: ScheduleEntry
   workout: WorkoutVariantRow | null
 }
 
-export type DayGroup = { date: string; label: string; items: MyWeekItem[] }
+export type DayGroup = { date: string; label: string; items: MyPlanItem[] }
 
 // Kind-aware compact fields. `shape` mirrors #322's read-side split: a Workout-kind
 // run shows a type pill + a short prescription line; an Easy/route run shows a
@@ -74,11 +74,11 @@ export function weekStripCells(today: string, offsetWeeks: number): StripCell[] 
 
 // Group tagged entries by day, ascending; multiple runs on one day share a group,
 // ordered by run name so the interleave is stable.
-export function groupByDay(items: MyWeekItem[], today: string): DayGroup[] {
+export function groupByDay(items: MyPlanItem[], today: string): DayGroup[] {
   const sorted = [...items].sort(
     (a, b) => a.date.localeCompare(b.date) || a.run.name.localeCompare(b.run.name),
   )
-  const byDate = new Map<string, MyWeekItem[]>()
+  const byDate = new Map<string, MyPlanItem[]>()
   for (const it of sorted) {
     const bucket = byDate.get(it.date)
     if (bucket) bucket.push(it)

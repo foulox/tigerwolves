@@ -11,7 +11,7 @@ import ReactionPicker from '@/components/ReactionPicker'
 import WorkoutFlagSheet, { FlagBadge, FlagGhostButton, FlagWorkoutDrawer } from '@/components/WorkoutFlagSheet'
 import { captureClientEvent } from '@/lib/analyticsClient'
 import WorkoutDetails, { DetailRow, ChipRow } from '@/components/WorkoutDetails'
-import { compactCardFields } from '@/lib/myWeek'
+import { compactCardFields } from '@/lib/myPlan'
 
 const TYPE_COLORS: Record<string, string> = {
   Hills: 'bg-green-100 text-green-800',
@@ -37,7 +37,7 @@ interface Props {
   kind?: string
 }
 
-export default function ScheduleCard({ entry, workout, index, isLeader, voteData, isPast = false, kind }: Props) {
+export default function GroupRunCard({ entry, workout, index, isLeader, voteData, isPast = false, kind }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [flagDrawerOpen, setFlagDrawerOpen] = useState(false)
   const [flagSheetOpen, setFlagSheetOpen] = useState(false)
@@ -136,12 +136,12 @@ export default function ScheduleCard({ entry, workout, index, isLeader, voteData
             )}
             {isLeader && !isPast && (
               <Link
-                href={`/plan?week=${index}`}
+                href={`/schedule?week=${index}`}
                 className="text-xs font-semibold text-orange-600 border border-orange-300 rounded-full px-3 py-1 active:bg-orange-50 touch-manipulation whitespace-nowrap"
                 onClick={(e) => e.stopPropagation()}
                 data-testid={`plan-week-${index}`}
               >
-                Plan week →
+                Edit schedule →
               </Link>
             )}
           </div>

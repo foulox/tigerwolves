@@ -103,10 +103,10 @@ test('Add variation: a new variation shows up immediately in Library AND on Plan
   const familyCard = page.locator('.bg-white.rounded-2xl', { hasText: 'Prospect Park Tempo' })
   await expect(familyCard.getByText('2 versions')).toBeVisible()
 
-  // Plan's browse picker searches the full library regardless of the scheduled
+  // Schedule's browse picker searches the full library regardless of the scheduled
   // week's workout type — proves the new variant is visible there too, not just
   // in the Library (the other half of the addWorkout/addVariation split-brain).
-  await page.goto('/plan?week=0')
+  await page.goto('/schedule?week=0')
   await page.waitForLoadState('load')
   const browseTab = page.getByRole('button', { name: 'Change workout', exact: true })
   if (await browseTab.isVisible()) await browseTab.click()

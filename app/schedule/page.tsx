@@ -1,10 +1,10 @@
 import { fetchData, fetchSchedule, getLeaderRun, getRunRoster, generateScheduleHorizon } from '@/lib/db'
-import PlanClient from '@/components/PlanClient'
+import ScheduleClient from '@/components/ScheduleClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 import { requireLeaderPage } from '@/lib/requireLeaderPage'
 import type { RunConfig } from '@/lib/data'
 
-export default async function PlanPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
+export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   // #337: block signed-in non-leaders at the route, not just at the write actions.
   // Past this line `user` is always a leader, so there are no non-leader branches below.
   const user = await requireLeaderPage()
@@ -35,7 +35,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
   await generateScheduleHorizon(runConfig.id, runConfig.dayOfWeek, runLeaders)
 
   // Schedule filtered to this leader's run; workout variants come from the cached
-  // aggregate (fetchData), which as of #347 returns the full shared catalog — PlanClient
+  // aggregate (fetchData), which as of #347 returns the full shared catalog — ScheduleClient
   // scopes it client-side by category + the run's types. Benefits from the 5-min cache.
   const [schedule, { workoutVariants }] = await Promise.all([
     fetchSchedule(runConfig.id),
@@ -52,7 +52,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
 
   const voteData = await getVoteData(workoutVariants.map(w => workoutVoteId(w.name, w.label ?? '')))
 
-  return <PlanClient
+  return <ScheduleClient
     upcoming={upcoming}
     variants={workoutVariants}
     initialWeekIndex={initialWeekIndex}

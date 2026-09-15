@@ -5,8 +5,8 @@
 // Rule:
 //   logged out                 → /all-runs   (public; the run picker / browse)
 //   signed in, 0 follows        → /all-runs   (first-login picker prompt)
-//   signed in, ≥1 follow        → /my-week    (the home)
-export function entryTarget(isSignedIn: boolean, followCount: number): '/all-runs' | '/my-week' {
+//   signed in, ≥1 follow        → /my-plan    (the home)
+export function entryTarget(isSignedIn: boolean, followCount: number): '/all-runs' | '/my-plan' {
   if (!isSignedIn) return '/all-runs'
-  return followCount > 0 ? '/my-week' : '/all-runs'
+  return followCount > 0 ? '/my-plan' : '/all-runs'
 }

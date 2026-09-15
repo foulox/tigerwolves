@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Flag } from 'lucide-react'
-import type { MyWeekItem } from '@/lib/myWeek'
-import { compactCardFields } from '@/lib/myWeek'
+import type { MyPlanItem } from '@/lib/myPlan'
+import { compactCardFields } from '@/lib/myPlan'
 import { formatDateMedium } from '@/lib/postBuilder'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
@@ -23,17 +23,17 @@ const TYPE_COLORS: Record<string, string> = {
   Threshold: 'bg-pink-100 text-pink-800',
 }
 
-// #331 My Week — the one new card in the runner redesign. Same frame and expanded
-// fidelity as the per-run ScheduleCard (reuses WorkoutDetails verbatim so a
+// #331 My Plan — the one new card in the runner redesign. Same frame and expanded
+// fidelity as the per-run GroupRunCard (reuses WorkoutDetails verbatim so a
 // Workout-kind run is field-for-field identical), plus three things that card
 // doesn't have: the run-name link to /runs/[id], a kind-driven compact body, and
-// collapsed-by-default. Compact field selection is shared with ScheduleCard via
+// collapsed-by-default. Compact field selection is shared with GroupRunCard via
 // compactCardFields() so the two surfaces can't drift.
-export default function MyWeekCard({
+export default function MyPlanCard({
   item,
   voteData,
 }: {
-  item: MyWeekItem
+  item: MyPlanItem
   voteData: VoteData | null
 }) {
   const { run, entry, workout } = item
@@ -42,7 +42,7 @@ export default function MyWeekCard({
   const hasWorkout = workout !== null
   const compact = compactCardFields(run.kind, entry, workout)
   const filteredVariations = entry.selectedVariations.filter(v => v !== '')
-  const testId = `my-week-card-${run.id}-${entry.date}`
+  const testId = `my-plan-card-${run.id}-${entry.date}`
 
   function toggleExpand() {
     if (!hasWorkout) return
@@ -73,7 +73,7 @@ export default function MyWeekCard({
         <Link
           href={`/runs/${run.id}`}
           onClick={e => e.stopPropagation()}
-          data-testid={`my-week-run-link-${run.id}`}
+          data-testid={`my-plan-run-link-${run.id}`}
           className="inline-flex items-center gap-1 text-xs font-bold tracking-wide text-orange-600 touch-manipulation"
         >
           {run.emoji ? `${run.emoji} ` : ''}{run.name}
@@ -88,20 +88,20 @@ export default function MyWeekCard({
             </div>
             {/* Kind-aware compact body */}
             {compact.shape === 'workout' && compact.setLine && (
-              <div className="mt-0.5 truncate text-sm text-gray-600" data-testid={`my-week-set-${run.id}`}>
+              <div className="mt-0.5 truncate text-sm text-gray-600" data-testid={`my-plan-set-${run.id}`}>
                 {compact.setLine}
               </div>
             )}
             {compact.shape === 'route' && (
               <div className="mt-0.5 flex items-center gap-2 text-sm text-gray-600">
-                {compact.distance && <span data-testid={`my-week-distance-${run.id}`}>{compact.distance}</span>}
+                {compact.distance && <span data-testid={`my-plan-distance-${run.id}`}>{compact.distance}</span>}
                 {compact.routeLink && (
                   <a
                     href={compact.routeLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
-                    data-testid={`my-week-route-${run.id}`}
+                    data-testid={`my-plan-route-${run.id}`}
                     className="font-semibold text-orange-600 touch-manipulation"
                   >
                     View route ↗
@@ -113,7 +113,7 @@ export default function MyWeekCard({
           {compact.shape === 'workout' && (
             <span
               className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${TYPE_COLORS[compact.typePill] ?? 'bg-gray-100 text-gray-600'}`}
-              data-testid={`my-week-type-${run.id}`}
+              data-testid={`my-plan-type-${run.id}`}
             >
               {compact.typePill}
             </span>
@@ -134,9 +134,9 @@ export default function MyWeekCard({
         </div>
       </div>
 
-      {/* Expanded detail — same fields/order as the per-run ScheduleCard. */}
+      {/* Expanded detail — same fields/order as the per-run GroupRunCard. */}
       {hasWorkout && expanded && (
-        <div className="space-y-2 border-t border-gray-100 px-4 py-3 text-sm" data-testid={`my-week-detail-${run.id}`}>
+        <div className="space-y-2 border-t border-gray-100 px-4 py-3 text-sm" data-testid={`my-plan-detail-${run.id}`}>
           {workout.rawInput && <DetailRow label="Instructions" value={workout.rawInput} />}
           {workout.coachingNotes && <DetailRow label="Coach Notes" value={workout.coachingNotes} />}
           {workout.distTime && <DetailRow label="Distance / Time" value={workout.distTime} />}

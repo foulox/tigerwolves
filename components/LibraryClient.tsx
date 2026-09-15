@@ -31,7 +31,7 @@ type FamilyRow = {
 type DisplayRow = StandaloneRow | FamilyRow
 
 // Reads workout_variants/workout_families (#277) — replaces the legacy
-// `workouts`-typed version. Family grouping mirrors PlanClient's own
+// `workouts`-typed version. Family grouping mirrors ScheduleClient's own
 // familyId-based grouping (#276) rather than the old name-string grouping.
 // #347: `variants` is the full shared catalog. "Your run" mode scopes it to the
 // run's category (kindToCategory(runKind)) and hides the category selector;
@@ -91,7 +91,7 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
     .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
 
   // A family is "multi-version" (expandable Standard/Variation N group) only
-  // when its familyId has more than one variant row — same rule PlanClient
+  // when its familyId has more than one variant row — same rule ScheduleClient
   // uses (#276), so a lone variant with a non-null label still displays
   // standalone rather than as a one-item "family".
   const familyIds = useMemo(() => {

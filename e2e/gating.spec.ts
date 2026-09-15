@@ -11,7 +11,9 @@ import { test, expect } from '@playwright/test'
 // gate let them through. For a runner the gate fires first and bounces them to '/'
 // before notFound() is ever reached. So the pathname after navigation is exactly
 // what differs between the two roles, for every route, which is what we assert.
-const GATED_ROUTES = ['/plan', '/library/add', '/library/edit', '/run-config']
+//
+// /plan is replaced by /schedule (#356 rename). The gating spec tests /schedule.
+const GATED_ROUTES = ['/schedule', '/library/add', '/library/edit', '/run-config']
 
 async function landingPathAfter(page: import('@playwright/test').Page, route: string) {
   await page.goto(route)

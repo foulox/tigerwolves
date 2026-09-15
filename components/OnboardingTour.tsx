@@ -20,13 +20,13 @@ const STEP_TRANSITION_GRACE_MS = 400
 // source of truth for both triggering the navigation and finding the target
 // once the new page has rendered.
 // #342 indices after the Roadmap step (was visitor 4) was dropped:
-// visitor 0 my-week · 1 library · 2 library-variations · 3 races · 4 feedback ·
-// 5 how-to-use, then leader 6 plan · 7 heylo-area · 8 library-manage.
+// visitor 0 my-plan · 1 library · 2 library-variations · 3 races · 4 feedback ·
+// 5 how-to-use, then leader 6 schedule · 7 heylo-area · 8 library-manage.
 // feedback/how-to-use live in the Header (present on every page), so they need no
 // nav entry — they highlight in place on whatever page the tour is already on.
 const NAV_STEPS: Record<number, { path: string; selector: string }> = {
   [LIBRARY_VARIATIONS_STEP]: { path: '/library', selector: '[data-tour="library-variations"]' },
-  7: { path: '/plan', selector: '[data-tour="heylo-area"]' },
+  7: { path: '/schedule', selector: '[data-tour="heylo-area"]' },
   8: { path: '/library', selector: '[data-tour="library-manage"]' },
 }
 

@@ -3,10 +3,10 @@ import { test, expect, type Page } from '@playwright/test'
 // #332 Home flip — the `/` router: it redirects rather than rendering a page.
 //   logged out            → /all-runs
 //   signed in, 0 follows   → /all-runs
-//   signed in, ≥1 follow   → /my-week
+//   signed in, ≥1 follow   → /my-plan
 //
 // Signed-in cases use the default TigerWolves test-leader context. Follow state is
-// set via /all-runs, which — unlike /my-week — does NOT trigger the leader
+// set via /all-runs, which — unlike /my-plan — does NOT trigger the leader
 // auto-follow, so the 0-follow case stays deterministic. Suite runs workers:1,
 // so each test's setFollow-to-known-state holds through its assertions.
 
@@ -32,15 +32,15 @@ test.describe('entry routing (/) — signed-in leader', () => {
     expect(page.url()).toContain('/all-runs')
   })
 
-  test('≥1 follow → redirects to /my-week', async ({ page }) => {
+  test('≥1 follow → redirects to /my-plan', async ({ page }) => {
     // Clear the led run, follow only MMER — exactly one follow, so the branch is
     // driven by the follow count, not the leader auto-follow.
     await setFollow(page, 'tigerwolves', false)
     await setFollow(page, 'mmer', true)
 
     await page.goto('/')
-    await page.waitForURL(/\/my-week$/)
-    expect(page.url()).toContain('/my-week')
+    await page.waitForURL(/\/my-plan$/)
+    expect(page.url()).toContain('/my-plan')
   })
 })
 

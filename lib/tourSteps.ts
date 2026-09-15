@@ -2,9 +2,9 @@ import type { DriveStep } from 'driver.js'
 
 export const VISITOR_STEPS: DriveStep[] = [
   {
-    element: '[data-tour="my-week"]',
+    element: '[data-tour="my-plan"]',
     popover: {
-      title: 'My Week',
+      title: 'My Plan',
       description: 'Your home — this week\'s workouts across every run you follow. Tap any card to expand it for the full details, and react with an emoji to tell us how you feel.',
       side: 'top',
       align: 'start',
@@ -59,9 +59,9 @@ export const VISITOR_STEPS: DriveStep[] = [
 
 export const LEADER_STEPS: DriveStep[] = [
   {
-    element: '[data-tour="plan"]',
+    element: '[data-tour="schedule"]',
     popover: {
-      title: 'Plan',
+      title: 'Schedule',
       description: 'Pick a workout for the week from the library. The picker shows least-recently-used workouts first so you don\'t repeat yourself.',
       side: 'top',
       align: 'start',
