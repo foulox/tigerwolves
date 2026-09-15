@@ -179,36 +179,36 @@ export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, pl
       {showIntro && (
         <div
           data-testid="all-runs-intro"
-          className="mx-4 mb-4 border-[1.5px] border-dashed border-[#d7dbe3] rounded-[18px] px-4 py-[18px] flex flex-col gap-[9px] items-center text-center"
+          className="mx-4 mb-4 border border-[#fdba74] bg-[#fff7ed] rounded-[18px] px-4 py-[18px] flex flex-col gap-[11px] items-center text-center shadow-[0_1px_3px_rgba(249,115,22,0.08)]"
         >
           <Link
             href="/runs/tigerwolves"
             data-testid="intro-schedule-link"
-            className="text-[13.5px] font-bold text-[#111827] touch-manipulation"
+            className="inline-flex items-center text-[14px] font-bold text-white bg-orange-500 rounded-xl px-[18px] py-[11px] shadow-sm touch-manipulation"
           >
             See the TigerWolves schedule →
           </Link>
           {isLoggedIn ? (
             <>
-              <p className="text-[13px] leading-[1.45] text-[#8b93a1] max-w-[270px]">
-                Tap <strong>Join</strong> on any run below and it lands in <strong>My Plan</strong>.
+              <p className="text-[13px] leading-[1.45] text-[#4b5568] max-w-[270px]">
+                Tap <strong className="text-[#c2410c]">Join</strong> on any run below and it lands in <strong className="text-[#c2410c]">My Plan</strong>.
               </p>
               <p
                 data-testid="intro-nudge"
-                className="text-[13px] leading-[1.45] text-[#8b93a1] max-w-[270px]"
+                className="text-[12.5px] leading-[1.45] text-[#8b93a1] max-w-[270px]"
               >
                 Don&apos;t see your run? Ask its leader to add it to the app.
               </p>
             </>
           ) : (
             <>
-              <p className="text-[13px] leading-[1.45] text-[#8b93a1] max-w-[270px]">
+              <p className="text-[13px] leading-[1.45] text-[#4b5568] max-w-[270px]">
                 Sign up to follow your favorite NBR runs and build your plan — all your runs in one place.
               </p>
               <Link
                 href="/sign-in"
                 data-testid="intro-signup-link"
-                className="text-[13.5px] font-bold text-[#111827] touch-manipulation"
+                className="text-[13.5px] font-bold text-[#c2410c] touch-manipulation"
               >
                 Sign up →
               </Link>
