@@ -57,6 +57,9 @@ export function leaderDisplayName(user: ClerkUserLike, fallbackEmail: string): s
  * existing metadata is mandatory so fields like admin: true are never clobbered.
  * This is the single canonical place for that merge so it can't be missed or
  * done inconsistently across call sites.
+ *
+ * Must be called AFTER a successful roster INSERT so a failed insert never
+ * leaves a dangling global 'leader' role.
  */
 export async function grantLeaderRole(
   clerkUser: { id: string; publicMetadata?: Record<string, unknown> | null }

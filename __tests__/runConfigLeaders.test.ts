@@ -141,7 +141,6 @@ describe.skipIf(!onStaging)('addRunLeaderByEmail grant path (staging)', () => {
 
   test('cross-run: leader cannot add to a run they do not own → Forbidden; updateUser not called', async () => {
     signInAs(CALLER_CLERK_ID, { role: 'leader' })
-    mockClerkUser({ id: COLEADER_CLERK_ID, email: COLEADER_EMAIL })
     mockUpdateUser.mockClear()
 
     // CALLER_CLERK_ID leads CALLER_RUN, not 'tigerwolves'
