@@ -770,7 +770,7 @@ export async function getActiveLeadersByRun(runIds: string[]): Promise<Record<st
   for (const r of rows) {
     result[r.run_id as string].push({
       name: r.name as string,
-      email: (r.email as string | null) ?? null,
+      email: r.email as string | null,
     })
   }
   return result

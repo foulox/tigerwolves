@@ -32,7 +32,7 @@ export default async function AdminRunsPage() {
             >
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-medium text-gray-900">
-                  {run.emoji ? `${run.emoji} ` : ''}{run.name}
+                  {run.emoji ? `${run.emoji} ${run.name}` : run.name}
                 </span>
                 {run.status === 'draft' && (
                   <span className="text-xs font-medium bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">
@@ -43,8 +43,8 @@ export default async function AdminRunsPage() {
               <div className="text-sm text-gray-600">
                 {leaders.length === 0
                   ? <span className="italic text-gray-400">No leaders</span>
-                  : leaders.map(l => (
-                      <span key={l.email ?? l.name} className="mr-3">
+                  : leaders.map((l, i) => (
+                      <span key={`${l.email ?? 'noemail'}-${l.name}-${i}`} className="mr-3">
                         {l.name}{l.email ? ` (${l.email})` : ''}
                       </span>
                     ))

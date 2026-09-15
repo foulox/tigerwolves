@@ -84,8 +84,10 @@ describe.skipIf(!onStaging)('getFollowerCounts and getActiveLeadersByRun (stagin
 })
 
 describe('getFollowerCounts and getActiveLeadersByRun — empty input (no DB needed)', () => {
-  // These verify the empty-array guard without requiring a DB connection.
-  // They run locally and in CI.
+  // These verify the empty-array guard without touching the DB at runtime,
+  // but the file still imports from ../lib/db (which throws if DATABASE_URL is
+  // unset at module load time). They run anywhere DATABASE_URL is set — CI and
+  // any local env with a DB URL configured.
 
   test('getFollowerCounts returns {} for an empty runIds array', async () => {
     const counts = await getFollowerCounts([])
