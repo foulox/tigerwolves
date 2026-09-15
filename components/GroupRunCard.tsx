@@ -139,7 +139,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
                 href={`/schedule?week=${index}`}
                 className="text-xs font-semibold text-orange-600 border border-orange-300 rounded-full px-3 py-1 active:bg-orange-50 touch-manipulation whitespace-nowrap"
                 onClick={(e) => e.stopPropagation()}
-                data-testid={`plan-week-${index}`}
+                data-testid={`schedule-week-${index}`}
               >
                 Edit schedule →
               </Link>
