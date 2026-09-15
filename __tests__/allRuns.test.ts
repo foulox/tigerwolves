@@ -17,20 +17,20 @@ const LEGACY_LINKS: Record<string, string> = {
 
 describe('computePlatformMap — dedup NBR directory ↔ platform runs', () => {
   test('maps NBR entries to platform runs that exist, carrying follow state', () => {
-    const map = computePlatformMap(['tigerwolves', 'mmer'], ['tigerwolves'], LEGACY_LINKS)
-    expect(map['tue-tigerwolves']).toEqual({ runId: 'tigerwolves', following: true })
-    expect(map['mon-morning-easy']).toEqual({ runId: 'mmer', following: false })
+    const map = computePlatformMap(['tigerwolves', 'mmer'], ['tigerwolves'], LEGACY_LINKS, [])
+    expect(map['tue-tigerwolves']).toEqual({ runId: 'tigerwolves', following: true, draft: false })
+    expect(map['mon-morning-easy']).toEqual({ runId: 'mmer', following: false, draft: false })
   })
 
   test('ignores a mapping whose target run is not on the platform yet', () => {
     // Only tigerwolves seeded — the mmer mapping must not render as joinable.
-    const map = computePlatformMap(['tigerwolves'], [], LEGACY_LINKS)
-    expect(map['tue-tigerwolves']).toEqual({ runId: 'tigerwolves', following: false })
+    const map = computePlatformMap(['tigerwolves'], [], LEGACY_LINKS, [])
+    expect(map['tue-tigerwolves']).toEqual({ runId: 'tigerwolves', following: false, draft: false })
     expect(map['mon-morning-easy']).toBeUndefined()
   })
 
   test('no platform runs → empty map (logged-out / nothing seeded)', () => {
-    expect(computePlatformMap([], [], LEGACY_LINKS)).toEqual({})
+    expect(computePlatformMap([], [], LEGACY_LINKS, [])).toEqual({})
   })
 
   test('every mapped platform run corresponds to a real NBR directory entry', () => {
@@ -42,30 +42,41 @@ describe('computePlatformMap — dedup NBR directory ↔ platform runs', () => {
 
   test('DB-sourced links: linked runs key by directory card id', () => {
     const links = { 'tue-tigerwolves': 'tigerwolves' }
-    const map = computePlatformMap(['tigerwolves'], ['tigerwolves'], links)
-    expect(map['tue-tigerwolves']).toEqual({ runId: 'tigerwolves', following: true })
+    const map = computePlatformMap(['tigerwolves'], ['tigerwolves'], links, [])
+    expect(map['tue-tigerwolves']).toEqual({ runId: 'tigerwolves', following: true, draft: false })
     // The run's own id is NOT used as a key (it's linked to a directory card).
     expect(map['tigerwolves']).toBeUndefined()
   })
 
   test('unlinked run keys by its own id', () => {
     const links: Record<string, string> = {}
-    const map = computePlatformMap(['helkatz'], [], links)
-    expect(map['helkatz']).toEqual({ runId: 'helkatz', following: false })
+    const map = computePlatformMap(['helkatz'], [], links, [])
+    expect(map['helkatz']).toEqual({ runId: 'helkatz', following: false, draft: false })
   })
 
   test('a link whose target run is not in existingRunIds is ignored', () => {
     // 'mmer' is in links but not in existingRunIds.
     const links = { 'tue-tigerwolves': 'tigerwolves', 'mon-morning-easy': 'mmer' }
-    const map = computePlatformMap(['tigerwolves'], [], links)
-    expect(map['tue-tigerwolves']).toEqual({ runId: 'tigerwolves', following: false })
+    const map = computePlatformMap(['tigerwolves'], [], links, [])
+    expect(map['tue-tigerwolves']).toEqual({ runId: 'tigerwolves', following: false, draft: false })
     expect(map['mon-morning-easy']).toBeUndefined()
+  })
+
+  test('draft run in draftRunIds stamps draft: true', () => {
+    const map = computePlatformMap(['tigerwolves', 'mmer'], [], LEGACY_LINKS, ['mmer'])
+    expect(map['mon-morning-easy'].draft).toBe(true)
+    expect(map['tue-tigerwolves'].draft).toBe(false)
+  })
+
+  test('synthesized (unlinked) draft run carries draft: true', () => {
+    const map = computePlatformMap(['helkatz'], [], {}, ['helkatz'])
+    expect(map['helkatz']).toEqual({ runId: 'helkatz', following: false, draft: true })
   })
 })
 
 describe('computeTiers — following / on-app / more-NBR classification', () => {
   test('sorts runs into the three tiers with no overlap or loss', () => {
-    const platform = computePlatformMap(['tigerwolves', 'mmer'], ['tigerwolves'], LEGACY_LINKS)
+    const platform = computePlatformMap(['tigerwolves', 'mmer'], ['tigerwolves'], LEGACY_LINKS, [])
     const { following, onApp, moreNbr } = computeTiers(NBR_RUNS, platform)
 
     // tigerwolves is followed → Following; mmer is joinable but not joined → On the app.
@@ -88,7 +99,7 @@ describe('computeTiers — following / on-app / more-NBR classification', () => 
 
   test('linked run is sorted into following/onApp (not more-NBR)', () => {
     const links = { 'tue-tigerwolves': 'tigerwolves' }
-    const platform = computePlatformMap(['tigerwolves'], ['tigerwolves'], links)
+    const platform = computePlatformMap(['tigerwolves'], ['tigerwolves'], links, [])
     const { following, onApp, moreNbr } = computeTiers(NBR_RUNS, platform)
     expect(following.map(r => r.id)).toContain('tue-tigerwolves')
     expect(onApp.map(r => r.id)).not.toContain('tue-tigerwolves')
@@ -98,7 +109,7 @@ describe('computeTiers — following / on-app / more-NBR classification', () => 
   test('unlinked DB run (synthesized card) is sorted into following/onApp — never more-NBR', () => {
     // Synthesized card has id = run's own id ('helkatz').
     // computeTiers checks platform[run.id] so it will find it.
-    const platform = computePlatformMap(['helkatz'], [], {})
+    const platform = computePlatformMap(['helkatz'], [], {}, [])
     const synthesizedCard = dbRunToNbrCard({
       id: 'helkatz',
       name: 'Thursday Helkatz',
@@ -314,7 +325,7 @@ describe('mergeDirectory — NBR cards + unlinked DB run synthesis', () => {
   test('computeTiers then places a synthesized card in following/onApp — never more-NBR', () => {
     const merged = mergeDirectory(NBR_RUNS, [unlinkedDbRun], {})
     const links: Record<string, string> = {}
-    const platform = computePlatformMap(['helkatz'], [], links)
+    const platform = computePlatformMap(['helkatz'], [], links, [])
     const { following, onApp, moreNbr } = computeTiers(merged, platform)
     expect(onApp.map(r => r.id)).toContain('helkatz')
     expect(moreNbr.map(r => r.id)).not.toContain('helkatz')
@@ -325,14 +336,14 @@ describe('mergeDirectory — NBR cards + unlinked DB run synthesis', () => {
 describe('legacy link resolution — AC3 no-regression', () => {
   test('both legacy NBR cards light up when their runs exist', () => {
     const links = { 'tue-tigerwolves': 'tigerwolves', 'mon-morning-easy': 'mmer' }
-    const map = computePlatformMap(['tigerwolves', 'mmer'], ['tigerwolves'], links)
-    expect(map['tue-tigerwolves']).toEqual({ runId: 'tigerwolves', following: true })
-    expect(map['mon-morning-easy']).toEqual({ runId: 'mmer', following: false })
+    const map = computePlatformMap(['tigerwolves', 'mmer'], ['tigerwolves'], links, [])
+    expect(map['tue-tigerwolves']).toEqual({ runId: 'tigerwolves', following: true, draft: false })
+    expect(map['mon-morning-easy']).toEqual({ runId: 'mmer', following: false, draft: false })
   })
 
   test('legacy links via computeTiers place both NBR cards in following/onApp', () => {
     const links = { 'tue-tigerwolves': 'tigerwolves', 'mon-morning-easy': 'mmer' }
-    const platform = computePlatformMap(['tigerwolves', 'mmer'], ['tigerwolves'], links)
+    const platform = computePlatformMap(['tigerwolves', 'mmer'], ['tigerwolves'], links, [])
     const { following, onApp, moreNbr } = computeTiers(NBR_RUNS, platform)
     expect(following.map(r => r.id)).toContain('tue-tigerwolves')
     expect(onApp.map(r => r.id)).toContain('mon-morning-easy')
