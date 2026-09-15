@@ -132,6 +132,20 @@ test.describe('My Plan (/my-plan) — signed-in leader', () => {
     await page.waitForURL(/\/runs\/mmer/)
     expect(page.url()).toContain('/runs/mmer')
   })
+
+  // #372: the onboarding tour + What's New entry points were removed from the
+  // header (interim mitigation — stale/broken while onboarding moves to in-person
+  // coffee). Verify neither control is reachable, even for a signed-in leader —
+  // the audience that used to see them.
+  test('header no longer exposes the tour or What\'s New entry points', async ({ page }) => {
+    await setFollow(page, 'tigerwolves', true)
+
+    await page.goto('/my-plan')
+    await page.waitForLoadState('load')
+
+    await expect(page.getByRole('button', { name: 'How to use this' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: "What's new" })).toHaveCount(0)
+  })
 })
 
 test.describe('My Plan (/my-plan) — auth required', () => {
