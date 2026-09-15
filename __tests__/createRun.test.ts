@@ -126,6 +126,8 @@ describe.skipIf(!onStaging)('createRun staging persistence', () => {
     expect(run!.emoji).toBe('🐢')
     expect(run!.kind).toBe('Easy')
     expect(run!.workoutTypes).toEqual([])
+    // #353: newly created run must be draft
+    expect(run!.status).toBe('draft')
   })
 
   test('run_group_id is NULL and zero workout_families rows reference it', async () => {

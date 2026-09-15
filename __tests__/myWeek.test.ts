@@ -26,6 +26,7 @@ function makeRun(overrides: Partial<RunConfig> = {}): RunConfig {
     runGroupId: 1,
     cycleMode: 'none',
     cycle: {},
+    status: 'live',
     ...overrides,
   }
 }

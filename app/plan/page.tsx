@@ -23,6 +23,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
     runGroupId: null,
     cycleMode: 'none',
     cycle: {},
+    status: 'live',
   }
   const runConfig = (await getLeaderRun(user.id)) ?? tigerWolvesConfig
   const runLeaders = await getRunRoster(runConfig.id)

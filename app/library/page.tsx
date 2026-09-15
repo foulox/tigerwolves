@@ -23,6 +23,7 @@ export default async function LibraryPage() {
     runGroupId: null,
     cycleMode: 'none',
     cycle: {},
+    status: 'live',
   }
   const runConfig = (user && isLeader ? await getLeaderRun(user.id) : null) ?? tigerWolvesConfig
   const workoutVariants = await fetchWorkoutVariants(isLeader ? runConfig.id : undefined)

@@ -108,6 +108,9 @@ export type RunConfig = {
   description?: string | null
   meetingTime?: string | null
   warmupDescription?: string | null
+  // #353: draft/live state. 'draft' = not yet published; 'live' = visible to runners.
+  // ?? 'live' fallback guards pre-migration Preview branches where the column may be absent.
+  status: string
 }
 
 export type AwayPeriod = { from: string; to: string }
