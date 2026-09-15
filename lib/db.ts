@@ -626,6 +626,15 @@ export async function getActivatedNbrDirectoryIds(): Promise<string[]> {
   return rows.map(r => r.nbr_directory_id as string)
 }
 
+// #350: check whether a Clerk user leads ANY active run across the platform.
+// Used by revokeLeaderRoleIfOrphaned to decide whether to strip the Clerk role.
+export async function leadsAnyActiveRun(clerkUserId: string): Promise<boolean> {
+  const rows = await sql`
+    SELECT 1 FROM run_leaders WHERE clerk_user_id = ${clerkUserId} AND active = true LIMIT 1
+  `
+  return rows.length > 0
+}
+
 // #330: run ids a signed-in user currently follows (their runner_follows rows).
 export async function getFollowedRunIds(clerkUserId: string): Promise<string[]> {
   const rows = await sql`

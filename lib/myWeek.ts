@@ -48,7 +48,7 @@ export function dayLabel(date: string, today: string): string {
 // cleanly.
 export function feedWindow(today: string, offsetWeeks: number): { start: string; end: string } {
   if (offsetWeeks === 0) {
-    return { start: addDays(today, -2), end: addDays(today, 7) }
+    return { start: addDays(today, -2), end: addDays(today, 6) }
   }
   const weekStart = addDays(today, offsetWeeks * 7)
   return { start: weekStart, end: addDays(weekStart, 6) }

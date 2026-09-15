@@ -7,7 +7,7 @@ import { sql, getLeaderRun, getRunRoster } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity } from '@/lib/runIdentity'
-import { resolveClerkUserByEmail, leaderDisplayName } from '@/lib/runLeaders'
+import { resolveClerkUserByEmail, leaderDisplayName, grantLeaderRole, revokeLeaderRoleIfOrphaned } from '@/lib/runLeaders'
 
 /** Throws 'Forbidden' if the caller's run does not match runId. */
 async function assertCallerOwnsRun(user: User, runId: string): Promise<void> {
@@ -336,6 +336,11 @@ export async function addRunLeaderByEmail(
         clerk_user_id = ${clerkUser.id},
         active = true
     `
+
+    // Grant the Clerk 'leader' role — merges with existing publicMetadata so
+    // any existing admin: true (or other flags) are never clobbered.
+    await grantLeaderRole(clerkUser)
+
     updateTag('tigerwolves-data')
     return {}
   } catch (err) {
@@ -357,11 +362,12 @@ export async function removeRunLeader(
       return { error: 'Forbidden', reassignedCount: 0, noLeaderDates: [] }
     }
 
-    // Look up the leader's name + run before deactivating.
-    const leaderRows = await sql`SELECT name, run_id FROM run_leaders WHERE id = ${leaderId}`
+    // Look up the leader's name, run, and Clerk user id before deactivating.
+    const leaderRows = await sql`SELECT name, run_id, clerk_user_id FROM run_leaders WHERE id = ${leaderId}`
     if (!leaderRows[0]) return { error: 'Not found', reassignedCount: 0, noLeaderDates: [] }
     const leaderName = leaderRows[0].name as string
     const runId = leaderRows[0].run_id as string
+    const removedClerkUserId = leaderRows[0].clerk_user_id as string | null
 
     // Deactivate first so the reassignment roster excludes the removed leader.
     await sql`UPDATE run_leaders SET active = false WHERE id = ${leaderId}`
@@ -399,6 +405,14 @@ export async function removeRunLeader(
         await sql`UPDATE schedule SET leader = ${next}, needs_leader = null WHERE date = ${dateStr}::date AND run_id = ${runId}`
         reassignedCount++
       }
+    }
+
+    // Conditionally revoke the Clerk 'leader' role — only if this person no
+    // longer leads any other active run. Row is already deactivated above, so
+    // leadsAnyActiveRun will return false for the removed run. Skip entirely if
+    // the row had no clerk_user_id (legacy row without Clerk linkage).
+    if (removedClerkUserId) {
+      await revokeLeaderRoleIfOrphaned(removedClerkUserId)
     }
 
     updateTag('tigerwolves-data')

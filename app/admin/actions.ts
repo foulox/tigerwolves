@@ -1,12 +1,12 @@
 'use server'
-import { currentUser, clerkClient } from '@clerk/nextjs/server'
+import { currentUser } from '@clerk/nextjs/server'
 import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
 import { sql } from '@/lib/db'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity, slugifyRunName } from '@/lib/runIdentity'
 import { NBR_RUNS } from '@/lib/allRunsData'
-import { resolveClerkUserByEmail, leaderDisplayName } from '@/lib/runLeaders'
+import { resolveClerkUserByEmail, leaderDisplayName, grantLeaderRole } from '@/lib/runLeaders'
 
 // Private helper — no admin gate, no cache invalidation. Called by both createRun
 // and activateNbrRun after each performs its own auth + pre-checks.
@@ -142,14 +142,9 @@ export async function activateNbrRun(data: {
       VALUES (${runId}, ${leaderName}, ${normalizedEmail}, ${clerkUser.id}, 1, true)
     `
 
-    // 8. Grant the Clerk role — MERGE with existing publicMetadata so we never
-    //    clobber an existing admin: true. Clerk's updateUser REPLACES publicMetadata
-    //    in full; the spread is mandatory.
-    const existing = clerkUser.publicMetadata ?? {}
-    const client = await clerkClient()
-    await client.users.updateUser(clerkUser.id, {
-      publicMetadata: { ...existing, role: 'leader' },
-    })
+    // 8. Grant the Clerk role via the shared helper — it merges with existing
+    //    publicMetadata so admin: true (and any other flags) are never clobbered.
+    await grantLeaderRole(clerkUser)
 
     // 9. Invalidate cache on success
     updateTag('tigerwolves-data')
