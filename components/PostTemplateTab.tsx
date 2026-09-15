@@ -18,7 +18,7 @@ export default function PostTemplateTab({ runConfig }: { runConfig: RunConfig })
   function handleSave() {
     startTransition(async () => {
       try {
-        const result = await savePostTemplate(form)
+        const result = await savePostTemplate(runConfig.id, form)
         if (result.error) { setError(result.error); return }
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)

@@ -26,8 +26,10 @@ import { sql, getLeaderRun } from '../lib/db'
 import {
   saveRotationOrder,
   saveAwayPeriod,
+  removeAwayPeriod,
   removeRunLeader,
   addRunLeaderByEmail,
+  savePostTemplate,
   saveRunProfile,
   saveRunCycle,
   saveRunIdentity,
@@ -89,12 +91,27 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
     beforeAll(() => signInAs(LEADER_A))
 
     test('CAN reorder rotation within their own run', async () => {
-      const res = await saveRotationOrder([leaderAId])
+      const res = await saveRotationOrder('tigerwolves', [leaderAId])
       expect(res.error).toBeUndefined()
     })
 
     test('CANNOT add a leader to a run they do not lead', async () => {
       const res = await addRunLeaderByEmail(OTHER_RUN, 'whoever@example.com')
+      expect(res.error).toBe('Forbidden')
+    })
+
+    test('CANNOT reorder rotation on a run they do not lead', async () => {
+      // Even pointing at OTHER_RUN with no ids, the run-level guard rejects a
+      // non-admin leader who does not lead that run.
+      const res = await saveRotationOrder(OTHER_RUN, [])
+      expect(res.error).toBe('Forbidden')
+    })
+
+    test('CANNOT save identity on a run they do not lead', async () => {
+      const res = await saveRunIdentity(OTHER_RUN, {
+        name: 'Hijacked', dayOfWeek: 'Tuesday', emoji: '', meetingTime: '',
+        meetingLocation: '', description: '', warmupDescription: '',
+      })
       expect(res.error).toBe('Forbidden')
     })
 
@@ -109,8 +126,47 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
     })
 
     test("CANNOT reorder rotation using another run's leader ids", async () => {
-      const res = await saveRotationOrder([leaderBId])
+      // Pointing at their own run but supplying OTHER_RUN's leader id: the per-id
+      // ownership sweep rejects a row that belongs to a different run.
+      const res = await saveRotationOrder('tigerwolves', [leaderBId])
       expect(res.error).toBe('Forbidden')
+    })
+  })
+
+  describe('an admin (admin:true, no leader role)', () => {
+    // The admin flag alone grants cross-run management; no run_leaders row and no
+    // 'leader' role. Every action targeting a run/roster row this user does not
+    // lead must succeed (no Forbidden, no Unauthorized).
+    beforeAll(() => {
+      vi.mocked(currentUser).mockResolvedValue(
+        { id: 'user_authtest_admin_310', publicMetadata: { admin: true } } as never
+      )
+    })
+
+    test('can addRunLeaderByEmail on a run they do not lead', async () => {
+      // Unknown email is rejected AFTER the auth gate, so the guard passing is
+      // proven by NOT getting Forbidden/Unauthorized (the message is the email one).
+      const res = await addRunLeaderByEmail(OTHER_RUN, 'whoever@example.com')
+      expect(res.error).not.toBe('Forbidden')
+      expect(res.error).not.toBe('Unauthorized')
+    })
+
+    test("can removeRunLeader on another run's roster row", async () => {
+      const res = await removeRunLeader(leaderBId)
+      expect(res.error).toBeUndefined()
+      const removed = await sql`SELECT active FROM run_leaders WHERE id = ${leaderBId}`
+      expect(removed[0].active).toBe(false)
+    })
+
+    test('can saveRunIdentity on a run they do not lead', async () => {
+      const res = await saveRunIdentity(OTHER_RUN, {
+        name: 'Admin Renamed Doves', dayOfWeek: 'Wednesday', emoji: '🕊️',
+        meetingTime: '7:00am', meetingLocation: 'The Meadow',
+        description: 'Edited by admin', warmupDescription: 'Easy jog',
+      })
+      expect(res.error).toBeUndefined()
+      const row = await sql`SELECT name FROM runs WHERE id = ${OTHER_RUN}`
+      expect(row[0].name).toBe('Admin Renamed Doves')
     })
   })
 
@@ -120,14 +176,16 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
     beforeAll(() => signInAs(LEADER_A, 'member'))
 
     test('is rejected with Unauthorized on every run-config action', async () => {
-      expect((await saveRotationOrder([leaderAId])).error).toBe('Unauthorized')
+      expect((await saveRotationOrder('tigerwolves', [leaderAId])).error).toBe('Unauthorized')
       expect((await saveAwayPeriod(leaderAId, { from: '2099-01-01', to: '2099-01-07' })).error).toBe('Unauthorized')
       expect((await removeRunLeader(leaderAId)).error).toBe('Unauthorized')
+      expect((await removeAwayPeriod(leaderAId, 0)).error).toBe('Unauthorized')
       expect((await addRunLeaderByEmail('tigerwolves', 'whoever@example.com')).error).toBe('Unauthorized')
-      expect((await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills'] })).error).toBe('Unauthorized')
-      expect((await saveRunCycle({ cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })).error).toBe('Unauthorized')
+      expect((await savePostTemplate('tigerwolves', { postHeader: 'h', meetingLocation: 'm', leaderIntro: 'i', closingNotes: 'c' })).error).toBe('Unauthorized')
+      expect((await saveRunProfile('tigerwolves', { kind: 'Workout', workoutTypes: ['Hills'] })).error).toBe('Unauthorized')
+      expect((await saveRunCycle('tigerwolves', { cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })).error).toBe('Unauthorized')
       expect(
-        (await saveRunIdentity({
+        (await saveRunIdentity('tigerwolves', {
           name: 'TigerWolves',
           dayOfWeek: 'Tuesday',
           emoji: '🐯',
@@ -147,7 +205,7 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
 describe('saveRunProfile authorization', () => {
   test('returns Unauthorized when caller is not a leader', async () => {
     signInAs('user_notaleader_321', 'member')
-    const res = await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills'] })
+    const res = await saveRunProfile('tigerwolves', { kind: 'Workout', workoutTypes: ['Hills'] })
     expect(res.error).toBe('Unauthorized')
   })
 })
@@ -178,7 +236,7 @@ describe.skipIf(!onStaging)('saveRunProfile persists to the caller’s own run',
   })
 
   test('persists kind + workout_types to the caller’s run', async () => {
-    const res = await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills', 'Threshold'] })
+    const res = await saveRunProfile(RUN, { kind: 'Workout', workoutTypes: ['Hills', 'Threshold'] })
     expect(res.error).toBeUndefined()
     const row = await sql`SELECT kind, workout_types FROM runs WHERE id = ${RUN}`
     expect(row[0].kind).toBe('Workout')
@@ -186,7 +244,7 @@ describe.skipIf(!onStaging)('saveRunProfile persists to the caller’s own run',
   })
 
   test('drops workout types outside WORKOUT_TYPE_OPTIONS', async () => {
-    const res = await saveRunProfile({ kind: 'Workout', workoutTypes: ['Hills', 'NotARealType'] })
+    const res = await saveRunProfile(RUN, { kind: 'Workout', workoutTypes: ['Hills', 'NotARealType'] })
     expect(res.error).toBeUndefined()
     const row = await sql`SELECT workout_types FROM runs WHERE id = ${RUN}`
     expect(row[0].workout_types).toEqual(['Hills'])
@@ -199,7 +257,7 @@ describe.skipIf(!onStaging)('saveRunProfile persists to the caller’s own run',
 describe('saveRunCycle authorization', () => {
   test('returns Unauthorized when caller is not a leader', async () => {
     signInAs('user_notaleader_323', 'member')
-    const res = await saveRunCycle({ cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })
+    const res = await saveRunCycle('tigerwolves', { cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })
     expect(res.error).toBe('Unauthorized')
   })
 })
@@ -229,7 +287,7 @@ describe.skipIf(!onStaging)('saveRunCycle persists to the caller’s own run', (
   })
 
   test('persists cycle_mode + cycle to the caller’s run', async () => {
-    const res = await saveRunCycle({
+    const res = await saveRunCycle(RUN, {
       cycleMode: 'week_of_month',
       cycle: { '1': 'Hills', '4': 'Ladder or Superset' },
     })
@@ -240,7 +298,7 @@ describe.skipIf(!onStaging)('saveRunCycle persists to the caller’s own run', (
   })
 
   test('drops slot values outside the run’s allowlist', async () => {
-    const res = await saveRunCycle({
+    const res = await saveRunCycle(RUN, {
       cycleMode: 'week_of_month',
       // Threshold is not in this run's allowlist; the compound slot keeps only Ladder.
       cycle: { '1': 'Threshold', '2': 'Ladder or Threshold' },
@@ -252,7 +310,7 @@ describe.skipIf(!onStaging)('saveRunCycle persists to the caller’s own run', (
   })
 
   test('cycleMode none clears the cycle map', async () => {
-    const res = await saveRunCycle({ cycleMode: 'none', cycle: { '1': 'Hills' } })
+    const res = await saveRunCycle(RUN, { cycleMode: 'none', cycle: { '1': 'Hills' } })
     expect(res.error).toBeUndefined()
     const row = await sql`SELECT cycle_mode, cycle FROM runs WHERE id = ${RUN}`
     expect(row[0].cycle_mode).toBe('none')
@@ -260,7 +318,7 @@ describe.skipIf(!onStaging)('saveRunCycle persists to the caller’s own run', (
   })
 
   test('rejects an unknown cycle mode', async () => {
-    const res = await saveRunCycle({ cycleMode: 'bogus', cycle: {} })
+    const res = await saveRunCycle(RUN, { cycleMode: 'bogus', cycle: {} })
     expect(res.error).toBe('Invalid cycle mode')
   })
 })
@@ -322,7 +380,7 @@ describe.skipIf(!onStaging)('removing a leader reassigns their future weeks', ()
 describe('saveRunIdentity authorization', () => {
   test('returns Unauthorized when caller is not a leader', async () => {
     signInAs('user_notaleader_348', 'member')
-    const res = await saveRunIdentity({
+    const res = await saveRunIdentity('tigerwolves', {
       name: 'TigerWolves',
       dayOfWeek: 'Tuesday',
       emoji: '🐯',
@@ -362,7 +420,7 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
   })
 
   test('persists all seven identity columns to the caller’s run', async () => {
-    const res = await saveRunIdentity({
+    const res = await saveRunIdentity(RUN, {
       name: 'New Run Name',
       dayOfWeek: 'Wednesday',
       emoji: '🌊',
@@ -398,7 +456,7 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
     const before = (await sql`SELECT id FROM runs WHERE id = ${RUN}`)[0].id as string
     expect(before).toBe(originalRunId)
 
-    await saveRunIdentity({
+    await saveRunIdentity(RUN, {
       name: 'Completely Different Name',
       dayOfWeek: 'Friday',
       emoji: '🔥',
@@ -414,7 +472,7 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
   })
 
   test('rejects empty name with "Name is required"', async () => {
-    const res = await saveRunIdentity({
+    const res = await saveRunIdentity(RUN, {
       name: '   ',
       dayOfWeek: 'Tuesday',
       emoji: '',
@@ -427,7 +485,7 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
   })
 
   test('rejects invalid day with "Invalid day"', async () => {
-    const res = await saveRunIdentity({
+    const res = await saveRunIdentity(RUN, {
       name: 'Valid Name',
       dayOfWeek: 'Funday',
       emoji: '',
