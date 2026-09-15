@@ -18,9 +18,10 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 // throws outside a request, so it's stubbed. DB-touching tests run only on
 // staging (same guard as activateNbrRun.test.ts / runConfigAuth.test.ts).
 
-const { mockGetUserList, mockUpdateUser } = vi.hoisted(() => ({
+const { mockGetUserList, mockUpdateUser, mockGetUser } = vi.hoisted(() => ({
   mockGetUserList: vi.fn(),
   mockUpdateUser: vi.fn(),
+  mockGetUser: vi.fn(),
 }))
 
 vi.mock('@clerk/nextjs/server', () => ({
@@ -29,6 +30,7 @@ vi.mock('@clerk/nextjs/server', () => ({
     users: {
       getUserList: mockGetUserList,
       updateUser: mockUpdateUser,
+      getUser: mockGetUser,
     },
   }),
 }))
@@ -42,7 +44,8 @@ vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }))
 
 import { currentUser } from '@clerk/nextjs/server'
 import { sql } from '../lib/db'
-import { addRunLeaderByEmail } from '../app/run-config/actions'
+import { addRunLeaderByEmail, removeRunLeader } from '../app/run-config/actions'
+import { leadsAnyActiveRun } from '../lib/db'
 
 // Staging-only DB tests gated with describe.skipIf(!onStaging). CI sets
 // DATABASE_URL to the staging branch; local dev has no DATABASE_URL and the
@@ -194,5 +197,121 @@ describe.skipIf(!onStaging)('addRunLeaderByEmail grant path (staging)', () => {
     expect(calledUserId).toBe(COLEADER_CLERK_ID)
     // Must preserve admin:true AND add role:'leader'
     expect(calledArgs.publicMetadata).toEqual({ admin: true, role: 'leader' })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// REVOKE — removeRunLeader conditional role revoke (#350)
+// ---------------------------------------------------------------------------
+// Revoke is conditional: removing a co-leader revokes publicMetadata.role ONLY
+// if that person leads no other active run. If they still lead another run, the
+// role is left intact (no updateUser call). admin: true (and any other keys)
+// must always be preserved.
+
+describe.skipIf(!onStaging)('removeRunLeader revoke path (staging)', () => {
+  // Two runs: CALLER_RUN (owned by the test caller), SECOND_RUN (the removed
+  // leader's other run — used to prove the "still leads another" branch).
+  const CALLER_RUN = 'test-revoke-350'
+  const CALLER_CLERK_ID = 'user_revoketest_caller_350'
+  const CALLER_NAME = 'RevokeTest Caller 350'
+
+  const SECOND_RUN = 'test-revoke-second-350'
+
+  const REMOVED_EMAIL = 'coleader-revoke-350@example.com'
+  const REMOVED_CLERK_ID = 'clerk_coleader_revoke_350'
+  const REMOVED_NAME = 'RevokeTest Coleader 350'
+
+  let removedLeaderId: number
+
+  beforeAll(async () => {
+    // Caller's run
+    await sql`INSERT INTO runs (id, name) VALUES (${CALLER_RUN}, 'Revoke Test Run 350') ON CONFLICT (id) DO NOTHING`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${CALLER_RUN}`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${CALLER_RUN}, ${CALLER_NAME}, ${CALLER_CLERK_ID}, 1, true)
+    `
+    // Second run (for the "still leads another" branch)
+    await sql`INSERT INTO runs (id, name) VALUES (${SECOND_RUN}, 'Revoke Second Run 350') ON CONFLICT (id) DO NOTHING`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${SECOND_RUN}`
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = ${CALLER_RUN}`
+    await sql`DELETE FROM runs WHERE id = ${CALLER_RUN}`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${SECOND_RUN}`
+    await sql`DELETE FROM runs WHERE id = ${SECOND_RUN}`
+  })
+
+  test('leadsAnyActiveRun: false when the user has no active run_leaders rows', async () => {
+    const result = await leadsAnyActiveRun('clerk_nonexistent_user_350')
+    expect(result).toBe(false)
+  })
+
+  test('leadsAnyActiveRun: true when the user has an active run_leaders row', async () => {
+    const result = await leadsAnyActiveRun(CALLER_CLERK_ID)
+    expect(result).toBe(true)
+  })
+
+  test('removed leader has NO other active run → updateUser called stripping role, preserving admin:true', async () => {
+    // Insert the co-leader row to remove (only member of CALLER_RUN besides caller)
+    const [row] = await sql`
+      INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
+      VALUES (${CALLER_RUN}, ${REMOVED_NAME}, ${REMOVED_EMAIL}, ${REMOVED_CLERK_ID}, 2, true)
+      ON CONFLICT (run_id, name) DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
+      RETURNING id
+    `
+    removedLeaderId = row.id as number
+
+    signInAs(CALLER_CLERK_ID, { role: 'leader' })
+    // getUser is called by revokeLeaderRoleIfOrphaned to fetch current publicMetadata
+    mockGetUser.mockResolvedValue({
+      id: REMOVED_CLERK_ID,
+      publicMetadata: { role: 'leader', admin: true },
+    })
+    mockUpdateUser.mockClear()
+
+    const res = await removeRunLeader(removedLeaderId)
+    expect(res.error).toBeUndefined()
+
+    // updateUser must be called exactly once, stripping role but preserving admin:true
+    expect(mockUpdateUser).toHaveBeenCalledOnce()
+    const [calledUserId, calledArgs] = mockUpdateUser.mock.calls[0] as [
+      string,
+      { publicMetadata: Record<string, unknown> },
+    ]
+    expect(calledUserId).toBe(REMOVED_CLERK_ID)
+    expect(calledArgs.publicMetadata).toEqual({ admin: true })
+    expect(calledArgs.publicMetadata).not.toHaveProperty('role')
+  })
+
+  test('removed leader STILL leads another active run → updateUser NOT called', async () => {
+    // Re-insert the co-leader into CALLER_RUN and ALSO add them to SECOND_RUN
+    const [row] = await sql`
+      INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
+      VALUES (${CALLER_RUN}, ${REMOVED_NAME}, ${REMOVED_EMAIL}, ${REMOVED_CLERK_ID}, 2, true)
+      ON CONFLICT (run_id, name) DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
+      RETURNING id
+    `
+    removedLeaderId = row.id as number
+    // Add to the second run so leadsAnyActiveRun returns true after deactivation from CALLER_RUN
+    await sql`
+      INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
+      VALUES (${SECOND_RUN}, ${REMOVED_NAME}, ${REMOVED_EMAIL}, ${REMOVED_CLERK_ID}, 1, true)
+      ON CONFLICT (run_id, name) DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
+    `
+
+    signInAs(CALLER_CLERK_ID, { role: 'leader' })
+    mockGetUser.mockResolvedValue({
+      id: REMOVED_CLERK_ID,
+      publicMetadata: { role: 'leader', admin: true },
+    })
+    mockUpdateUser.mockClear()
+
+    const res = await removeRunLeader(removedLeaderId)
+    expect(res.error).toBeUndefined()
+
+    // Role must NOT be revoked — the user still leads SECOND_RUN
+    expect(mockUpdateUser).not.toHaveBeenCalled()
   })
 })
