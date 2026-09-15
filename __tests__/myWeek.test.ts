@@ -88,7 +88,7 @@ describe('dayLabel', () => {
 describe('feedWindow', () => {
   const today = '2026-09-15'
   test('offset 0 is a couple past days through ~7 forward', () => {
-    expect(feedWindow(today, 0)).toEqual({ start: '2026-09-13', end: '2026-09-22' })
+    expect(feedWindow(today, 0)).toEqual({ start: '2026-09-13', end: '2026-09-21' })
   })
   test('navigating forward one week shifts to a clean 7-day block', () => {
     expect(feedWindow(today, 1)).toEqual({ start: '2026-09-22', end: '2026-09-28' })
