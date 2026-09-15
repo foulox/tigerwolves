@@ -1,168 +1,592 @@
 'use client'
 
-import { useState, useRef, useLayoutEffect, useEffect } from 'react'
-import type { ScheduleEntry, WorkoutVariantRow } from '@/lib/data'
-import { workoutVoteId } from '@/lib/votes'
+import { useState, useMemo, useEffect } from 'react'
+import * as Sentry from '@sentry/nextjs'
+import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/lib/data'
+import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
+import { resolveAllowedTypes, isWorkoutKind, kindToCategory } from '@/lib/runProfile'
+import { buildPost, buildVerificationLabel, formatDateLong } from '@/lib/postBuilder'
+import { setPlanWorkout } from '@/app/actions'
+import { captureClientEvent } from '@/lib/analyticsClient'
+import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
-import ScheduleCard from '@/components/ScheduleCard'
+import Header from '@/components/Header'
+import WorkoutDetails from '@/components/WorkoutDetails'
+import LeaderPicker from '@/components/LeaderPicker'
+import { formatDateShort } from '@/lib/dateUtils'
 
-const NEXT_UP_PAST_SLIVER = 50
-const PILL_GAP = 8
-const NEXT_UP_BUTTON_MARGIN = 20
 
-interface Props {
-  past: ScheduleEntry[]
-  pastWorkouts: (WorkoutVariantRow | null)[]
-  upcoming: ScheduleEntry[]
-  upcomingWorkouts: (WorkoutVariantRow | null)[]
-  isLeader: boolean
-  voteData: Record<string, VoteData | null>
-  // #331: forwarded to ScheduleCard to enable kind-aware compact rendering on the
-  // per-run page. Omitted on the live `/` Schedule page, which keeps today's look.
-  kind?: string
+type PlanStandaloneRow = { kind: 'standalone'; workout: WorkoutVariantRow }
+type PlanFamilyRow = { kind: 'family'; familyId: number; name: string; variants: WorkoutVariantRow[]; total: number }
+type PlanDisplayRow = PlanStandaloneRow | PlanFamilyRow
+
+function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined }) {
+  if (v && v.count > 0) {
+    return <span className="text-xs text-gray-400 tabular-nums">{ratingToEmoji(v.avg)} {v.count}</span>
+  }
+  return <span className="text-xs text-gray-300">🙂</span>
 }
 
-export default function ScheduleClient({ past, pastWorkouts, upcoming, upcomingWorkouts, isLeader, voteData, kind }: Props) {
-  // True once scrolled up above the NEXT UP landing spot (i.e. viewing past weeks).
-  // A boolean, not raw scrollY — updated only when the boundary is actually
-  // crossed, so a scroll listener firing every frame doesn't force a re-render
-  // (and a re-map of every visible card) on every pixel of scroll on mobile.
-  const [aboveNextUp, setAboveNextUp] = useState(false)
-  const nextUpRef = useRef<HTMLDivElement>(null)
-  const landingTargetRef = useRef(0)
-  // The page header is sticky (app/page.tsx) — measured once and applied directly
-  // to the DOM (not React state) so the pill floats just below it instead of
-  // being hidden underneath it. A one-time layout measurement, not a value the
-  // rest of the render needs to react to.
-  const pillRef = useRef<HTMLButtonElement>(null)
+type Props = {
+  upcoming: ScheduleEntry[]
+  variants: WorkoutVariantRow[]
+  initialWeekIndex?: number
+  isLeader: boolean
+  voteData?: Record<string, VoteData | null>
+  runConfig: RunConfig
+  roster: string[]
+  runLeaders: RunLeader[]
+}
 
-  function updateScrollState() {
-    const y = window.scrollY
-    setAboveNextUp(prev => {
-      const next = y < landingTargetRef.current - NEXT_UP_BUTTON_MARGIN
-      return prev === next ? prev : next
+export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {}, runConfig, roster, runLeaders }: Props) {
+  const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
+  const [selectedWorkouts, setSelectedWorkouts] = useState<WorkoutVariantRow[]>([])
+  const [showCount, setShowCount] = useState(3)
+  const [pickerSearch, setPickerSearch] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [activeType, setActiveType] = useState<string | null>(null)
+  const [planTab, setPlanTab] = useState<'post' | 'browse'>('post')
+  const [leaderPickerOpen, setLeaderPickerOpen] = useState(false)
+  const [localLeader, setLocalLeader] = useState<string | null>(null)
+  const [verified, setVerified] = useState(false)
+
+  useEffect(() => { setVerified(false) }, [weekIndex])
+
+  const entry = upcoming[weekIndex]
+
+  // #347: a Workout-kind run picks by workout TYPE (the Quality type chips); a
+  // non-Workout run (Easy/Long/Beginner-Friendly/Food) has no typing, so it picks
+  // from its whole category (kind→category) instead. Both still pick a workout and
+  // it goes in the post — buildPost renders a light line (name + reason) for the
+  // non-Workout case.
+  const isWorkout = isWorkoutKind(runConfig.kind)
+  const runCategory = kindToCategory(runConfig.kind)
+
+  const scheduledTypes = entry ? entry.workoutType.split(' or ').map(t => t.trim()) : []
+  const effectiveType = activeType ?? scheduledTypes[0] ?? ''
+
+  // #322: the type chips offer the run's workout-type allowlist intersected with the
+  // types present in its library. Workout runs only — a non-Workout run has no type
+  // chips (it scopes by category instead), so leave this empty for them.
+  const availableTypes = useMemo(() =>
+    isWorkout
+      ? resolveAllowedTypes(
+          variants.filter(w => w.category === 'Quality').map(w => w.type),
+          runConfig.workoutTypes,
+        )
+      : []
+  , [variants, runConfig.workoutTypes, isWorkout])
+
+  // A family is "multi-version" (Standard/Longer picker UI) when it has more
+  // than one variant row — label alone isn't the signal, since a lone variant
+  // can still carry a non-null label.
+  const familyIds = useMemo(() => {
+    const counts = new Map<number, number>()
+    for (const w of variants) counts.set(w.familyId, (counts.get(w.familyId) ?? 0) + 1)
+    const s = new Set<number>()
+    for (const [id, count] of counts) if (count > 1) s.add(id)
+    return s
+  }, [variants])
+
+  // Look up the already-scheduled workout across the FULL library, not the
+  // type-filtered allSuggestions — a leader can deliberately schedule a workout
+  // whose type doesn't match the week's nominal type (a real override, not bad
+  // data), and that should still be recognized rather than silently swapped
+  // for an unrelated suggestion.
+  const plannedWorkout = useMemo(() => {
+    if (!entry?.workoutName) return null
+    return resolveWorkoutVariant(variants, entry.workoutName, entry.selectedVariations)
+  }, [entry, variants])
+
+  const plannedNotFound = !!entry?.workoutName && plannedWorkout === null
+
+  const allSuggestions = useMemo(() => {
+    if (!entry) return []
+    // Workout runs suggest by the week's type(s); non-Workout runs suggest from
+    // their whole category (they have no per-week type), so an Easy run offers all
+    // its Easy workouts. Runs with no category mapping fall back to everything.
+    const pool = isWorkout
+      ? variants.filter(w => {
+          const types = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
+          return types.includes(w.type)
+        })
+      : variants.filter(w => !runCategory || w.category === runCategory)
+    return pool
+      .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
+      .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
+  }, [entry, variants, activeType, plannedWorkout, isWorkout, runCategory])
+
+  const pickerSource = useMemo(() => {
+    const q = pickerSearch.toLowerCase()
+    if (!q) return allSuggestions
+    return variants
+      .filter(w =>
+        w.name.toLowerCase().includes(q) ||
+        w.type.toLowerCase().includes(q) ||
+        (w.label ?? '').toLowerCase().includes(q) ||
+        w.reason.toLowerCase().includes(q) ||
+        w.raceTypes.some(r => r.toLowerCase().includes(q))
+      )
+      .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
+      .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
+  }, [pickerSearch, allSuggestions, variants, plannedWorkout])
+
+  const displayRows = useMemo<PlanDisplayRow[]>(() => {
+    const rows: PlanDisplayRow[] = []
+    const seen = new Set<number>()
+    for (const w of pickerSource) {
+      if (!familyIds.has(w.familyId)) {
+        rows.push({ kind: 'standalone', workout: w })
+      } else if (!seen.has(w.familyId)) {
+        seen.add(w.familyId)
+        const members = pickerSource
+          .filter(p => p.familyId === w.familyId)
+          .sort((a, b) => (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity))
+        rows.push({ kind: 'family', familyId: w.familyId, name: w.name, variants: members, total: members.length })
+      }
+    }
+    return rows
+  }, [pickerSource, familyIds])
+
+  const visibleRows = pickerSearch ? displayRows : displayRows.slice(0, showCount)
+  const remainingCount = pickerSearch ? 0 : displayRows.length - showCount
+
+  const effectiveSelections: WorkoutVariantRow[] = selectedWorkouts.length > 0
+    ? selectedWorkouts
+    : plannedWorkout
+      ? [plannedWorkout]
+      : entry?.workoutName
+        ? []
+        : (() => {
+            const w = allSuggestions[0] ?? null
+            return w ? [w] : []
+          })()
+
+  function workoutKey(w: WorkoutVariantRow) {
+    return String(w.id)
+  }
+
+  function isEffectivelySelected(w: WorkoutVariantRow): boolean {
+    return effectiveSelections.some(s => workoutKey(s) === workoutKey(w))
+  }
+
+  function changeWeek(idx: number) {
+    setWeekIndex(idx)
+    setSelectedWorkouts([])
+    setShowCount(3)
+    setPickerSearch('')
+    setCopied(false)
+    setSaved(false)
+    setExpandedId(null)
+    setActiveType(null)
+    setPlanTab('post')
+    setLeaderPickerOpen(false)
+    setLocalLeader(null)
+  }
+
+  function toggleExpand(id: string) {
+    setExpandedId(prev => prev === id ? null : id)
+  }
+
+  function handleSelect(w: WorkoutVariantRow) {
+    setSelectedWorkouts(prev => {
+      const key = workoutKey(w)
+      if (prev.some(s => workoutKey(s) === key)) {
+        return prev.filter(s => workoutKey(s) !== key)
+      }
+      if (prev.length === 2 && prev[0].familyId === w.familyId) {
+        return [prev[0], w]
+      }
+      if (prev.length === 1 && prev[0].familyId === w.familyId) {
+        return [prev[0], w]
+      }
+      return [w]
+    })
+    setSaved(false)
+  }
+
+  const effectiveLeader = localLeader ?? entry?.leader ?? ''
+  const post = entry && effectiveSelections.length > 0 && runConfig
+    ? buildPost({ ...entry, leader: effectiveLeader }, effectiveSelections, runConfig, roster, activeType)
+    : ''
+
+  function handleCopy() {
+    navigator.clipboard.writeText(post).then(() => {
+      setCopied(true)
+      captureClientEvent('heylo_post_copied')
+      setTimeout(() => setCopied(false), 2000)
     })
   }
 
-  // Land on NEXT UP (with a sliver of the last past card peeking above) before paint,
-  // so the user never sees the page start at the very top and jump.
-  useLayoutEffect(() => {
-    function landOnNextUp() {
-      const headerHeight = document.querySelector('header')?.getBoundingClientRect().height ?? 0
-      const pillHeight = pillRef.current?.getBoundingClientRect().height ?? 0
-      if (pillRef.current) pillRef.current.style.top = `${headerHeight + PILL_GAP}px`
-
-      const nextUpEl = nextUpRef.current
-      if (!nextUpEl) return
-      const rect = nextUpEl.getBoundingClientRect()
-      // The header (sticky) and pill (fixed) both float over the top of the viewport
-      // regardless of scroll position — landing NEXT UP's top based on a flat offset
-      // from the viewport edge (ignoring them) put it right underneath both. Clear
-      // their combined height first, then leave the intended sliver of the last
-      // past card peeking above that.
-      const topClearance = headerHeight + pillHeight + PILL_GAP + NEXT_UP_PAST_SLIVER
-      const target = Math.max(0, rect.top + window.scrollY - topClearance)
-      landingTargetRef.current = target
-      window.scrollTo(0, target)
-      updateScrollState()
+  async function handleSetPlan() {
+    if (!entry || effectiveSelections.length === 0) return
+    const sorted = [...effectiveSelections].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    setSaving(true)
+    try {
+      await setPlanWorkout(entry.date, sorted[0].name, sorted.map(w => w.label ?? ''))
+      setSaved(true)
+      setVerified(false)
+      setPlanTab('post')
+    } catch (err) {
+      Sentry.captureException(err, { extra: { date: entry.date, workoutName: sorted[0].name } })
+    } finally {
+      setSaving(false)
     }
-
-    landOnNextUp()
-
-    // Client-only widgets in the header (Clerk's <UserButton /> for signed-in
-    // leaders) hydrate and can change the header's real height shortly after
-    // this first paint — the page's true scrollable height isn't settled yet
-    // at this exact instant, so the scrollTo above can silently clamp short of
-    // the intended target, and the pill's `top` (also set in landOnNextUp)
-    // is left stale too. Must observe the `header` element itself, not
-    // document.body: body has `h-full` (RootLayout), pinning its own box to
-    // the viewport height, so body's rendered size never reflects the header
-    // growing/shrinking — only `header` (and `main`, via min-h-full) actually
-    // changes size with content, so only observing one of those catches it
-    // (#246 — the earlier document.body version never fired for this, leaving
-    // signed-in leaders with a pill positioned under the sticky header).
-    const headerEl = document.querySelector('header')
-    if (!headerEl) return
-
-    const observer = new ResizeObserver(() => landOnNextUp())
-    observer.observe(headerEl)
-
-    return () => observer.disconnect()
-  }, [])
-
-  useEffect(() => {
-    window.addEventListener('scroll', updateScrollState, { passive: true })
-    return () => window.removeEventListener('scroll', updateScrollState)
-  }, [])
-
-  function scrollToTop() {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function scrollToNextUp() {
-    window.scrollTo({ top: landingTargetRef.current, behavior: 'smooth' })
+  if (upcoming.length === 0) {
+    return (
+      <>
+        <Header title="Schedule" isLeader={isLeader} />
+        <div className="px-4" data-tour="heylo-area">
+          <p className="text-gray-500 mt-4">No upcoming weeks on the schedule.</p>
+        </div>
+      </>
+    )
   }
 
   return (
-    <div className="px-4 flex flex-col gap-3">
-      {past.length > 0 && (
-        // Fixed, not sticky — a single pill that swaps direction/label based on
-        // scroll position. Deliberately not CSS `position: sticky`: its "stuck"
-        // range would span the whole card list (past + upcoming together), so it
-        // would never un-stick once scrolled past the past weeks, overlapping
-        // NEXT UP and beyond. `fixed` + state gives exact control instead.
-        <button
-          ref={pillRef}
-          onClick={aboveNextUp ? scrollToNextUp : scrollToTop}
-          className="fixed left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-900/70 text-white text-xs font-semibold touch-manipulation"
-        >
-          {aboveNextUp ? (
-            <><span>↓</span><span>Next up</span></>
-          ) : (
-            <><span>↑</span><span>Past weeks</span></>
-          )}
-        </button>
-      )}
+    <>
+      <Header title="Schedule" isLeader={isLeader} />
+      <div className="px-4 pb-4" data-tour="heylo-area">
 
-      {past.map((entry, i) => {
-        const workout = pastWorkouts[i]
-        return (
-          <ScheduleCard
-            key={`past-${entry.date}-${entry.workoutName ?? ''}`}
-            entry={entry}
-            workout={workout}
-            index={i}
-            isLeader={isLeader}
-            isPast
-            kind={kind}
-            voteData={workout ? (voteData[workoutVoteId(workout.name, workout.label ?? '')] ?? null) : null}
-          />
-        )
-      })}
-
-      {upcoming.length === 0 && (
-        <p className="text-gray-400 italic text-sm">No upcoming workouts scheduled yet.</p>
-      )}
-      {upcoming.map((entry, i) => {
-        const workout = upcomingWorkouts[i]
-        const key = `upcoming-${entry.date}-${entry.workoutName ?? ''}`
-        const card = (
-          <ScheduleCard
-            entry={entry}
-            workout={workout}
-            index={i}
-            isLeader={isLeader}
-            kind={kind}
-            voteData={workout ? (voteData[workoutVoteId(workout.name, workout.label ?? '')] ?? null) : null}
-          />
-        )
-        if (i !== 0) return <div key={key}>{card}</div>
-        return (
-          <div key={key} ref={nextUpRef}>
-            {card}
+        {/* Week nav */}
+        <div className={`flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-2 py-2 ${leaderPickerOpen ? 'mb-2' : 'mb-5'}`}>
+          <button
+            onClick={() => changeWeek(weekIndex - 1)}
+            disabled={weekIndex === 0}
+            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-gray-500 active:bg-gray-100"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div className="text-center">
+            {isLeader && entry && !leaderPickerOpen ? (
+              <button
+                onClick={() => setLeaderPickerOpen(true)}
+                className="text-left touch-manipulation"
+                aria-label="Change leader for this week"
+              >
+                <div className="text-sm font-semibold text-gray-900 flex items-center gap-1">
+                  {localLeader ?? entry.leader}
+                  {entry.needsLeader && <span className="text-[9px] bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded">Needs leader</span>}
+                  <span className="text-xs text-orange-600">tap to change</span>
+                </div>
+              </button>
+            ) : (
+              <div className="text-sm font-semibold text-gray-900">{entry ? (localLeader ?? entry.leader) : '—'}</div>
+            )}
+            <div className="text-xs text-gray-400">{entry ? formatDateShort(new Date(entry.date + 'T00:00:00')) : ''}</div>
           </div>
-        )
-      })}
-    </div>
+          <button
+            onClick={() => changeWeek(weekIndex + 1)}
+            disabled={weekIndex >= upcoming.length - 1}
+            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-gray-500 active:bg-gray-100"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+
+        {isLeader && leaderPickerOpen && entry && (
+          <div className="mb-3 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <LeaderPicker
+              date={entry.date}
+              currentLeader={localLeader ?? entry.leader}
+              runLeaders={runLeaders}
+              onClose={() => setLeaderPickerOpen(false)}
+              onSaved={(name) => { setLocalLeader(name); setLeaderPickerOpen(false) }}
+            />
+          </div>
+        )}
+
+        {entry && (
+          <>
+            {isWorkout && (
+            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6">
+              <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">WORKOUT TYPE</div>
+              <div className="text-2xl font-bold text-gray-900">{activeType ?? entry.workoutType}</div>
+              {activeType && (
+                <div className="text-xs text-gray-500 mt-0.5">Scheduled: {entry.workoutType}</div>
+              )}
+              <div className="text-xs text-gray-400 mt-1">{formatDateLong(entry.date)}</div>
+              {/* Only offer the type picker when there's a real choice — a lone
+                  chip is just noise (mirrors the Library's types.length > 1 gate). */}
+              {availableTypes.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 -mx-1 px-1">
+                  {availableTypes.map(t => {
+                    const isActive = activeType === null ? scheduledTypes.includes(t) : t === activeType
+                    return (
+                      <button key={t} type="button"
+                        onClick={() => setActiveType(scheduledTypes.includes(t) ? null : t)}
+                        className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
+                          isActive ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border border-gray-200'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            )}
+
+            {plannedNotFound && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-3 mb-4 text-sm text-red-700">
+                ⚠️ &ldquo;{entry.workoutName}&rdquo; is no longer in the workout library — pick a replacement below.
+              </div>
+            )}
+
+            {plannedWorkout && (() => {
+              const w = plannedWorkout
+              const sel = isEffectivelySelected(w)
+              const eid = `planned-${w.id}`
+              const expanded = expandedId === eid
+              return (
+                <div className="mb-4">
+                  <div className="text-sm font-bold text-gray-700 mb-2">Currently planned</div>
+                  <div
+                    className={`bg-white rounded-2xl border shadow-sm transition-colors ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
+                  >
+                    <button
+                      onClick={() => handleSelect(w)}
+                      className="w-full text-left p-4 touch-manipulation cursor-pointer"
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="font-semibold text-gray-900">{w.name}</div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <VoteBadge v={voteData[workoutVoteId(w.name, w.label ?? '')]} />
+                          <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}</span>
+                        </div>
+                      </div>
+                      {w.label && <div className="text-xs text-gray-400 mt-0.5">{w.label}</div>}
+                      {w.rawInput && <div className="text-sm text-gray-700 mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</div>}
+                      {w.coachingNotes && <div className="text-sm text-gray-500 mt-1.5 italic leading-snug">{w.coachingNotes}</div>}
+                      <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
+                    </button>
+                    <button
+                      onClick={() => toggleExpand(eid)}
+                      className="w-full px-4 pb-3 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1"
+                    >
+                      <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+                      {expanded ? 'Hide details' : 'Show details'}
+                    </button>
+                    {expanded && (
+                      <div className="px-4 pb-4 mt-3 pt-3 border-t border-gray-100">
+                        <WorkoutDetails w={w} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {plannedWorkout && (
+              <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4">
+                <button
+                  onClick={() => setPlanTab('post')}
+                  className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
+                    planTab === 'post' ? 'bg-white text-gray-900 shadow-sm' : 'bg-transparent text-gray-500'
+                  }`}
+                >
+                  Post draft
+                </button>
+                <button
+                  onClick={() => setPlanTab('browse')}
+                  className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
+                    planTab === 'browse' ? 'bg-white text-gray-900 shadow-sm' : 'bg-transparent text-gray-500'
+                  }`}
+                >
+                  Change workout
+                </button>
+              </div>
+            )}
+
+            {(!plannedWorkout || planTab === 'browse') && (
+              <>
+                <div className="relative mb-4">
+                  <input
+                    type="search"
+                    value={pickerSearch}
+                    onChange={e => setPickerSearch(e.target.value)}
+                    placeholder="Search all workouts by name, type, race…"
+                    className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-orange-400"
+                  />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+                </div>
+
+                {allSuggestions.length === 0 && !pickerSearch ? (
+                  <p className="text-gray-400 italic text-sm">
+                    {isWorkout
+                      ? (plannedWorkout
+                          ? `No other ${entry.workoutType} workouts to switch to yet.`
+                          : `No ${entry.workoutType} workouts in the library yet.`)
+                      : (plannedWorkout
+                          ? 'No other workouts to switch to yet.'
+                          : 'No workouts in your library yet.')}
+                  </p>
+                ) : displayRows.length === 0 ? (
+                  <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
+                ) : (
+                  <div className="mb-6">
+                    <div className="text-sm font-bold text-gray-700 mb-2">
+                      {pickerSearch ? `All workouts matching "${pickerSearch}"` : 'Workouts — least recently used'}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {visibleRows.map(row => {
+                        if (row.kind === 'standalone') {
+                          const w = row.workout
+                          const sel = isEffectivelySelected(w)
+                          const eid = `s-${w.id}`
+                          const expanded = expandedId === eid
+                          return (
+                            <div
+                              key={`s-${w.id}`}
+                              className={`bg-white rounded-2xl border shadow-sm transition-colors ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
+                            >
+                              <button
+                                onClick={() => handleSelect(w)}
+                                className="w-full text-left p-4 touch-manipulation cursor-pointer"
+                              >
+                                <div className="flex justify-between items-start gap-2">
+                                  <div className="font-semibold text-gray-900">{w.name}</div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <VoteBadge v={voteData[workoutVoteId(w.name, w.label ?? '')]} />
+                                    <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}</span>
+                                  </div>
+                                </div>
+                                {w.label && <div className="text-xs text-gray-400 mt-0.5">{w.label}</div>}
+                                {w.rawInput && <div className="text-sm text-gray-700 mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</div>}
+                                {w.coachingNotes && <div className="text-sm text-gray-500 mt-1.5 italic leading-snug">{w.coachingNotes}</div>}
+                                <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
+                              </button>
+                              <button
+                                onClick={() => toggleExpand(eid)}
+                                className="w-full px-4 pb-3 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1"
+                              >
+                                <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+                                {expanded ? 'Hide details' : 'Show details'}
+                              </button>
+                              {expanded && (
+                                <div className="px-4 pb-4 mt-3 pt-3 border-t border-gray-100">
+                                  <WorkoutDetails w={w} />
+                                </div>
+                              )}
+                            </div>
+                          )
+                        }
+
+                        // Family row — all versions always visible, up to 2 selectable.
+                        // Badge text is a generic ordinal ("Standard" / "Variation N of
+                        // Total"), not driven by label — label is a short leader-authored
+                        // tag ("Shorter"/"Longer"), shown as the subtitle beneath it.
+                        return (
+                          <div key={`f-${row.familyId}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="px-4 py-3 border-b border-gray-100">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="font-semibold text-gray-900">{row.name}</div>
+                                <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full shrink-0">
+                                  {row.total} versions
+                                </span>
+                              </div>
+                            </div>
+                            {row.variants.map((v, i) => {
+                              const sel = isEffectivelySelected(v)
+                              const isLast = i === row.variants.length - 1
+                              const eid = `f-variant-${v.id}`
+                              const expanded = expandedId === eid
+                              const label = i === 0 ? 'Standard' : `Variation ${i + 1} of ${row.total}`
+                              return (
+                                <div key={v.id} className={`${!isLast ? 'border-b border-gray-50' : ''} ${sel ? 'bg-orange-50' : 'bg-white'}`}>
+                                  <button
+                                    onClick={() => handleSelect(v)}
+                                    className="w-full text-left px-4 pt-3 pb-1 touch-manipulation"
+                                  >
+                                    <div className="flex justify-between items-start gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
+                                        <span className={`text-xs font-bold ${i === 0 ? 'text-gray-600' : 'text-orange-500'}`}>{label}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <VoteBadge v={voteData[workoutVoteId(v.name, v.label ?? '')]} />
+                                        <span className="text-xs text-gray-400">{v.lastRan ? formatDateShort(new Date(v.lastRan + 'T00:00:00')) : 'Never'}</span>
+                                      </div>
+                                    </div>
+                                    {v.label && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{v.label}</div>}
+                                    {v.rawInput && <div className="text-sm text-gray-700 mt-1.5 ml-6 whitespace-pre-wrap leading-snug">{v.rawInput}</div>}
+                                    {v.coachingNotes && <div className="text-sm text-gray-500 mt-1.5 ml-6 italic leading-snug">{v.coachingNotes}</div>}
+                                    {v.distTime && <div className="text-xs text-gray-400 mt-0.5 ml-6">{v.distTime}</div>}
+                                  </button>
+                                  <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1 ml-6">
+                                    <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+                                    {expanded ? 'Hide' : 'Details'}
+                                  </button>
+                                  {expanded && <div className="px-4 pb-3 mt-3 pt-3 border-t border-gray-100"><WorkoutDetails w={v} /></div>}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {remainingCount > 0 && (
+                      <button
+                        onClick={() => setShowCount(showCount + 3)}
+                        className="mt-3 w-full py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-500 bg-white active:bg-gray-50 touch-manipulation"
+                      >
+                        Show {Math.min(remainingCount, 3)} more
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {effectiveSelections.length > 0 && (
+                  <button
+                    onClick={handleSetPlan}
+                    disabled={saving || saved}
+                    className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm mb-6 touch-manipulation transition-colors ${
+                      saved
+                        ? 'bg-green-500 text-white'
+                        : 'bg-orange-500 text-white active:bg-orange-600 disabled:opacity-60'
+                    }`}
+                  >
+                    {saved ? <><Check size={16} /> Saved to plan</> : saving ? 'Saving…' : 'Set as plan'}
+                  </button>
+                )}
+              </>
+            )}
+
+            {(!plannedWorkout || planTab === 'post') && effectiveSelections.length > 0 && (
+              <div className="flex flex-col gap-3 p-4">
+                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
+                <div className="flex items-start gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                  <input
+                    type="checkbox"
+                    id="verify-checkbox"
+                    checked={verified}
+                    onChange={e => setVerified(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 shrink-0 accent-orange-600 touch-manipulation"
+                  />
+                  <label htmlFor="verify-checkbox" className="text-sm text-gray-600 leading-snug cursor-pointer">
+                    {effectiveSelections.length > 0 ? buildVerificationLabel(effectiveSelections[0]) : 'I\'ve verified the key workout details'}
+                  </label>
+                </div>
+                <button
+                  onClick={handleCopy}
+                  disabled={!verified}
+                  data-tour="heylo-copy"
+                  className={`flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-sm touch-manipulation transition-opacity ${verified ? 'bg-orange-600 text-white' : 'bg-orange-600 text-white opacity-35 cursor-not-allowed'}`}
+                >
+                  {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </>
   )
 }

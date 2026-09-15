@@ -5,7 +5,7 @@ type ClerkUser = NonNullable<Awaited<ReturnType<typeof currentUser>>>
 
 /**
  * Page-level leader gate (#337). Route-level defense-in-depth in front of the
- * leader-only pages (/plan, /library/add, /library/edit): a signed-in NON-leader
+ * leader-only pages (/schedule, /library/add, /library/edit): a signed-in NON-leader
  * who types one of those URLs is redirected to '/', rather than shown a page
  * whose every write would be rejected by requireAuth() anyway. Mirrors the
  * redirect /run-config already performs (see runConfigGate).

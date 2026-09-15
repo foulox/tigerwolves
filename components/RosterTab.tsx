@@ -67,7 +67,7 @@ export default function RosterTab({
           ? { ...r, awayPeriods: [...r.awayPeriods, { from: newFrom, to: newTo }] }
           : r
         ))
-        // Refresh server data so the reassigned schedule/plan surfaces are up to date.
+        // Refresh server data so the reassigned Schedule/My Plan surfaces are up to date.
         router.refresh()
       } catch (err) {
         Sentry.captureException(err)
@@ -86,7 +86,7 @@ export default function RosterTab({
         if (res.noLeaderDates.length) msgs.push(`⚠ No available leader for: ${res.noLeaderDates.join(', ')} — assign manually`)
         setBanner({ message: msgs.join('\n'), isWarning: res.noLeaderDates.length > 0 })
         setTimeout(() => setBanner(null), 6000)
-        // Refresh server data so the reassigned schedule/plan surfaces are up to date.
+        // Refresh server data so the reassigned Schedule/My Plan surfaces are up to date.
         router.refresh()
       } catch (e) {
         Sentry.captureException(e)

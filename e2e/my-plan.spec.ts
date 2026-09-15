@@ -1,17 +1,17 @@
 import { test, expect, type Page } from '@playwright/test'
 
-// My Week (#331) — the cross-run home at /my-week. Auth-required; follow-based.
+// My Plan (#331) — the cross-run home at /my-plan. Auth-required; follow-based.
 //
 // The default project runs signed in as the TigerWolves test-leader (see
 // playwright.config.ts storageState + e2e/auth.setup.ts). #332 adds leader
-// auto-follow: /my-week idempotently follows the run this leader leads
+// auto-follow: /my-plan idempotently follows the run this leader leads
 // (TigerWolves) on load, so the led run always appears without a manual join.
 // Other runs (MMER) still require an explicit follow. The seed (scripts/seed-e2e.ts)
 // clears the leader's tigerwolves + mmer follows at the start of each run, and
 // seeds MMER as a real Easy run (Monday schedule + route) alongside TigerWolves.
 //
 // Each test sets its own follow state via /all-runs (which does NOT trigger the
-// auto-follow — only /my-week does) so order doesn't matter.
+// auto-follow — only /my-plan does) so order doesn't matter.
 
 // Join/leave a platform run from the All Runs directory to reach a known state.
 async function setFollow(page: Page, runId: string, shouldFollow: boolean) {
@@ -26,32 +26,32 @@ async function setFollow(page: Page, runId: string, shouldFollow: boolean) {
   }
 }
 
-test.describe('My Week (/my-week) — signed-in leader', () => {
-  // #332: the test-leader owns TigerWolves, so /my-week auto-follows it on load —
+test.describe('My Plan (/my-plan) — signed-in leader', () => {
+  // #332: the test-leader owns TigerWolves, so /my-plan auto-follows it on load —
   // a leader can no longer reach the zero-follows empty state. Clearing every
-  // manual follow and loading /my-week still surfaces the led run without a join.
+  // manual follow and loading /my-plan still surfaces the led run without a join.
   // (The empty-state path now needs a non-leader fixture, deferred to R4b #337.)
-  test('leader auto-follows their led run — it appears on /my-week without a manual join', async ({ page }) => {
+  test('leader auto-follows their led run — it appears on /my-plan without a manual join', async ({ page }) => {
     await setFollow(page, 'tigerwolves', false)
     await setFollow(page, 'mmer', false)
 
-    await page.goto('/my-week')
+    await page.goto('/my-plan')
     await page.waitForLoadState('load')
 
     // Not the empty prompt — the led run was auto-followed on load.
-    await expect(page.locator('[data-testid="my-week-empty"]')).toHaveCount(0)
-    await expect(page.locator('[data-testid^="my-week-card-tigerwolves-"]').first()).toBeVisible()
+    await expect(page.locator('[data-testid="my-plan-empty"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid^="my-plan-card-tigerwolves-"]').first()).toBeVisible()
   })
 
   test('shows cross-run cards grouped by day, with kind-aware compact bodies', async ({ page }) => {
     await setFollow(page, 'tigerwolves', true)
     await setFollow(page, 'mmer', true)
 
-    await page.goto('/my-week')
+    await page.goto('/my-plan')
     await page.waitForLoadState('load')
 
-    const tigerCard = page.locator('[data-testid^="my-week-card-tigerwolves-"]').first()
-    const mmerCard = page.locator('[data-testid^="my-week-card-mmer-"]').first()
+    const tigerCard = page.locator('[data-testid^="my-plan-card-tigerwolves-"]').first()
+    const mmerCard = page.locator('[data-testid^="my-plan-card-mmer-"]').first()
     await expect(tigerCard).toBeVisible()
     await expect(mmerCard).toBeVisible()
 
@@ -59,26 +59,26 @@ test.describe('My Week (/my-week) — signed-in leader', () => {
     expect(await page.locator('[data-testid^="day-group-"]').count()).toBeGreaterThan(0)
 
     // TigerWolves (Workout kind) → type pill + short set line, no route link.
-    await expect(page.locator('[data-testid="my-week-type-tigerwolves"]')).toContainText('Interval')
-    await expect(page.locator('[data-testid="my-week-set-tigerwolves"]')).toContainText('10x800m @ 5K effort')
-    await expect(page.locator('[data-testid="my-week-route-tigerwolves"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="my-plan-type-tigerwolves"]')).toContainText('Interval')
+    await expect(page.locator('[data-testid="my-plan-set-tigerwolves"]')).toContainText('10x800m @ 5K effort')
+    await expect(page.locator('[data-testid="my-plan-route-tigerwolves"]')).toHaveCount(0)
 
     // MMER (Easy/route kind) → distance + "View route ↗", no type pill.
-    await expect(page.locator('[data-testid="my-week-distance-mmer"]')).toContainText('4 miles')
-    await expect(page.locator('[data-testid="my-week-route-mmer"]')).toContainText('View route')
-    await expect(page.locator('[data-testid="my-week-type-mmer"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="my-plan-distance-mmer"]')).toContainText('4 miles')
+    await expect(page.locator('[data-testid="my-plan-route-mmer"]')).toContainText('View route')
+    await expect(page.locator('[data-testid="my-plan-type-mmer"]')).toHaveCount(0)
   })
 
   test('cards start collapsed; tap toggles the expanded panel (reuses WorkoutDetails)', async ({ page }) => {
     await setFollow(page, 'tigerwolves', true)
 
-    await page.goto('/my-week')
+    await page.goto('/my-plan')
     await page.waitForLoadState('load')
 
-    const detail = page.locator('[data-testid="my-week-detail-tigerwolves"]')
+    const detail = page.locator('[data-testid="my-plan-detail-tigerwolves"]')
     await expect(detail).toHaveCount(0) // collapsed by default
 
-    await page.locator('[data-testid^="my-week-card-tigerwolves-"]').first().click()
+    await page.locator('[data-testid^="my-plan-card-tigerwolves-"]').first().click()
     await expect(detail).toBeVisible()
     await expect(detail).toContainText('Instructions')
   })
@@ -87,10 +87,10 @@ test.describe('My Week (/my-week) — signed-in leader', () => {
     await setFollow(page, 'tigerwolves', true)
     await setFollow(page, 'mmer', true)
 
-    await page.goto('/my-week')
+    await page.goto('/my-plan')
     await page.waitForLoadState('load')
 
-    const mmerCard = page.locator('[data-testid^="my-week-card-mmer-"]')
+    const mmerCard = page.locator('[data-testid^="my-plan-card-mmer-"]')
     const rangeLabel = page.locator('[data-testid="week-range-label"]')
     await expect(mmerCard.first()).toBeVisible()
     const week0 = await rangeLabel.textContent()
@@ -109,10 +109,10 @@ test.describe('My Week (/my-week) — signed-in leader', () => {
   test('rate in place via the ReactionPicker on a card', async ({ page }) => {
     await setFollow(page, 'mmer', true)
 
-    await page.goto('/my-week')
+    await page.goto('/my-plan')
     await page.waitForLoadState('load')
 
-    const card = page.locator('[data-testid^="my-week-card-mmer-"]').first()
+    const card = page.locator('[data-testid^="my-plan-card-mmer-"]').first()
     const reactBtn = card.locator('button', { hasText: 'React' })
     await reactBtn.click()
     // Picker opens with emoji options, then a pick closes it.
@@ -125,19 +125,31 @@ test.describe('My Week (/my-week) — signed-in leader', () => {
   test('run name links to that run\'s per-run page', async ({ page }) => {
     await setFollow(page, 'mmer', true)
 
-    await page.goto('/my-week')
+    await page.goto('/my-plan')
     await page.waitForLoadState('load')
 
-    await page.locator('[data-testid="my-week-run-link-mmer"]').first().click()
+    await page.locator('[data-testid="my-plan-run-link-mmer"]').first().click()
     await page.waitForURL(/\/runs\/mmer/)
     expect(page.url()).toContain('/runs/mmer')
   })
 })
 
-test.describe('My Week (/my-week) — auth required', () => {
+test.describe('My Plan (/my-plan) — auth required', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
   test('logged-out visit redirects to sign-in', async ({ page }) => {
+    await page.goto('/my-plan')
+    await page.waitForURL(/\/sign-in/)
+    expect(page.url()).toContain('/sign-in')
+  })
+})
+
+test.describe('redirect: /my-week → /my-plan', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('GET /my-week lands on /sign-in (redirect + auth)', async ({ page }) => {
+    // /my-week is now a permanent redirect to /my-plan, which is auth-required.
+    // A logged-out visitor ends up at /sign-in (redirect → /my-plan → sign-in).
     await page.goto('/my-week')
     await page.waitForURL(/\/sign-in/)
     expect(page.url()).toContain('/sign-in')

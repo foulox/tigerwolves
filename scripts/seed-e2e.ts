@@ -60,7 +60,7 @@ const RACES: Omit<Race, 'id'>[] = [
   { date: '', name: 'Prospect Park 5K Series #3', distance: '5K', location: 'Prospect Park, Brooklyn', organizer: 'NBR', verified: false, flagged: true, flagNote: "Date TBD — organizer hasn't confirmed" },
 ]
 
-// #276/#277: Library/Plan/Schedule/Admin all read workout_families/
+// #276/#277: Library/Schedule/Group Run/Admin all read workout_families/
 // workout_variants exclusively — these fixtures are what the e2e specs
 // assert against.
 type VariantFixture = {
@@ -279,7 +279,7 @@ export async function seedE2E(): Promise<void> {
   `
 
   // workout_type must match the assigned workout's own "type" field (not its
-  // "category") — PlanClient's suggestion picker filters library workouts by
+  // "category") — ScheduleClient's suggestion picker filters library workouts by
   // types.includes(w.type) against this column, so a mismatch here silently
   // empties the picker instead of erroring.
   await sql`

@@ -6,12 +6,12 @@ import { CalendarDays, BookOpen, Flag, List } from 'lucide-react'
 import { ClipboardCheckIcon } from './icons'
 
 // #332 Home flip — the single app nav for everyone (runners + leaders). The old
-// standalone Schedule tab retired into the run-scoped page; My Week is home. The
-// Plan tab is leader-only and gated on the server-computed `isLeader` prop, NOT
-// client `isSignedIn` — a signed-in runner must not see Plan.
+// standalone Schedule tab retired into the run-scoped page; My Plan is home. The
+// Schedule tab is leader-only and gated on the server-computed `isLeader` prop, NOT
+// client `isSignedIn` — a signed-in runner must not see Schedule.
 const allTabs = [
-  { href: '/my-week',  label: 'My Week',  icon: CalendarDays,       tour: 'my-week',  leaderOnly: false },
-  { href: '/plan',     label: 'Plan',     icon: ClipboardCheckIcon, tour: 'plan',     leaderOnly: true  },
+  { href: '/my-plan',  label: 'My Plan',  icon: CalendarDays,       tour: 'my-plan',  leaderOnly: false },
+  { href: '/schedule', label: 'Schedule', icon: ClipboardCheckIcon, tour: 'schedule', leaderOnly: true  },
   { href: '/all-runs', label: 'All Runs', icon: List,               tour: 'all-runs', leaderOnly: false },
   { href: '/library',  label: 'Library',  icon: BookOpen,           tour: 'library',  leaderOnly: false },
   { href: '/races',    label: 'Races',    icon: Flag,               tour: 'races',    leaderOnly: false },

@@ -7,8 +7,8 @@ import {
   groupByDay,
   compactCardFields,
   truncateSet,
-  type MyWeekItem,
-} from '../lib/myWeek'
+  type MyPlanItem,
+} from '../lib/myPlan'
 import type { RunConfig, ScheduleEntry, WorkoutVariantRow } from '../lib/data'
 
 function makeRun(overrides: Partial<RunConfig> = {}): RunConfig {
@@ -54,7 +54,7 @@ function makeWorkout(overrides: Partial<WorkoutVariantRow> = {}): WorkoutVariant
   }
 }
 
-function makeItem(overrides: Partial<MyWeekItem> = {}): MyWeekItem {
+function makeItem(overrides: Partial<MyPlanItem> = {}): MyPlanItem {
   return {
     run: makeRun(),
     date: '2026-09-15',

@@ -12,8 +12,8 @@ describe('entryTarget', () => {
     expect(entryTarget(true, 0)).toBe('/all-runs')
   })
 
-  test('signed in with ≥1 follow → /my-week (home)', () => {
-    expect(entryTarget(true, 1)).toBe('/my-week')
-    expect(entryTarget(true, 5)).toBe('/my-week')
+  test('signed in with ≥1 follow → /my-plan (home)', () => {
+    expect(entryTarget(true, 1)).toBe('/my-plan')
+    expect(entryTarget(true, 5)).toBe('/my-plan')
   })
 })

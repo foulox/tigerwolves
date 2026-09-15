@@ -22,15 +22,15 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
     expect(await cards.count()).toBeGreaterThan(0)
   })
 
-  test('sees "Plan week →" on upcoming cards and it navigates to /plan?week=N', async ({ page }) => {
+  test('sees "Edit schedule →" on upcoming cards and it navigates to /schedule?week=N', async ({ page }) => {
     await page.goto('/runs/tigerwolves')
     await page.waitForLoadState('load')
 
-    const planBtn = page.locator('[data-testid="plan-week-0"]')
-    await expect(planBtn).toBeVisible()
+    const planBtn = page.locator('[data-testid="schedule-week-0"]')
+    await expect(planBtn).toContainText('Edit schedule →')
     await planBtn.click()
-    await page.waitForURL(/\/plan\?week=0/)
-    expect(page.url()).toContain('/plan?week=0')
+    await page.waitForURL(/\/schedule\?week=0/)
+    expect(page.url()).toContain('/schedule?week=0')
   })
 
   test('expanded card shows fixture instructions (parity with Schedule page)', async ({ page }) => {
@@ -112,7 +112,7 @@ test.describe('per-run page (/runs/[id]) — anonymous read-only', () => {
     await expect(cards.first()).toBeVisible()
     expect(await cards.count()).toBeGreaterThan(0)
 
-    await expect(page.locator('[data-testid^="plan-week-"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid^="schedule-week-"]')).toHaveCount(0)
   })
 
   test('shows no follow toggle for a logged-out visitor', async ({ page }) => {

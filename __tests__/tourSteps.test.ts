@@ -28,9 +28,9 @@ describe('tourSteps', () => {
 
   it('visitor steps cover the expected data-tour targets', () => {
     const elements = VISITOR_STEPS.map(s => s.element)
-    // #332: the standalone schedule* steps retired into a single My Week step.
-    expect(elements).toContain('[data-tour="my-week"]')
-    expect(elements).not.toContain('[data-tour="schedule"]')
+    // #332: the standalone schedule* steps retired into a single My Plan step.
+    expect(elements).toContain('[data-tour="my-plan"]')
+    expect(elements).not.toContain('[data-tour="my-week"]')
     expect(elements).not.toContain('[data-tour="schedule-detail"]')
     expect(elements).not.toContain('[data-tour="schedule-reactions"]')
     expect(elements).not.toContain('[data-tour="schedule-flag"]')
@@ -43,8 +43,8 @@ describe('tourSteps', () => {
     expect(elements).toContain('[data-tour="how-to-use"]')
   })
 
-  it('visitor step at index 0 targets my-week (home)', () => {
-    expect(VISITOR_STEPS[0].element).toBe('[data-tour="my-week"]')
+  it('visitor step at index 0 targets my-plan (home)', () => {
+    expect(VISITOR_STEPS[0].element).toBe('[data-tour="my-plan"]')
   })
 
   it('visitor step at index 2 targets library-variations (OnboardingTour LIBRARY_VARIATIONS_STEP)', () => {
@@ -53,7 +53,8 @@ describe('tourSteps', () => {
 
   it('leader steps cover the expected data-tour targets', () => {
     const elements = LEADER_STEPS.map(s => s.element)
-    expect(elements).toContain('[data-tour="plan"]')
+    expect(elements).toContain('[data-tour="schedule"]')
+    expect(elements).not.toContain('[data-tour="plan"]')
     expect(elements).toContain('[data-tour="heylo-area"]')
     expect(elements).toContain('[data-tour="library-manage"]')
   })

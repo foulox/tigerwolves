@@ -39,7 +39,7 @@ export default function RegroupWorkoutsForm({ variants }: { variants: WorkoutVar
   const [isPending, startTransition] = useTransition()
 
   // A family is "existing" (triggers the "moving from" warning) only when its
-  // familyId has more than one variant row — same rule LibraryClient/PlanClient
+  // familyId has more than one variant row — same rule LibraryClient/ScheduleClient
   // use, so a lone variant with a non-null label doesn't falsely warn.
   const familyIds = new Set<number>()
   const counts = new Map<number, number>()

@@ -2,21 +2,21 @@
 
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { MyWeekItem } from '@/lib/myWeek'
-import { feedWindow, groupByDay, weekStripCells } from '@/lib/myWeek'
+import type { MyPlanItem } from '@/lib/myPlan'
+import { feedWindow, groupByDay, weekStripCells } from '@/lib/myPlan'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
-import MyWeekCard from '@/components/MyWeekCard'
+import MyPlanCard from '@/components/MyPlanCard'
 
-// #331 My Week feed. The server pre-fetches a broad range of followed-run entries;
+// #331 My Plan feed. The server pre-fetches a broad range of followed-run entries;
 // this component owns the visible week (a ±-week offset) and filters/groups client
 // side so the date strip pages without an auth round-trip per nav.
-export default function MyWeekClient({
+export default function MyPlanClient({
   items,
   today,
   voteData,
 }: {
-  items: MyWeekItem[]
+  items: MyPlanItem[]
   today: string
   voteData: Record<string, VoteData | null>
 }) {
@@ -30,7 +30,7 @@ export default function MyWeekClient({
 
   const rangeLabel = `${cells[0].weekdayShort} ${cells[0].dayNum} – ${cells[6].weekdayShort} ${cells[6].dayNum}`
 
-  function voteFor(item: MyWeekItem): VoteData | null {
+  function voteFor(item: MyPlanItem): VoteData | null {
     if (!item.workout) return null
     return voteData[workoutVoteId(item.workout.name, item.workout.label ?? '')] ?? null
   }
@@ -78,7 +78,7 @@ export default function MyWeekClient({
       </div>
 
       {groups.length === 0 ? (
-        <p className="py-6 text-center text-sm italic text-gray-400" data-testid="my-week-empty-week">
+        <p className="py-6 text-center text-sm italic text-gray-400" data-testid="my-plan-empty-week">
           Nothing scheduled across your runs this week.
         </p>
       ) : (
@@ -88,7 +88,7 @@ export default function MyWeekClient({
               {group.label} · {cellDate(group.date)}
             </div>
             {group.items.map(item => (
-              <MyWeekCard key={`${item.run.id}-${item.date}`} item={item} voteData={voteFor(item)} />
+              <MyPlanCard key={`${item.run.id}-${item.date}`} item={item} voteData={voteFor(item)} />
             ))}
           </section>
         ))

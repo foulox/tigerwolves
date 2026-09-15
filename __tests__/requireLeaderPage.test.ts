@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // requireLeaderPage() is the route-level leader gate (#337) in front of the
-// leader-only pages (/plan, /library/add, /library/edit). It mirrors the
+// leader-only pages (/schedule, /library/add, /library/edit). It mirrors the
 // action-level requireAuth() guard, one layer up: currentUser() + a
 // publicMetadata.role === 'leader' check, redirecting anyone else to '/'.
 //

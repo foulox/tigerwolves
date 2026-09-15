@@ -6,7 +6,7 @@ import { resolveWorkoutType } from './cycle'
 import type { WorkoutVariantInput } from './workoutVariant'
 import { getNextLeader } from './rotation'
 import { resolveWorkoutVariant } from './scheduleUtils'
-import type { MyWeekItem } from './myWeek'
+import type { MyPlanItem } from './myPlan'
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is not set')
@@ -322,7 +322,7 @@ export async function dbUpdateWorkoutVariant(variantId: number, w: WorkoutVarian
 // Adds a variant to an EXISTING family — the workout_variants-only counterpart
 // to dbInsertWorkoutVariant (which always creates a brand-new family too).
 // #277's fix for addVariation's half of the addWorkout/addVariation split-brain
-// bug: this writes to the same tables the Library/Plan screens now both read.
+// bug: this writes to the same tables the Library/Schedule screens now both read.
 export async function dbAddWorkoutVariant(
   familyId: number,
   w: {
@@ -682,16 +682,16 @@ export async function ensureLeaderSelfFollow(clerkUserId: string): Promise<strin
 // entries against that shared set. N per-run queries (N = followed runs, small at
 // trial scale); cached under the 'tigerwolves-data' tag so follow changes
 // (toggleRunFollow's updateTag) and workout edits both invalidate it.
-async function assembleMyWeek(
+async function assembleMyPlan(
   clerkUserId: string,
   windowStart: string,
   windowEnd: string,
-): Promise<MyWeekItem[]> {
+): Promise<MyPlanItem[]> {
   const runIds = await getFollowedRunIds(clerkUserId)
   if (runIds.length === 0) return []
 
   const perRun = await Promise.all(
-    runIds.map(async (runId): Promise<MyWeekItem[]> => {
+    runIds.map(async (runId): Promise<MyPlanItem[]> => {
       const run = await getRunById(runId)
       if (!run) return []
       const [schedule, variants] = await Promise.all([
@@ -711,9 +711,9 @@ async function assembleMyWeek(
   return perRun.flat()
 }
 
-export const getMyWeek = unstable_cache(
+export const getMyPlan = unstable_cache(
   (clerkUserId: string, windowStart: string, windowEnd: string) =>
-    assembleMyWeek(clerkUserId, windowStart, windowEnd),
-  ['getMyWeek'],
+    assembleMyPlan(clerkUserId, windowStart, windowEnd),
+  ['getMyPlan'],
   { revalidate: 300, tags: ['tigerwolves-data'] },
 )

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
-test('Plan page for the already-planned week shows the Heylo post with fixture content', async ({ page }) => {
-  await page.goto('/plan?week=0')
+test('Schedule page for the already-planned week shows the Heylo post with fixture content', async ({ page }) => {
+  await page.goto('/schedule?week=0')
   await page.waitForLoadState('load')
 
   await expect(page.getByRole('button', { name: 'Post draft', exact: true })).toBeVisible()
@@ -11,8 +11,8 @@ test('Plan page for the already-planned week shows the Heylo post with fixture c
   await expect(page.getByRole('button', { name: /copy to clipboard/i })).toBeVisible()
 })
 
-test('Plan page for the unplanned week lets a leader pick a fixture workout and generates its Heylo post', async ({ page }) => {
-  await page.goto('/plan?week=2')
+test('Schedule page for the unplanned week lets a leader pick a fixture workout and generates its Heylo post', async ({ page }) => {
+  await page.goto('/schedule?week=2')
   await page.waitForLoadState('load')
 
   // No workout planned yet for this week — the picker shows directly, no tabs.
@@ -26,7 +26,7 @@ test('Plan page for the unplanned week lets a leader pick a fixture workout and 
 })
 
 test('verification checkbox is required before copy', async ({ page }) => {
-  await page.goto('/plan?week=0')
+  await page.goto('/schedule?week=0')
   await page.waitForLoadState('load')
 
   // Planned week shows Post draft tab with copy button — must be disabled before checkbox
@@ -39,7 +39,7 @@ test('verification checkbox is required before copy', async ({ page }) => {
 })
 
 test('TigerWolves post contains correct branding', async ({ page }) => {
-  await page.goto('/plan?week=0')
+  await page.goto('/schedule?week=0')
   await page.waitForLoadState('load')
 
   const post = await page.locator('pre').first().textContent()
@@ -48,8 +48,8 @@ test('TigerWolves post contains correct branding', async ({ page }) => {
   expect(post).not.toContain('null')
 })
 
-test('Plan page tab switch: Post draft is default, Change workout reveals the picker, and switching back preserves the post', async ({ page }) => {
-  await page.goto('/plan?week=0')
+test('Schedule page tab switch: Post draft is default, Change workout reveals the picker, and switching back preserves the post', async ({ page }) => {
+  await page.goto('/schedule?week=0')
   await page.waitForLoadState('load')
 
   const postTab = page.getByRole('button', { name: 'Post draft', exact: true })
@@ -69,4 +69,13 @@ test('Plan page tab switch: Post draft is default, Change workout reveals the pi
   await expect(page.getByRole('button', { name: /copy to clipboard/i })).toBeVisible()
   await expect(page.locator('input[type="search"]')).not.toBeVisible()
   await expect(page.locator('pre').first()).toContainText('Yasso 800s')
+})
+
+test.describe('redirect: /plan → /schedule', () => {
+  test('GET /plan?week=0 lands on /schedule?week=0', async ({ page }) => {
+    await page.goto('/plan?week=0')
+    await page.waitForURL(/\/schedule/)
+    expect(page.url()).toContain('/schedule')
+    expect(page.url()).toContain('week=0')
+  })
 })

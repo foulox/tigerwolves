@@ -2,14 +2,14 @@ import { currentUser } from '@clerk/nextjs/server'
 import { getRunById, fetchSchedule, fetchWorkoutVariants, getLeaderRun, getFollowedRunIds } from '@/lib/db'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import Header from '@/components/Header'
-import ScheduleClient from '@/components/ScheduleClient'
+import GroupRunClient from '@/components/GroupRunClient'
 import RunFollowToggle from '@/components/RunFollowToggle'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 
-// Run-scoped schedule page (#329). Readable by anyone — logged-out visitors,
+// Group Run page (#329). Readable by anyone — logged-out visitors,
 // runners, and non-owning leaders all see it read-only. Only the owning leader
 // (the run returned by getLeaderRun matches this run's id) sees the edit
-// affordances ("Plan week →" / "Edit in library →"), gated via isLeader below.
+// affordances ("Edit schedule →" / "Edit in library →"), gated via isLeader below.
 // Signed-in visitors also get a join/leave toggle (#330). Nav to reach this
 // page comes later (R4 #332).
 export default async function PerRunPage({ params }: { params: Promise<{ id: string }> }) {
@@ -95,7 +95,7 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
         <p className="px-4 -mt-2 mb-3 text-sm text-gray-500">{runConfig.description}</p>
       )}
 
-      <ScheduleClient
+      <GroupRunClient
         past={past}
         pastWorkouts={pastWorkouts}
         upcoming={upcoming}

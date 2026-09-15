@@ -1,7 +1,7 @@
 export type WorkoutType = string
 
 // One workout_variant row joined with its parent workout_families row (#276),
-// the read shape for the Library/Plan/Schedule screens — the write side
+// the read shape for the Library/Schedule/Group Run screens — the write side
 // (dbInsertWorkoutVariant/dbUpdateWorkoutVariant) targets these tables (#274).
 // `sport`, `lapStructure`, and `lastRan` have no column on workout_families/
 // workout_variants and are not carried over; lastRan-dependent UI (recency
