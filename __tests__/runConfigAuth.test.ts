@@ -31,6 +31,7 @@ import {
   saveRunProfile,
   saveRunCycle,
   saveRunIdentity,
+  setRunStatus,
 } from '../app/run-config/actions'
 
 // These tests write run_leaders/runs rows, so they only run against the staging
@@ -436,5 +437,101 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
       warmupDescription: '',
     })
     expect(res.error).toBe('Invalid day')
+  })
+})
+
+// setRunStatus publishes/unpublishes a run (#353). The auth check short-circuits
+// before any DB access when the caller is signed out, so the Unauthorized case
+// runs without a staging DB.
+describe('setRunStatus authorization (signed out)', () => {
+  test('returns Unauthorized when caller is signed out', async () => {
+    vi.mocked(currentUser).mockResolvedValue(null as never)
+    const res = await setRunStatus('tigerwolves', 'live')
+    expect(res.error).toBe('Unauthorized')
+  })
+})
+
+describe.skipIf(!onStaging)('setRunStatus — DB-backed cases', () => {
+  // Dedicated run + two leaders: one that owns the run (STATUS_LEADER_A), one that
+  // does not (STATUS_LEADER_B leads a different run). A second sibling run
+  // (STATUS_OTHER_RUN) lets us assert that changing one run's status never touches
+  // another run.
+  const RUN = 'test-status-353'
+  const OTHER_RUN_STATUS = 'test-status-353-sibling'
+  const STATUS_LEADER_A = 'user_statustest_A_353' // leads RUN
+  const STATUS_LEADER_B = 'user_statustest_B_353' // leads OTHER_RUN_STATUS
+  const ADMIN_USER = 'user_statustest_admin_353'  // admin, does not lead RUN
+  const STATUS_NAME_A = 'StatusTest LeaderA 353'
+  const STATUS_NAME_B = 'StatusTest LeaderB 353'
+
+  beforeAll(async () => {
+    await sql`INSERT INTO runs (id, name, status) VALUES (${RUN}, 'Status Test 353', 'draft') ON CONFLICT (id) DO UPDATE SET status = 'draft'`
+    await sql`INSERT INTO runs (id, name, status) VALUES (${OTHER_RUN_STATUS}, 'Status Test 353 Sibling', 'draft') ON CONFLICT (id) DO UPDATE SET status = 'draft'`
+    await sql`DELETE FROM run_leaders WHERE run_id IN (${RUN}, ${OTHER_RUN_STATUS})`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${RUN}, ${STATUS_NAME_A}, ${STATUS_LEADER_A}, 1, true)
+    `
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${OTHER_RUN_STATUS}, ${STATUS_NAME_B}, ${STATUS_LEADER_B}, 1, true)
+    `
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id IN (${RUN}, ${OTHER_RUN_STATUS})`
+    await sql`DELETE FROM runs WHERE id IN (${RUN}, ${OTHER_RUN_STATUS})`
+  })
+
+  test('non-owner non-admin → Forbidden', async () => {
+    // STATUS_LEADER_B leads a different run; pointing at RUN must be rejected.
+    vi.mocked(currentUser).mockResolvedValue({ id: STATUS_LEADER_B, publicMetadata: { role: 'leader' } } as never)
+    const res = await setRunStatus(RUN, 'live')
+    expect(res.error).toBe('Forbidden')
+  })
+
+  test('owning leader: draft → live → draft roundtrip', async () => {
+    vi.mocked(currentUser).mockResolvedValue({ id: STATUS_LEADER_A, publicMetadata: { role: 'leader' } } as never)
+
+    // draft → live
+    const toLive = await setRunStatus(RUN, 'live')
+    expect(toLive.error).toBeUndefined()
+    expect(toLive.status).toBe('live')
+    const afterLive = await sql`SELECT status FROM runs WHERE id = ${RUN}`
+    expect(afterLive[0].status).toBe('live')
+
+    // live → draft
+    const toDraft = await setRunStatus(RUN, 'draft')
+    expect(toDraft.error).toBeUndefined()
+    expect(toDraft.status).toBe('draft')
+    const afterDraft = await sql`SELECT status FROM runs WHERE id = ${RUN}`
+    expect(afterDraft[0].status).toBe('draft')
+  })
+
+  test('admin (not leading the run) can set status', async () => {
+    // ADMIN_USER has no run_leaders row for RUN; the admin flag alone should suffice.
+    vi.mocked(currentUser).mockResolvedValue({ id: ADMIN_USER, publicMetadata: { admin: true } } as never)
+    const res = await setRunStatus(RUN, 'live')
+    expect(res.error).toBeUndefined()
+    expect(res.status).toBe('live')
+
+    // Reset to draft for cleanliness
+    const reset = await setRunStatus(RUN, 'draft')
+    expect(reset.status).toBe('draft')
+  })
+
+  test('invalid status value → error', async () => {
+    vi.mocked(currentUser).mockResolvedValue({ id: STATUS_LEADER_A, publicMetadata: { role: 'leader' } } as never)
+    const res = await setRunStatus(RUN, 'bogus' as never)
+    expect(res.error).toBe('Invalid status')
+  })
+
+  test('sibling run status is unchanged after updating RUN', async () => {
+    vi.mocked(currentUser).mockResolvedValue({ id: STATUS_LEADER_A, publicMetadata: { role: 'leader' } } as never)
+    // Set RUN to live
+    await setRunStatus(RUN, 'live')
+    // Sibling should still be draft
+    const sibling = await sql`SELECT status FROM runs WHERE id = ${OTHER_RUN_STATUS}`
+    expect(sibling[0].status).toBe('draft')
   })
 })

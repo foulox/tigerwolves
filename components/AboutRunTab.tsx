@@ -1,7 +1,7 @@
 'use client'
 import { useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
-import { saveRunIdentity, saveRunProfile, saveRunCycle } from '@/app/run-config/actions'
+import { saveRunIdentity, saveRunProfile, saveRunCycle, setRunStatus } from '@/app/run-config/actions'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
 import type { RunIdentityValues } from '@/lib/runIdentity'
 import type { RunConfig, RunLeader } from '@/lib/data'
@@ -43,6 +43,12 @@ export default function AboutRunTab({
     }
     return seed
   })
+  const [status, setStatus] = useState<'draft' | 'live'>(
+    (runConfig.status === 'draft' || runConfig.status === 'live') ? runConfig.status : 'live'
+  )
+  const [statusError, setStatusError] = useState('')
+  const [isStatusPending, startStatusTransition] = useTransition()
+
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -108,8 +114,50 @@ export default function AboutRunTab({
     </div>
   )
 
+  function handleStatusToggle() {
+    const next = status === 'live' ? 'draft' : 'live'
+    startStatusTransition(async () => {
+      try {
+        setStatusError('')
+        const res = await setRunStatus(runConfig.id, next)
+        if (res.error) {
+          setStatusError(res.error)
+        } else if (res.status) {
+          setStatus(res.status)
+        }
+      } catch (err) {
+        Sentry.captureException(err)
+        setStatusError('Something went wrong')
+      }
+    })
+  }
+
   return (
     <div className="p-4 flex flex-col gap-4">
+      {/* Publish / draft status card (#353) — first so leaders see run state
+          before touching any identity or profile field. */}
+      <div className="bg-white rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Run status</h2>
+        <p className="text-sm text-gray-600">
+          {status === 'live'
+            ? 'This run is live. Runners can see it and request to join.'
+            : 'This run is a draft. You can see it, but runners cannot join yet.'}
+        </p>
+        {statusError && <p className="text-sm text-red-600">{statusError}</p>}
+        <button
+          type="button"
+          onClick={handleStatusToggle}
+          disabled={isStatusPending}
+          className="bg-orange-600 text-white rounded-xl py-3 font-bold text-sm disabled:opacity-50 touch-manipulation"
+        >
+          {isStatusPending
+            ? 'Saving…'
+            : status === 'live'
+            ? 'Move to draft'
+            : 'Publish run'}
+        </button>
+      </div>
+
       {/* Identity fields — editable (#348). Leaders are managed in the Roster tab
           and remain read-only here. */}
       <div className="bg-white rounded-xl p-4 flex flex-col gap-3 shadow-sm">
