@@ -30,6 +30,7 @@ const tigerWolvesConfig: RunConfig = {
   runGroupId: 1,
   cycleMode: 'none',
   cycle: {},
+  status: 'live',
 }
 
 const tigerWolvesRoster = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']
@@ -54,6 +55,7 @@ const mourningDovesConfig: RunConfig = {
   runGroupId: null,
   cycleMode: 'none',
   cycle: {},
+  status: 'live',
 }
 
 const mourningDovesRoster = ['Priya', 'Sam']

@@ -27,7 +27,8 @@ export default async function AllRunsPage() {
     const links: Record<string, string> = {}
     for (const r of dbRuns) if (r.nbr_directory_id) links[r.nbr_directory_id] = r.id
     const existingRunIds = dbRuns.map(r => r.id)
-    platform = computePlatformMap(existingRunIds, followedIds, links)
+    const draftRunIds = dbRuns.filter(r => r.status === 'draft').map(r => r.id)
+    platform = computePlatformMap(existingRunIds, followedIds, links, draftRunIds)
     runs = mergeDirectory(NBR_RUNS, dbRuns, links)
   }
 

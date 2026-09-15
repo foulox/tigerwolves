@@ -15,6 +15,7 @@ vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn(), captureMessage: vi
 import { currentUser } from '@clerk/nextjs/server'
 import { sql } from '../lib/db'
 import { toggleRunFollow } from '../app/actions'
+import { setRunStatus } from '../app/run-config/actions'
 
 const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
 const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
@@ -66,5 +67,70 @@ describe.skipIf(!onStaging)('toggleRunFollow follow/unfollow (staging)', () => {
     signInAs(RUNNER)
     const res = await toggleRunFollow('no-such-run-330')
     expect(res.error).toBe('Run not found')
+  })
+})
+
+describe.skipIf(!onStaging)('toggleRunFollow draft-gate (#353)', () => {
+  const RUN = 'test-draft-follow-353'
+  const OWNER = 'user_draft_owner_353' // leader who owns this run
+  const RUNNER = 'user_draft_runner_353' // non-owner signed-in user
+
+  beforeAll(async () => {
+    // Create the draft run
+    await sql`
+      INSERT INTO runs (id, name, status) VALUES (${RUN}, 'Draft Follow Test 353', 'draft')
+      ON CONFLICT (id) DO NOTHING
+    `
+    // Update to draft in case the run already existed as live
+    await sql`UPDATE runs SET status = 'draft' WHERE id = ${RUN}`
+    // Create an owning leader row so getLeaderRun(OWNER)?.id === RUN
+    await sql`DELETE FROM run_leaders WHERE clerk_user_id = ${OWNER} AND run_id = ${RUN}`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${RUN}, 'Draft Owner 353', ${OWNER}, 1, true)
+    `
+    // Clean up any stale follows
+    await sql`DELETE FROM runner_follows WHERE run_id = ${RUN}`
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM runner_follows WHERE run_id = ${RUN}`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${RUN}`
+    await sql`DELETE FROM runs WHERE id = ${RUN}`
+  })
+
+  test('a runner (non-owner) cannot follow a draft run', async () => {
+    signInAs(RUNNER)
+    const res = await toggleRunFollow(RUN)
+    expect(res.error).toBe("This run isn't open to join yet")
+    const rows = await sql`SELECT 1 FROM runner_follows WHERE clerk_user_id = ${RUNNER} AND run_id = ${RUN}`
+    expect(rows.length).toBe(0)
+  })
+
+  test('the owning leader CAN follow their own draft run', async () => {
+    // sign in as owner — currentUser must return the leader metadata for setRunStatus but
+    // toggleRunFollow only calls requireUser() which reads id; we provide role for safety
+    vi.mocked(currentUser).mockResolvedValue({ id: OWNER, publicMetadata: { role: 'leader' } } as never)
+    const res = await toggleRunFollow(RUN)
+    expect(res.error).toBeUndefined()
+    expect(res.following).toBe(true)
+    const rows = await sql`SELECT 1 FROM runner_follows WHERE clerk_user_id = ${OWNER} AND run_id = ${RUN}`
+    expect(rows.length).toBe(1)
+  })
+
+  test('after setRunStatus to live, the non-owner runner can follow', async () => {
+    // Flip run to live — setRunStatus checks ownership; sign in as owner
+    vi.mocked(currentUser).mockResolvedValue({ id: OWNER, publicMetadata: { role: 'leader' } } as never)
+    const statusRes = await setRunStatus(RUN, 'live')
+    expect(statusRes.error).toBeUndefined()
+    expect(statusRes.status).toBe('live')
+
+    // Now the non-owner runner should be able to follow
+    signInAs(RUNNER)
+    const res = await toggleRunFollow(RUN)
+    expect(res.error).toBeUndefined()
+    expect(res.following).toBe(true)
+    const rows = await sql`SELECT 1 FROM runner_follows WHERE clerk_user_id = ${RUNNER} AND run_id = ${RUN}`
+    expect(rows.length).toBe(1)
   })
 })

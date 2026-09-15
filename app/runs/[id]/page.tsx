@@ -82,7 +82,12 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
 
       {user && (
         <div className="px-4 -mt-1 mb-3">
-          <RunFollowToggle runId={id} runName={runConfig.name} initialFollowing={isFollowing} />
+          <RunFollowToggle
+            runId={id}
+            runName={runConfig.name}
+            initialFollowing={isFollowing}
+            joinable={runConfig.status !== 'draft' || isOwningLeader}
+          />
         </div>
       )}
 

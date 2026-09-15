@@ -139,6 +139,19 @@ export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, pl
       )
     }
     const isFollowing = !!followed[p.runId]
+    // #353: draft run that the viewer hasn't joined — muted, disabled, non-interactive
+    if (p.draft && !isFollowing) {
+      return (
+        <button
+          disabled
+          data-testid={`follow-disabled-${p.runId}`}
+          aria-label={`${run.name} isn't open to join yet`}
+          className="flex-shrink-0 text-[12.5px] font-bold rounded-full px-3.5 py-1.5 touch-manipulation whitespace-nowrap flex items-center gap-1 bg-gray-100 text-gray-400 cursor-not-allowed"
+        >
+          + Join
+        </button>
+      )
+    }
     return (
       <button
         data-testid={`follow-toggle-${p.runId}`}

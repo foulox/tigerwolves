@@ -22,6 +22,29 @@ async function assertCallerOwnsLeaderRow(user: User, leaderId: number): Promise<
   await assertCallerOwnsRun(user, rows[0].run_id as string)
 }
 
+export async function setRunStatus(
+  runId: string,
+  status: 'draft' | 'live'
+): Promise<{ error?: string; status?: 'draft' | 'live' }> {
+  try {
+    const user = await currentUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const isAdmin = user.publicMetadata?.admin === true
+    const owns = (await getLeaderRun(user.id))?.id === runId
+    if (!isAdmin && !owns) return { error: 'Forbidden' }
+
+    if (status !== 'draft' && status !== 'live') return { error: 'Invalid status' }
+
+    await sql`UPDATE runs SET status = ${status} WHERE id = ${runId}`
+    updateTag('tigerwolves-data')
+    return { status }
+  } catch (err) {
+    Sentry.captureException(err)
+    return { error: 'Failed to update status' }
+  }
+}
+
 export async function savePostTemplate(data: {
   postHeader: string
   meetingLocation: string

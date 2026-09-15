@@ -20,7 +20,7 @@ type DbRunRow = {
   nbr_directory_id: string | null
 }
 
-export type PlatformInfo = { runId: string; following: boolean }
+export type PlatformInfo = { runId: string; following: boolean; draft: boolean }
 
 // #360: Synthesize an NBRRun-shaped card from a DB run row for runs that have
 // no matching NBR directory entry (nbr_directory_id is null). The synthesized
@@ -68,18 +68,21 @@ export function mergeDirectory(
 //   - if a directory link exists, key by the directory card id (lights up the NBR card)
 //   - otherwise, key by the run's own id (matches its synthesized card → on-app tier)
 // A link whose target run isn't in existingRunIds is silently ignored. Pure.
+// #353: draftRunIds stamps draft:true on runs not yet open for joining.
 export function computePlatformMap(
   existingRunIds: string[],
   followedRunIds: string[],
   links: Record<string, string>,
+  draftRunIds: string[],
 ): Record<string, PlatformInfo> {
   // reverse: runId -> nbr_directory_id (its directory card id)
   const reverse = new Map(Object.entries(links).map(([nbrId, runId]) => [runId, nbrId]))
   const followed = new Set(followedRunIds)
+  const draft = new Set(draftRunIds)
   const map: Record<string, PlatformInfo> = {}
   for (const runId of existingRunIds) {
     const cardId = reverse.get(runId) ?? runId   // linked -> directory card id; else its own id
-    map[cardId] = { runId, following: followed.has(runId) }
+    map[cardId] = { runId, following: followed.has(runId), draft: draft.has(runId) }
   }
   return map
 }

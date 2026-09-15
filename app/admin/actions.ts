@@ -50,8 +50,9 @@ async function insertRun(
   // 6. INSERT — leave run_group_id, post_header, closing_notes, leader_intro NULL;
   //    cycle_mode/cycle take their NOT NULL DEFAULT values ('none'/'{}').
   //    nbr_directory_id is NULL when nbrDirectoryId is undefined/null (createRun path).
+  //    status is set explicitly to 'draft' — admin publishes via a separate action (#353).
   await sql`
-    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, warmup_description, kind, workout_types, nbr_directory_id)
+    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, warmup_description, kind, workout_types, nbr_directory_id, status)
     VALUES (
       ${runId},
       ${name},
@@ -63,7 +64,8 @@ async function insertRun(
       ${data.identity.warmupDescription},
       ${data.kind},
       ${workoutTypes}::text[],
-      ${nbrDirectoryId ?? null}
+      ${nbrDirectoryId ?? null},
+      'draft'
     )
   `
 

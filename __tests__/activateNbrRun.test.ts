@@ -330,6 +330,9 @@ describe.skipIf(!onStaging)('activateNbrRun staging persistence', () => {
     // nbr_directory_id must be stored
     const rows = await sql`SELECT nbr_directory_id FROM runs WHERE id = ${res.runId!}`
     expect(rows[0]?.nbr_directory_id).toBe(nbrId)
+
+    // #353: newly activated run must be draft
+    expect(run!.status).toBe('draft')
   })
 
   test('happy path: run_leaders row has correct clerk_user_id, name, sort_order=1, active=true; updateUser called with merged publicMetadata preserving admin:true', async () => {

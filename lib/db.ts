@@ -122,7 +122,7 @@ export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | nul
     SELECT r.id, r.name, r.emoji, r.day_of_week, r.meeting_location,
            r.post_header, r.leader_intro, r.closing_notes,
            r.kind, r.workout_types, r.run_group_id, r.cycle_mode, r.cycle,
-           r.description, r.meeting_time, r.warmup_description
+           r.description, r.meeting_time, r.warmup_description, r.status
     FROM run_leaders rl
     JOIN runs r ON r.id = rl.run_id
     WHERE rl.clerk_user_id = ${clerkUserId}
@@ -147,6 +147,7 @@ export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | nul
     description: (r.description as string | null) ?? null,
     meetingTime: (r.meeting_time as string | null) ?? null,
     warmupDescription: (r.warmup_description as string | null) ?? null,
+    status: (r.status as string | null) ?? 'live',
   }
 }
 
@@ -568,7 +569,7 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
   const rows = await sql`
     SELECT id, name, emoji, description, day_of_week, meeting_time, meeting_location,
            post_header, leader_intro, closing_notes,
-           kind, workout_types, run_group_id, cycle_mode, cycle, warmup_description
+           kind, workout_types, run_group_id, cycle_mode, cycle, warmup_description, status
     FROM runs
     WHERE id = ${runId}
     LIMIT 1
@@ -592,6 +593,7 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
     cycleMode: (r.cycle_mode as string | null) ?? 'none',
     cycle: (r.cycle as Record<string, string> | null) ?? {},
     warmupDescription: (r.warmup_description as string | null) ?? null,
+    status: (r.status as string | null) ?? 'live',
   }
 }
 
@@ -608,14 +610,25 @@ export type DirectoryRun = {
   kind: string | null
   emoji: string | null
   nbr_directory_id: string | null
+  status: string
 }
 
 export async function getDirectoryRuns(): Promise<DirectoryRun[]> {
   const rows = await sql`
-    SELECT id, name, day_of_week, meeting_time, meeting_location, kind, emoji, nbr_directory_id
+    SELECT id, name, day_of_week, meeting_time, meeting_location, kind, emoji, nbr_directory_id, status
     FROM runs ORDER BY id
   `
-  return rows as DirectoryRun[]
+  return rows.map(r => ({
+    id: r.id as string,
+    name: r.name as string,
+    day_of_week: (r.day_of_week as string | null) ?? null,
+    meeting_time: (r.meeting_time as string | null) ?? null,
+    meeting_location: (r.meeting_location as string | null) ?? null,
+    kind: (r.kind as string | null) ?? null,
+    emoji: (r.emoji as string | null) ?? null,
+    nbr_directory_id: (r.nbr_directory_id as string | null) ?? null,
+    status: (r.status as string | null) ?? 'live',
+  }))
 }
 
 // #361: NBR directory ids that already have a linked run, so the picker can exclude them.
