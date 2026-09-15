@@ -72,8 +72,8 @@ test.describe('Run Settings', () => {
     // Open the away panel for the first leader in the list
     await page.getByRole('button', { name: /away/i }).first().click()
 
-    // exact match: getByLabel does substring matching by default, and "To" would
-    // otherwise also match the "How to use this" header button.
+    // exact match: getByLabel does substring matching by default, so a loose "To"
+    // could pick up an unrelated control whose label merely contains it.
     await page.getByLabel('From', { exact: true }).fill('2099-01-01')
     await page.getByLabel('To', { exact: true }).fill('2099-01-07')
     await page.getByRole('button', { name: /save away period/i }).click()

@@ -4,8 +4,6 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { ChevronLeft, Settings, Wrench, Plus, Zap } from 'lucide-react'
-import HowToUseButton from './HowToUseButton'
-import WhatsNewOverlay from './WhatsNewOverlay'
 import FeedbackButton from './FeedbackButton'
 import { PersonIcon } from './icons'
 
@@ -43,8 +41,10 @@ export default function Header({
         </div>
       </div>
       <div className="flex items-center gap-2.5">
-        <WhatsNewOverlay />
-        <HowToUseButton />
+        {/* Onboarding tour + What's New entry points were removed in #372 (interim
+            mitigation — stale/broken while onboarding moves to in-person coffee).
+            The OnboardingTour / WhatsNewOverlay components remain in the repo as
+            reference for the rebuild (epic #371). */}
         {/* Render only once Clerk has resolved auth state, so a signed-in user never
             briefly sees the sign-in link (which would bounce them back — the #366 bug).
             Any signed-in user gets the UserButton (Clerk's built-in Sign Out / Manage
