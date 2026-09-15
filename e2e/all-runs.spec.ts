@@ -204,12 +204,14 @@ test('intro box: follower ≥1 — box disappears; cleanup restores 0-follow sta
 
   // Follow MMER — now follower count becomes 1
   await page.locator('[data-testid="follow-toggle-mmer"]').click()
+  await expect(page.locator('[data-testid="follow-toggle-mmer"]')).toContainText('Joined')
   await page.reload()
   await page.waitForLoadState('load')
   await expect(page.locator('[data-testid="all-runs-intro"]')).toHaveCount(0)
 
   // Cleanup: leave MMER so the fixture stays 0-follow for other tests
   await page.locator('[data-testid="follow-toggle-mmer"]').click()
+  await expect(page.locator('[data-testid="follow-toggle-mmer"]')).toContainText('Join')
   await page.reload()
   await page.waitForLoadState('load')
 })
