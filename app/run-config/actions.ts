@@ -3,7 +3,7 @@ import { currentUser } from '@clerk/nextjs/server'
 import type { User } from '@clerk/nextjs/server'
 import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
-import { sql, getLeaderRun, getRunRoster } from '@/lib/db'
+import { sql, getLeaderRun, getRunRoster, toDateString } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity } from '@/lib/runIdentity'
@@ -302,7 +302,7 @@ export async function saveAwayPeriod(
     const noLeaderDates: string[] = []
 
     for (const row of affected) {
-      const dateStr = (row.date as Date).toISOString().slice(0, 10)
+      const dateStr = toDateString(row.date)
       // Use the actual leader from the schedule entry immediately before this date as the
       // anchor for getNextLeader. Positional roster math is wrong after manual overrides.
       const prevEntryRows = await sql`
@@ -460,7 +460,7 @@ export async function removeRunLeader(
     const noLeaderDates: string[] = []
 
     for (const row of affected) {
-      const dateStr = (row.date as Date).toISOString().slice(0, 10)
+      const dateStr = toDateString(row.date)
       // Anchor on the actual leader of the entry immediately before this date so the
       // rotation continues naturally (and picks up prior reassignments in this loop).
       const prevEntryRows = await sql`

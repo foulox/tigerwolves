@@ -207,6 +207,94 @@ describe.skipIf(!onStaging)('addRunLeaderByEmail grant path (staging)', () => {
 // role is left intact (no updateUser call). admin: true (and any other keys)
 // must always be preserved.
 
+// ---------------------------------------------------------------------------
+// REGRESSION #378 — removeRunLeader throws TypeError on Neon date strings
+// ---------------------------------------------------------------------------
+// Root cause: the reassignment loop inside removeRunLeader called
+// `(row.date as Date).toISOString()` — a false cast. The Neon serverless
+// driver returns SQL `date` columns as strings (e.g. "2026-09-15"), not Date
+// objects, so `.toISOString` is undefined → TypeError → caught by the action's
+// try/catch → the user sees "Failed to remove leader". Only fires when the
+// leader has ≥1 upcoming assigned schedule week (the only time the loop runs).
+// The fix: use the codebase's existing `toDateString()` helper from lib/db.ts,
+// which handles both Date objects and strings safely.
+
+describe.skipIf(!onStaging)('removeRunLeader reassigns upcoming week (regression #378)', () => {
+  const CALLER_RUN = 'test-remove-378'
+  const CALLER_CLERK_ID = 'user_remove378_caller'
+  const CALLER_NAME = 'Remove378 Caller'
+
+  const REMOVED_EMAIL = 'remove378-target@example.com'
+  const REMOVED_CLERK_ID = 'clerk_remove378_target'
+  const REMOVED_NAME = 'Remove378 Target'
+
+  // A future date well beyond today so the schedule row stays in the
+  // "upcoming" window regardless of when CI runs.
+  const FUTURE_DATE = '2099-01-07'
+
+  let removedLeaderId: number
+
+  beforeAll(async () => {
+    await sql`INSERT INTO runs (id, name, day_of_week) VALUES (${CALLER_RUN}, 'Remove378 Test Run', 'Tuesday') ON CONFLICT (id) DO NOTHING`
+    await sql`DELETE FROM schedule WHERE run_id = ${CALLER_RUN}`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${CALLER_RUN}`
+
+    // The caller (run owner) stays active throughout so the reassignment roster is non-empty.
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${CALLER_RUN}, ${CALLER_NAME}, ${CALLER_CLERK_ID}, 1, true)
+    `
+
+    // The leader being removed — has a future schedule row assigned to them.
+    const [row] = await sql`
+      INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
+      VALUES (${CALLER_RUN}, ${REMOVED_NAME}, ${REMOVED_EMAIL}, ${REMOVED_CLERK_ID}, 2, true)
+      ON CONFLICT (run_id, name) DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
+      RETURNING id
+    `
+    removedLeaderId = row.id as number
+
+    // A future schedule row assigned to the removed leader — this is what
+    // triggers the date-access loop. Without this row the bug is dormant.
+    await sql`
+      INSERT INTO schedule (date, run_id, workout_type, leader, needs_leader)
+      VALUES (${FUTURE_DATE}::date, ${CALLER_RUN}, '', ${REMOVED_NAME}, false)
+      ON CONFLICT (date, run_id) DO UPDATE SET leader = ${REMOVED_NAME}, needs_leader = false
+    `
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM schedule WHERE run_id = ${CALLER_RUN}`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${CALLER_RUN}`
+    await sql`DELETE FROM runs WHERE id = ${CALLER_RUN}`
+  })
+
+  test('removeRunLeader reassigns an upcoming week without throwing on a Neon string date (regression: #378 "Failed to remove leader")', async () => {
+    signInAs(CALLER_CLERK_ID, { role: 'leader' })
+    // getUser is called by revokeLeaderRoleIfOrphaned
+    mockGetUser.mockResolvedValue({
+      id: REMOVED_CLERK_ID,
+      publicMetadata: { role: 'leader' },
+    })
+    mockUpdateUser.mockClear()
+
+    const res = await removeRunLeader(removedLeaderId)
+
+    // BEFORE the fix: row.date is a string, (row.date as Date).toISOString() is
+    // undefined → TypeError → action catches it → res.error = 'Failed to remove leader'
+    expect(res.error).toBeUndefined()
+
+    // The reassignment loop must have run: the future week was either reassigned
+    // to another leader or marked needs_leader. Either outcome proves the loop
+    // completed without throwing.
+    expect(res.reassignedCount + res.noLeaderDates.length).toBeGreaterThanOrEqual(1)
+
+    // The leader row must be deactivated
+    const leaderRows = await sql`SELECT active FROM run_leaders WHERE id = ${removedLeaderId}`
+    expect(leaderRows[0].active).toBe(false)
+  })
+})
+
 describe.skipIf(!onStaging)('removeRunLeader revoke path (staging)', () => {
   // Two runs: CALLER_RUN (owned by the test caller), SECOND_RUN (the removed
   // leader's other run — used to prove the "still leads another" branch).

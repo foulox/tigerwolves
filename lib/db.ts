@@ -25,7 +25,7 @@ if (!dbUrl) {
 
 export const sql = neon(dbUrl)
 
-function toDateString(val: unknown): string {
+export function toDateString(val: unknown): string {
   if (!val) return ''
   if (val instanceof Date) return val.toISOString().slice(0, 10)
   return String(val).slice(0, 10)
