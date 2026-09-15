@@ -5,6 +5,7 @@ import { NBR_RUNS } from '@/lib/allRunsData'
 import type { NBRRun } from '@/lib/allRunsData'
 import { getDirectoryRuns, getFollowedRunIds } from '@/lib/db'
 import { computePlatformMap, mergeDirectory, type PlatformInfo } from '@/lib/allRuns'
+import { shouldShowIntro } from '@/lib/allRunsIntro'
 
 export const metadata = { title: 'All Runs — TigerWolves' }
 
@@ -19,11 +20,13 @@ export default async function AllRunsPage() {
   // Signed out → runs stays NBR_RUNS, platform stays {} — directory-only, unchanged (AC5).
   let runs: NBRRun[] = NBR_RUNS
   let platform: Record<string, PlatformInfo> = {}
+  let followCount = 0
   if (user) {
     const [dbRuns, followedIds] = await Promise.all([
       getDirectoryRuns(),
       getFollowedRunIds(user.id),
     ])
+    followCount = followedIds.length
     const links: Record<string, string> = {}
     for (const r of dbRuns) if (r.nbr_directory_id) links[r.nbr_directory_id] = r.id
     const existingRunIds = dbRuns.map(r => r.id)
@@ -32,10 +35,12 @@ export default async function AllRunsPage() {
     runs = mergeDirectory(NBR_RUNS, dbRuns, links)
   }
 
+  const showIntro = shouldShowIntro(!!user, followCount)
+
   return (
     <div>
       <Header title="All Runs" isLeader={isLeader} />
-      <AllRunsClient runs={runs} serverDate={serverDate} isLoggedIn={!!user} platform={platform} />
+      <AllRunsClient runs={runs} serverDate={serverDate} isLoggedIn={!!user} platform={platform} showIntro={showIntro} />
     </div>
   )
 }
