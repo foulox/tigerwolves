@@ -109,7 +109,11 @@ export async function importRun(config: RunImportConfig): Promise<void> {
   `
   console.log(`  ✓ runs row upserted`)
 
-  // 2. Upsert the run_groups row (used by workout_families for library scoping).
+  // 2. Upsert the run_groups row. NOTE: run_group_id records workout *ownership*
+  //    only — it does NOT scope library visibility. Since #347 the library is a
+  //    shared catalog filtered client-side by `category` (see lib/db.ts
+  //    fetchWorkoutVariants). To make a run's workouts show in its picker, set
+  //    each family's `category` to the run's kind-category, not its run_group.
   const groupRows = await sql`
     INSERT INTO run_groups (name, venue, default_location)
     VALUES (${config.name}, 'road', ${config.meetingLocation})
