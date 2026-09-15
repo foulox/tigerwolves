@@ -8,11 +8,22 @@ import { getNextLeader } from './rotation'
 import { resolveWorkoutVariant } from './scheduleUtils'
 import type { MyPlanItem } from './myPlan'
 
-if (!process.env.DATABASE_URL) {
+// The Neon–Vercel integration injects DATABASE_URL dynamically per git-branch at
+// deploy time, which overrides any manually-set value — so the durable demo can't be
+// pinned to its demo-data branch via DATABASE_URL alone (the integration keeps handing
+// the `staging` branch the auto-provisioned preview/staging DB = the E2E-wipe branch).
+// DEMO_DATABASE_URL is a name the integration never manages: it's set ONLY on the demo
+// (Preview, gitBranch=staging) and points at the durable demo-data branch. Production and
+// PR-preview deploys leave it unset and read their own DATABASE_URL (prod / per-PR
+// isolated branch) unchanged — that per-PR isolation is the integration behaviour we
+// intentionally keep. See #376.
+const dbUrl = process.env.DEMO_DATABASE_URL || process.env.DATABASE_URL
+
+if (!dbUrl) {
   throw new Error('DATABASE_URL is not set')
 }
 
-export const sql = neon(process.env.DATABASE_URL)
+export const sql = neon(dbUrl)
 
 function toDateString(val: unknown): string {
   if (!val) return ''
