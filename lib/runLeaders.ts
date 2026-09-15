@@ -1,6 +1,7 @@
-// Shared helpers for Clerk-user resolution and run-leader display-name derivation.
-// Used by both addRunLeaderByEmail (app/run-config/actions.ts) and
-// activateNbrRun (app/admin/actions.ts) so the lookup logic lives in one place.
+// Shared helpers for Clerk-user resolution, run-leader display-name derivation,
+// and the Clerk role grant that both addRunLeaderByEmail and activateNbrRun
+// must perform when a leader is provisioned.
+// Used by: app/run-config/actions.ts, app/admin/actions.ts.
 
 import { clerkClient } from '@clerk/nextjs/server'
 
@@ -46,4 +47,22 @@ export function leaderDisplayName(user: ClerkUserLike, fallbackEmail: string): s
     user.username ||
     fallbackEmail.split('@')[0]
   )
+}
+
+/**
+ * Grant the Clerk 'leader' role to a resolved Clerk user.
+ *
+ * IMPORTANT: Clerk's updateUser REPLACES publicMetadata in full — the spread of
+ * existing metadata is mandatory so fields like admin: true are never clobbered.
+ * This is the single canonical place for that merge so it can't be missed or
+ * done inconsistently across call sites.
+ */
+export async function grantLeaderRole(
+  clerkUser: { id: string; publicMetadata?: Record<string, unknown> | null }
+): Promise<void> {
+  const existing = clerkUser.publicMetadata ?? {}
+  const client = await clerkClient()
+  await client.users.updateUser(clerkUser.id, {
+    publicMetadata: { ...existing, role: 'leader' },
+  })
 }

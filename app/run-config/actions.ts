@@ -7,7 +7,7 @@ import { sql, getLeaderRun, getRunRoster } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity } from '@/lib/runIdentity'
-import { resolveClerkUserByEmail, leaderDisplayName } from '@/lib/runLeaders'
+import { resolveClerkUserByEmail, leaderDisplayName, grantLeaderRole } from '@/lib/runLeaders'
 
 /** Throws 'Forbidden' if the caller's run does not match runId. */
 async function assertCallerOwnsRun(user: User, runId: string): Promise<void> {
@@ -336,6 +336,11 @@ export async function addRunLeaderByEmail(
         clerk_user_id = ${clerkUser.id},
         active = true
     `
+
+    // Grant the Clerk 'leader' role — merges with existing publicMetadata so
+    // any existing admin: true (or other flags) are never clobbered.
+    await grantLeaderRole(clerkUser)
+
     updateTag('tigerwolves-data')
     return {}
   } catch (err) {
