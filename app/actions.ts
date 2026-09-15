@@ -396,6 +396,14 @@ export async function toggleRunFollow(runId: string): Promise<{ error?: string; 
       await sql`DELETE FROM runner_follows WHERE clerk_user_id = ${userId} AND run_id = ${runId}`
       following = false
     } else {
+      // A draft run is visible but not joinable: only its owning leader may follow it
+      // (leaders trial their run pre-launch); every other signed-in user is refused.
+      if (run.status === 'draft') {
+        const leaderRun = await getLeaderRun(userId)
+        if (leaderRun?.id !== runId) {
+          return { error: "This run isn't open to join yet" }
+        }
+      }
       await sql`
         INSERT INTO runner_follows (clerk_user_id, run_id)
         VALUES (${userId}, ${runId})
