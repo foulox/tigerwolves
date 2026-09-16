@@ -1,0 +1,66 @@
+<style>
+  .frame { max-width: 380px; margin: 0 auto; border-radius: 34px; border: 10px solid #111; background: #fff; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.28); font-family: -apple-system, system-ui, sans-serif; }
+  .hd { padding: 16px 18px 8px; display:flex; justify-content:space-between; align-items:center; }
+  .hd h1 { font-size: 28px; font-weight: 800; margin:0; color:#111; }
+  .hd .av { width:34px; height:34px; border-radius:50%; background:#6d28d9; }
+  .body { background:#f6f7f8; padding:14px; }
+  .card { background:#fff; border-radius:18px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .postrow { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .postrow .t { font-size:10px; font-weight:800; letter-spacing:.06em; color:#9aa0a6; text-transform:uppercase; }
+  .postrow .hint { font-size:11px; color:#c2410c; display:flex; align-items:center; gap:4px; }
+  .post { width:100%; box-sizing:border-box; font-family:inherit; font-size:13.5px; line-height:1.55; color:#111; white-space:pre-wrap;
+          border:1px solid #e5e7eb; border-radius:12px; padding:12px; background:#fffdf9; resize:vertical; min-height:210px; }
+  .post:focus { outline:none; border-color:#ea580c; box-shadow:0 0 0 3px rgba(234,88,12,.12); }
+  .subnote { font-size:11.5px; color:#9aa0a6; margin:6px 2px 0; }
+  .verify { display:flex; gap:10px; align-items:flex-start; background:#f8f9fa; border-radius:12px; padding:11px 12px; margin-top:12px; }
+  .verify input { margin-top:2px; width:17px; height:17px; accent-color:#ea580c; }
+  .verify label { font-size:13px; color:#555; line-height:1.4; }
+  .copy { width:100%; margin-top:12px; background:#ea580c; color:#fff; border:none; border-radius:16px; padding:14px; font-weight:800; font-size:15px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; }
+  .copy:disabled { opacity:.35; cursor:not-allowed; }
+  .tabbar { display:flex; justify-content:space-around; padding:10px 0 6px; border-top:1px solid #eee; background:#fff; font-size:10px; color:#9aa0a6; }
+  .tabbar .on { color:#ea580c; font-weight:700; }
+  .tabbar div { text-align:center; }
+</style>
+
+<h2>Schedule page — post is always editable</h2>
+<p class="subtitle">No Edit button. The generated post is a live field — just click into it and type. Edits apply to this week's post only; the saved template is untouched.</p>
+
+<div class="frame">
+  <div class="hd"><h1>Schedule</h1><div class="av"></div></div>
+  <div class="body">
+    <div class="card">
+      <div class="postrow">
+        <div class="t">This week's post · Wed Sep 16</div>
+        <div class="hint">✎ editable</div>
+      </div>
+      <textarea class="post" id="post" spellcheck="false">🕊️ Wednesday Mourning Doves
+tigerwolves.foulox.me
+
+📅 Wednesday, September 16
+📍 Tom Stofka Garden
+🕕 6:00am
+
+Fun run usually 8–12 miles
+🏃 11.44 mi · onthegomap.com/route/76th
+
+Led by Lou — see you out there! 🔥</textarea>
+      <div class="subnote">Changes here affect only this week's post — your template stays as saved.</div>
+
+      <div class="verify">
+        <input type="checkbox" id="vchk">
+        <label for="vchk">I've verified: Tom Stofka Garden, 11.44 mi</label>
+      </div>
+      <button class="copy" id="copy" disabled>⧉ Copy to clipboard</button>
+    </div>
+  </div>
+  <div class="tabbar">
+    <div>🗓️<br>My Plan</div><div class="on">📋<br>Schedule</div><div>≣<br>All Runs</div><div>📖<br>Library</div><div>🚩<br>Races</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var chk=document.getElementById('vchk'), copy=document.getElementById('copy');
+  chk.onchange=function(){ copy.disabled = !chk.checked; };
+})();
+</script>
