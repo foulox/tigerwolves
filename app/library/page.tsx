@@ -24,6 +24,7 @@ export default async function LibraryPage() {
     cycleMode: 'none',
     cycle: {},
     status: 'live',
+    postTemplate: null,
   }
   const runConfig = (user && isLeader ? await getLeaderRun(user.id) : null) ?? tigerWolvesConfig
   const workoutVariants = await fetchWorkoutVariants(isLeader ? runConfig.id : undefined)

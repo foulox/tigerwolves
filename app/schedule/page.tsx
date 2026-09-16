@@ -24,6 +24,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     cycleMode: 'none',
     cycle: {},
     status: 'live',
+    postTemplate: null,
   }
   const runConfig = (await getLeaderRun(user.id)) ?? tigerWolvesConfig
   const runLeaders = await getRunRoster(runConfig.id)
