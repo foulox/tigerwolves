@@ -113,26 +113,113 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
     return span
   }
 
-  // Walk the editor's child nodes in order and re-derive the token model.
-  // Text nodes → verbatim text tokens; chip elements → chip tokens by data-key;
-  // <br> (from Enter presses) → '\n' text tokens.
+  // Walk the editor's DOM in order and re-derive the token model. Recursive so
+  // that block-level line wrappers (a <div>/<p> the browser inserts when Enter
+  // is pressed — the default in Chrome and mobile Safari) contribute the '\n'
+  // their boundary represents, instead of being flattened to their bare text.
+  //
+  //   - text node        → verbatim text token
+  //   - <br>             → '\n' (an explicit soft line break)
+  //   - chip (data-key)  → chip token; NOT descended into, so the ✕ glyph never
+  //                        leaks into the serialized template
+  //   - block DIV/P      → a '\n' boundary before its contents (unless it's the
+  //                        very first content), then recurse into its children
+  //   - other element    → recurse (spans, etc. carry no boundary of their own)
+  //
+  // Adjacent text is merged and empty-string text tokens are suppressed, exactly
+  // as serializeTokens/parseTemplate round-trip expects.
   function readTokens(): TemplateToken[] {
     const el = editorRef.current
     if (!el) return tokens
-    const out: TemplateToken[] = []
-    el.childNodes.forEach(node => {
+
+    const raw: TemplateToken[] = []
+
+    // True once any real content (text/chip/newline) has been emitted, so the
+    // first block wrapper doesn't prepend a spurious leading newline.
+    let hasContent = false
+
+    const pushText = (value: string) => {
+      if (value === '') return
+      raw.push({ type: 'text', value })
+      hasContent = true
+    }
+    const pushNewline = () => {
+      raw.push({ type: 'text', value: '\n' })
+      hasContent = true
+    }
+    const pushChip = (key: string) => {
+      raw.push({ type: 'chip', key })
+      hasContent = true
+    }
+
+    // Did the last thing we emitted end in a newline? Guards the block-boundary
+    // newline against doubling when the previous line already closed with one.
+    const lastEndsInNewline = () => {
+      const last = raw[raw.length - 1]
+      return !!last && last.type === 'text' && last.value.endsWith('\n')
+    }
+
+    const isBlock = (node: Node): node is HTMLElement =>
+      node instanceof HTMLElement &&
+      (node.nodeName === 'DIV' || node.nodeName === 'P') &&
+      !(node as HTMLElement).dataset.key
+
+    // A <br> that is the last child of a block wrapper is filler the browser
+    // adds so the block renders with height (empty line: `<div><br></div>`;
+    // trailing: `<div>x<br></div>`). The block's own boundary already supplies
+    // that line's '\n', so the filler <br> must not emit a second one.
+    const isTrailingFillerBr = (node: Node): boolean => {
+      const parent = node.parentNode
+      if (!parent || node !== parent.lastChild) return false
+      return (
+        parent instanceof HTMLElement &&
+        (parent.nodeName === 'DIV' || parent.nodeName === 'P')
+      )
+    }
+
+    const walk = (node: Node) => {
       if (node.nodeType === Node.TEXT_NODE) {
-        out.push({ type: 'text', value: node.textContent ?? '' })
-      } else if (node.nodeName === 'BR') {
-        out.push({ type: 'text', value: '\n' })
-      } else if (node instanceof HTMLElement && node.dataset.key) {
-        out.push({ type: 'chip', key: node.dataset.key })
-      } else if (node instanceof HTMLElement) {
-        // Unexpected wrapper (e.g. a browser-inserted <div>): fall back to its
-        // text content so nothing typed is silently lost.
-        out.push({ type: 'text', value: node.textContent ?? '' })
+        pushText(node.textContent ?? '')
+        return
       }
-    })
+      if (node.nodeName === 'BR') {
+        if (isTrailingFillerBr(node)) return
+        pushNewline()
+        return
+      }
+      if (node instanceof HTMLElement && node.dataset.key) {
+        pushChip(node.dataset.key)
+        return
+      }
+      if (isBlock(node)) {
+        // Block boundary = one newline before its contents, except at the very
+        // start, and never doubling an existing trailing newline.
+        if (hasContent && !lastEndsInNewline()) pushNewline()
+        node.childNodes.forEach(walk)
+        return
+      }
+      if (node instanceof HTMLElement) {
+        // Inline wrapper (e.g. a <span> from styling): descend, no boundary.
+        node.childNodes.forEach(walk)
+      }
+    }
+
+    el.childNodes.forEach(walk)
+
+    // Merge adjacent text tokens into one, dropping empties — the shape
+    // serializeTokens/parseTemplate round-trips through.
+    const out: TemplateToken[] = []
+    for (const tok of raw) {
+      if (tok.type === 'text') {
+        if (tok.value === '') continue
+        const prev = out[out.length - 1]
+        if (prev && prev.type === 'text') {
+          prev.value += tok.value
+          continue
+        }
+      }
+      out.push(tok)
+    }
     return out
   }
 
