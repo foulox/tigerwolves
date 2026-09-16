@@ -65,6 +65,28 @@ setup('authenticate as test leader', async ({ page }) => {
     throw new Error('auth.setup: could not read window.Clerk.user.id after sign-in — cannot link the test leader, /run-config specs would redirect. Failing setup loudly rather than leaving an unlinked roster.')
   }
 
+  // #389: self-heal the Clerk leader ROLE the same way we self-heal the DB link
+  // above. requireLeaderPage() gates every leader route on
+  // currentUser().publicMetadata.role === 'leader'; nothing else sets it. When the
+  // test-leader account is deleted/recreated during manual testing, sign-in still
+  // works and the run_leaders link re-heals from the live session — but the role is
+  // gone, so the whole leader surface redirects home and every leader e2e spec
+  // fails. Re-stamp it from CLERK_SECRET_KEY (already used for the ticket sign-in)
+  // on every run, so recreating the account can never break e2e again. PATCH /metadata
+  // MERGES public_metadata, so it won't clobber other keys. Runner setup below is
+  // deliberately left without a role. clerkUserId is guaranteed non-null past the
+  // throw above.
+  const clerkSecret = process.env.CLERK_SECRET_KEY
+  if (!clerkSecret) throw new Error('auth.setup: CLERK_SECRET_KEY must be set to grant the test leader its role')
+  const res = await fetch(`https://api.clerk.com/v1/users/${clerkUserId}/metadata`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${clerkSecret}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ public_metadata: { role: 'leader' } }),
+  })
+  if (!res.ok) {
+    throw new Error(`auth.setup: failed to set leader role via Clerk Backend API (${res.status} ${await res.text()}). Leader e2e specs would redirect home; failing setup loudly.`)
+  }
+
   fs.mkdirSync(path.dirname(authFile), { recursive: true })
   await page.context().storageState({ path: authFile })
 })
