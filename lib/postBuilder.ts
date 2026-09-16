@@ -130,7 +130,8 @@ function resolveField(key: string, ctx: RenderCtx): string {
       return ''
 
     case 'reason':
-      return primary?.reason ?? ''
+      if (!primary) return ''
+      return primary.reason ?? ''
 
     case 'workout_details': {
       if (!showWorkout) return ''

@@ -362,14 +362,12 @@ describe('merge-field engine', () => {
       expect(() => {
         renderPostTemplate(`{{${f.key}}}`, entry, [fullyPopulatedRecord], fullyPopulatedConfig, tigerWolvesRoster)
       }).not.toThrow()
-      // emoji-bearing fields: check affix appears in output when field is non-empty
+      // emoji-bearing fields: check affix appears in output — must be non-empty with fully-populated fixture
       const resolved = renderPostTemplate(`{{${f.key}}}`, entry, [fullyPopulatedRecord], fullyPopulatedConfig, tigerWolvesRoster)
       if (f.affix) {
-        // The resolved string may be empty if the field is '' for this fixture,
-        // but for the fully-populated fixture all affixed fields should be present
-        if (resolved.trim()) {
-          expect(resolved).toContain(f.affix)
-        }
+        // Affix-bearing fields must resolve to non-empty with fully-populated context
+        expect(resolved.trim()).not.toBe('')
+        expect(resolved).toContain(f.affix)
       }
     }
   })
@@ -382,6 +380,11 @@ describe('merge-field engine', () => {
     expect(tmpl).toContain('{{location}}')
     expect(tmpl).toContain('{{day_leader}}')
     expect(tmpl).toContain('{{leaders}}')
+    // Substantive tokens must be present in default template
+    expect(tmpl).toContain('{{workout_details}}')
+    expect(tmpl).toContain('{{reason}}')
+    expect(tmpl).toContain('{{distance}}')
+    expect(tmpl).toContain('{{route_link}}')
   })
 })
 
