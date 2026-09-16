@@ -164,26 +164,20 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
       (node.nodeName === 'DIV' || node.nodeName === 'P') &&
       !(node as HTMLElement).dataset.key
 
-    // A <br> that is the last child of a block wrapper is filler the browser
-    // adds so the block renders with height (empty line: `<div><br></div>`;
-    // trailing: `<div>x<br></div>`). The block's own boundary already supplies
-    // that line's '\n', so the filler <br> must not emit a second one.
-    const isTrailingFillerBr = (node: Node): boolean => {
-      const parent = node.parentNode
-      if (!parent || node !== parent.lastChild) return false
-      return (
-        parent instanceof HTMLElement &&
-        (parent.nodeName === 'DIV' || parent.nodeName === 'P')
-      )
-    }
-
     const walk = (node: Node) => {
       if (node.nodeType === Node.TEXT_NODE) {
         pushText(node.textContent ?? '')
         return
       }
+      // A <br> ALWAYS emits a newline — whether it's a soft break inside a line
+      // or the filler the browser puts in an otherwise-empty line
+      // (`<div><br></div>`). Doubling against a following block's own boundary is
+      // prevented by the lastEndsInNewline() guard on the block branch below: a
+      // `<br>` then a <div> collapses to one '\n', while an empty
+      // `<div><br></div>` between two blocks correctly yields a blank line
+      // ('\n\n'). (Suppressing the filler <br> instead silently dropped those
+      // blank separator lines, collapsing the spacing between template sections.)
       if (node.nodeName === 'BR') {
-        if (isTrailingFillerBr(node)) return
         pushNewline()
         return
       }
