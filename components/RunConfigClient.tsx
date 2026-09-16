@@ -4,13 +4,13 @@ import PostTemplateTab from './PostTemplateTab'
 import RosterTab from './RosterTab'
 import AboutRunTab from './AboutRunTab'
 import Header from './Header'
-import type { RunConfig, RunLeader } from '@/lib/data'
+import type { RunConfig, RunLeader, ScheduleEntry, WorkoutVariantRow } from '@/lib/data'
 
-type Props = { runConfig: RunConfig; runLeaders: RunLeader[]; currentUserId: string }
+type Props = { runConfig: RunConfig; runLeaders: RunLeader[]; currentUserId: string; nextEntry: ScheduleEntry | null; roster: string[]; variants: WorkoutVariantRow[] }
 
 const TAB_LABELS = { about: 'About the run', template: 'Post template', roster: 'Roster' } as const
 
-export default function RunConfigClient({ runConfig, runLeaders, currentUserId }: Props) {
+export default function RunConfigClient({ runConfig, runLeaders, currentUserId, nextEntry, roster, variants }: Props) {
   const [tab, setTab] = useState<'about' | 'template' | 'roster'>('about')
   return (
     <div className="min-h-screen bg-gray-50">
@@ -27,7 +27,7 @@ export default function RunConfigClient({ runConfig, runLeaders, currentUserId }
         ))}
       </div>
       {tab === 'about' && <AboutRunTab runConfig={runConfig} runLeaders={runLeaders} />}
-      {tab === 'template' && <PostTemplateTab runConfig={runConfig} />}
+      {tab === 'template' && <PostTemplateTab runConfig={runConfig} nextEntry={nextEntry} roster={roster} variants={variants} />}
       {tab === 'roster' && <RosterTab runLeaders={runLeaders} runId={runConfig.id} currentUserId={currentUserId} />}
     </div>
   )
