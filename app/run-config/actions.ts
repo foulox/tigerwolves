@@ -3,23 +3,51 @@ import { currentUser } from '@clerk/nextjs/server'
 import type { User } from '@clerk/nextjs/server'
 import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
-import { sql, getLeaderRun, getRunRoster } from '@/lib/db'
+import { sql, getLeaderRun, getRunRoster, toDateString } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity } from '@/lib/runIdentity'
 import { resolveClerkUserByEmail, leaderDisplayName, grantLeaderRole, revokeLeaderRoleIfOrphaned } from '@/lib/runLeaders'
 
-/** Throws 'Forbidden' if the caller's run does not match runId. */
-async function assertCallerOwnsRun(user: User, runId: string): Promise<void> {
+/** True if the Clerk user carries the cross-run admin flag (mirrors setRunStatus). */
+function isAdminUser(user: User): boolean {
+  return user.publicMetadata?.admin === true
+}
+
+/**
+ * Opening auth gate for every run-config write action. An admin (admin:true)
+ * passes even with no leader role; a signed-in non-admin non-leader is rejected.
+ * Returns the user on success, or null when the caller must be refused Unauthorized.
+ */
+async function authorizeWriteCaller(): Promise<User | null> {
+  const user = await currentUser()
+  if (!user) return null
+  if (!isAdminUser(user) && user.publicMetadata?.role !== 'leader') return null
+  return user
+}
+
+/**
+ * Admin-or-owner run guard. Allows admins across any run; otherwise falls back to
+ * the existing getLeaderRun ownership check. Throws 'Forbidden' for a non-admin
+ * caller who does not lead runId. This is the single enforcement point for the
+ * admin bypass + Forbidden path on run-addressed actions.
+ */
+async function assertCanManageRun(user: User, runId: string): Promise<void> {
+  if (isAdminUser(user)) return
   const run = await getLeaderRun(user.id)
   if (!run || run.id !== runId) throw new Error('Forbidden')
 }
 
-/** Fetches the run_id for a run_leaders row and asserts the caller owns it. */
-async function assertCallerOwnsLeaderRow(user: User, leaderId: number): Promise<void> {
+/**
+ * Admin-or-owner guard for a run_leaders roster row. Admins pass; otherwise the
+ * caller must lead the run that owns the row. Throws 'Forbidden' if the row is
+ * missing or the non-admin caller does not own it.
+ */
+async function assertCanManageLeaderRow(user: User, leaderId: number): Promise<void> {
+  if (isAdminUser(user)) return
   const rows = await sql`SELECT run_id FROM run_leaders WHERE id = ${leaderId}`
   if (!rows[0]) throw new Error('Forbidden')
-  await assertCallerOwnsRun(user, rows[0].run_id as string)
+  await assertCanManageRun(user, rows[0].run_id as string)
 }
 
 export async function setRunStatus(
@@ -27,12 +55,13 @@ export async function setRunStatus(
   status: 'draft' | 'live'
 ): Promise<{ error?: string; status?: 'draft' | 'live' }> {
   try {
-    const user = await currentUser()
+    const user = await authorizeWriteCaller()
     if (!user) return { error: 'Unauthorized' }
-
-    const isAdmin = user.publicMetadata?.admin === true
-    const owns = (await getLeaderRun(user.id))?.id === runId
-    if (!isAdmin && !owns) return { error: 'Forbidden' }
+    try {
+      await assertCanManageRun(user, runId)
+    } catch {
+      return { error: 'Forbidden' }
+    }
 
     if (status !== 'draft' && status !== 'live') return { error: 'Invalid status' }
 
@@ -45,17 +74,20 @@ export async function setRunStatus(
   }
 }
 
-export async function savePostTemplate(data: {
+export async function savePostTemplate(runId: string, data: {
   postHeader: string
   meetingLocation: string
   leaderIntro: string
   closingNotes: string
 }): Promise<{ error?: string }> {
   try {
-    const user = await currentUser()
-    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
-    const run = await getLeaderRun(user.id)
-    if (!run) return { error: 'Run not found' }
+    const user = await authorizeWriteCaller()
+    if (!user) return { error: 'Unauthorized' }
+    try {
+      await assertCanManageRun(user, runId)
+    } catch {
+      return { error: 'Forbidden' }
+    }
 
     await sql`
       UPDATE runs SET
@@ -63,7 +95,7 @@ export async function savePostTemplate(data: {
         meeting_location = ${data.meetingLocation},
         leader_intro = ${data.leaderIntro},
         closing_notes = ${data.closingNotes}
-      WHERE id = ${run.id}
+      WHERE id = ${runId}
     `
     updateTag('tigerwolves-data')
     return {}
@@ -73,15 +105,18 @@ export async function savePostTemplate(data: {
   }
 }
 
-export async function saveRunProfile(data: {
+export async function saveRunProfile(runId: string, data: {
   kind: string
   workoutTypes: string[]
 }): Promise<{ error?: string }> {
   try {
-    const user = await currentUser()
-    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
-    const run = await getLeaderRun(user.id)
-    if (!run) return { error: 'Run not found' }
+    const user = await authorizeWriteCaller()
+    if (!user) return { error: 'Unauthorized' }
+    try {
+      await assertCanManageRun(user, runId)
+    } catch {
+      return { error: 'Forbidden' }
+    }
 
     if (!(RUN_KINDS as readonly string[]).includes(data.kind)) return { error: 'Invalid run kind' }
     // The allowlist only applies to Workout runs — drop unknown types, and clear it
@@ -95,7 +130,7 @@ export async function saveRunProfile(data: {
     // touches the two fields the About tab edits.
     await sql`
       UPDATE runs SET kind = ${data.kind}, workout_types = ${workoutTypes}::text[]
-      WHERE id = ${run.id}
+      WHERE id = ${runId}
     `
     updateTag('tigerwolves-data')
     return {}
@@ -105,12 +140,15 @@ export async function saveRunProfile(data: {
   }
 }
 
-export async function saveRunIdentity(data: RunIdentityValues): Promise<{ error?: string }> {
+export async function saveRunIdentity(runId: string, data: RunIdentityValues): Promise<{ error?: string }> {
   try {
-    const user = await currentUser()
-    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
-    const run = await getLeaderRun(user.id)
-    if (!run) return { error: 'Run not found' }
+    const user = await authorizeWriteCaller()
+    if (!user) return { error: 'Unauthorized' }
+    try {
+      await assertCanManageRun(user, runId)
+    } catch {
+      return { error: 'Forbidden' }
+    }
     const invalid = validateRunIdentity(data)
     if (invalid.error) return { error: invalid.error }
 
@@ -123,7 +161,7 @@ export async function saveRunIdentity(data: RunIdentityValues): Promise<{ error?
         meeting_location = ${data.meetingLocation},
         description = ${data.description},
         warmup_description = ${data.warmupDescription}
-      WHERE id = ${run.id}
+      WHERE id = ${runId}
     `
     updateTag('tigerwolves-data')
     return {}
@@ -133,15 +171,18 @@ export async function saveRunIdentity(data: RunIdentityValues): Promise<{ error?
   }
 }
 
-export async function saveRunCycle(data: {
+export async function saveRunCycle(runId: string, data: {
   cycleMode: string
   cycle: Record<string, string>
 }): Promise<{ error?: string }> {
   try {
-    const user = await currentUser()
-    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
-    const run = await getLeaderRun(user.id)
-    if (!run) return { error: 'Run not found' }
+    const user = await authorizeWriteCaller()
+    if (!user) return { error: 'Unauthorized' }
+    try {
+      await assertCanManageRun(user, runId)
+    } catch {
+      return { error: 'Forbidden' }
+    }
 
     if (data.cycleMode !== 'none' && data.cycleMode !== 'week_of_month') {
       return { error: 'Invalid cycle mode' }
@@ -154,7 +195,11 @@ export async function saveRunCycle(data: {
     // never leaves a stale slot map behind.
     const cycle: Record<string, string> = {}
     if (data.cycleMode === 'week_of_month') {
-      const allowed = new Set(run.workoutTypes)
+      // Resolve the target run's own workout-type allowlist directly by runId, so
+      // an admin editing a run they don't lead still validates against that run's
+      // vocabulary (not the caller's).
+      const allowlistRows = await sql`SELECT workout_types FROM runs WHERE id = ${runId}`
+      const allowed = new Set<string>((allowlistRows[0]?.workout_types as string[] | null) ?? [])
       const validSlots = new Set<string>(WEEK_SLOTS.map(String))
       for (const [slot, value] of Object.entries(data.cycle)) {
         if (!validSlots.has(slot)) continue
@@ -165,7 +210,7 @@ export async function saveRunCycle(data: {
 
     await sql`
       UPDATE runs SET cycle_mode = ${data.cycleMode}, cycle = ${JSON.stringify(cycle)}::jsonb
-      WHERE id = ${run.id}
+      WHERE id = ${runId}
     `
     updateTag('tigerwolves-data')
     return {}
@@ -176,19 +221,24 @@ export async function saveRunCycle(data: {
 }
 
 export async function saveRotationOrder(
+  runId: string,
   orderedIds: number[]  // run_leader ids in new order
 ): Promise<{ error?: string }> {
   try {
-    const user = await currentUser()
-    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
-    // Verify all IDs belong to the caller's run
+    const user = await authorizeWriteCaller()
+    if (!user) return { error: 'Unauthorized' }
+    try {
+      await assertCanManageRun(user, runId)
+    } catch {
+      return { error: 'Forbidden' }
+    }
+    // Every id being reordered must belong to the targeted run — even an admin may
+    // only reorder within one run, never move a row across runs.
     if (orderedIds.length > 0) {
-      const run = await getLeaderRun(user.id)
-      if (!run) return { error: 'Run not found' }
       const ownershipRows = await sql`
         SELECT run_id FROM run_leaders WHERE id = ANY(${orderedIds})
       `
-      if (ownershipRows.some(r => (r.run_id as string) !== run.id)) return { error: 'Forbidden' }
+      if (ownershipRows.some(r => (r.run_id as string) !== runId)) return { error: 'Forbidden' }
     }
     for (let i = 0; i < orderedIds.length; i++) {
       await sql`UPDATE run_leaders SET sort_order = ${i + 1} WHERE id = ${orderedIds[i]}`
@@ -206,8 +256,8 @@ export async function saveAwayPeriod(
   period: { from: string; to: string }
 ): Promise<{ error?: string; reassignedCount: number; noLeaderDates: string[] }> {
   try {
-    const user = await currentUser()
-    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized', reassignedCount: 0, noLeaderDates: [] }
+    const user = await authorizeWriteCaller()
+    if (!user) return { error: 'Unauthorized', reassignedCount: 0, noLeaderDates: [] }
 
     // Validate the range before writing — a reversed/blank range would append a
     // period that matches nothing (dates are compared as ISO strings). from/to
@@ -216,9 +266,9 @@ export async function saveAwayPeriod(
       return { error: 'Enter a valid date range (from on or before to)', reassignedCount: 0, noLeaderDates: [] }
     }
 
-    // Verify caller owns the targeted leader row
+    // Verify the caller may manage the targeted leader row (admin or owning leader)
     try {
-      await assertCallerOwnsLeaderRow(user, leaderId)
+      await assertCanManageLeaderRow(user, leaderId)
     } catch {
       return { error: 'Forbidden', reassignedCount: 0, noLeaderDates: [] }
     }
@@ -252,7 +302,7 @@ export async function saveAwayPeriod(
     const noLeaderDates: string[] = []
 
     for (const row of affected) {
-      const dateStr = (row.date as Date).toISOString().slice(0, 10)
+      const dateStr = toDateString(row.date)
       // Use the actual leader from the schedule entry immediately before this date as the
       // anchor for getNextLeader. Positional roster math is wrong after manual overrides.
       const prevEntryRows = await sql`
@@ -294,11 +344,11 @@ export async function removeAwayPeriod(
   periodIndex: number
 ): Promise<{ error?: string }> {
   try {
-    const user = await currentUser()
-    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
-    // Verify caller owns the targeted leader row
+    const user = await authorizeWriteCaller()
+    if (!user) return { error: 'Unauthorized' }
+    // Verify the caller may manage the targeted leader row (admin or owning leader)
     try {
-      await assertCallerOwnsLeaderRow(user, leaderId)
+      await assertCanManageLeaderRow(user, leaderId)
     } catch {
       return { error: 'Forbidden' }
     }
@@ -321,11 +371,11 @@ export async function addRunLeaderByEmail(
   email: string
 ): Promise<{ error?: string }> {
   try {
-    const user = await currentUser()
-    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized' }
-    // Verify caller owns the target run
+    const user = await authorizeWriteCaller()
+    if (!user) return { error: 'Unauthorized' }
+    // Verify the caller may manage the target run (admin or owning leader)
     try {
-      await assertCallerOwnsRun(user, runId)
+      await assertCanManageRun(user, runId)
     } catch {
       return { error: 'Forbidden' }
     }
@@ -376,11 +426,11 @@ export async function removeRunLeader(
   leaderId: number
 ): Promise<{ error?: string; reassignedCount: number; noLeaderDates: string[] }> {
   try {
-    const user = await currentUser()
-    if (!user || user.publicMetadata?.role !== 'leader') return { error: 'Unauthorized', reassignedCount: 0, noLeaderDates: [] }
-    // Verify caller owns the targeted leader row
+    const user = await authorizeWriteCaller()
+    if (!user) return { error: 'Unauthorized', reassignedCount: 0, noLeaderDates: [] }
+    // Verify the caller may manage the targeted leader row (admin or owning leader)
     try {
-      await assertCallerOwnsLeaderRow(user, leaderId)
+      await assertCanManageLeaderRow(user, leaderId)
     } catch {
       return { error: 'Forbidden', reassignedCount: 0, noLeaderDates: [] }
     }
@@ -410,7 +460,7 @@ export async function removeRunLeader(
     const noLeaderDates: string[] = []
 
     for (const row of affected) {
-      const dateStr = (row.date as Date).toISOString().slice(0, 10)
+      const dateStr = toDateString(row.date)
       // Anchor on the actual leader of the entry immediately before this date so the
       // rotation continues naturally (and picks up prior reassignments in this loop).
       const prevEntryRows = await sql`

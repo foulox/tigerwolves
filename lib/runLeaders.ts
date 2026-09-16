@@ -88,7 +88,20 @@ export async function revokeLeaderRoleIfOrphaned(clerkUserId: string): Promise<v
   if (await leadsAnyActiveRun(clerkUserId)) return
 
   const client = await clerkClient()
-  const user = await client.users.getUser(clerkUserId)
+  let user
+  try {
+    user = await client.users.getUser(clerkUserId)
+  } catch (err) {
+    // The Clerk user no longer exists (deleted account, or a run_leaders row
+    // whose clerk_user_id belongs to a different Clerk instance — e.g. Preview's
+    // DB is forked from production but the app runs on the dev Clerk instance,
+    // so essentially every leader removal 404s on Preview). No user ⇒ no role
+    // to revoke; the DB row is already deactivated, which is the source of truth.
+    // Treat not-found as a no-op; rethrow every other error so a user who
+    // genuinely should lose their leader role never silently keeps it.
+    if ((err as { status?: number })?.status === 404) return
+    throw err
+  }
   const existing = (user.publicMetadata as Record<string, unknown>) ?? {}
   // Strip only the 'role' key — preserve admin, and any future keys.
   const { role: _stripped, ...rest } = existing

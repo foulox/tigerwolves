@@ -77,10 +77,10 @@ export default function AboutRunTab({
       try {
         setError('')
         // Save identity fields first; bail before profile/cycle if this fails.
-        const identityResult = await saveRunIdentity(identityValues)
+        const identityResult = await saveRunIdentity(runConfig.id, identityValues)
         if (identityResult.error) { setError(identityResult.error); return }
 
-        const profileResult = await saveRunProfile({ kind, workoutTypes })
+        const profileResult = await saveRunProfile(runConfig.id, { kind, workoutTypes })
         if (profileResult.error) { setError(profileResult.error); return }
 
         // Build the slot→type map, keeping only currently-offered types so what we
@@ -95,7 +95,7 @@ export default function AboutRunTab({
             if (joined) cycle[key] = joined
           }
         }
-        const cycleResult = await saveRunCycle({ cycleMode: effectiveMode, cycle })
+        const cycleResult = await saveRunCycle(runConfig.id, { cycleMode: effectiveMode, cycle })
         if (cycleResult.error) { setError(cycleResult.error); return }
 
         setSaved(true)

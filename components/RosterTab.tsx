@@ -39,7 +39,7 @@ export default function RosterTab({
     setLeaders(next)
     startTransition(async () => {
       try {
-        const res = await saveRotationOrder(next.map(l => l.id))
+        const res = await saveRotationOrder(runId, next.map(l => l.id))
         // Roll the optimistic reorder back if the save was rejected/failed, so the
         // UI never shows an order the DB doesn't actually hold.
         if (res.error) { setLeaders(prev); setBanner({ message: res.error, isWarning: true }) }
