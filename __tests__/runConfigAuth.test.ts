@@ -47,9 +47,11 @@ const LEADER_B = 'user_authtest_B_310' // leads the other run
 const OTHER_RUN = 'test-doves-310'
 const NAME_A = 'AuthTest LeaderA 310'
 const NAME_B = 'AuthTest LeaderB 310'
+const NAME_C = 'AuthTest LeaderC 310' // null clerk_user_id — for admin remove test
 
 let leaderAId: number
 let leaderBId: number
+let leaderCId: number
 
 function signInAs(clerkId: string, role: string = 'leader') {
   vi.mocked(currentUser).mockResolvedValue({ id: clerkId, publicMetadata: { role } } as never)
@@ -60,7 +62,7 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
   beforeAll(async () => {
     // A second run this leader does NOT lead. tigerwolves already exists on staging.
     await sql`INSERT INTO runs (id, name) VALUES (${OTHER_RUN}, 'Auth Test Doves 310') ON CONFLICT (id) DO NOTHING`
-    await sql`DELETE FROM run_leaders WHERE name IN (${NAME_A}, ${NAME_B})`
+    await sql`DELETE FROM run_leaders WHERE name IN (${NAME_A}, ${NAME_B}, ${NAME_C})`
     const a = await sql`
       INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
       VALUES ('tigerwolves', ${NAME_A}, ${LEADER_A}, 990, true)
@@ -73,10 +75,18 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
       RETURNING id
     `
     leaderBId = b[0].id as number
+    // Leader C has no clerk_user_id — used by the admin remove test so removeRunLeader
+    // skips the Clerk revoke call (null-guard) and succeeds without any Clerk dependency.
+    const c = await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${OTHER_RUN}, ${NAME_C}, NULL, 2, true)
+      RETURNING id
+    `
+    leaderCId = c[0].id as number
   })
 
   afterAll(async () => {
-    await sql`DELETE FROM run_leaders WHERE name IN (${NAME_A}, ${NAME_B})`
+    await sql`DELETE FROM run_leaders WHERE name IN (${NAME_A}, ${NAME_B}, ${NAME_C})`
     await sql`DELETE FROM runs WHERE id = ${OTHER_RUN}`
   })
 
@@ -152,9 +162,11 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
     })
 
     test("can removeRunLeader on another run's roster row", async () => {
-      const res = await removeRunLeader(leaderBId)
+      // Use leaderCId (null clerk_user_id) so removeRunLeader's null-guard skips the
+      // Clerk revoke call entirely — no dependency on real Clerk in CI.
+      const res = await removeRunLeader(leaderCId)
       expect(res.error).toBeUndefined()
-      const removed = await sql`SELECT active FROM run_leaders WHERE id = ${leaderBId}`
+      const removed = await sql`SELECT active FROM run_leaders WHERE id = ${leaderCId}`
       expect(removed[0].active).toBe(false)
     })
 
