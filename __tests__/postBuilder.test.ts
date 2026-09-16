@@ -385,6 +385,14 @@ describe('merge-field engine', () => {
     }
   })
 
+  test('empty-date guard: {{date}} with no date emits nothing (no 📅, no Invalid Date)', () => {
+    const entryWithEmptyDate = { ...entry, date: '' }
+    const result = renderPostTemplate('{{date}}', entryWithEmptyDate, [], tigerWolvesConfig, [])
+    expect(result).toBe('')
+    expect(result).not.toContain('📅')
+    expect(result).not.toContain('Invalid Date')
+  })
+
   test('defaultTemplate returns a string containing all expected token placeholders', () => {
     const tmpl = defaultTemplate(tigerWolvesConfig)
     expect(typeof tmpl).toBe('string')
