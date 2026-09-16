@@ -1,0 +1,190 @@
+<style>
+  .seg { display:flex; gap:0; max-width:380px; margin:0 auto 14px; border:1.5px solid #ea580c; border-radius:12px; overflow:hidden; font-family:-apple-system,system-ui,sans-serif; }
+  .seg button { flex:1; padding:9px 6px; font-size:13px; font-weight:700; background:#fff; color:#ea580c; border:none; cursor:pointer; }
+  .seg button.on { background:#ea580c; color:#fff; }
+  .frame { max-width: 380px; margin: 0 auto; border-radius: 34px; border: 10px solid #111; background: #fff; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.28); font-family: -apple-system, system-ui, sans-serif; }
+  .hd { padding: 16px 18px 10px; }
+  .hd .back { color: #ea580c; font-weight: 800; font-size: 20px; }
+  .hd h1 { font-size: 26px; font-weight: 800; margin: 2px 0 0; color: #111; }
+  .hd .sub { color: #8a8f98; font-size: 15px; margin-top: 2px; }
+  .tabs { display: flex; gap: 14px; padding: 4px 18px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+  .tabs span { padding: 8px 0 12px; color: #9aa0a6; font-weight: 600; }
+  .tabs .on { color: #ea580c; border-bottom: 2px solid #ea580c; }
+  .body { background: #f6f7f8; padding: 14px; }
+  .lbl { font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #9aa0a6; text-transform: uppercase; margin: 4px 2px 8px; }
+  .card { background: #fff; border-radius: 16px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 14px; }
+  .compose { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; font-size: 14px; line-height: 2.0; color: #1f2937; background: #fafafa; white-space: pre-wrap; }
+  .chip { display: inline-block; background: #fdece0; color: #c2410c; border: 1px solid #f7c9a8; border-radius: 7px; padding: 1px 8px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+  .chip.rec { background: #e0f0fb; color: #0369a1; border-color: #a8d4f2; }
+  .insertbtn { display: inline-flex; gap: 6px; border: 1.5px solid #ea580c; color: #ea580c; font-weight: 700; font-size: 13px; border-radius: 10px; padding: 8px 13px; margin-top: 10px; cursor: pointer; user-select:none; }
+  .ddpop { border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.12); overflow: hidden; margin-top:8px; display:none; }
+  .ddpop.open { display:block; }
+  .ddpop .row { padding: 10px 12px; font-size: 14px; border-top: 1px solid #f1f1f1; cursor:pointer; }
+  .ddpop .row:first-child { border-top:none; }
+  /* the middle "preview with" band */
+  .band { background:#fff7ed; border:1px dashed #f7c9a8; border-radius:16px; padding:14px; margin-bottom:14px; }
+  .band .t { font-size:12px; font-weight:800; color:#c2410c; text-transform:uppercase; letter-spacing:.05em; margin-bottom:9px; }
+  .pick { width:100%; border:1px solid #e5e7eb; border-radius:11px; background:#fff; padding:11px 12px; font-size:14px; color:#1f2937; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+  .pick .ph { color:#9aa0a6; }
+  .pickpop { border:1px solid #e5e7eb; border-radius:11px; box-shadow:0 8px 24px rgba(0,0,0,.12); margin-top:6px; overflow:hidden; display:none; background:#fff; }
+  .pickpop.open { display:block; }
+  .pickpop .r { padding:11px 12px; font-size:14px; border-top:1px solid #f1f1f1; cursor:pointer; display:flex; justify-content:space-between; }
+  .pickpop .r:first-child { border-top:none; }
+  .pickpop .r .d { color:#9aa0a6; font-size:13px; }
+  .genbtn { width:100%; margin-top:10px; background:#ea580c; color:#fff; border:none; border-radius:12px; padding:12px; font-weight:800; font-size:14px; cursor:pointer; }
+  .genbtn:disabled { opacity:.4; }
+  .preview { background: #fff; border-radius: 12px; padding: 14px; font-size: 13.5px; line-height: 1.55; color: #111; white-space: pre-wrap; }
+  .preview a { color: #2563eb; text-decoration: underline; }
+  .empty { background:#fff; border-radius:12px; padding:22px 14px; text-align:center; color:#9aa0a6; font-size:13px; }
+</style>
+
+<h2>Template → pick a library route → Generate preview</h2>
+<p class="subtitle">This is just <b>Doves' own settings</b> — no toggle in the real app. A workout run works identically; its picker would simply list workouts instead of long runs (same library, same code, filtered by run type).</p>
+
+<div class="frame">
+  <div class="hd">
+    <div class="back">‹</div>
+    <h1>Run Settings</h1>
+    <div class="sub" id="runSub">Wednesday Mourning Doves</div>
+  </div>
+  <div class="tabs">
+    <span>About the run</span><span class="on">Post template</span><span>Roster</span>
+  </div>
+  <div class="body">
+
+    <div class="lbl">Template</div>
+    <div class="card">
+      <div class="compose" id="compose"></div>
+      <div class="insertbtn" id="insertBtn">＋ Insert field ▾</div>
+      <div class="ddpop" id="ddpop"></div>
+    </div>
+
+    <div class="band">
+      <div class="t" id="bandTitle">Preview with…</div>
+      <div class="pick" id="pick"><span class="ph" id="pickLabel">Choose a route…</span><span>▾</span></div>
+      <div class="pickpop" id="pickpop"></div>
+      <button class="genbtn" id="genbtn" disabled>Generate preview</button>
+    </div>
+
+    <div class="lbl">Live preview</div>
+    <div id="previewWrap"></div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  var CFG = {
+    route: {
+      sub:'Wednesday Mourning Doves', emoji:'🕊️',
+      run:{ date:'Wednesday, September 16', location:'Tom Stofka Garden', time:'6:00am', description:'Fun run usually 8–12 miles', leaders:'Lou' },
+      body:['description','distance','route_link'],
+      insertable:['description','distance','route_link'],
+      recWord:'route', libType:'Long runs',
+      records:[
+        {name:'Hudson River Out-and-Back', distance:'14.0 mi', link:'onthegomap.com/route/hudson'},
+        {name:'Prospect Park Long Loop', distance:'12.1 mi', link:'onthegomap.com/route/ppl'},
+        {name:'Greenpoint → Wburg Bridge', distance:'9.4 mi', link:'onthegomap.com/route/gpw'}
+      ]
+    },
+    workout: {
+      sub:'TigerWolves Tuesday', emoji:'🐯🐺',
+      run:{ date:'Tuesday, September 15', location:'McCarren Park track', time:'6:15am', description:'', leaders:'Kostas' },
+      body:['workout_name','workout_details','turnaround'],
+      insertable:['workout_name','workout_details','turnaround'],
+      recWord:'workout', libType:'Quality workouts',
+      records:[
+        {name:'Tempo Ladder', details:'5·4·3·2·1 min @ tempo, 90s float', turnaround:'at the fountain'},
+        {name:'Mile Repeats', details:'4 × 1 mi @ 10K, 2 min jog', turnaround:'—'}
+      ]
+    }
+  };
+  var FIELD = {
+    date:{n:'Date',e:'📅 ',src:'run'}, location:{n:'Meeting location',e:'📍 ',src:'run'},
+    time:{n:'Meeting time',e:'🕕 ',src:'run'}, description:{n:'Description',e:'',src:'run'},
+    leaders:{n:'Leaders',e:'',src:'run'},
+    distance:{n:'Distance',e:'🏃 ',src:'rec',key:'distance'}, route_link:{n:'Route link',e:'🗺️ ',src:'rec',key:'link',link:true},
+    workout_name:{n:'Workout name',e:'🏁 ',src:'rec',key:'name'}, workout_details:{n:'Workout details',e:'',src:'rec',key:'details'},
+    turnaround:{n:'Turnaround',e:'↩️ ',src:'rec',key:'turnaround'}
+  };
+  var mode='route', body=[], sel=null, generated=false;
+
+  window.setMode=function(m){
+    mode=m; body=CFG[m].body.slice(); sel=null; generated=false;
+    var br=document.getElementById('mRoute'), bw=document.getElementById('mWorkout');
+    if(br) br.className = m==='route'?'on':'';
+    if(bw) bw.className = m==='workout'?'on':'';
+    document.getElementById('runSub').textContent = CFG[m].sub;
+    document.getElementById('bandTitle').textContent = 'Preview with… (pick a '+CFG[m].recWord+')';
+    document.getElementById('pickLabel').textContent = 'Choose a '+CFG[m].recWord+'…';
+    document.getElementById('pickLabel').className='ph';
+    document.getElementById('ddpop').classList.remove('open');
+    document.getElementById('pickpop').classList.remove('open');
+    renderAll();
+  };
+
+  function chip(k){ return '<span class="chip'+(FIELD[k].src==='rec'?' rec':'')+'">'+FIELD[k].n+'</span>'; }
+
+  function renderCompose(){
+    var c=CFG[mode], h=c.emoji+' '+c.sub+'\ntigerwolves.foulox.me\n\n';
+    ['date','location','time'].forEach(function(k){ h+=FIELD[k].e+chip(k)+'\n'; });
+    h+='\n';
+    body.forEach(function(k){ h+=FIELD[k].e+chip(k)+'\n'; });
+    h+='\nLed by '+chip('leaders')+' — see you out there! 🔥';
+    document.getElementById('compose').innerHTML=h;
+  }
+
+  function renderDropdown(){
+    var d=document.getElementById('ddpop'), used=['date','location','time','leaders'].concat(body);
+    var avail=CFG[mode].insertable.filter(function(k){return used.indexOf(k)<0;});
+    d.innerHTML = avail.length? avail.map(function(k){return '<div class="row" data-k="'+k+'">'+FIELD[k].n+'</div>';}).join('') : '<div class="row" style="color:#9aa0a6">All fields inserted.</div>';
+    Array.prototype.forEach.call(d.querySelectorAll('[data-k]'),function(r){
+      r.onclick=function(){ body.push(r.getAttribute('data-k')); generated=false; d.classList.remove('open'); renderAll(); };
+    });
+  }
+
+  function renderPicker(){
+    var p=document.getElementById('pickpop'), recs=CFG[mode].records;
+    var head='<div class="r" style="cursor:default;background:#fafafa;color:#9aa0a6;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase">📚 Library · '+CFG[mode].libType+'</div>';
+    p.innerHTML=head+recs.map(function(r,i){
+      var d = r.distance? r.distance : (r.details||'');
+      return '<div class="r" data-i="'+i+'"><span>'+r.name+'</span><span class="d">'+d+'</span></div>';
+    }).join('');
+    Array.prototype.forEach.call(p.querySelectorAll('[data-i]'),function(r){
+      r.onclick=function(){
+        sel=parseInt(r.getAttribute('data-i'),10); generated=false;
+        var rec=CFG[mode].records[sel];
+        var lab=document.getElementById('pickLabel'); lab.textContent=rec.name; lab.className='';
+        p.classList.remove('open'); renderAll();
+      };
+    });
+    document.getElementById('genbtn').disabled = (sel===null);
+  }
+
+  function resolve(k){
+    var f=FIELD[k];
+    if(f.src==='run') return CFG[mode].run[k];
+    var rec=CFG[mode].records[sel]; var v=rec[f.key];
+    return f.link? '<a href="#">'+v+'</a>' : v;
+  }
+
+  function renderPreview(){
+    var w=document.getElementById('previewWrap');
+    if(!generated){ w.innerHTML='<div class="empty">Pick a '+CFG[mode].recWord+' above and tap <b>Generate preview</b> to see the post.</div>'; return; }
+    var c=CFG[mode], out=c.emoji+' '+c.sub+'\ntigerwolves.foulox.me\n\n';
+    ['date','location','time'].forEach(function(k){ out+=FIELD[k].e+resolve(k)+'\n'; });
+    out+='\n';
+    body.forEach(function(k){ var v=resolve(k); if(v!=='' && v!=null) out+=FIELD[k].e+v+'\n'; });
+    out+='\nLed by '+resolve('leaders')+' — see you out there! 🔥';
+    w.innerHTML='<div class="preview">'+out+'</div>';
+  }
+
+  function renderAll(){ renderCompose(); renderDropdown(); renderPicker(); renderPreview(); }
+
+  document.getElementById('insertBtn').onclick=function(){ document.getElementById('ddpop').classList.toggle('open'); };
+  document.getElementById('pick').onclick=function(){ document.getElementById('pickpop').classList.toggle('open'); };
+  document.getElementById('genbtn').onclick=function(){ if(sel===null) return; generated=true; renderPreview(); };
+
+  setMode('route');
+})();
+</script>
