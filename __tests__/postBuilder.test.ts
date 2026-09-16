@@ -313,6 +313,19 @@ describe('merge-field engine', () => {
     expect(post).not.toContain('\n\n\n')
   })
 
+  test('empty-drop (AC): no distTime → no distance line, no orphaned blank line', () => {
+    // A record with distTime present emits the 🏃 distance line; the same record
+    // with an empty distTime must drop it entirely (this is the route-vs-workout
+    // empty-field behavior at the heart of #387 — guarded here for distance the
+    // way the turnaround case above guards ↩️).
+    const withDist: WorkoutVariantRow = { ...baseWorkout, distTime: 'SENTINEL_DIST' }
+    const withoutDist: WorkoutVariantRow = { ...baseWorkout, distTime: '' }
+    expect(buildPost(entry, [withDist], tigerWolvesConfig, tigerWolvesRoster)).toContain('🏃 SENTINEL_DIST')
+    const post = buildPost(entry, [withoutDist], tigerWolvesConfig, tigerWolvesRoster)
+    expect(post).not.toContain('SENTINEL_DIST')
+    expect(post).not.toContain('\n\n\n')
+  })
+
   test('template precedence (AC): custom postTemplate is used instead of default', () => {
     const customRecord: WorkoutVariantRow = {
       ...baseWorkout,

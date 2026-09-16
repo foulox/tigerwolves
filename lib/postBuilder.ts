@@ -77,7 +77,7 @@ export const POST_FIELDS: {
   { key: 'time',            label: 'Time',          source: 'run',      affix: '🕕' },
   { key: 'description',     label: 'Description',   source: 'run',      affix: '' },
   { key: 'leaders',         label: 'Leaders',       source: 'roster',   affix: '' },
-  { key: 'workout_name',    label: 'Workout name',  source: 'record',   affix: '' },
+  { key: 'workout_name',    label: 'Workout name',  source: 'record',   affix: '🏃🏻‍♂️‍➡️' },
   { key: 'reason',          label: 'Reason',        source: 'record',   affix: '' },
   { key: 'workout_details', label: 'Workout block', source: 'record',   affix: '' },
   { key: 'distance',        label: 'Distance',      source: 'record',   affix: '🏃' },
@@ -100,7 +100,14 @@ function resolveField(key: string, ctx: RenderCtx): string {
   const { entry, selections, runConfig, roster, activeType } = ctx
   const sorted = [...selections].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
   const primary = sorted[0]
+  // #322: only a Workout-kind run emits the structured WORKOUT section (the
+  // type:name line, the reason, and the interval block). A non-workout run
+  // (Easy/Long/Beginner-Friendly/Food) may legitimately have no selections at
+  // all, so never dereference `primary` outside these guards.
   const showWorkout = isWorkoutKind(runConfig.kind) && primary != null
+  // #347: a non-Workout run can still pick a route/easy workout — emit a light
+  // line (name + reason, no type prefix and no interval block) so the pick shows
+  // in the post. Only when one is actually selected.
   const showLightWorkout = !isWorkoutKind(runConfig.kind) && primary != null
 
   switch (key) {
@@ -207,6 +214,12 @@ export function renderPostTemplate(
 
 export function defaultTemplate(runConfig: RunConfig): string {
   return [
+    // post_header is the FULL editable opening block (run name/emoji, the app link,
+    // any standing prompts) — stored per-run in runs.post_header and edited via the
+    // Post Template UI. Nothing app- or run-specific is hardcoded here anymore (#310):
+    // that previously duplicated the app link/prompt lines against what the DB already
+    // held. The default template emits post_header verbatim first, then the dynamic
+    // date/workout tokens.
     runConfig.postHeader,
     '',
     '{{date}}',
