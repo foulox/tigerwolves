@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/lib/data'
@@ -20,6 +20,15 @@ import { formatDateShort } from '@/lib/dateUtils'
 type PlanStandaloneRow = { kind: 'standalone'; workout: WorkoutVariantRow }
 type PlanFamilyRow = { kind: 'family'; familyId: number; name: string; variants: WorkoutVariantRow[]; total: number }
 type PlanDisplayRow = PlanStandaloneRow | PlanFamilyRow
+
+// Grow a textarea to fit its whole content (no manual resize handle). Called on
+// every content change and on mount, so a remount (e.g. after a tab switch)
+// re-sizes even when the content hasn't changed since it was last hidden.
+function growToFit(el: HTMLTextAreaElement | null) {
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
 
 function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined }) {
   if (v && v.count > 0) {
@@ -55,6 +64,12 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   const [verified, setVerified] = useState(false)
   const [editedPost, setEditedPost] = useState<string | null>(null)
   const postRef = useRef<HTMLTextAreaElement>(null)
+  // Callback ref: resizes on mount so a remount after a tab switch re-fits even
+  // when `draftPost` is unchanged (a plain [draftPost] effect would skip it).
+  const setPostRef = useCallback((el: HTMLTextAreaElement | null) => {
+    postRef.current = el
+    growToFit(el)
+  }, [])
 
   useEffect(() => { setVerified(false) }, [weekIndex])
 
@@ -228,13 +243,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
   // Auto-grow the textarea to fit its whole content (no manual resize handle) —
   // preserves the old <pre>'s whole-post-visible feel. Documented deviation from
-  // the mockup's fixed min-height in the design README.
-  useEffect(() => {
-    const el = postRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
-  }, [draftPost])
+  // the mockup's fixed min-height in the design README. Mount-time sizing is
+  // handled by setPostRef; this effect covers content changes while mounted.
+  useEffect(() => { growToFit(postRef.current) }, [draftPost])
 
   function handleCopy() {
     navigator.clipboard.writeText(draftPost).then(() => {
@@ -281,6 +292,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
           <button
             onClick={() => changeWeek(weekIndex - 1)}
             disabled={weekIndex === 0}
+            aria-label="Previous week"
             className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-gray-500 active:bg-gray-100"
           >
             <ChevronLeft size={20} />
@@ -306,6 +318,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
           <button
             onClick={() => changeWeek(weekIndex + 1)}
             disabled={weekIndex >= upcoming.length - 1}
+            aria-label="Next week"
             className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-gray-500 active:bg-gray-100"
           >
             <ChevronRight size={20} />
@@ -591,7 +604,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     <div className="text-xs text-orange-600 flex items-center gap-1">✎ editable</div>
                   </div>
                   <textarea
-                    ref={postRef}
+                    ref={setPostRef}
                     value={draftPost}
                     onChange={e => setEditedPost(e.target.value)}
                     aria-label="Editable weekly post"

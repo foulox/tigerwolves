@@ -45,14 +45,13 @@ test('regenerating the post discards inline edits', async ({ page }) => {
   await expect(post).toHaveValue(/SENTINEL EDIT/)
 
   // Advancing a week and returning recomputes the post in place (no reload),
-  // which the reset-on-regenerate effect uses to clear the ephemeral edit. The
-  // two week-nav chevrons are the first icon-only buttons on the page (prev is
-  // disabled on week 0, next advances a week).
-  const navChevrons = page.locator('button:has(svg)')
-  await navChevrons.nth(1).click() // next week
+  // which the reset-on-regenerate effect uses to clear the ephemeral edit.
+  // Target the chevrons by aria-label — a positional icon-button selector drifts
+  // when other icon-only buttons (e.g. the header's Feedback button) are present.
+  await page.getByRole('button', { name: 'Next week' }).click()
   await expect(page.getByRole('textbox', { name: 'Editable weekly post' })).not.toHaveValue(/SENTINEL EDIT/)
 
-  await navChevrons.nth(0).click() // back to week 0
+  await page.getByRole('button', { name: 'Previous week' }).click() // back to week 0
 
   const postAgain = page.getByRole('textbox', { name: 'Editable weekly post' })
   await expect(postAgain).not.toHaveValue(/SENTINEL EDIT/)
