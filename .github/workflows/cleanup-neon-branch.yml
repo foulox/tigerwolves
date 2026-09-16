@@ -1,0 +1,31 @@
+name: Cleanup Neon branch
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete Neon preview branch
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: purple-star-02119717
+          BRANCH_NAME: preview/${{ github.head_ref }}
+        run: |
+          BRANCH_ID=$(curl -s \
+            -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
+            | jq -r --arg name "$BRANCH_NAME" '.branches[] | select(.name == $name) | .id')
+
+          if [ -z "$BRANCH_ID" ]; then
+            echo "No Neon branch found for $BRANCH_NAME — nothing to delete."
+            exit 0
+          fi
+
+          echo "Deleting $BRANCH_NAME ($BRANCH_ID)..."
+          curl -s -X DELETE \
+            -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/$BRANCH_ID"
+          echo "Done."
