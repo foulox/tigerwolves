@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inline rich editor — de-risk prototype</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; background:#eceef0; font-family:-apple-system,system-ui,sans-serif; color:#111; padding:20px 10px 60px; }
+  h2 { text-align:center; font-size:18px; margin:4px 0 2px; }
+  .subtitle { text-align:center; color:#6b7280; font-size:13px; max-width:420px; margin:0 auto 14px; line-height:1.4; }
+
+  .seg { display:flex; gap:0; max-width:340px; margin:0 auto 16px; border:1.5px solid #ea580c; border-radius:12px; overflow:hidden; }
+  .seg button { flex:1; padding:9px 6px; font-size:13px; font-weight:700; background:#fff; color:#ea580c; border:none; cursor:pointer; }
+  .seg button.on { background:#ea580c; color:#fff; }
+
+  .frame { max-width: 390px; margin: 0 auto; border-radius: 34px; border: 10px solid #111; background: #fff; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.28); }
+  .hd { padding: 16px 18px 10px; }
+  .hd .back { color: #ea580c; font-weight: 800; font-size: 20px; }
+  .hd h1 { font-size: 25px; font-weight: 800; margin: 2px 0 0; }
+  .hd .sub { color: #8a8f98; font-size: 15px; margin-top: 2px; }
+  .tabs { display: flex; gap: 14px; padding: 4px 18px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+  .tabs span { padding: 8px 0 12px; color: #9aa0a6; font-weight: 600; }
+  .tabs .on { color: #ea580c; border-bottom: 2px solid #ea580c; }
+  .body { background: #f6f7f8; padding: 14px; }
+  .lbl { font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #9aa0a6; text-transform: uppercase; margin: 4px 2px 8px; display:flex; align-items:center; gap:6px; }
+  .lbl .hint { font-weight:600; letter-spacing:0; text-transform:none; color:#b6bbc2; font-size:11px; }
+  .card { background: #fff; border-radius: 16px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 14px; }
+
+  /* the editable document */
+  .editor { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; font-size: 14px; line-height: 2.1; color: #1f2937; background: #fafafa; white-space: pre-wrap; outline:none; min-height: 220px; }
+  .editor:focus { border-color:#f7c9a8; background:#fff; box-shadow:0 0 0 3px #fdece0; }
+  .chip { display: inline-flex; align-items:center; gap:5px; background: #fdece0; color: #c2410c; border: 1px solid #f7c9a8; border-radius: 7px; padding: 1px 4px 1px 8px; font-size: 12.5px; font-weight: 700; white-space: nowrap; user-select:none; vertical-align:baseline; cursor:default; }
+  .chip.rec { background: #e0f0fb; color: #0369a1; border-color: #a8d4f2; }
+  .chip .x { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; background:rgba(0,0,0,.08); font-size:11px; line-height:1; cursor:pointer; }
+  .chip .x:hover { background:rgba(0,0,0,.18); }
+
+  .insertbtn { display: inline-flex; gap: 6px; align-items:center; border: 1.5px solid #ea580c; color: #ea580c; font-weight: 700; font-size: 13px; border-radius: 10px; padding: 8px 13px; margin-top: 10px; cursor: pointer; user-select:none; }
+  .ddwrap { position:relative; }
+  .ddpop { position:absolute; z-index:20; left:0; top:calc(100% + 6px); min-width:210px; background:#fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.14); overflow: hidden; display:none; }
+  .ddpop.open { display:block; }
+  .ddpop .grouplbl { padding:7px 12px 5px; font-size:9.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#b6bbc2; background:#fafafa; }
+  .ddpop .row { padding: 10px 12px; font-size: 14px; border-top: 1px solid #f4f4f5; cursor:pointer; display:flex; align-items:center; gap:8px; }
+  .ddpop .row:hover { background:#fff7ed; }
+  .ddpop .row .tag { margin-left:auto; font-size:10px; font-weight:700; color:#9aa0a6; }
+
+  .band { background:#fff7ed; border:1px dashed #f7c9a8; border-radius:16px; padding:13px; margin-bottom:14px; }
+  .band .t { font-size:11px; font-weight:800; color:#c2410c; text-transform:uppercase; letter-spacing:.05em; margin-bottom:9px; }
+  .pickwrap { position:relative; }
+  .pick { width:100%; border:1px solid #e5e7eb; border-radius:11px; background:#fff; padding:11px 12px; font-size:14px; color:#1f2937; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+  .pick .ph { color:#9aa0a6; }
+  .pickpop { position:absolute; z-index:15; left:0; right:0; top:calc(100% + 6px); border:1px solid #e5e7eb; border-radius:11px; box-shadow:0 8px 24px rgba(0,0,0,.14); overflow:hidden; display:none; background:#fff; }
+  .pickpop.open { display:block; }
+  .pickpop .r { padding:11px 12px; font-size:14px; border-top:1px solid #f4f4f5; cursor:pointer; display:flex; justify-content:space-between; gap:10px; }
+  .pickpop .r:hover { background:#fff7ed; }
+  .pickpop .r .d { color:#9aa0a6; font-size:13px; white-space:nowrap; }
+  .pickpop .head { padding:8px 12px; font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#9aa0a6; background:#fafafa; }
+  .genbtn { width:100%; margin-top:10px; background:#ea580c; color:#fff; border:none; border-radius:12px; padding:12px; font-weight:800; font-size:14px; cursor:pointer; }
+  .genbtn:disabled { opacity:.4; }
+
+  .preview { background: #fff; border-radius: 12px; padding: 14px; font-size: 13.5px; line-height: 1.55; color: #111; white-space: pre-wrap; }
+  .preview a { color: #2563eb; text-decoration: underline; }
+  .empty { background:#fff; border-radius:12px; padding:22px 14px; text-align:center; color:#9aa0a6; font-size:13px; }
+  .saverow { display:flex; gap:8px; margin-top:2px; }
+  .savebtn { flex:1; background:#111; color:#fff; border:none; border-radius:11px; padding:11px; font-weight:700; font-size:13px; cursor:pointer; }
+  .resetbtn { background:#fff; color:#6b7280; border:1px solid #e5e7eb; border-radius:11px; padding:11px 14px; font-weight:700; font-size:13px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<h2>Inline rich editor — try it</h2>
+<p class="subtitle">One composable template: type prose anywhere, drop <b>merge-field chips</b> at the cursor with ＋ Insert field, tap a chip's ✕ to remove it. Pick a library record, Generate to see the resolved post. Toggle the run type to test both machines.</p>
+
+<div class="seg">
+  <button id="mRoute" class="on" onclick="setMode('route')">🕊️ Route run (Doves)</button>
+  <button id="mWorkout" onclick="setMode('workout')">🐯🐺 Workout run (TW)</button>
+</div>
+
+<div class="frame">
+  <div class="hd">
+    <div class="back">‹</div>
+    <h1>Run Settings</h1>
+    <div class="sub" id="runSub">Wednesday Mourning Doves</div>
+  </div>
+  <div class="tabs">
+    <span>About the run</span><span class="on">Post template</span><span>Roster</span>
+  </div>
+  <div class="body">
+
+    <div class="lbl">Template <span class="hint">— type freely, ✕ a chip to remove</span></div>
+    <div class="card">
+      <div class="editor" id="editor" contenteditable="true"></div>
+      <div class="ddwrap">
+        <div class="insertbtn" id="insertBtn">＋ Insert field ▾</div>
+        <div class="ddpop" id="ddpop"></div>
+      </div>
+      <div class="saverow">
+        <button class="savebtn" id="saveBtn">Save template</button>
+        <button class="resetbtn" id="resetBtn">Reset to default</button>
+      </div>
+    </div>
+
+    <div class="band">
+      <div class="t" id="bandTitle">Preview with…</div>
+      <div class="pickwrap">
+        <div class="pick" id="pick"><span class="ph" id="pickLabel">Choose a route…</span><span>▾</span></div>
+        <div class="pickpop" id="pickpop"></div>
+      </div>
+      <button class="genbtn" id="genbtn" disabled>Generate preview</button>
+    </div>
+
+    <div class="lbl">Live preview</div>
+    <div id="previewWrap"></div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  // ---- field catalog ------------------------------------------------------
+  // src: 'run' = this run's settings row · 'roster' = run_leaders · 'rec' = picked library record
+  var FIELD = {
+    date:        {n:'Date',            e:'📅 ', src:'run',    key:'date'},
+    location:    {n:'Meeting location',e:'📍 ', src:'run',    key:'location'},
+    time:        {n:'Meeting time',    e:'🕕 ', src:'run',    key:'time'},
+    description: {n:'Description',      e:'',    src:'run',    key:'description'},
+    leaders:     {n:'Leaders',         e:'',    src:'roster', key:'leaders'},
+    distance:    {n:'Distance',        e:'🏃 ', src:'rec',    key:'distance'},
+    route_link:  {n:'Route link',      e:'🗺️ ',src:'rec',    key:'link', link:true},
+    workout_name:{n:'Workout name',    e:'🏁 ', src:'rec',    key:'name'},
+    workout_details:{n:'Workout details',e:'',  src:'rec',    key:'details'},
+    turnaround:  {n:'Turnaround',      e:'↩️ ', src:'rec',    key:'turnaround'},
+    reason:      {n:'Reason',          e:'',    src:'rec',    key:'reason'}
+  };
+  var SHARED = ['date','location','time','description','leaders'];
+  var ROUTE_ONLY = ['distance','route_link'];
+  var WORKOUT_ONLY = ['workout_name','workout_details','turnaround','reason'];
+
+  // ---- per-run config, records, and the SEEDED DEFAULT TEMPLATE ------------
+  // The default templates are the migration seed: existing runs keep today's post.
+  var CFG = {
+    route: {
+      sub:'Wednesday Mourning Doves', recWord:'route', libType:'Long runs',
+      insertable: SHARED.concat(ROUTE_ONLY),
+      run:{ date:'Wednesday, September 16', location:'Tom Stofka Garden', time:'6:00am', description:'Fun run usually 8–12 miles' },
+      roster:{ leaders:'Lou, Priya' },
+      records:[
+        {name:'Hudson River Out-and-Back', distance:'14.0 mi', link:'onthegomap.com/route/hudson'},
+        {name:'Prospect Park Long Loop',   distance:'12.1 mi', link:'onthegomap.com/route/ppl'},
+        {name:'Greenpoint → Wburg Bridge', distance:'9.4 mi',  link:'onthegomap.com/route/gpw'}
+      ],
+      // default template as an array of tokens: strings are literal text, {f:'key'} are chips
+      tpl:[
+        '🕊️ Mourning Doves Wednesday Run\ntigerwolves.foulox.me\n\nAn easy, social midweek run.\n\n',
+        {f:'date'}, '\n', {f:'location'}, '\n', {f:'time'}, '\n\n',
+        {f:'description'}, '\n', {f:'distance'}, '\n', {f:'route_link'}, '\n\n',
+        'Led by ', {f:'leaders'}, ' — see you out there! 🔥'
+      ]
+    },
+    workout: {
+      sub:'TigerWolves Tuesday', recWord:'workout', libType:'Quality workouts',
+      insertable: SHARED.concat(WORKOUT_ONLY),
+      run:{ date:'Tuesday, September 15', location:'McCarren Park track', time:'6:15am', description:'' },
+      roster:{ leaders:'Kostas, Lou, Kelsey' },
+      records:[
+        {name:'Tempo Ladder', details:'5·4·3·2·1 min @ tempo, 90s float', turnaround:'at the fountain', reason:'Sharpen for the 10K.'},
+        {name:'Mile Repeats', details:'4 × 1 mi @ 10K, 2 min jog',        turnaround:'',                 reason:'Classic threshold work.'}
+      ],
+      tpl:[
+        '🐯🐺 TigerWolves Tuesday Workout\n👉 https://tigerwolves.foulox.me 👈\n🗳️ React to let us know what you like\n\n',
+        {f:'date'}, '\n🏃 ', {f:'workout_name'}, '\n\n', {f:'reason'}, '\n\n',
+        {f:'location'}, '\n\n🏁 WORKOUT\n', {f:'workout_details'}, '\n', {f:'turnaround'}, '\n\nBag Drop: Sorry, not available\n\n',
+        'Led by ', {f:'leaders'}, ' — see you out there! 🔥'
+      ]
+    }
+  };
+
+  var mode='route', sel=null, generated=false, savedRange=null;
+  var editor = document.getElementById('editor');
+
+  // ---- chip node ----------------------------------------------------------
+  function makeChip(key){
+    var f = FIELD[key];
+    var span = document.createElement('span');
+    span.className = 'chip' + (f.src==='rec' ? ' rec' : '');
+    span.setAttribute('contenteditable','false');
+    span.setAttribute('data-f', key);
+    var lbl = document.createElement('span'); lbl.textContent = f.n;
+    var x = document.createElement('span'); x.className='x'; x.textContent='✕';
+    x.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); span.remove(); invalidate(); });
+    span.appendChild(lbl); span.appendChild(x);
+    return span;
+  }
+
+  // ---- render the default/saved template into the editor -------------------
+  function loadTemplate(){
+    editor.innerHTML = '';
+    CFG[mode].tpl.forEach(function(tok){
+      if (typeof tok === 'string') editor.appendChild(document.createTextNode(tok));
+      else editor.appendChild(makeChip(tok.f));
+    });
+  }
+
+  // ---- cursor tracking so Insert field drops at the caret -----------------
+  function saveSelection(){
+    var s = window.getSelection();
+    if (s.rangeCount && editor.contains(s.anchorNode)) savedRange = s.getRangeAt(0).cloneRange();
+  }
+  editor.addEventListener('keyup', saveSelection);
+  editor.addEventListener('mouseup', saveSelection);
+  editor.addEventListener('input', invalidate);
+
+  function insertChipAtCaret(key){
+    var chip = makeChip(key);
+    var range = savedRange;
+    if (!range) { // no known caret — append at end
+      editor.appendChild(chip);
+      editor.appendChild(document.createTextNode('​'));
+    } else {
+      range.deleteContents();
+      range.insertNode(chip);
+      // place caret just after the chip
+      range.setStartAfter(chip); range.setEndAfter(chip);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(range);
+      savedRange = range.cloneRange();
+    }
+    invalidate();
+    editor.focus();
+  }
+
+  // ---- Insert field dropdown ---------------------------------------------
+  function renderDropdown(){
+    var d = document.getElementById('ddpop');
+    var used = { shared:SHARED, only: (mode==='route'?ROUTE_ONLY:WORKOUT_ONLY) };
+    function rows(keys){
+      return keys.map(function(k){
+        return '<div class="row" data-k="'+k+'">'+ (FIELD[k].e||'') + FIELD[k].n +
+               '<span class="tag">'+ (FIELD[k].src==='rec'?'record':FIELD[k].src) +'</span></div>';
+      }).join('');
+    }
+    d.innerHTML =
+      '<div class="grouplbl">From run &amp; roster</div>' + rows(used.shared) +
+      '<div class="grouplbl">From the picked '+CFG[mode].recWord+'</div>' + rows(used.only);
+    Array.prototype.forEach.call(d.querySelectorAll('[data-k]'), function(r){
+      r.addEventListener('click', function(){
+        d.classList.remove('open');
+        insertChipAtCaret(r.getAttribute('data-k'));
+      });
+    });
+  }
+
+  // ---- library picker -----------------------------------------------------
+  function renderPicker(){
+    var p = document.getElementById('pickpop'), recs = CFG[mode].records;
+    var head = '<div class="head">📚 Library · '+CFG[mode].libType+'</div>';
+    p.innerHTML = head + recs.map(function(r,i){
+      var d = r.distance ? r.distance : (r.details||'');
+      return '<div class="r" data-i="'+i+'"><span>'+r.name+'</span><span class="d">'+d+'</span></div>';
+    }).join('');
+    Array.prototype.forEach.call(p.querySelectorAll('[data-i]'), function(r){
+      r.addEventListener('click', function(){
+        sel = parseInt(r.getAttribute('data-i'),10); invalidate();
+        var rec = recs[sel];
+        var lab = document.getElementById('pickLabel'); lab.textContent = rec.name; lab.className='';
+        p.classList.remove('open');
+        document.getElementById('genbtn').disabled = false;
+      });
+    });
+  }
+
+  // ---- resolve + preview --------------------------------------------------
+  function resolve(key){
+    var f = FIELD[key];
+    if (f.src === 'run')    return CFG[mode].run[f.key] || '';
+    if (f.src === 'roster') return CFG[mode].roster[f.key] || '';
+    if (sel === null) return '';
+    var v = CFG[mode].records[sel][f.key] || '';
+    if (v && f.link) return '<a href="#" onclick="return false">'+v+'</a>';
+    return v;
+  }
+
+  function invalidate(){ generated = false; renderPreview(); }
+
+  function renderPreview(){
+    var w = document.getElementById('previewWrap');
+    if (!generated) {
+      w.innerHTML = '<div class="empty">Pick a '+CFG[mode].recWord+' and tap <b>Generate preview</b> to see the resolved post.</div>';
+      return;
+    }
+    // walk the editor's nodes: text stays, chips resolve (empty value → drop the chip only)
+    var out = '';
+    Array.prototype.forEach.call(editor.childNodes, function(node){
+      if (node.nodeType === 3) out += node.textContent;             // text
+      else if (node.classList && node.classList.contains('chip')) {  // chip
+        var key = node.getAttribute('data-f');
+        var v = resolve(key);
+        out += v ? ((FIELD[key].e||'') + v) : '';
+      } else if (node.nodeName === 'BR') out += '\n';
+      else out += node.textContent || '';
+    });
+    // tidy: collapse blank lines left by a dropped field
+    out = out.replace(/\n{3,}/g,'\n\n').replace(/[ \t]+\n/g,'\n');
+    w.innerHTML = '<div class="preview">'+out+'</div>';
+  }
+
+  // ---- wire up ------------------------------------------------------------
+  document.getElementById('insertBtn').addEventListener('mousedown', function(e){ e.preventDefault(); saveSelection(); });
+  document.getElementById('insertBtn').addEventListener('click', function(){ document.getElementById('ddpop').classList.toggle('open'); });
+  document.getElementById('pick').addEventListener('click', function(){ document.getElementById('pickpop').classList.toggle('open'); });
+  document.getElementById('genbtn').addEventListener('click', function(){ if (sel===null) return; generated = true; renderPreview(); });
+  document.getElementById('saveBtn').addEventListener('click', function(){ this.textContent='Saved ✓'; var b=this; setTimeout(function(){ b.textContent='Save template'; },1400); });
+  document.getElementById('resetBtn').addEventListener('click', function(){ loadTemplate(); invalidate(); });
+  document.addEventListener('click', function(e){
+    if (!e.target.closest('#insertBtn') && !e.target.closest('#ddpop')) document.getElementById('ddpop').classList.remove('open');
+    if (!e.target.closest('#pick') && !e.target.closest('#pickpop')) document.getElementById('pickpop').classList.remove('open');
+  });
+
+  window.setMode = function(m){
+    mode = m; sel = null; generated = false; savedRange = null;
+    document.getElementById('mRoute').className = m==='route'?'on':'';
+    document.getElementById('mWorkout').className = m==='workout'?'on':'';
+    document.getElementById('runSub').textContent = CFG[m].sub;
+    document.getElementById('bandTitle').textContent = 'Preview with… (pick a '+CFG[m].recWord+')';
+    var lab = document.getElementById('pickLabel'); lab.textContent = 'Choose a '+CFG[m].recWord+'…'; lab.className='ph';
+    document.getElementById('genbtn').disabled = true;
+    document.getElementById('ddpop').classList.remove('open');
+    document.getElementById('pickpop').classList.remove('open');
+    loadTemplate(); renderDropdown(); renderPicker(); renderPreview();
+  };
+
+  setMode('route');
+})();
+</script>
+</body>
+</html>
