@@ -27,7 +27,13 @@ export default function RunConfigClient({ runConfig, runLeaders, currentUserId, 
         ))}
       </div>
       {tab === 'about' && <AboutRunTab runConfig={runConfig} runLeaders={runLeaders} />}
-      {tab === 'template' && <PostTemplateTab runConfig={runConfig} nextEntry={nextEntry} roster={roster} variants={variants} />}
+      {/* #382: keep the template editor MOUNTED (just hidden when inactive) so switching
+          tabs and back doesn't unmount it and discard in-flight unsaved edits — the
+          contenteditable DOM is the editor's source of truth, so it must survive the switch.
+          Scoped to this tab only; About/Roster keep their existing unmount-on-switch behavior. */}
+      <div className={tab === 'template' ? '' : 'hidden'}>
+        <PostTemplateTab runConfig={runConfig} nextEntry={nextEntry} roster={roster} variants={variants} />
+      </div>
       {tab === 'roster' && <RosterTab runLeaders={runLeaders} runId={runConfig.id} currentUserId={currentUserId} />}
     </div>
   )
