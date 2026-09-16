@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/lib/data'
@@ -53,6 +53,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   const [leaderPickerOpen, setLeaderPickerOpen] = useState(false)
   const [localLeader, setLocalLeader] = useState<string | null>(null)
   const [verified, setVerified] = useState(false)
+  const [editedPost, setEditedPost] = useState<string | null>(null)
+  const postRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => { setVerified(false) }, [weekIndex])
 
@@ -214,8 +216,28 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     ? buildPost({ ...entry, leader: effectiveLeader }, effectiveSelections, runConfig, roster, activeType)
     : ''
 
+  // #383: the leader can tweak the generated post inline, this-week-only. The
+  // edit is displayed and copied; it never touches the saved template.
+  const draftPost = editedPost ?? post
+
+  // Regenerate discards edits (AC4). `post` is a primitive string compared by
+  // value, so a Change-workout peek that doesn't alter the selection leaves the
+  // edit intact; any change to week / selection / type / leader recomputes
+  // `post` and clears the edit.
+  useEffect(() => { setEditedPost(null) }, [post])
+
+  // Auto-grow the textarea to fit its whole content (no manual resize handle) —
+  // preserves the old <pre>'s whole-post-visible feel. Documented deviation from
+  // the mockup's fixed min-height in the design README.
+  useEffect(() => {
+    const el = postRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [draftPost])
+
   function handleCopy() {
-    navigator.clipboard.writeText(post).then(() => {
+    navigator.clipboard.writeText(draftPost).then(() => {
       setCopied(true)
       captureClientEvent('heylo_post_copied')
       setTimeout(() => setCopied(false), 2000)
@@ -561,7 +583,25 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
             {(!plannedWorkout || planTab === 'post') && effectiveSelections.length > 0 && (
               <div className="flex flex-col gap-3 p-4">
-                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{post}</pre>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-[10px] font-bold text-gray-400 tracking-wide uppercase">
+                      This week&rsquo;s post · {formatDateShort(new Date(entry.date + 'T00:00:00'))}
+                    </div>
+                    <div className="text-xs text-orange-600 flex items-center gap-1">✎ editable</div>
+                  </div>
+                  <textarea
+                    ref={postRef}
+                    value={draftPost}
+                    onChange={e => setEditedPost(e.target.value)}
+                    aria-label="Editable weekly post"
+                    spellCheck={false}
+                    className="w-full min-h-[210px] resize-none rounded-xl border border-gray-200 bg-[#fffdf9] px-3 py-3 text-sm text-gray-800 leading-relaxed font-sans touch-manipulation focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                  />
+                  <div className="text-xs text-gray-400 mt-1.5 px-0.5">
+                    Changes here affect only this week&rsquo;s post — your template stays as saved.
+                  </div>
+                </div>
                 <div className="flex items-start gap-3 bg-gray-50 rounded-xl px-4 py-3">
                   <input
                     type="checkbox"
