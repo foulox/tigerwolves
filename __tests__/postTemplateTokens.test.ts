@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest'
-import { parseTemplate, serializeTokens, buildInsertMenu } from '../lib/postTemplateTokens'
+import { parseTemplate, serializeTokens, buildInsertMenu, domNodesToTokens } from '../lib/postTemplateTokens'
+import type { WalkNode } from '../lib/postTemplateTokens'
 import { POST_FIELDS, defaultTemplate } from '../lib/postBuilder'
 import type { RunConfig } from '../lib/data'
 
@@ -72,5 +73,78 @@ describe('postTemplateTokens', () => {
 
     // No duplicates
     expect(allKeys.length).toBe(expectedKeys.length)
+  })
+})
+
+// -------------------------------------------------------------------------
+// domNodesToTokens — the editor's DOM → token read-back, extracted here so the
+// walk (which has regressed on newline handling more than once) is unit-tested
+// without a real DOM. Fake nodes model the structural WalkNode shape.
+// -------------------------------------------------------------------------
+
+const txt = (value: string): WalkNode => ({ nodeType: 3, nodeName: '#text', textContent: value, childNodes: [] })
+const br = (): WalkNode => ({ nodeType: 1, nodeName: 'BR', textContent: null, childNodes: [] })
+const div = (...childNodes: WalkNode[]): WalkNode => ({ nodeType: 1, nodeName: 'DIV', textContent: null, childNodes })
+const span = (...childNodes: WalkNode[]): WalkNode => ({ nodeType: 1, nodeName: 'SPAN', textContent: null, childNodes })
+// A chip is a SPAN carrying data-key, with a label + ✕ button inside it.
+const chip = (key: string, ...childNodes: WalkNode[]): WalkNode => ({ nodeType: 1, nodeName: 'SPAN', textContent: null, childNodes, dataset: { key } })
+
+const ser = (nodes: WalkNode[]) => serializeTokens(domNodesToTokens(nodes))
+
+describe('domNodesToTokens', () => {
+  test('two block lines → single newline between', () => {
+    expect(ser([div(txt('A')), div(txt('B'))])).toBe('A\nB')
+  })
+
+  test('empty <div><br></div> between blocks → blank line preserved (regression #393)', () => {
+    // The bug: a filler <br> was suppressed and the next block boundary deduped
+    // away, collapsing "A\n\nB" (blank separator line) to "A\nB".
+    expect(ser([div(txt('A')), div(br()), div(txt('B'))])).toBe('A\n\nB')
+  })
+
+  test('two empty lines between blocks → two blank lines', () => {
+    expect(ser([div(txt('A')), div(br()), div(br()), div(txt('B'))])).toBe('A\n\n\nB')
+  })
+
+  test('soft <br> between inline text', () => {
+    expect(ser([txt('a'), br(), txt('b')])).toBe('a\nb')
+  })
+
+  test('<br> immediately followed by a block does not double the newline', () => {
+    expect(ser([txt('a'), br(), div(txt('b'))])).toBe('a\nb')
+  })
+
+  test('trailing filler <br> in a block, then another block → no double newline', () => {
+    expect(ser([div(txt('x'), br()), div(txt('y'))])).toBe('x\ny')
+  })
+
+  test('soft <br> inside a single block', () => {
+    expect(ser([div(txt('x'), br(), txt('y'))])).toBe('x\ny')
+  })
+
+  test('flat (unedited seed) text node round-trips verbatim, blank lines intact', () => {
+    expect(ser([txt('line1\n\nline2')])).toBe('line1\n\nline2')
+  })
+
+  test('inline <span> wrapper is descended into with no block boundary', () => {
+    expect(ser([div(txt('a'), span(txt('b')), txt('c'))])).toBe('abc')
+  })
+
+  test('chip → chip token; inner label/✕ never leak into text', () => {
+    const nodes = [div(txt('Led by '), chip('day_leader', txt('Day leader'), txt('✕')))]
+    const tokens = domNodesToTokens(nodes)
+    expect(tokens).toEqual([
+      { type: 'text', value: 'Led by ' },
+      { type: 'chip', key: 'day_leader' },
+    ])
+    expect(serializeTokens(tokens)).toBe('Led by {{day_leader}}')
+  })
+
+  test('DOM read-back equals parseTemplate for a canonical chip template', () => {
+    const tmpl = 'Hi {{leaders}} bye'
+    // As the editor holds it after seeding: flat text + an atomic chip span.
+    const nodes = [txt('Hi '), chip('leaders', txt('Leaders'), txt('✕')), txt(' bye')]
+    expect(serializeTokens(domNodesToTokens(nodes))).toBe(tmpl)
+    expect(domNodesToTokens(nodes)).toEqual(parseTemplate(tmpl, validKeys))
   })
 })
