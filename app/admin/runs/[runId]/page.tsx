@@ -16,7 +16,7 @@ export default async function AdminRunManagePage({ params }: { params: Promise<{
   if (!runConfig) notFound()
 
   const runLeaders = await getRunRoster(runConfig.id)
-  const roster = runLeaders.sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999)).map(l => l.name)
+  const roster = [...runLeaders].sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999)).map(l => l.name)
 
   await generateScheduleHorizon(runConfig.id, runConfig.dayOfWeek, runLeaders)
   const [schedule, variants] = await Promise.all([
