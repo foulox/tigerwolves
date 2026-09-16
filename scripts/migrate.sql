@@ -57,6 +57,11 @@ CREATE TABLE IF NOT EXISTS run_leaders (
 
 -- #272: new data model — run_groups / workout_families / workout_variants / routes
 -- Additive alongside the existing workouts table; no application code changes in this story.
+-- ⚠️ #347 update: `run_group_id` is DORMANT for library visibility. The workout
+-- library is a shared catalog — fetchWorkoutVariants (lib/db.ts) returns every
+-- family with no run_group filter, and visibility is filtered client-side by
+-- `category`. The per-#274/#318 comments below describe the original ownership-
+-- scoping intent; run_group_id now records ownership only, not what a run sees.
 -- workout_families and routes both reference run_groups, so run_groups must be created first.
 -- workout_variants references workout_families, so workout_families precedes it.
 CREATE TABLE IF NOT EXISTS run_groups (
@@ -198,7 +203,8 @@ ALTER TABLE run_leaders ADD COLUMN IF NOT EXISTS clerk_user_id TEXT;
 -- Add Story-2 forward-compat columns to workout_families.
 -- warmup_override: per-workout override for the run's default warmup_description (null = use run default).
 -- route_description / route_link: turn-by-turn text and map URL for non-quality (route) runs.
--- Note: run_group_id (existing INT FK) already handles workout-to-run scoping; no run_id column added here.
+-- Note: run_group_id (existing INT FK) records workout-to-run ownership; no run_id column added here.
+-- (Since #347 this is ownership only — it does NOT scope library visibility; see the #347 note above.)
 ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS warmup_override TEXT;
 ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS route_description TEXT;
 ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS route_link TEXT;
