@@ -74,29 +74,13 @@ export async function setRunStatus(
   }
 }
 
-export async function savePostTemplate(runId: string, data: {
-  postHeader: string
-  meetingLocation: string
-  leaderIntro: string
-  closingNotes: string
-}): Promise<{ error?: string }> {
+export async function savePostTemplate(runId: string, data: { postTemplate: string }): Promise<{ error?: string }> {
   try {
     const user = await authorizeWriteCaller()
     if (!user) return { error: 'Unauthorized' }
-    try {
-      await assertCanManageRun(user, runId)
-    } catch {
-      return { error: 'Forbidden' }
-    }
+    try { await assertCanManageRun(user, runId) } catch { return { error: 'Forbidden' } }
 
-    await sql`
-      UPDATE runs SET
-        post_header = ${data.postHeader},
-        meeting_location = ${data.meetingLocation},
-        leader_intro = ${data.leaderIntro},
-        closing_notes = ${data.closingNotes}
-      WHERE id = ${runId}
-    `
+    await sql`UPDATE runs SET post_template = ${data.postTemplate} WHERE id = ${runId}`
     updateTag('tigerwolves-data')
     return {}
   } catch (err) {
