@@ -111,6 +111,10 @@ export type RunConfig = {
   // #353: draft/live state. 'draft' = not yet published; 'live' = visible to runners.
   // ?? 'live' fallback guards pre-migration Preview branches where the column may be absent.
   status: string
+  // #387: per-run Heylo post template. A single merge-field template string
+  // (literal prose + {{field}} tokens) that buildPost renders. NULL = use the
+  // computed default template (no backfill; existing runs keep working).
+  postTemplate: string | null
 }
 
 export type AwayPeriod = { from: string; to: string }

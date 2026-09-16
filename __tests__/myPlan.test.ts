@@ -27,6 +27,7 @@ function makeRun(overrides: Partial<RunConfig> = {}): RunConfig {
     cycleMode: 'none',
     cycle: {},
     status: 'live',
+    postTemplate: null,
     ...overrides,
   }
 }

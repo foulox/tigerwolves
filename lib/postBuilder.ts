@@ -61,16 +61,45 @@ function turnaroundLine(w: WorkoutVariantRow): string | null {
   return w.hasTurnaround && w.turnaround ? `↩️ TURN AROUND: ${w.turnaround}` : null
 }
 
-export function buildPost(
-  entry: ScheduleEntry,
-  selections: WorkoutVariantRow[],
-  runConfig: RunConfig,
-  roster: string[],
-  activeType: string | null = null,
-): string {
+// ---------------------------------------------------------------------------
+// Merge-field catalog
+// ---------------------------------------------------------------------------
+
+export const POST_FIELDS: {
+  key: string
+  label: string
+  source: 'schedule' | 'run' | 'roster' | 'record'
+  affix: string
+}[] = [
+  { key: 'date',            label: 'Date',          source: 'schedule', affix: '📅' },
+  { key: 'day_leader',      label: 'Day leader',    source: 'schedule', affix: '' },
+  { key: 'location',        label: 'Location',      source: 'run',      affix: '📍' },
+  { key: 'time',            label: 'Time',          source: 'run',      affix: '🕕' },
+  { key: 'description',     label: 'Description',   source: 'run',      affix: '' },
+  { key: 'leaders',         label: 'Leaders',       source: 'roster',   affix: '' },
+  { key: 'workout_name',    label: 'Workout name',  source: 'record',   affix: '🏃🏻‍♂️‍➡️' },
+  { key: 'reason',          label: 'Reason',        source: 'record',   affix: '' },
+  { key: 'workout_details', label: 'Workout block', source: 'record',   affix: '' },
+  { key: 'distance',        label: 'Distance',      source: 'record',   affix: '🏃' },
+  { key: 'route_link',      label: 'Route link',    source: 'record',   affix: '🗺️' },
+]
+
+// ---------------------------------------------------------------------------
+// Resolve context — computed once per render call
+// ---------------------------------------------------------------------------
+
+type RenderCtx = {
+  entry: ScheduleEntry
+  selections: WorkoutVariantRow[]
+  runConfig: RunConfig
+  roster: string[]
+  activeType?: string | null
+}
+
+function resolveField(key: string, ctx: RenderCtx): string {
+  const { entry, selections, runConfig, roster, activeType } = ctx
   const sorted = [...selections].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
   const primary = sorted[0]
-
   // #322: only a Workout-kind run emits the structured WORKOUT section (the
   // type:name line, the reason, and the interval block). A non-workout run
   // (Easy/Long/Beginner-Friendly/Food) may legitimately have no selections at
@@ -81,62 +110,158 @@ export function buildPost(
   // in the post. Only when one is actually selected.
   const showLightWorkout = !isWorkoutKind(runConfig.kind) && primary != null
 
-  const lines = [
+  switch (key) {
+    case 'date':
+      return `📅 ${formatDateLong(entry.date)}`
+
+    case 'day_leader':
+      return entry.leader
+
+    case 'location': {
+      const locationLines = runConfig.meetingLocation.split('\n')
+      return locationLines.map((l, i) => (i === 0 ? `📍 ${l}` : l)).join('\n')
+    }
+
+    case 'time':
+      return runConfig.meetingTime ? `🕕 ${runConfig.meetingTime}` : ''
+
+    case 'description':
+      return runConfig.description ?? ''
+
+    case 'leaders':
+      return roster.length > 0 ? roster.join(', ') : ''
+
+    case 'workout_name':
+      if (showWorkout) return `🏃🏻‍♂️‍➡️ ${activeType ?? entry.workoutType}: ${primary.name}`
+      if (showLightWorkout) return `🏃🏻‍♂️‍➡️ ${primary.name}`
+      return ''
+
+    case 'reason':
+      if (!primary) return ''
+      return primary.reason ?? ''
+
+    case 'workout_details': {
+      if (!showWorkout) return ''
+      const lines: string[] = []
+      if (sorted.length === 2) {
+        const [standard, longer] = sorted
+        const stdContent = formatMainContent(standard.rawInput)
+        const lngContent = formatMainContent(longer.rawInput)
+        const stdTa = turnaroundLine(standard)
+        const lngTa = turnaroundLine(longer)
+        lines.push(
+          '🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁',
+          '',
+          'Standard',
+          stdContent,
+          ...(stdTa ? [stdTa] : []),
+          '',
+          'Longer',
+          lngContent,
+          ...(lngTa ? [lngTa] : []),
+        )
+      } else {
+        const w = sorted[0]
+        const ta = turnaroundLine(w)
+        lines.push(formatMainSection(w.rawInput))
+        if (ta) lines.push('', ta)
+      }
+      return lines.join('\n')
+    }
+
+    case 'distance':
+      return primary?.distTime ? `🏃 ${primary.distTime}` : ''
+
+    case 'route_link':
+      return primary?.mapLink ? `🗺️ ${primary.mapLink}` : ''
+
+    default:
+      return ''
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Renderer
+// ---------------------------------------------------------------------------
+
+export function renderPostTemplate(
+  template: string,
+  entry: ScheduleEntry,
+  selections: WorkoutVariantRow[],
+  runConfig: RunConfig,
+  roster: string[],
+  activeType?: string | null,
+): string {
+  const ctx: RenderCtx = { entry, selections, runConfig, roster, activeType }
+
+  // Substitute {{key}} tokens (optional whitespace inside braces)
+  let result = template.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_match, key: string) =>
+    resolveField(key, ctx),
+  )
+
+  // Trim trailing spaces before newlines
+  result = result.replace(/ +(?=\n)/g, '')
+
+  // Collapse runs of 3+ consecutive newlines to exactly 2
+  result = result.replace(/\n{3,}/g, '\n\n')
+
+  return result
+}
+
+// ---------------------------------------------------------------------------
+// Default template (single layout — no isWorkoutKind branching)
+// ---------------------------------------------------------------------------
+
+export function defaultTemplate(runConfig: RunConfig): string {
+  return [
     // post_header is the FULL editable opening block (run name/emoji, the app link,
     // any standing prompts) — stored per-run in runs.post_header and edited via the
     // Post Template UI. Nothing app- or run-specific is hardcoded here anymore (#310):
     // that previously duplicated the app link/prompt lines against what the DB already
-    // held. buildPost emits post_header verbatim, then the dynamic date/workout block.
+    // held. The default template emits post_header verbatim first, then the dynamic
+    // date/workout tokens.
     runConfig.postHeader,
     '',
-    `📅 ${formatDateLong(entry.date)}`,
-  ]
-
-  if (showWorkout) {
-    lines.push(`🏃🏻‍♂️‍➡️ ${activeType ?? entry.workoutType}: ${primary.name}`)
-    if (primary.reason) lines.push('', primary.reason)
-  } else if (showLightWorkout) {
-    lines.push(`🏃🏻‍♂️‍➡️ ${primary.name}`)
-    if (primary.reason) lines.push('', primary.reason)
-  }
-
-  lines.push('', ...runConfig.meetingLocation.split('\n').map((l, i) => i === 0 ? `📍 ${l}` : l), '')
-
-  if (showWorkout) {
-    if (sorted.length === 2) {
-      const [standard, longer] = sorted
-      const stdContent = formatMainContent(standard.rawInput)
-      const lngContent = formatMainContent(longer.rawInput)
-      const stdTa = turnaroundLine(standard)
-      const lngTa = turnaroundLine(longer)
-      lines.push(
-        '🏁🏃🏻‍♂️‍➡️ WORKOUT 🏃🏻‍♂️‍➡️🏁',
-        '',
-        'Standard',
-        stdContent,
-        ...(stdTa ? [stdTa] : []),
-        '',
-        'Longer',
-        lngContent,
-        ...(lngTa ? [lngTa] : []),
-      )
-    } else {
-      const w = sorted[0]
-      const ta = turnaroundLine(w)
-      lines.push(formatMainSection(w.rawInput))
-      if (ta) lines.push('', ta)
-    }
-  }
-
-  lines.push(
+    '{{date}}',
+    '{{workout_name}}',
+    '',
+    '{{reason}}',
+    '',
+    '{{location}}',
+    '{{time}}',
+    '',
+    '{{description}}',
+    '{{distance}}',
+    '{{route_link}}',
+    '',
+    '{{workout_details}}',
     '',
     runConfig.closingNotes,
     '',
-    `Led by ${entry.leader} — see you out there! 🔥`,
-    `${runConfig.leaderIntro} ${roster.join(', ')}`,
-  )
+    'Led by {{day_leader}} — see you out there! 🔥',
+    `${runConfig.leaderIntro} {{leaders}}`,
+  ].join('\n')
+}
 
-  return lines.join('\n')
+// ---------------------------------------------------------------------------
+// Public API — signature unchanged
+// ---------------------------------------------------------------------------
+
+export function buildPost(
+  entry: ScheduleEntry,
+  selections: WorkoutVariantRow[],
+  runConfig: RunConfig,
+  roster: string[],
+  activeType: string | null = null,
+): string {
+  return renderPostTemplate(
+    runConfig.postTemplate ?? defaultTemplate(runConfig),
+    entry,
+    selections,
+    runConfig,
+    roster,
+    activeType,
+  )
 }
 
 const ROUTE_TYPES = new Set(['Route', 'Easy', 'Long'])

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { buildPost, buildVerificationLabel, formatMainContent, formatDateLong } from '../lib/postBuilder'
+import { buildPost, buildVerificationLabel, formatMainContent, formatDateLong, POST_FIELDS, renderPostTemplate, defaultTemplate } from '../lib/postBuilder'
 import type { ScheduleEntry, WorkoutVariantRow, RunConfig } from '../lib/data'
 
 const tigerWolvesConfig: RunConfig = {
@@ -31,6 +31,7 @@ const tigerWolvesConfig: RunConfig = {
   cycleMode: 'none',
   cycle: {},
   status: 'live',
+  postTemplate: null,
 }
 
 const tigerWolvesRoster = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']
@@ -56,6 +57,7 @@ const mourningDovesConfig: RunConfig = {
   cycleMode: 'none',
   cycle: {},
   status: 'live',
+  postTemplate: null,
 }
 
 const mourningDovesRoster = ['Priya', 'Sam']
@@ -274,6 +276,128 @@ describe('buildPost', () => {
     // On first run: vitest creates __tests__/__snapshots__/postBuilder.test.ts.snap
     const post = buildPost(entry, [baseWorkout], tigerWolvesConfig, tigerWolvesRoster)
     expect(post).toMatchSnapshot()
+  })
+})
+
+describe('merge-field engine', () => {
+  test('workout run renders as expected (no postTemplate)', () => {
+    const post = buildPost(entry, [baseWorkout], tigerWolvesConfig, tigerWolvesRoster)
+    expect(post).toContain('Ladder: Tempo Ladder')
+    expect(post).toContain('Build lactate threshold')
+    expect(post).toContain('🏁🏃🏻‍♂️‍➡️ WORKOUT')
+    expect(post).toContain('Led by Lou — see you out there! 🔥')
+    expect(post).toContain('Luis, Lou, Kostas')
+    // does not throw — implicit in test running at all
+  })
+
+  test('route run content (AC): description, distTime, mapLink appear', () => {
+    const routeRecord: WorkoutVariantRow = {
+      ...baseWorkout,
+      distTime: '6 miles',
+      mapLink: 'https://maps.example.com/route',
+    }
+    const doves: RunConfig = {
+      ...mourningDovesConfig,
+      description: 'An easy out-and-back along the park loop.',
+    }
+    const post = buildPost(entry, [routeRecord], doves, mourningDovesRoster)
+    expect(post).toContain('An easy out-and-back along the park loop.')
+    expect(post).toContain('🏃 6 miles')
+    expect(post).toContain('🗺️ https://maps.example.com/route')
+  })
+
+  test('empty-drop (AC): no turnaround → no ↩️ line and no orphaned blank line', () => {
+    // baseWorkout has hasTurnaround=false, so ↩️ token resolves empty
+    const post = buildPost(entry, [baseWorkout], tigerWolvesConfig, tigerWolvesRoster)
+    expect(post).not.toContain('↩️')
+    expect(post).not.toContain('\n\n\n')
+  })
+
+  test('empty-drop (AC): no distTime → no distance line, no orphaned blank line', () => {
+    // A record with distTime present emits the 🏃 distance line; the same record
+    // with an empty distTime must drop it entirely (this is the route-vs-workout
+    // empty-field behavior at the heart of #387 — guarded here for distance the
+    // way the turnaround case above guards ↩️).
+    const withDist: WorkoutVariantRow = { ...baseWorkout, distTime: 'SENTINEL_DIST' }
+    const withoutDist: WorkoutVariantRow = { ...baseWorkout, distTime: '' }
+    expect(buildPost(entry, [withDist], tigerWolvesConfig, tigerWolvesRoster)).toContain('🏃 SENTINEL_DIST')
+    const post = buildPost(entry, [withoutDist], tigerWolvesConfig, tigerWolvesRoster)
+    expect(post).not.toContain('SENTINEL_DIST')
+    expect(post).not.toContain('\n\n\n')
+  })
+
+  test('template precedence (AC): custom postTemplate is used instead of default', () => {
+    const customRecord: WorkoutVariantRow = {
+      ...baseWorkout,
+      mapLink: 'https://maps.example.com/custom',
+    }
+    const customConfig: RunConfig = {
+      ...tigerWolvesConfig,
+      postTemplate: 'Custom header\n\n{{route_link}}\n\nSee you there!',
+    }
+    const post = buildPost(entry, [customRecord], customConfig, tigerWolvesRoster)
+    expect(post).toContain('Custom header')
+    expect(post).toContain('🗺️ https://maps.example.com/custom')
+    expect(post).toContain('See you there!')
+    // default layout not present
+    expect(post).not.toContain('🐯🐺 TigerWolves Tuesday Workout')
+    expect(post).not.toContain('Run Leaders:')
+  })
+
+  test('catalog coverage (AC): POST_FIELDS exported with required shape', () => {
+    expect(Array.isArray(POST_FIELDS)).toBe(true)
+    for (const f of POST_FIELDS) {
+      expect(f).toHaveProperty('key')
+      expect(f).toHaveProperty('label')
+      expect(f).toHaveProperty('source')
+      expect(f).toHaveProperty('affix')
+      expect(typeof f.key).toBe('string')
+      expect(typeof f.label).toBe('string')
+      expect(typeof f.source).toBe('string')
+      expect(typeof f.affix).toBe('string')
+    }
+  })
+
+  test('catalog coverage (AC): each POST_FIELDS entry resolves via renderPostTemplate without throwing', () => {
+    const fullyPopulatedRecord: WorkoutVariantRow = {
+      ...baseWorkout,
+      distTime: '6-7 miles',
+      mapLink: 'https://maps.example.com/route',
+      hasTurnaround: true,
+      turnaround: 'At the park gate',
+    }
+    const fullyPopulatedConfig: RunConfig = {
+      ...tigerWolvesConfig,
+      description: 'A great workout',
+      meetingTime: '6:30 AM',
+    }
+    for (const f of POST_FIELDS) {
+      expect(() => {
+        renderPostTemplate(`{{${f.key}}}`, entry, [fullyPopulatedRecord], fullyPopulatedConfig, tigerWolvesRoster)
+      }).not.toThrow()
+      // emoji-bearing fields: check affix appears in output — must be non-empty with fully-populated fixture
+      const resolved = renderPostTemplate(`{{${f.key}}}`, entry, [fullyPopulatedRecord], fullyPopulatedConfig, tigerWolvesRoster)
+      if (f.affix) {
+        // Affix-bearing fields must resolve to non-empty with fully-populated context
+        expect(resolved.trim()).not.toBe('')
+        expect(resolved).toContain(f.affix)
+      }
+    }
+  })
+
+  test('defaultTemplate returns a string containing all expected token placeholders', () => {
+    const tmpl = defaultTemplate(tigerWolvesConfig)
+    expect(typeof tmpl).toBe('string')
+    expect(tmpl).toContain('{{date}}')
+    expect(tmpl).toContain('{{workout_name}}')
+    expect(tmpl).toContain('{{location}}')
+    expect(tmpl).toContain('{{day_leader}}')
+    expect(tmpl).toContain('{{leaders}}')
+    // Substantive tokens must be present in default template
+    expect(tmpl).toContain('{{workout_details}}')
+    expect(tmpl).toContain('{{reason}}')
+    expect(tmpl).toContain('{{distance}}')
+    expect(tmpl).toContain('{{route_link}}')
   })
 })
 

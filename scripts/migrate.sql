@@ -246,3 +246,8 @@ UPDATE runs SET
   cycle_mode = 'week_of_month',
   cycle = '{"1":"Hills","2":"Broken Tempo","3":"Progression","4":"Ladder or Superset","5":"Straight Tempo"}'::jsonb
 WHERE id = 'tigerwolves';
+
+-- #387: per-run Heylo post template. A single merge-field template string
+-- (literal prose + {{field}} tokens) that buildPost renders. NULL = use the
+-- computed default template (no backfill; existing runs keep working).
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS post_template TEXT;

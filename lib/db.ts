@@ -133,7 +133,7 @@ export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | nul
     SELECT r.id, r.name, r.emoji, r.day_of_week, r.meeting_location,
            r.post_header, r.leader_intro, r.closing_notes,
            r.kind, r.workout_types, r.run_group_id, r.cycle_mode, r.cycle,
-           r.description, r.meeting_time, r.warmup_description, r.status
+           r.description, r.meeting_time, r.warmup_description, r.status, r.post_template
     FROM run_leaders rl
     JOIN runs r ON r.id = rl.run_id
     WHERE rl.clerk_user_id = ${clerkUserId}
@@ -159,6 +159,7 @@ export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | nul
     meetingTime: (r.meeting_time as string | null) ?? null,
     warmupDescription: (r.warmup_description as string | null) ?? null,
     status: (r.status as string | null) ?? 'live',
+    postTemplate: (r.post_template as string | null) ?? null,
   }
 }
 
@@ -580,7 +581,7 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
   const rows = await sql`
     SELECT id, name, emoji, description, day_of_week, meeting_time, meeting_location,
            post_header, leader_intro, closing_notes,
-           kind, workout_types, run_group_id, cycle_mode, cycle, warmup_description, status
+           kind, workout_types, run_group_id, cycle_mode, cycle, warmup_description, status, post_template
     FROM runs
     WHERE id = ${runId}
     LIMIT 1
@@ -605,6 +606,7 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
     cycle: (r.cycle as Record<string, string> | null) ?? {},
     warmupDescription: (r.warmup_description as string | null) ?? null,
     status: (r.status as string | null) ?? 'live',
+    postTemplate: (r.post_template as string | null) ?? null,
   }
 }
 
