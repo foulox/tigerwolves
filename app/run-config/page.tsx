@@ -1,6 +1,6 @@
 import { currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { getLeaderRun, getRunRoster } from '@/lib/db'
+import { getLeaderRun, getRunRoster, fetchWorkoutVariants, fetchSchedule, generateScheduleHorizon } from '@/lib/db'
 import RunConfigClient from '@/components/RunConfigClient'
 import RunConfigUnlinked from '@/components/RunConfigUnlinked'
 import { runConfigGate } from '@/lib/runConfigGate'
@@ -21,5 +21,16 @@ export default async function RunConfigPage() {
   if (gate !== 'ok' || !user || !runConfig) redirect('/')
 
   const runLeaders = await getRunRoster(runConfig.id)
-  return <RunConfigClient runConfig={runConfig} runLeaders={runLeaders} currentUserId={user.id} />
+  const roster = [...runLeaders].sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999)).map(l => l.name)
+
+  await generateScheduleHorizon(runConfig.id, runConfig.dayOfWeek, runLeaders)
+  const [schedule, variants] = await Promise.all([
+    fetchSchedule(runConfig.id),
+    fetchWorkoutVariants(runConfig.id),
+  ])
+  const today = new Date().toISOString().slice(0, 10)
+  const nextEntry = schedule.filter(e => e.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
+
+  return <RunConfigClient runConfig={runConfig} runLeaders={runLeaders} currentUserId={user.id}
+           nextEntry={nextEntry} roster={roster} variants={variants} />
 }

@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 import type { Race } from '../lib/data'
+import { seedDovesLongRun } from './fixtures/dovesLongRun'
 
 // Guards against ever running this destructive wipe-and-reseed against
 // production — only the staging branch's host is allowed through. Update this
@@ -40,21 +41,6 @@ function nextMondays(count: number): string[] {
   const dayOfWeek = d.getUTCDay() // 0 = Sunday, 1 = Monday
   const daysUntilMonday = (1 - dayOfWeek + 7) % 7
   d.setUTCDate(d.getUTCDate() + daysUntilMonday)
-  for (let i = 0; i < count; i++) {
-    dates.push(d.toISOString().slice(0, 10))
-    d.setUTCDate(d.getUTCDate() + 7)
-  }
-  return dates
-}
-
-/** Next N Wednesdays from today (inclusive if today is a Wednesday), as YYYY-MM-DD — for the Mourning Doves (Wednesday) Long-route fixture (#391). */
-function nextWednesdays(count: number): string[] {
-  const dates: string[] = []
-  const d = new Date()
-  d.setUTCHours(0, 0, 0, 0)
-  const dayOfWeek = d.getUTCDay() // 0 = Sunday, 3 = Wednesday
-  const daysUntilWednesday = (3 - dayOfWeek + 7) % 7
-  d.setUTCDate(d.getUTCDate() + daysUntilWednesday)
   for (let i = 0; i < count; i++) {
     dates.push(d.toISOString().slice(0, 10))
     d.setUTCDate(d.getUTCDate() + 7)
@@ -319,71 +305,12 @@ export async function seedE2E(): Promise<void> {
     VALUES (${mon1}::date, 'mmer', 'Easy', 'Sam Rivera', 'McCarren Easy Loop')
   `
 
-  // #391: a durable Long/route run so #387's route-post rendering has a real fixture.
-  // A non-Workout run (kind 'Long', so isWorkoutKind is false) whose scheduled record
-  // carries map_link + dist_time — buildPost renders it as the run description +
-  // 🏃 <dist_time> + 🗺️ <map_link>, with the light name line and no WORKOUT block.
-  // Modeled on the MMER block above. clerk_user_id left NULL (no e2e signs in as this
-  // leader); link an account to run_id 'doves' to browse it manually on staging.
-  const existingDovesGroup = await sql`SELECT id FROM run_groups WHERE name = 'Mourning Doves'`
-  const dovesGroupId = existingDovesGroup.length > 0
-    ? (existingDovesGroup[0].id as number)
-    : ((await sql`
-        INSERT INTO run_groups (name, venue, default_location)
-        VALUES ('Mourning Doves', 'road', 'Grand Army Plaza')
-        RETURNING id
-      `)[0].id as number)
-
-  const dovesPostHeader = [
-    '🕊️ Mourning Doves Long Run',
-    '',
-    '👉 https://tigerwolves.foulox.me 👈',
-    'A relaxed, social long run — steady conversational effort, nobody dropped.',
-  ].join('\n')
-  await sql`
-    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind, run_group_id, post_header, leader_intro, closing_notes)
-    VALUES (
-      'doves', 'Mourning Doves', '🕊️',
-      'The Doves long run — a steady, social route through Prospect Park and the waterfront. Conversational pace, no one left behind.',
-      'Wednesday', '6:00 AM', 'Prospect Park — Grand Army Plaza entrance',
-      'Long', ${dovesGroupId}, ${dovesPostHeader}, 'Your Doves leaders:', 'Coffee at the plaza after.'
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      kind = EXCLUDED.kind, description = EXCLUDED.description,
-      run_group_id = EXCLUDED.run_group_id, post_header = EXCLUDED.post_header,
-      leader_intro = EXCLUDED.leader_intro, closing_notes = EXCLUDED.closing_notes
-  `
-
-  const dovesRoutes = [
-    { name: 'Prospect Park Long Loop', dist: '12 miles', map: 'https://maps.app.goo.gl/prospect-park-long-loop', desc: 'Out from Grand Army Plaza, two full Prospect Park loops, finish at the plaza.' },
-    { name: 'Waterfront Long Out-and-Back', dist: '9 miles', map: 'https://maps.app.goo.gl/bk-waterfront-out-and-back', desc: 'North along the East River waterfront to DUMBO and back — flat and scenic.' },
-  ]
-  for (const r of dovesRoutes) {
-    const [dovesFamily] = await sql`
-      INSERT INTO workout_families (name, category, type, reason, author, run_group_id, map_link)
-      VALUES (${r.name}, 'Long', 'Long', 'A social long route at conversational effort.', 'Mourning Doves', ${dovesGroupId}, ${r.map})
-      RETURNING id
-    `
-    await sql`
-      INSERT INTO workout_variants (family_id, label, sort_order, raw_input, dist_time, has_turnaround, turnaround, flagged, flag_note)
-      VALUES (${dovesFamily.id as number}, NULL, NULL, ${r.desc}, ${r.dist}, false, '', false, '')
-    `
-  }
-
-  await sql`
-    INSERT INTO run_leaders (run_id, name, sort_order, clerk_user_id, active) VALUES
-      ('doves', 'Doves Lead', 1, NULL, true)
-  `
-
-  const [dovesWeek1, dovesWeek2] = nextWednesdays(2)
-  await sql`
-    INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
-    VALUES (${dovesWeek1}::date, 'doves', 'Long', 'Doves Lead', 'Prospect Park Long Loop')
-  `
-  await sql`
-    INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
-    VALUES (${dovesWeek2}::date, 'doves', 'Long', 'Doves Lead', 'Waterfront Long Out-and-Back')
-  `
+  // #391: a durable Mourning Doves Long/route run (run_id 'doves', kind 'Long')
+  // so #387's route-post path and #382's route-run preview have a real fixture.
+  // Extracted to a shared, additive/fixture-scoped helper so the SAME run seeds
+  // into the demo branch (refresh-demo) and per-PR Preview branches (seed-doves).
+  // clerk_user_id is NULL — link an account to run_id 'doves' to browse it.
+  await seedDovesLongRun(sql)
 
   for (const r of RACES) {
     await sql`

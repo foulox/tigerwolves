@@ -112,6 +112,7 @@ function resolveField(key: string, ctx: RenderCtx): string {
 
   switch (key) {
     case 'date':
+      if (!entry.date) return ''
       return `📅 ${formatDateLong(entry.date)}`
 
     case 'day_leader':

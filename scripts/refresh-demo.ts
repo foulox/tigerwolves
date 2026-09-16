@@ -16,6 +16,7 @@
 
 import { neon } from '@neondatabase/serverless'
 import { createClerkClient } from '@clerk/nextjs/server'
+import { seedDovesLongRun } from './fixtures/dovesLongRun'
 
 // ── Constants (verbatim from story #346) ──────────────────────────────────────
 
@@ -73,7 +74,7 @@ async function main(): Promise<void> {
   if (!clerkSecretKey) throw new Error('CLERK_SECRET_KEY is not set')
 
   // Step 2: Resolve Clerk user ID at runtime — no hardcoded ID
-  console.log(`[1/5] Resolving Clerk user for ${DEMO_LEADER_EMAIL}...`)
+  console.log(`[1/6] Resolving Clerk user for ${DEMO_LEADER_EMAIL}...`)
   const clerk = createClerkClient({ secretKey: clerkSecretKey })
   const { data: users } = await clerk.users.getUserList({ emailAddress: [DEMO_LEADER_EMAIL] })
   if (!users || users.length === 0) {
@@ -86,7 +87,7 @@ async function main(): Promise<void> {
   console.log(`  ✓ Found Clerk user: ${clerkUserId}`)
 
   // Step 3: Restore demo branch from production via Neon API, then poll to completion
-  console.log(`[2/5] Restoring demo branch (${DEMO_BRANCH_ID}) from production (${PRODUCTION_BRANCH_ID})...`)
+  console.log(`[2/6] Restoring demo branch (${DEMO_BRANCH_ID}) from production (${PRODUCTION_BRANCH_ID})...`)
   const restoreRes = await fetch(
     `https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${DEMO_BRANCH_ID}/restore`,
     {
@@ -111,9 +112,19 @@ async function main(): Promise<void> {
   }
   console.log('  ✓ Branch restore complete')
 
-  // Step 4: Re-link the demo leader (assert exactly 1 row matched)
-  console.log(`[3/5] Re-linking demo leader "${DEMO_LEADER_NAME}" (${DEMO_LEADER_EMAIL})...`)
   const sql = neon(process.env.DATABASE_URL!)
+
+  // Step 3.5: Seed the durable Mourning Doves Long/route run. The restore above
+  // reset demo-data to a production snapshot (which has no 'doves' run), so the
+  // demo always carries production PLUS the doves runs — a real Long/route run to
+  // exercise #382's route-run preview. The helper is fixture-scoped (only ever
+  // touches run_id 'doves'), so it can't disturb the restored production data.
+  console.log(`[3/6] Seeding Mourning Doves Long/route run fixture...`)
+  await seedDovesLongRun(sql)
+  console.log('  ✓ Doves Long run seeded')
+
+  // Step 4: Re-link the demo leader (assert exactly 1 row matched)
+  console.log(`[4/6] Re-linking demo leader "${DEMO_LEADER_NAME}" (${DEMO_LEADER_EMAIL})...`)
   const updated = await sql`
     UPDATE run_leaders
     SET clerk_user_id = ${clerkUserId}, active = true
@@ -130,7 +141,7 @@ async function main(): Promise<void> {
   console.log(`  ✓ Leader re-linked (run_leaders.id = ${updated[0].id})`)
 
   // Step 5: Self-follow
-  console.log(`[4/5] Ensuring demo leader self-follows tigerwolves...`)
+  console.log(`[5/6] Ensuring demo leader self-follows tigerwolves...`)
   await sql`
     INSERT INTO runner_follows (clerk_user_id, run_id)
     VALUES (${clerkUserId}, 'tigerwolves')
@@ -139,7 +150,7 @@ async function main(): Promise<void> {
   console.log('  ✓ Self-follow asserted')
 
   // Step 6: Invalidate demo app cache
-  console.log(`[5/5] Invalidating demo cache at ${DEMO_URL}/api/e2e-revalidate...`)
+  console.log(`[6/6] Invalidating demo cache at ${DEMO_URL}/api/e2e-revalidate...`)
   const revalidateRes = await fetch(`${DEMO_URL}/api/e2e-revalidate`, { method: 'POST' })
   if (!revalidateRes.ok) {
     throw new Error(

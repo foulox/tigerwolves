@@ -38,18 +38,23 @@ for every run; only the picker's contents change by run type.
 **Zone 1 — Template.** The post is composed of frame text plus
 **merge-field chips**. A leader inserts fields from an **＋ Insert
 field** dropdown; nothing is hand-typed as raw syntax, and nothing is
-AI-guessed. Fields (resolved from run settings or the picked record):
+AI-guessed. The dropdown lists the unified `POST_FIELDS` catalog — 11
+fields, one list grouped by source. All fields are available regardless
+of run type; the leader picks what belongs in their template:
 
-| Field | Source |
+| Field | Source group |
 |---|---|
-| Date | this run's next scheduled date |
-| Meeting location | run settings |
-| Meeting time | run settings |
-| Description | run settings |
+| Date | schedule |
+| Day leader | schedule |
+| Location | run |
+| Time | run |
+| Description | run |
 | Leaders | roster |
-| Distance | picked library record (route runs) |
-| Route link | picked library record (route runs) |
-| Workout name / details / turnaround | picked library record (workout runs) |
+| Workout name | record |
+| Reason | record |
+| Workout block | record (includes turnaround; no standalone turnaround field) |
+| Distance | record |
+| Route link | record |
 
 **Zone 2 — Preview with… (pick a record).** A picker that lists the
 **library filtered to this run's type** — long runs for Doves, quality
