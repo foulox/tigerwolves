@@ -24,8 +24,10 @@ const DEMO_HOST = 'ep-ancient-math-atvtz5p9'
 const NEON_PROJECT_ID = 'purple-star-02119717'
 const DEMO_BRANCH_ID = 'br-little-rice-at9l08ja'
 const PRODUCTION_BRANCH_ID = 'br-square-river-atjn0mzq'
-const DEMO_LEADER_NAME = 'Lou Fox'
-const DEMO_LEADER_EMAIL = 'foulox+demo@gmail.com'
+// Single email identity across all environments (#385). The forked prod leader
+// row's backfilled email already equals this login email, so the relink just
+// repoints clerk_user_id — no email rewrite, no stray "Lou Fox" row to clean up.
+const DEMO_LEADER_EMAIL = 'foulox@gmail.com'
 const DEMO_URL = 'https://demo.tigerwolves.foulox.me'
 
 // ── Host guard helper (exported for unit testing) ─────────────────────────────
@@ -123,19 +125,21 @@ async function main(): Promise<void> {
   await seedDovesLongRun(sql)
   console.log('  ✓ Doves Long run seeded')
 
-  // Step 4: Re-link the demo leader (assert exactly 1 row matched)
-  console.log(`[4/6] Re-linking demo leader "${DEMO_LEADER_NAME}" (${DEMO_LEADER_EMAIL})...`)
+  // Step 4: Re-link the demo leader by email (assert exactly 1 row matched).
+  // Email is the stable identity — the prod snapshot's row already carries this
+  // email (backfilled in #385), so we only repoint clerk_user_id to the dev instance.
+  console.log(`[4/6] Re-linking demo leader (${DEMO_LEADER_EMAIL})...`)
   const updated = await sql`
     UPDATE run_leaders
     SET clerk_user_id = ${clerkUserId}, active = true
-    WHERE run_id = 'tigerwolves' AND name = ${DEMO_LEADER_NAME}
+    WHERE run_id = 'tigerwolves' AND email = ${DEMO_LEADER_EMAIL}
     RETURNING id
   `
   if (updated.length !== 1) {
     throw new Error(
       `refresh-demo.ts: UPDATE run_leaders matched ${updated.length} row(s) for ` +
-      `name="${DEMO_LEADER_NAME}" in run "tigerwolves" — expected exactly 1. ` +
-      `Check DEMO_LEADER_NAME matches the row in the database.`
+      `email="${DEMO_LEADER_EMAIL}" in run "tigerwolves" — expected exactly 1. ` +
+      `Confirm the production row for this leader has its email backfilled (#385).`
     )
   }
   console.log(`  ✓ Leader re-linked (run_leaders.id = ${updated[0].id})`)

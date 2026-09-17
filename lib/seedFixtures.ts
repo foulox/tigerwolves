@@ -33,25 +33,36 @@ export async function ensureRun(run: { id: string; name: string; kind?: string }
 }
 
 // Ensure a Clerk user is linked as a leader of a run. Idempotent by
-// (run_id, clerk_user_id): if the link already exists (e.g. a preview branched
-// from production where the real leader row is present) it's a no-op and no
-// duplicate roster row is created. `name` is only used when inserting a new row.
+// (run_id, email) — email is the stable cross-Clerk-instance identity (#385).
+// Matching on email (not clerk_user_id) is what dedupes a preview branched from
+// production: the forked prod leader row carries a *production* clerk_user_id that
+// can never match this deployment's dev-instance id, but its backfilled email
+// does. On a match we repoint clerk_user_id to this instance and return false (no
+// new row); otherwise we insert. `name` is only used when inserting a new row.
 export async function ensureLeaderLink(params: {
   runId: string
   clerkUserId: string
+  email: string
   name: string
 }): Promise<boolean> {
   const sql = db()
   const existing = await sql`
     SELECT 1 FROM run_leaders
-    WHERE run_id = ${params.runId} AND clerk_user_id = ${params.clerkUserId}
+    WHERE run_id = ${params.runId} AND email = ${params.email}
     LIMIT 1
   `
-  if (existing.length > 0) return false
+  if (existing.length > 0) {
+    await sql`
+      UPDATE run_leaders
+      SET clerk_user_id = ${params.clerkUserId}, active = true
+      WHERE run_id = ${params.runId} AND email = ${params.email}
+    `
+    return false
+  }
   await sql`
-    INSERT INTO run_leaders (run_id, name, clerk_user_id, active, sort_order)
-    VALUES (${params.runId}, ${params.name}, ${params.clerkUserId}, true, 1)
-    ON CONFLICT (run_id, name) DO UPDATE SET clerk_user_id = EXCLUDED.clerk_user_id, active = true
+    INSERT INTO run_leaders (run_id, name, email, clerk_user_id, active, sort_order)
+    VALUES (${params.runId}, ${params.name}, ${params.email}, ${params.clerkUserId}, true, 1)
+    ON CONFLICT (run_id, email) WHERE email IS NOT NULL DO UPDATE SET clerk_user_id = EXCLUDED.clerk_user_id, active = true
   `
   return true
 }

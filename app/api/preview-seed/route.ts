@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { clerkClient } from '@clerk/nextjs/server'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { ensureRun, ensureLeaderLink, isSeedAllowed } from '@/lib/seedFixtures'
+import { leaderDisplayName } from '@/lib/runLeaders'
 
 // Preview test-leader links (#327). Emails are not secret (they're all over the
 // repo docs); their Clerk IDs are resolved at seed time via the deployment's own
@@ -40,7 +41,21 @@ export async function POST() {
         results.push({ email, runId, linked: false, note: 'no Clerk user for this email on this instance' })
         continue
       }
-      const created = await ensureLeaderLink({ runId, clerkUserId: found.id, name: email })
+      // Link by email (stable across Clerk instances) so a preview forked from
+      // production dedupes onto the existing forked row instead of adding a second
+      // one (#385). Display name is derived from the Clerk profile, not the email.
+      const name = leaderDisplayName(
+        {
+          id: found.id,
+          firstName: found.firstName ?? null,
+          lastName: found.lastName ?? null,
+          username: found.username ?? null,
+          emailAddresses: found.emailAddresses.map(e => ({ emailAddress: e.emailAddress })),
+          publicMetadata: (found.publicMetadata as Record<string, unknown>) ?? {},
+        },
+        email
+      )
+      const created = await ensureLeaderLink({ runId, clerkUserId: found.id, email, name })
       results.push({ email, runId, linked: true, note: created ? 'link created' : 'already linked' })
     }
 

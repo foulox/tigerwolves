@@ -200,6 +200,67 @@ describe.skipIf(!onStaging)('addRunLeaderByEmail grant path (staging)', () => {
 })
 
 // ---------------------------------------------------------------------------
+// EMAIL DEDUP (#385, AC3) — adding an existing leader by email updates, not dupes
+// ---------------------------------------------------------------------------
+// The roster now links/dedupes on (run_id, email), not name. Re-adding someone
+// already a leader of the run — same email, but Clerk now resolves a different
+// display name — must update the existing row, never insert a second.
+
+describe.skipIf(!onStaging)('addRunLeaderByEmail dedupes on email (AC3, staging)', () => {
+  const CALLER_RUN = 'test-emaildedup-385'
+  const CALLER_CLERK_ID = 'user_emaildedup_caller_385'
+  const CALLER_NAME = 'EmailDedup Caller 385'
+
+  const TARGET_EMAIL = 'dedup-target-385@example.com'
+  const TARGET_CLERK_ID = 'clerk_dedup_target_385'
+  const ORIGINAL_NAME = 'Foo Original'
+
+  beforeAll(async () => {
+    await sql`INSERT INTO runs (id, name) VALUES (${CALLER_RUN}, 'EmailDedup Test Run 385') ON CONFLICT (id) DO NOTHING`
+    await sql`DELETE FROM run_leaders WHERE run_id = ${CALLER_RUN}`
+    // Owning leader (the caller).
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${CALLER_RUN}, ${CALLER_NAME}, ${CALLER_CLERK_ID}, 1, true)
+    `
+    // The target is ALREADY a leader of this run, stored under ORIGINAL_NAME.
+    await sql`
+      INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
+      VALUES (${CALLER_RUN}, ${ORIGINAL_NAME}, ${TARGET_EMAIL}, ${TARGET_CLERK_ID}, 2, true)
+    `
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = ${CALLER_RUN}`
+    await sql`DELETE FROM runs WHERE id = ${CALLER_RUN}`
+  })
+
+  test('re-adding an existing leader by email (Clerk now resolves a different name) updates the row — exactly one, name preserved', async () => {
+    signInAs(CALLER_CLERK_ID, { role: 'leader' })
+    // Same email, but Clerk now resolves a DIFFERENT display name.
+    mockClerkUser({
+      id: TARGET_CLERK_ID,
+      email: TARGET_EMAIL,
+      firstName: 'Bar',
+      lastName: 'Different',
+    })
+
+    const res = await addRunLeaderByEmail(CALLER_RUN, TARGET_EMAIL)
+    expect(res.error).toBeUndefined()
+
+    const rows = await sql`
+      SELECT name, active FROM run_leaders
+      WHERE run_id = ${CALLER_RUN} AND email = ${TARGET_EMAIL}
+    `
+    // Exactly one row — no second inserted despite the new display name.
+    expect(rows).toHaveLength(1)
+    expect(rows[0].active).toBe(true)
+    // name is set only on insert, so the original display name is preserved on conflict.
+    expect(rows[0].name).toBe(ORIGINAL_NAME)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // REVOKE — removeRunLeader conditional role revoke (#350)
 // ---------------------------------------------------------------------------
 // Revoke is conditional: removing a co-leader revokes publicMetadata.role ONLY
@@ -249,7 +310,7 @@ describe.skipIf(!onStaging)('removeRunLeader reassigns upcoming week (regression
     const [row] = await sql`
       INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
       VALUES (${CALLER_RUN}, ${REMOVED_NAME}, ${REMOVED_EMAIL}, ${REMOVED_CLERK_ID}, 2, true)
-      ON CONFLICT (run_id, name) DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
+      ON CONFLICT (run_id, email) WHERE email IS NOT NULL DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
       RETURNING id
     `
     removedLeaderId = row.id as number
@@ -345,7 +406,7 @@ describe.skipIf(!onStaging)('removeRunLeader revoke path (staging)', () => {
     const [row] = await sql`
       INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
       VALUES (${CALLER_RUN}, ${REMOVED_NAME}, ${REMOVED_EMAIL}, ${REMOVED_CLERK_ID}, 2, true)
-      ON CONFLICT (run_id, name) DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
+      ON CONFLICT (run_id, email) WHERE email IS NOT NULL DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
       RETURNING id
     `
     removedLeaderId = row.id as number
@@ -377,7 +438,7 @@ describe.skipIf(!onStaging)('removeRunLeader revoke path (staging)', () => {
     const [row] = await sql`
       INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
       VALUES (${CALLER_RUN}, ${REMOVED_NAME}, ${REMOVED_EMAIL}, ${REMOVED_CLERK_ID}, 2, true)
-      ON CONFLICT (run_id, name) DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
+      ON CONFLICT (run_id, email) WHERE email IS NOT NULL DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
       RETURNING id
     `
     removedLeaderId = row.id as number
@@ -385,7 +446,7 @@ describe.skipIf(!onStaging)('removeRunLeader revoke path (staging)', () => {
     await sql`
       INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
       VALUES (${SECOND_RUN}, ${REMOVED_NAME}, ${REMOVED_EMAIL}, ${REMOVED_CLERK_ID}, 1, true)
-      ON CONFLICT (run_id, name) DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
+      ON CONFLICT (run_id, email) WHERE email IS NOT NULL DO UPDATE SET active = true, clerk_user_id = ${REMOVED_CLERK_ID}
     `
 
     signInAs(CALLER_CLERK_ID, { role: 'leader' })
