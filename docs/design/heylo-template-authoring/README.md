@@ -91,6 +91,13 @@ saved template.
 This closes the loop the "I've verified…" checkbox opened: verify now
 means confirm it's right *and fix it if it isn't*.
 
+> **Build deviation (#383):** the editable field is an auto-grow
+> textarea (grows to fit its whole content, no manual resize handle),
+> not the mockup's fixed `min-height: 210px` with a drag handle. The
+> old read-only `<pre>` showed the entire post at once; a fixed-height
+> box would internally scroll long TigerWolves posts, a regression.
+> Auto-grow preserves the whole-post-visible feel.
+
 ## Interactive mockups
 
 The PNGs above are snapshots. The clickable originals live next to this
