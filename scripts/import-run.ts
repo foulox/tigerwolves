@@ -47,7 +47,6 @@ export interface RunImportConfig {
   dayOfWeek: string      // 'Monday' | 'Tuesday' | etc.
   meetingTime: string    // '6:30 AM'
   meetingLocation: string
-  warmupDescription: string
   closingNotes: string
   postHeader: string     // full opening block of the Heylo post
   workouts: WorkoutImport[]
@@ -63,7 +62,6 @@ const RUN_CONFIG: RunImportConfig = {
   dayOfWeek: 'Monday',
   meetingTime: '6:30 AM',
   meetingLocation: 'Replace with meeting location.',
-  warmupDescription: 'Replace with warm-up block text.',
   closingNotes: 'Replace with closing notes (bag drop, logistics).',
   postHeader: 'Replace with the full opening block of the Heylo post.',
   workouts: [
@@ -90,11 +88,11 @@ export async function importRun(config: RunImportConfig): Promise<void> {
   // 1. Upsert the runs row.
   await sql`
     INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time,
-                      meeting_location, warmup_description, closing_notes, post_header)
+                      meeting_location, closing_notes, post_header)
     VALUES (
       ${config.id}, ${config.name}, ${config.emoji}, ${config.description},
       ${config.dayOfWeek}, ${config.meetingTime}, ${config.meetingLocation},
-      ${config.warmupDescription}, ${config.closingNotes}, ${config.postHeader}
+      ${config.closingNotes}, ${config.postHeader}
     )
     ON CONFLICT (id) DO UPDATE SET
       name               = EXCLUDED.name,
@@ -103,7 +101,6 @@ export async function importRun(config: RunImportConfig): Promise<void> {
       day_of_week        = EXCLUDED.day_of_week,
       meeting_time       = EXCLUDED.meeting_time,
       meeting_location   = EXCLUDED.meeting_location,
-      warmup_description = EXCLUDED.warmup_description,
       closing_notes      = EXCLUDED.closing_notes,
       post_header        = EXCLUDED.post_header
   `

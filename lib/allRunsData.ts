@@ -23,7 +23,6 @@ export function nbrRunToIdentity(run: NBRRun): { identity: RunIdentityValues; ki
       meetingTime: run.startTime,
       meetingLocation: run.location,
       description: '',
-      warmupDescription: '',
     },
     kind: NBR_CATEGORY_TO_KIND[run.category],
   }

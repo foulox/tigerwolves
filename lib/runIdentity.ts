@@ -8,7 +8,6 @@ export type RunIdentityValues = {
   meetingTime: string
   meetingLocation: string
   description: string
-  warmupDescription: string
 }
 
 export function validateRunIdentity(v: RunIdentityValues): { error?: string } {

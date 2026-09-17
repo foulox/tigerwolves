@@ -16,7 +16,6 @@ const EMPTY_IDENTITY: RunIdentityValues = {
   meetingTime: '',
   meetingLocation: '',
   description: '',
-  warmupDescription: '',
 }
 
 export default function ActivateRunForm({ runs }: { runs: NBRRun[] }): React.JSX.Element {

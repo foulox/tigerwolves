@@ -120,7 +120,7 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
     test('CANNOT save identity on a run they do not lead', async () => {
       const res = await saveRunIdentity(OTHER_RUN, {
         name: 'Hijacked', dayOfWeek: 'Tuesday', emoji: '', meetingTime: '',
-        meetingLocation: '', description: '', warmupDescription: '',
+        meetingLocation: '', description: '',
       })
       expect(res.error).toBe('Forbidden')
     })
@@ -174,7 +174,7 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
       const res = await saveRunIdentity(OTHER_RUN, {
         name: 'Admin Renamed Doves', dayOfWeek: 'Wednesday', emoji: '🕊️',
         meetingTime: '7:00am', meetingLocation: 'The Meadow',
-        description: 'Edited by admin', warmupDescription: 'Easy jog',
+        description: 'Edited by admin',
       })
       expect(res.error).toBeUndefined()
       const row = await sql`SELECT name FROM runs WHERE id = ${OTHER_RUN}`
@@ -204,7 +204,6 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
           meetingTime: '6:30am',
           meetingLocation: 'The Gate',
           description: 'desc',
-          warmupDescription: 'warmup',
         })).error
       ).toBe('Unauthorized')
     })
@@ -399,7 +398,6 @@ describe('saveRunIdentity authorization', () => {
       meetingTime: '6:30am',
       meetingLocation: 'The Gate',
       description: 'A quality workout run',
-      warmupDescription: 'Easy jog to warm up',
     })
     expect(res.error).toBe('Unauthorized')
   })
@@ -431,7 +429,7 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
     await sql`DELETE FROM runs WHERE id = ${RUN}`
   })
 
-  test('persists all seven identity columns to the caller’s run', async () => {
+  test('persists all six identity columns to the caller’s run', async () => {
     const res = await saveRunIdentity(RUN, {
       name: 'New Run Name',
       dayOfWeek: 'Wednesday',
@@ -439,12 +437,11 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
       meetingTime: '7:00am',
       meetingLocation: 'The Arch',
       description: 'A fun social run',
-      warmupDescription: 'Dynamic stretches',
     })
     expect(res.error).toBeUndefined()
 
     const row = await sql`
-      SELECT name, day_of_week, emoji, meeting_time, meeting_location, description, warmup_description
+      SELECT name, day_of_week, emoji, meeting_time, meeting_location, description
       FROM runs WHERE id = ${RUN}
     `
     expect(row[0].name).toBe('New Run Name')
@@ -453,13 +450,11 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
     expect(row[0].meeting_time).toBe('7:00am')
     expect(row[0].meeting_location).toBe('The Arch')
     expect(row[0].description).toBe('A fun social run')
-    expect(row[0].warmup_description).toBe('Dynamic stretches')
 
     // getLeaderRun round-trips the fields that were added in Task 2
     const run = await getLeaderRun(IDENT_LEADER)
     expect(run?.description).toBe('A fun social run')
     expect(run?.meetingTime).toBe('7:00am')
-    expect(run?.warmupDescription).toBe('Dynamic stretches')
   })
 
   test('editing name leaves runs.id (slug) unchanged — AC2', async () => {
@@ -475,7 +470,6 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
       meetingTime: '6:00am',
       meetingLocation: 'South Entrance',
       description: 'Changed',
-      warmupDescription: 'Changed',
     })
 
     const after = (await sql`SELECT id FROM runs WHERE id = ${RUN}`)[0].id as string
@@ -491,7 +485,6 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
       meetingTime: '',
       meetingLocation: '',
       description: '',
-      warmupDescription: '',
     })
     expect(res.error).toBe('Name is required')
   })
@@ -504,7 +497,6 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
       meetingTime: '',
       meetingLocation: '',
       description: '',
-      warmupDescription: '',
     })
     expect(res.error).toBe('Invalid day')
   })

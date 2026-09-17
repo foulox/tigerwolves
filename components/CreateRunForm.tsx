@@ -14,7 +14,6 @@ const EMPTY_IDENTITY: RunIdentityValues = {
   meetingTime: '',
   meetingLocation: '',
   description: '',
-  warmupDescription: '',
 }
 
 export default function CreateRunForm(): React.JSX.Element {

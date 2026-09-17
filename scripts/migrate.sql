@@ -148,14 +148,13 @@ CREATE TABLE IF NOT EXISTS runs (
   day_of_week         TEXT,               -- 'Tuesday', 'Wednesday'
   meeting_time        TEXT,               -- '6:30 AM'
   meeting_location    TEXT,
-  warmup_description  TEXT,               -- default warm-up block; overridable per workout via workout_families.warmup_override
   closing_notes       TEXT,               -- bag drop, logistics — static per run
   post_header         TEXT                -- full opening block of the Heylo post (before dynamic date/workout lines)
 );
 
 -- TigerWolves seed row — values extracted from lib/postBuilder.ts (the current hardcoded post).
 -- Story 2 will replace hardcoded buildPost strings with a DB-driven buildPost(run, ...) call.
-INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, warmup_description, closing_notes, post_header)
+INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, closing_notes, post_header)
 SELECT
   'tigerwolves',
   'TigerWolves',
@@ -164,10 +163,6 @@ SELECT
   'Tuesday',
   '6:30 AM',
   'Tom Stofka Garden, aka "Da Bins"',
-  $$📍 Starting point and route: Tom Stofka Garden, aka "Da Bins."
-We'll warm up by jogging to Marsha P. Johnson which is at the corner of North 8th and Kent
-The run will be along the Kent Avenue Speedway
-We'll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track$$,
   'Bag Drop: Sorry, Not available',
   $$🐯🐺 TigerWolves Tuesday Workout
 
@@ -201,7 +196,7 @@ ALTER TABLE schedule ADD PRIMARY KEY (date, run_id);
 ALTER TABLE run_leaders ADD COLUMN IF NOT EXISTS clerk_user_id TEXT;
 
 -- Add Story-2 forward-compat columns to workout_families.
--- warmup_override: per-workout override for the run's default warmup_description (null = use run default).
+-- warmup_override: per-workout warm-up override text (null = no per-workout warm-up).
 -- route_description / route_link: turn-by-turn text and map URL for non-quality (route) runs.
 -- Note: run_group_id (existing INT FK) records workout-to-run ownership; no run_id column added here.
 -- (Since #347 this is ownership only — it does NOT scope library visibility; see the #347 note above.)

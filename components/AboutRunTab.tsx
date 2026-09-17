@@ -23,7 +23,6 @@ export default function AboutRunTab({
     meetingTime: runConfig.meetingTime ?? '',
     meetingLocation: runConfig.meetingLocation,
     description: runConfig.description ?? '',
-    warmupDescription: runConfig.warmupDescription ?? '',
   })
   const [kind, setKind] = useState(runConfig.kind)
   // Drop any stored type outside the current vocabulary up front, so the UI only
