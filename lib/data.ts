@@ -107,7 +107,6 @@ export type RunConfig = {
   // some construction paths don't set them; both getLeaderRun and getRunById now select them.
   description?: string | null
   meetingTime?: string | null
-  warmupDescription?: string | null
   // #353: draft/live state. 'draft' = not yet published; 'live' = visible to runners.
   // ?? 'live' fallback guards pre-migration Preview branches where the column may be absent.
   status: string

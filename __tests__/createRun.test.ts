@@ -51,7 +51,6 @@ const BASE_IDENTITY = {
   meetingTime: '7:00am',
   meetingLocation: 'The Arch',
   description: 'A test run',
-  warmupDescription: 'Easy jog',
 }
 
 // ---------------------------------------------------------------------------
@@ -110,7 +109,6 @@ describe.skipIf(!onStaging)('createRun staging persistence', () => {
         meetingTime: '7:00am',
         meetingLocation: 'The Arch',
         description: 'A test run',
-        warmupDescription: 'Easy jog',
       },
       kind: 'Easy',
       workoutTypes: [],
@@ -139,7 +137,6 @@ describe.skipIf(!onStaging)('createRun staging persistence', () => {
         meetingTime: '6:30am',
         meetingLocation: 'South Gate',
         description: '',
-        warmupDescription: '',
       },
       kind: 'Long',
       workoutTypes: [],
@@ -169,7 +166,6 @@ describe.skipIf(!onStaging)('createRun staging persistence', () => {
         meetingTime: '6:00am',
         meetingLocation: 'Prospect Park',
         description: '',
-        warmupDescription: '',
       },
       kind: 'Easy',
       workoutTypes: [],
@@ -270,7 +266,6 @@ describe.skipIf(!onStaging)('createRun staging persistence', () => {
         meetingTime: '7:00am',
         meetingLocation: 'The Park',
         description: '',
-        warmupDescription: '',
       },
       kind: 'Easy',
       workoutTypes: ['Hills', 'Threshold'], // should be discarded for non-Workout kind

@@ -114,7 +114,6 @@ describe('nbrRunToIdentity pre-fill mapping', () => {
     expect(identity.meetingLocation).toBe('Tom Stofka Garden')
     expect(identity.emoji).toBe('')
     expect(identity.description).toBe('')
-    expect(identity.warmupDescription).toBe('')
     // Long Runs category → 'Long' kind
     expect(kind).toBe('Long')
   })
@@ -150,7 +149,6 @@ describe('activateNbrRun authorization', () => {
         meetingTime: '6:00am',
         meetingLocation: 'Tom Stofka Garden',
         description: '',
-        warmupDescription: '',
       },
       kind: 'Long',
       workoutTypes: [],
@@ -170,7 +168,6 @@ describe('activateNbrRun authorization', () => {
         meetingTime: '6:00am',
         meetingLocation: 'Tom Stofka Garden',
         description: '',
-        warmupDescription: '',
       },
       kind: 'Long',
       workoutTypes: [],
@@ -196,7 +193,6 @@ describe('activateNbrRun unknown nbrId', () => {
         meetingTime: '6:00am',
         meetingLocation: 'Nowhere',
         description: '',
-        warmupDescription: '',
       },
       kind: 'Easy',
       workoutTypes: [],
@@ -219,7 +215,6 @@ describe('activateNbrRun leader validation', () => {
     meetingTime: '6:00am',
     meetingLocation: 'Tom Stofka Garden',
     description: '',
-    warmupDescription: '',
   }
 
   beforeAll(() => {

@@ -94,19 +94,6 @@ export default function RunIdentityFields(props: {
           className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-y min-h-[60px] touch-manipulation"
         />
       </div>
-
-      {/* warmupDescription */}
-      <div className="flex flex-col gap-1">
-        <label htmlFor="run-identity-warmup" className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
-          Warmup description
-        </label>
-        <textarea
-          id="run-identity-warmup"
-          value={values.warmupDescription}
-          onChange={e => onChange({ warmupDescription: e.target.value })}
-          className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-y min-h-[60px] touch-manipulation"
-        />
-      </div>
     </div>
   )
 }

@@ -16,7 +16,6 @@ describe('validateRunIdentity', () => {
     meetingTime: '6:45 AM',
     meetingLocation: 'Prospect Park',
     description: 'Quality workout',
-    warmupDescription: 'Dynamic stretches',
   }
 
   it('returns {} for a fully valid identity', () => {
@@ -46,7 +45,7 @@ describe('validateRunIdentity', () => {
     }
   })
 
-  it('allows free text for emoji, meetingTime, meetingLocation, description, warmupDescription', () => {
+  it('allows free text for emoji, meetingTime, meetingLocation, description', () => {
     const result = validateRunIdentity({
       name: 'Test Run',
       dayOfWeek: 'Monday',
@@ -54,7 +53,6 @@ describe('validateRunIdentity', () => {
       meetingTime: 'whenever',
       meetingLocation: '',
       description: '123',
-      warmupDescription: 'null',
     })
     expect(result).toEqual({})
   })

@@ -143,8 +143,7 @@ export async function saveRunIdentity(runId: string, data: RunIdentityValues): P
         emoji = ${data.emoji},
         meeting_time = ${data.meetingTime},
         meeting_location = ${data.meetingLocation},
-        description = ${data.description},
-        warmup_description = ${data.warmupDescription}
+        description = ${data.description}
       WHERE id = ${runId}
     `
     updateTag('tigerwolves-data')
