@@ -424,10 +424,14 @@ describe.skipIf(!onStaging)('getLeaderRun', () => {
   const TEST_NAME = 'DB Test — getLeaderRun 310'
 
   beforeAll(async () => {
+    // Delete-then-insert: the (run_id, name) unique constraint was dropped in #385,
+    // so this row can't rely on ON CONFLICT (run_id, name) for idempotence. It has
+    // no email (identity is via clerk_user_id here), so the new email key doesn't
+    // apply — clear by name first, then insert clean.
+    await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves' AND name = ${TEST_NAME}`
     await sql`
       INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
       VALUES ('tigerwolves', ${TEST_NAME}, ${TEST_CLERK_ID}, 999, true)
-      ON CONFLICT (run_id, name) DO UPDATE SET clerk_user_id = ${TEST_CLERK_ID}, active = true
     `
   })
   afterAll(async () => {

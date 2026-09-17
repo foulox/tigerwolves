@@ -380,16 +380,15 @@ export async function addRunLeaderByEmail(
 
     const maxOrder = await sql`SELECT MAX(sort_order) AS m FROM run_leaders WHERE run_id = ${runId}`
     const nextOrder = ((maxOrder[0].m as number | null) ?? 0) + 1
-    // ON CONFLICT is keyed on (run_id, name), which doubles as the re-add/reactivate
-    // path for a previously-removed leader. Edge case: two distinct Clerk accounts
-    // with the identical display name in one run would collide here and the second
-    // add would overwrite the first's clerk_user_id/email. Acceptable for the trial
-    // (a run's leaders are a handful of known people); revisit if runs get larger.
+    // ON CONFLICT is keyed on (run_id, email) — email is the stable identity across
+    // Clerk instances (#385). This doubles as the re-add/reactivate path: adding
+    // someone already a leader of this run (same email, possibly a different display
+    // name) updates the existing row instead of inserting a second. `name` is set
+    // only on insert (not clobbered on conflict) so the existing display name is kept.
     await sql`
       INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
       VALUES (${runId}, ${name}, ${normalizedEmail}, ${clerkUser.id}, ${nextOrder}, true)
-      ON CONFLICT (run_id, name) DO UPDATE SET
-        email = ${normalizedEmail},
+      ON CONFLICT (run_id, email) WHERE email IS NOT NULL DO UPDATE SET
         clerk_user_id = ${clerkUser.id},
         active = true
     `
