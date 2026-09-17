@@ -8,6 +8,11 @@ import { seedDovesLongRun } from './fixtures/dovesLongRun'
 // to fetch the current connection string).
 const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
 
+// Guards the KV flush the same way STAGING_HOST guards the DB wipe: only the
+// dedicated CI-only Upstash instance may be flushed, never Preview/production KV.
+// Update this if the tigerwolves-ci Upstash DB is ever recreated.
+const CI_KV_HOST = 'destined-fox-282177.upstash.io'
+
 const url = process.env.DATABASE_URL
 if (!url) throw new Error('DATABASE_URL is not set')
 if (!url.includes(STAGING_HOST)) {
@@ -17,6 +22,29 @@ if (!url.includes(STAGING_HOST)) {
 }
 
 const sql = neon(url)
+
+// Wipe the votes/race-tags KV so each run starts clean — the DB is reseeded
+// every run but KV would otherwise carry state across runs (a prior run's
+// ReactionPicker/race-tag write leaves a count behind, flipping "🙂 React" to
+// "😡 1 · Add yours" and breaking vote-dependent specs). Host-guarded so it can
+// only ever touch the dedicated CI instance. Skips silently when KV creds are
+// absent (local DB-only runs); refuses loudly if pointed at a non-CI KV.
+async function flushTestKV(): Promise<void> {
+  const kvUrl = process.env.KV_REST_API_URL
+  if (!kvUrl || !process.env.KV_REST_API_TOKEN) {
+    console.log('  (skipping KV flush — KV_REST_API_URL/TOKEN not set)')
+    return
+  }
+  if (!kvUrl.includes(CI_KV_HOST)) {
+    throw new Error(
+      `seed-e2e.ts refuses to flush KV: KV_REST_API_URL does not point at the CI Upstash instance (expected host ${CI_KV_HOST}). Refusing to wipe an unrecognized KV store.`
+    )
+  }
+  const { kv } = await import('@vercel/kv')
+  const keys = [...(await kv.keys('vote:*')), ...(await kv.keys('race-tag:*'))]
+  if (keys.length) await kv.del(...keys)
+  console.log(`  flushed ${keys.length} KV vote/race-tag key(s) on ${CI_KV_HOST}`)
+}
 
 /** Next N Tuesdays from today (inclusive if today is a Tuesday), as YYYY-MM-DD. */
 function nextTuesdays(count: number): string[] {
@@ -134,6 +162,8 @@ export async function seedE2E(): Promise<void> {
   RACES[1].date = daysFromNow(24)
 
   console.log(`Seeding e2e fixtures against ${url!.split('@')[1]}...`)
+
+  await flushTestKV()
 
   // Wipe in FK-safe order, then reinsert. run_leaders is scoped to the
   // tigerwolves run so any other seeded runs are left untouched.
