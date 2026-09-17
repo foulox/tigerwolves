@@ -1,0 +1,49 @@
+name: Cleanup Neon branch
+
+on:
+  pull_request:
+    types: [closed]
+
+# The job talks only to the Neon API via NEON_API_KEY — it never uses the
+# GITHUB_TOKEN — so drop all of its default scopes (least privilege).
+permissions: {}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete Neon preview branch
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: purple-star-02119717
+          BRANCH_NAME: preview/${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+
+          # No secret (e.g. a fork PR — GitHub withholds secrets from the
+          # pull_request trigger on forks) → nothing we can do, skip cleanly.
+          if [ -z "${NEON_API_KEY:-}" ]; then
+            echo "NEON_API_KEY not available (fork PR?) — skipping."
+            exit 0
+          fi
+
+          # List branches. --fail-with-body makes curl exit non-zero on an HTTP
+          # error, so a Neon outage / auth failure aborts the step (visible red)
+          # instead of masquerading as "no branch to delete".
+          branches=$(curl -sS --fail-with-body \
+            -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches")
+
+          BRANCH_ID=$(echo "$branches" \
+            | jq -r --arg name "$BRANCH_NAME" '.branches[] | select(.name == $name) | .id')
+
+          if [ -z "$BRANCH_ID" ]; then
+            echo "No Neon branch named $BRANCH_NAME — nothing to delete."
+            exit 0
+          fi
+
+          echo "Deleting $BRANCH_NAME ($BRANCH_ID)..."
+          curl -sS --fail-with-body -X DELETE \
+            -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/$BRANCH_ID"
+          echo "Done."
