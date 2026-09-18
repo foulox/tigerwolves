@@ -182,6 +182,22 @@ CREATE TABLE IF NOT EXISTS runner_follows (
   PRIMARY KEY (clerk_user_id, run_id)
 );
 
+-- #404: run_workouts — the library-membership junction. A row means "this route
+-- (workout_families id) is in this run's library." Membership is the single source
+-- of truth for a run's "Your run" view: it holds BOTH the routes the run created
+-- (seeded on migrate — see migrate-404.sql) AND the ones it adopted from another
+-- run. workout_families.run_group_id is demoted to CREATOR CREDIT only; it no longer
+-- decides visibility. ON DELETE CASCADE on family_id: global-deleting a route drops
+-- every run's membership of it (there's no canonical row left to belong to);
+-- CASCADE on run_id: deleting a run drops its memberships too.
+CREATE TABLE IF NOT EXISTS run_workouts (
+  run_id     TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+  family_id  INT  NOT NULL REFERENCES workout_families(id) ON DELETE CASCADE,
+  PRIMARY KEY (run_id, family_id)
+);
+-- The "Your run" library read keys off run_id (all family_ids in a run's library).
+CREATE INDEX IF NOT EXISTS run_workouts_run_id_idx ON run_workouts (run_id);
+
 -- Add run_id to schedule. NOT NULL DEFAULT 'tigerwolves' backfills all existing rows immediately in Postgres.
 ALTER TABLE schedule ADD COLUMN IF NOT EXISTS run_id TEXT NOT NULL DEFAULT 'tigerwolves';
 ALTER TABLE schedule DROP CONSTRAINT IF EXISTS schedule_run_id_fk;

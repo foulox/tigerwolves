@@ -1,5 +1,5 @@
 import { currentUser } from '@clerk/nextjs/server'
-import { fetchWorkoutVariants, getLeaderRun } from '@/lib/db'
+import { fetchWorkoutVariants, getLeaderRun, getRunLibraryFamilyIds, getLeaderRuns, fetchRunGroups } from '@/lib/db'
 import LibraryClient from '@/components/LibraryClient'
 import Header from '@/components/Header'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
@@ -28,14 +28,39 @@ export default async function LibraryPage() {
   }
   const runConfig = (user && isLeader ? await getLeaderRun(user.id) : null) ?? tigerWolvesConfig
   // #401: fetch the FULL shared catalog (no runId scoping) so the "All runs" escape
-  // hatch can browse everything. "Your run" scoping is applied client-side by
-  // runGroupId in LibraryClient — the read that AC1/AC2 turn on.
+  // hatch can browse everything. "Your run" scoping is applied client-side by library
+  // membership in LibraryClient — the read that AC2 turns on.
   const workoutVariants = await fetchWorkoutVariants()
+
+  // #404: "Your run" = the run's library membership (created + adopted), not the old
+  // run_group_id ownership check. Only meaningful for a signed-in leader with a
+  // reconciled run; anonymous/non-leader views keep the full-catalog fallback
+  // (empty membership + null runGroupId in LibraryClient). ledRuns drives the adopt
+  // affordance + the multi-run "which run?" picker; runGroupNames labels a route's
+  // creator ("adopted from <creator>").
+  const isRealLeaderRun = !!(user && isLeader && runConfig.runGroupId != null)
+  const [libraryFamilyIds, ledRuns, runGroups] = await Promise.all([
+    isRealLeaderRun ? getRunLibraryFamilyIds(runConfig.id) : Promise.resolve<number[]>([]),
+    user && isLeader ? getLeaderRuns(user.id) : Promise.resolve<Array<{ id: string; name: string }>>([]),
+    fetchRunGroups(),
+  ])
+  const runGroupNames: Record<number, string> = Object.fromEntries(runGroups.map(g => [g.id, g.name]))
+
   const voteData = await getVoteData(workoutVariants.map(w => workoutVoteId(w.name, w.label ?? '')))
   return (
     <div>
       <Header title="Library" isLeader={isLeader} />
-      <LibraryClient variants={workoutVariants} isLeader={isLeader} voteData={voteData} runId={runConfig.id} allowedTypes={runConfig.workoutTypes} runGroupId={runConfig.runGroupId} />
+      <LibraryClient
+        variants={workoutVariants}
+        isLeader={isLeader}
+        voteData={voteData}
+        runId={runConfig.id}
+        allowedTypes={runConfig.workoutTypes}
+        runGroupId={runConfig.runGroupId}
+        libraryFamilyIds={libraryFamilyIds}
+        ledRuns={ledRuns}
+        runGroupNames={runGroupNames}
+      />
     </div>
   )
 }

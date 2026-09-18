@@ -46,9 +46,12 @@ type Props = {
   runConfig: RunConfig
   roster: string[]
   runLeaders: RunLeader[]
+  // #404: the run's library membership (family ids it created OR adopted). The picker
+  // scopes to it; empty means fall back to the full catalog (unreconciled run).
+  libraryFamilyIds?: number[]
 }
 
-export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {}, runConfig, roster, runLeaders }: Props) {
+export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {}, runConfig, roster, runLeaders, libraryFamilyIds }: Props) {
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
   const [selectedWorkouts, setSelectedWorkouts] = useState<WorkoutVariantRow[]>([])
   const [showCount, setShowCount] = useState(3)
@@ -121,16 +124,19 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
   const plannedNotFound = !!entry?.workoutName && plannedWorkout === null
 
-  // #401 (Story A): the picker is scoped to this run's OWN workouts by run_group_id.
-  // Both the default suggestions and the search-all box draw from `ownVariants`, so
-  // a leader can only schedule from their own run's library (no "All runs" escape
-  // hatch here — Schedule is strictly per-run; the Library is where all runs are
-  // browsable). A run not yet reconciled to a group (runGroupId null) falls back to
-  // the full catalog so the picker is never empty.
-  const ownVariants = useMemo(
-    () => runConfig.runGroupId != null ? variants.filter(w => w.runGroupId === runConfig.runGroupId) : variants,
-    [variants, runConfig.runGroupId],
-  )
+  // #404 (was #401): the picker is scoped to this run's LIBRARY — the routes it
+  // created OR adopted (run_workouts membership), superseding the run_group_id
+  // ownership check so adopted routes are schedulable too (AC3). Both the default
+  // suggestions and the search-all box draw from `ownVariants`, so a leader can only
+  // schedule from their own run's library (no "All runs" escape hatch here — Schedule
+  // is strictly per-run; the Library is where all runs are browsable). A run not yet
+  // reconciled to a group (runGroupId null → empty membership) falls back to the full
+  // catalog so the picker is never empty, exactly as #401 did.
+  const ownVariants = useMemo(() => {
+    if (runConfig.runGroupId == null) return variants
+    const libSet = new Set(libraryFamilyIds ?? [])
+    return variants.filter(w => libSet.has(w.familyId))
+  }, [variants, runConfig.runGroupId, libraryFamilyIds])
 
   const allSuggestions = useMemo(() => {
     if (!entry) return []

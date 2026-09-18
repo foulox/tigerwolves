@@ -156,6 +156,43 @@ export async function getLeaderRunGroups(clerkUserId: string): Promise<RunGroup[
   }))
 }
 
+// #404: the runs a leader actively leads — the adopt targets. A single-run leader
+// adopts with no extra step; a multi-run leader is prompted to pick which of these
+// to adopt into (AC6). Distinct by run id (a leader with two roster rows on the same
+// run sees it once). Ordered by name for a stable picker.
+export async function getLeaderRuns(clerkUserId: string): Promise<Array<{ id: string; name: string }>> {
+  const rows = await sql`
+    SELECT DISTINCT r.id, r.name
+    FROM run_leaders rl
+    JOIN runs r ON r.id = rl.run_id
+    WHERE rl.clerk_user_id = ${clerkUserId} AND rl.active = true
+    ORDER BY r.name
+  `
+  return rows.map((r) => ({ id: r.id as string, name: r.name as string }))
+}
+
+// #404: does this leader actively lead this run? The authz predicate behind
+// adoptRoute / unadoptRoute — a leader may only change the library of a run they
+// lead (AC8: no adopting into an unled run). Kept as its own query so the server
+// action can reject before any write.
+export async function leaderLeadsRun(clerkUserId: string, runId: string): Promise<boolean> {
+  const rows = await sql`
+    SELECT 1 FROM run_leaders
+    WHERE clerk_user_id = ${clerkUserId} AND run_id = ${runId} AND active = true
+    LIMIT 1
+  `
+  return rows.length > 0
+}
+
+// #404: a run's library membership — the workout_families ids in run_workouts for
+// this run. This is the single "Your run" visibility predicate: it holds routes the
+// run created (seeded on migrate) AND routes it adopted. Replaces #401's
+// run_group_id ownership check as the library-scope source.
+export async function getRunLibraryFamilyIds(runId: string): Promise<number[]> {
+  const rows = await sql`SELECT family_id FROM run_workouts WHERE run_id = ${runId}`
+  return rows.map((r) => r.family_id as number)
+}
+
 // #401 (Story A): find-or-create the run_group that owns a run's workouts, keyed by
 // name (run_groups.name is UNIQUE). Used to reconcile a newly created run to a group
 // so its library isn't NULL-owned (AC7). Idempotent: an existing group with this name
@@ -423,6 +460,25 @@ export async function dbDeleteWorkoutVariant(variantId: number): Promise<void> {
   if ((remaining.count as number) === 0) {
     await sql`DELETE FROM workout_families WHERE id = ${familyId}`
   }
+}
+
+// #404: adopt = add a library-membership row (a run references a route it did not
+// create). Idempotent via the PK — adopting twice is a no-op, not an error. Never
+// touches workout_families: the canonical route, its content, and its creator credit
+// (run_group_id) all stay put — adoption is a reference, not a copy.
+export async function dbAdoptRoute(runId: string, familyId: number): Promise<void> {
+  await sql`
+    INSERT INTO run_workouts (run_id, family_id) VALUES (${runId}, ${familyId})
+    ON CONFLICT (run_id, family_id) DO NOTHING
+  `
+}
+
+// #404: un-adopt = drop this run's membership row only. Removes the route from THIS
+// run's library, never the canonical route or any other run's membership — the
+// opposite of dbDeleteWorkoutVariant (which is a global delete). Idempotent: a
+// missing row is a no-op.
+export async function dbUnadoptRoute(runId: string, familyId: number): Promise<void> {
+  await sql`DELETE FROM run_workouts WHERE run_id = ${runId} AND family_id = ${familyId}`
 }
 
 export async function dbFlagWorkoutVariant(variantId: number, flagNote: string): Promise<void> {

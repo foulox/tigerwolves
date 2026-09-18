@@ -1,4 +1,4 @@
-import { fetchData, fetchSchedule, getLeaderRun, getRunRoster, generateScheduleHorizon } from '@/lib/db'
+import { fetchData, fetchSchedule, getLeaderRun, getRunRoster, generateScheduleHorizon, getRunLibraryFamilyIds } from '@/lib/db'
 import ScheduleClient from '@/components/ScheduleClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 import { requireLeaderPage } from '@/lib/requireLeaderPage'
@@ -38,9 +38,14 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   // Schedule filtered to this leader's run; workout variants come from the cached
   // aggregate (fetchData), which as of #347 returns the full shared catalog — ScheduleClient
   // scopes it client-side by category + the run's types. Benefits from the 5-min cache.
-  const [schedule, { workoutVariants }] = await Promise.all([
+  // #404: the run's library membership (created + adopted) — the Schedule picker
+  // scopes to it (AC3), replacing #401's run_group_id ownership check. Empty for a
+  // run not reconciled to a group (runGroupId null), where ScheduleClient falls back
+  // to the full catalog exactly as #401 did.
+  const [schedule, { workoutVariants }, libraryFamilyIds] = await Promise.all([
     fetchSchedule(runConfig.id),
     fetchData(),
+    runConfig.runGroupId != null ? getRunLibraryFamilyIds(runConfig.id) : Promise.resolve<number[]>([]),
   ])
   const today = new Date().toISOString().slice(0, 10)
 
@@ -62,5 +67,6 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     runConfig={runConfig}
     roster={roster}
     runLeaders={runLeaders}
+    libraryFamilyIds={libraryFamilyIds}
   />
 }

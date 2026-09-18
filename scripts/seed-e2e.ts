@@ -155,6 +155,18 @@ export async function seedE2E(): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS runs_nbr_directory_id_key
       ON runs (nbr_directory_id) WHERE nbr_directory_id IS NOT NULL
   `
+  // #404: the library-membership junction (see scripts/migrate-404.sql). Created
+  // inline here so CI's staging DB has it before both the unit suite (globalSetup
+  // seeds first) and the e2e run, without a separate migration step. Membership
+  // rows are seeded near the end, after all fixture families + runs exist.
+  await sql`
+    CREATE TABLE IF NOT EXISTS run_workouts (
+      run_id     TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+      family_id  INT  NOT NULL REFERENCES workout_families(id) ON DELETE CASCADE,
+      PRIMARY KEY (run_id, family_id)
+    )
+  `
+  await sql`CREATE INDEX IF NOT EXISTS run_workouts_run_id_idx ON run_workouts (run_id)`
 
   const [week1, week2, week3] = nextTuesdays(3)
   const [mon1] = nextMondays(1)
@@ -169,6 +181,10 @@ export async function seedE2E(): Promise<void> {
   // tigerwolves run so any other seeded runs are left untouched.
   await sql`DELETE FROM schedule`
   await sql`DELETE FROM races`
+  // #404: clear library memberships before their families — run_workouts.family_id
+  // FKs workout_families(id). CASCADE would handle it, but being explicit keeps the
+  // wipe correct even against a staging table created before the CASCADE was added.
+  await sql`DELETE FROM run_workouts`
   await sql`DELETE FROM workout_variants`
   await sql`DELETE FROM workout_families`
   await sql`DELETE FROM run_leaders WHERE run_id IN ('tigerwolves', 'mmer', 'doves')`
@@ -349,5 +365,18 @@ export async function seedE2E(): Promise<void> {
     `
   }
 
-  console.log(`  seeded ${FAMILIES.length + 3} workout_families, 3 runs (tigerwolves + mmer + doves) + 5 run_leaders, 6 schedule entries (tigerwolves: ${week1}, ${week2}, ${week3}; mmer: ${mon1}; doves: Long routes on 2 Wednesdays), ${RACES.length} races`)
+  // #404: seed library membership uniformly — every run gets a run_workouts row for
+  // each family its run_group owns (the same seed scripts/migrate-404.sql runs on
+  // production). This makes "Your run" a single membership check covering created
+  // routes; adoption (the e2e/unit tests, real leaders) adds more rows. Runs with a
+  // NULL run_group_id own nothing here and fall back to the full catalog in the UI.
+  await sql`
+    INSERT INTO run_workouts (run_id, family_id)
+    SELECT r.id, wf.id
+    FROM workout_families wf
+    JOIN runs r ON r.run_group_id = wf.run_group_id
+    ON CONFLICT (run_id, family_id) DO NOTHING
+  `
+
+  console.log(`  seeded ${FAMILIES.length + 3} workout_families, 3 runs (tigerwolves + mmer + doves) + 5 run_leaders, 6 schedule entries (tigerwolves: ${week1}, ${week2}, ${week3}; mmer: ${mon1}; doves: Long routes on 2 Wednesdays), ${RACES.length} races, run_workouts membership seeded`)
 }

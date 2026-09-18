@@ -23,6 +23,9 @@ import {
   WorkoutVariantNotFoundError,
   getLeaderRun,
   getRunById,
+  dbAdoptRoute,
+  dbUnadoptRoute,
+  leaderLeadsRun,
 } from '@/lib/db'
 import { buildWorkoutVariantInput } from '@/lib/workoutVariant'
 import { captureServerEvent } from '@/lib/analytics'
@@ -417,5 +420,42 @@ export async function toggleRunFollow(runId: string): Promise<{ error?: string; 
     if (err instanceof Error && err.message === 'Unauthorized') return { error: 'Unauthorized' }
     Sentry.captureException(err)
     return { error: 'Failed to update follow status' }
+  }
+}
+
+// #404: adopt a route into a run the caller leads — adds a run_workouts membership
+// row so the route appears in that run's "Your run" library and Schedule picker,
+// from the same canonical definition (a reference, never a copy). Leader-only
+// (requireAuth), and the target run MUST be one the caller actively leads (AC8) —
+// a leader can never add routes to a run they don't lead. Idempotent at the DB
+// layer, so a double-tap is harmless.
+export async function adoptRoute(runId: string, familyId: number): Promise<{ error?: string }> {
+  try {
+    const userId = await requireAuth()
+    if (!(await leaderLeadsRun(userId, runId))) return { error: 'You can only add routes to a run you lead' }
+    await dbAdoptRoute(runId, familyId)
+    revalidateAll()
+    return {}
+  } catch (err) {
+    if (err instanceof Error && err.message === 'Unauthorized') return { error: 'Unauthorized' }
+    Sentry.captureException(err)
+    return { error: 'Failed to add route to your run' }
+  }
+}
+
+// #404: un-adopt (Remove from my run) — drops this run's membership row only. The
+// canonical route and every other run's membership are untouched; this is NOT a
+// global delete (that's deleteWorkout). Same lead-the-run authz as adoptRoute.
+export async function unadoptRoute(runId: string, familyId: number): Promise<{ error?: string }> {
+  try {
+    const userId = await requireAuth()
+    if (!(await leaderLeadsRun(userId, runId))) return { error: 'You can only remove routes from a run you lead' }
+    await dbUnadoptRoute(runId, familyId)
+    revalidateAll()
+    return {}
+  } catch (err) {
+    if (err instanceof Error && err.message === 'Unauthorized') return { error: 'Unauthorized' }
+    Sentry.captureException(err)
+    return { error: 'Failed to remove route from your run' }
   }
 }
