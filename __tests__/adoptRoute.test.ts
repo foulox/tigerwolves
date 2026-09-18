@@ -8,7 +8,11 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 vi.mock('@clerk/nextjs/server', () => ({ currentUser: vi.fn(), clerkClient: vi.fn() }))
 vi.mock('next/cache', async importOriginal => {
   const actual = await importOriginal<typeof import('next/cache')>()
-  return { ...actual, updateTag: vi.fn() }
+  // adoptRoute/unadoptRoute call revalidateAll() = revalidatePath + updateTag; BOTH
+  // throw outside a real request scope, so both must be stubbed (unlike followActions,
+  // which only calls updateTag). Leaving revalidatePath real made the happy-path adopt
+  // throw into its own try/catch and return an error — the CI-only failure on staging.
+  return { ...actual, updateTag: vi.fn(), revalidatePath: vi.fn() }
 })
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn(), captureMessage: vi.fn() }))
 
