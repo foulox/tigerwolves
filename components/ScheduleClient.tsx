@@ -14,7 +14,9 @@ import type { VoteData } from '@/lib/votes'
 import Header from '@/components/Header'
 import WorkoutDetails from '@/components/WorkoutDetails'
 import LeaderPicker from '@/components/LeaderPicker'
+import AdoptRouteControls from '@/components/AdoptRouteControls'
 import { formatDateShort } from '@/lib/dateUtils'
+import { schedulePickerScope, schedulePickerSuggestions, allRunsCategories, allRunsTypes } from '@/lib/schedulePicker'
 
 
 type PlanStandaloneRow = { kind: 'standalone'; workout: WorkoutVariantRow }
@@ -37,6 +39,8 @@ function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined
   return <span className="text-xs text-gray-300">🙂</span>
 }
 
+type LedRun = { id: string; name: string }
+
 type Props = {
   upcoming: ScheduleEntry[]
   variants: WorkoutVariantRow[]
@@ -49,9 +53,14 @@ type Props = {
   // #404: the run's library membership (family ids it created OR adopted). The picker
   // scopes to it; empty means fall back to the full catalog (unreconciled run).
   libraryFamilyIds?: number[]
+  // #405: adopt affordances for the "All runs" borrow mode — the runs this leader
+  // leads (adopt targets + the multi-run picker) and group-id→name for the "adopted
+  // from <creator>" label, mirroring what LibraryClient receives.
+  ledRuns?: LedRun[]
+  runGroupNames?: Record<number, string>
 }
 
-export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {}, runConfig, roster, runLeaders, libraryFamilyIds }: Props) {
+export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 0, isLeader, voteData = {}, runConfig, roster, runLeaders, libraryFamilyIds, ledRuns = [], runGroupNames = {} }: Props) {
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex)
   const [selectedWorkouts, setSelectedWorkouts] = useState<WorkoutVariantRow[]>([])
   const [showCount, setShowCount] = useState(3)
@@ -61,6 +70,12 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   const [saved, setSaved] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [activeType, setActiveType] = useState<string | null>(null)
+  // #405: "All runs" borrow mode — widens the picker past the run's library to the
+  // whole catalog, with its own category/type browse pills (independent of the week's
+  // type chips, which the widened mode ignores).
+  const [showAllRuns, setShowAllRuns] = useState(false)
+  const [browseCategory, setBrowseCategory] = useState<string | null>(null)
+  const [browseType, setBrowseType] = useState<string | null>(null)
   const [planTab, setPlanTab] = useState<'post' | 'browse'>('post')
   const [leaderPickerOpen, setLeaderPickerOpen] = useState(false)
   const [localLeader, setLocalLeader] = useState<string | null>(null)
@@ -124,40 +139,57 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
   const plannedNotFound = !!entry?.workoutName && plannedWorkout === null
 
-  // #404 (was #401): the picker is scoped to this run's LIBRARY — the routes it
-  // created OR adopted (run_workouts membership), superseding the run_group_id
-  // ownership check so adopted routes are schedulable too (AC3). Both the default
-  // suggestions and the search-all box draw from `ownVariants`, so a leader can only
-  // schedule from their own run's library (no "All runs" escape hatch here — Schedule
-  // is strictly per-run; the Library is where all runs are browsable). A run not yet
-  // reconciled to a group (runGroupId null → empty membership) falls back to the full
-  // catalog so the picker is never empty, exactly as #401 did.
+  // #404 (was #401): in the default "Your run" scope the picker is scoped to this
+  // run's LIBRARY — the routes it created OR adopted (run_workouts membership),
+  // superseding the run_group_id ownership check so adopted routes are schedulable
+  // too (AC3). A run not yet reconciled to a group (runGroupId null → empty
+  // membership) falls back to the full catalog so the picker is never empty, as #401.
+  // #405: an "All runs" toggle widens the scope past the library to the whole catalog
+  // for a one-time cross-run borrow (see scopeVariants + schedulePicker helpers).
+  const libSet = useMemo(() => new Set(libraryFamilyIds ?? []), [libraryFamilyIds])
   const ownVariants = useMemo(() => {
     if (runConfig.runGroupId == null) return variants
-    const libSet = new Set(libraryFamilyIds ?? [])
     return variants.filter(w => libSet.has(w.familyId))
-  }, [variants, runConfig.runGroupId, libraryFamilyIds])
+  }, [variants, runConfig.runGroupId, libSet])
+
+  // #405: the base set both the suggestion list and the search box draw from —
+  // "Your run" = the library, "All runs" = every run's workouts.
+  const scopeVariants = useMemo(
+    () => schedulePickerScope(showAllRuns, ownVariants, variants),
+    [showAllRuns, ownVariants, variants],
+  )
+
+  // #405: adopt affordances only for a leader whose run is reconciled to a group
+  // (real membership) and who actually leads at least one run — same gate as
+  // LibraryClient's canAdopt. Shown per-card in "All runs" mode alongside the
+  // one-time "Schedule for this week" (borrow) action.
+  const canAdopt = isLeader && ledRuns.length > 0 && runConfig.runGroupId != null
+
+  // #405: "All runs" browse pills — every category/type present across ALL runs
+  // (not the run's allowlist or the week's nominal type). Empty in "Your run" mode.
+  const browseCategories = useMemo(() => (showAllRuns ? allRunsCategories(variants) : []), [showAllRuns, variants])
+  const browseTypes = useMemo(() => (showAllRuns ? allRunsTypes(variants, browseCategory) : []), [showAllRuns, variants, browseCategory])
 
   const allSuggestions = useMemo(() => {
     if (!entry) return []
-    // Workout runs suggest by the week's type(s); non-Workout runs suggest from
-    // their whole category (they have no per-week type), so an Easy run offers all
-    // its Easy workouts. Runs with no category mapping fall back to everything.
-    const pool = isWorkout
-      ? ownVariants.filter(w => {
-          const types = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
-          return types.includes(w.type)
-        })
-      : ownVariants.filter(w => !runCategory || w.category === runCategory)
-    return pool
-      .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
-      .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
-  }, [entry, ownVariants, activeType, plannedWorkout, isWorkout, runCategory])
+    const weekTypes = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
+    return schedulePickerSuggestions({
+      showAllRuns,
+      ownVariants,
+      allVariants: variants,
+      isWorkout,
+      runCategory,
+      weekTypes,
+      browseCategory,
+      browseType,
+      plannedId: plannedWorkout?.id ?? null,
+    })
+  }, [entry, ownVariants, variants, showAllRuns, activeType, plannedWorkout, isWorkout, runCategory, browseCategory, browseType])
 
   const pickerSource = useMemo(() => {
     const q = pickerSearch.toLowerCase()
     if (!q) return allSuggestions
-    return ownVariants
+    return scopeVariants
       .filter(w =>
         w.name.toLowerCase().includes(q) ||
         w.type.toLowerCase().includes(q) ||
@@ -167,7 +199,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       )
       .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
-  }, [pickerSearch, allSuggestions, ownVariants, plannedWorkout])
+  }, [pickerSearch, allSuggestions, scopeVariants, plannedWorkout])
 
   const displayRows = useMemo<PlanDisplayRow[]>(() => {
     const rows: PlanDisplayRow[] = []
@@ -217,13 +249,54 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setSaved(false)
     setExpandedId(null)
     setActiveType(null)
+    setShowAllRuns(false)
+    setBrowseCategory(null)
+    setBrowseType(null)
     setPlanTab('post')
     setLeaderPickerOpen(false)
     setLocalLeader(null)
   }
 
+  // #405: toggling scope resets the browse filters + search so a stale filter from one
+  // scope can't silently empty the other (mirrors LibraryClient.setScope). Selection is
+  // left intact — a workout picked in one scope stays picked.
+  function setScope(all: boolean) {
+    setShowAllRuns(all)
+    setBrowseCategory(null)
+    setBrowseType(null)
+    setPickerSearch('')
+    setShowCount(3)
+  }
+
+  function selectBrowseCategory(c: string | null) {
+    setBrowseCategory(c)
+    setBrowseType(null)
+  }
+
   function toggleExpand(id: string) {
     setExpandedId(prev => prev === id ? null : id)
+  }
+
+  // #405: the "+ Add to my run" adopt affordance (reuses #404's control), shown per
+  // card ONLY in "All runs" mode — distinct from the one-time "Schedule for this week"
+  // borrow (the card select + save). Renders nothing for a route already in the library
+  // (AdoptRouteControls short-circuits) or when the leader can't adopt.
+  function adoptControls(familyId: number, creatorRunGroupId: number | null) {
+    if (!showAllRuns || !canAdopt) return null
+    return (
+      <div className="px-4 pb-3">
+        <AdoptRouteControls
+          familyId={familyId}
+          creatorRunGroupId={creatorRunGroupId}
+          myRunGroupId={runConfig.runGroupId ?? null}
+          runGroupNames={runGroupNames}
+          inLibrary={libSet.has(familyId)}
+          showAllRuns={showAllRuns}
+          ledRuns={ledRuns}
+          primaryRunId={runConfig.id}
+        />
+      </div>
+    )
   }
 
   function handleSelect(w: WorkoutVariantRow) {
@@ -365,8 +438,10 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
               )}
               <div className="text-xs text-gray-400 mt-1">{formatDateLong(entry.date)}</div>
               {/* Only offer the type picker when there's a real choice — a lone
-                  chip is just noise (mirrors the Library's types.length > 1 gate). */}
-              {availableTypes.length > 1 && (
+                  chip is just noise (mirrors the Library's types.length > 1 gate).
+                  #405: hidden in "All runs" mode, which browses by its own category/
+                  type pills below and ignores the week's type allowlist. */}
+              {!showAllRuns && availableTypes.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto mt-3 pb-0.5 -mx-1 px-1">
                   {availableTypes.map(t => {
                     const isActive = activeType === null ? scheduledTypes.includes(t) : t === activeType
@@ -459,26 +534,68 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
             {(!plannedWorkout || planTab === 'browse') && (
               <>
+                {/* #405: Your run / All runs scope toggle — mirrors the Library's.
+                    "All runs" is the one-time cross-run borrow escape hatch. */}
+                {runConfig.runGroupId != null && (
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      onClick={() => setScope(false)}
+                      className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+                    >Your run</button>
+                    <button
+                      onClick={() => setScope(true)}
+                      className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+                    >All runs</button>
+                  </div>
+                )}
+
+                {showAllRuns && (
+                  <p className="text-xs text-gray-400 mb-3 leading-snug">
+                    Browsing every run&rsquo;s workouts. <span className="font-semibold text-gray-500">Schedule for this week</span> borrows one for this week only — it won&rsquo;t join your library or rotation. <span className="font-semibold text-orange-600">+ Add to my run</span> adopts it permanently.
+                  </p>
+                )}
+
                 <div className="relative mb-4">
                   <input
                     type="search"
                     value={pickerSearch}
                     onChange={e => setPickerSearch(e.target.value)}
-                    placeholder="Search your run's workouts by name, type, race…"
+                    placeholder={showAllRuns ? "Search every run's workouts by name, type, race…" : "Search your run's workouts by name, type, race…"}
                     className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-orange-400"
                   />
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
                 </div>
 
+                {/* #405: "All runs" category + type pills — every category/type across
+                    all runs, no run-scope and no week-type restriction (AC4). */}
+                {showAllRuns && browseCategories.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
+                    <button onClick={() => selectBrowseCategory(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!browseCategory ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All</button>
+                    {browseCategories.map(c => (
+                      <button key={c} onClick={() => selectBrowseCategory(browseCategory === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${browseCategory === c ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{c}</button>
+                    ))}
+                  </div>
+                )}
+                {showAllRuns && browseTypes.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: 'none' }}>
+                    <button onClick={() => setBrowseType(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!browseType ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All types</button>
+                    {browseTypes.map(t => (
+                      <button key={t} onClick={() => setBrowseType(browseType === t ? null : t)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${browseType === t ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{t}</button>
+                    ))}
+                  </div>
+                )}
+
                 {allSuggestions.length === 0 && !pickerSearch ? (
                   <p className="text-gray-400 italic text-sm">
-                    {isWorkout
-                      ? (plannedWorkout
-                          ? `No other ${entry.workoutType} workouts to switch to yet.`
-                          : `No ${entry.workoutType} workouts in the library yet.`)
-                      : (plannedWorkout
-                          ? 'No other workouts to switch to yet.'
-                          : 'No workouts in your library yet.')}
+                    {showAllRuns
+                      ? 'No workouts match these filters.'
+                      : isWorkout
+                        ? (plannedWorkout
+                            ? `No other ${entry.workoutType} workouts to switch to yet.`
+                            : `No ${entry.workoutType} workouts in the library yet.`)
+                        : (plannedWorkout
+                            ? 'No other workouts to switch to yet.'
+                            : 'No workouts in your library yet.')}
                   </p>
                 ) : displayRows.length === 0 ? (
                   <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
@@ -527,6 +644,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                   <WorkoutDetails w={w} />
                                 </div>
                               )}
+                              {adoptControls(w.familyId, w.runGroupId)}
                             </div>
                           )
                         }
@@ -580,6 +698,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                 </div>
                               )
                             })}
+                            {adoptControls(row.familyId, row.variants[0]?.runGroupId ?? null)}
                           </div>
                         )
                       })}
@@ -605,7 +724,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                         : 'bg-orange-500 text-white active:bg-orange-600 disabled:opacity-60'
                     }`}
                   >
-                    {saved ? <><Check size={16} /> Saved to plan</> : saving ? 'Saving…' : 'Set as plan'}
+                    {saved ? <><Check size={16} /> Saved to plan</> : saving ? 'Saving…' : showAllRuns ? 'Schedule for this week' : 'Set as plan'}
                   </button>
                 )}
               </>

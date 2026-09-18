@@ -1,4 +1,4 @@
-import { fetchData, fetchSchedule, getLeaderRun, getRunRoster, generateScheduleHorizon, getRunLibraryFamilyIds } from '@/lib/db'
+import { fetchData, fetchSchedule, getLeaderRun, getRunRoster, generateScheduleHorizon, getRunLibraryFamilyIds, getLeaderRuns, fetchRunGroups } from '@/lib/db'
 import ScheduleClient from '@/components/ScheduleClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 import { requireLeaderPage } from '@/lib/requireLeaderPage'
@@ -42,11 +42,17 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   // scopes to it (AC3), replacing #401's run_group_id ownership check. Empty for a
   // run not reconciled to a group (runGroupId null), where ScheduleClient falls back
   // to the full catalog exactly as #401 did.
-  const [schedule, { workoutVariants }, libraryFamilyIds] = await Promise.all([
+  // #405: ledRuns + runGroupNames drive the "All runs" borrow mode's "+ Add to my run"
+  // adopt affordance (reusing #404's AdoptRouteControls) and the "adopted from <creator>"
+  // credit — mirrors what the Library page fetches for the same control.
+  const [schedule, { workoutVariants }, libraryFamilyIds, ledRuns, runGroups] = await Promise.all([
     fetchSchedule(runConfig.id),
     fetchData(),
     runConfig.runGroupId != null ? getRunLibraryFamilyIds(runConfig.id) : Promise.resolve<number[]>([]),
+    getLeaderRuns(user.id),
+    fetchRunGroups(),
   ])
+  const runGroupNames: Record<number, string> = Object.fromEntries(runGroups.map(g => [g.id, g.name]))
   const today = new Date().toISOString().slice(0, 10)
 
   const upcoming = schedule
@@ -68,5 +74,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     roster={roster}
     runLeaders={runLeaders}
     libraryFamilyIds={libraryFamilyIds}
+    ledRuns={ledRuns}
+    runGroupNames={runGroupNames}
   />
 }
