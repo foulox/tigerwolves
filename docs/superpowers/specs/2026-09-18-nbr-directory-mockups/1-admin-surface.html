@@ -1,0 +1,97 @@
+<h2>Admin powers on the All Runs screen — two directions</h2>
+<p class="subtitle">Same screen you and everyone else sees. The question is how your admin controls appear on it. Each card now carries a <strong>state</strong>: LIVE (public, joinable) · DRAFT (you're setting it up) · UNCLAIMED (catalog stub, nobody running it yet).</p>
+
+<style>
+  .phones { display:flex; gap:28px; flex-wrap:wrap; justify-content:center; }
+  .phone { width:340px; border:1px solid #d7dbe3; border-radius:26px; padding:14px 12px 18px; background:#fbfbfc; box-shadow:0 2px 10px rgba(17,24,39,.06); }
+  .phone h4 { text-align:center; margin:2px 0 10px; font-size:13px; letter-spacing:.04em; text-transform:uppercase; color:#6b7280; }
+  .daylabel { font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#374151; font-size:12px; display:flex; align-items:center; gap:8px; margin:14px 4px 8px; }
+  .daylabel .rule { flex:1; height:1px; background:#e8eaef; }
+  .card { background:#fff; border:1px solid #eef0f3; border-radius:16px; padding:11px 12px; display:flex; gap:11px; align-items:center; box-shadow:0 1px 3px rgba(17,24,39,.04); margin-bottom:9px; position:relative; }
+  .card .time { width:56px; flex-shrink:0; font-weight:800; font-size:13px; color:#111827; letter-spacing:-.02em; }
+  .card .mid { flex:1; min-width:0; }
+  .card .nm { font-weight:700; font-size:14px; color:#111827; line-height:1.2; }
+  .card .loc { font-size:12px; color:#8b93a1; margin-top:2px; }
+  .badge { display:inline-block; font-size:9px; font-weight:800; letter-spacing:.05em; padding:2px 7px; border-radius:999px; margin-top:5px; }
+  .b-live { background:#dcfce7; color:#166534; }
+  .b-draft { background:#fef9c3; color:#854d0e; }
+  .b-unc { background:#eef0f3; color:#9ca3af; }
+  .join { flex-shrink:0; font-size:12px; font-weight:800; border-radius:999px; padding:6px 13px; }
+  .j-live { background:#111827; color:#fff; }
+  .j-draft { background:#f3f4f6; color:#9ca3af; }
+  .pencil { flex-shrink:0; width:30px; height:30px; border-radius:999px; border:1px solid #d7dbe3; background:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; color:#6b7280; }
+  .activate { flex-shrink:0; font-size:11px; font-weight:800; border-radius:999px; padding:6px 11px; background:#fff7ed; color:#c2410c; border:1px solid #fdba74; }
+  .addtile { border:1.5px dashed #d7dbe3; border-radius:16px; padding:12px; text-align:center; font-size:13px; font-weight:700; color:#a7adb8; }
+  .toggle { display:flex; align-items:center; justify-content:space-between; background:#111827; color:#fff; border-radius:14px; padding:9px 13px; font-size:12.5px; font-weight:700; margin-bottom:6px; }
+  .toggle .sw { width:38px; height:22px; background:#f97316; border-radius:999px; position:relative; }
+  .toggle .sw::after { content:''; position:absolute; top:2px; right:2px; width:18px; height:18px; background:#fff; border-radius:999px; }
+  .caption { font-size:12px; color:#6b7280; text-align:center; margin-top:8px; line-height:1.4; }
+</style>
+
+<div class="options" style="max-width:760px;margin:0 auto 18px;">
+  <div class="option" data-choice="always-on" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content"><h3>Always-on inline controls</h3><p>As a leader you always see an edit pencil + state badge on every card, and an "add" tile at the end of each day. Nothing to switch on — you're always in a lightly-editable view. Runners never see any of it (role-gated).</p></div>
+  </div>
+  <div class="option" data-choice="edit-mode" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content"><h3>"Manage" edit-mode toggle</h3><p>The screen looks exactly like the public All Runs by default — clean, no clutter. A "Manage runs" switch flips it into edit mode, revealing pencils, delete, activate, and add tiles. Off by default so your normal browsing matches what runners see.</p></div>
+  </div>
+</div>
+
+<div class="phones">
+  <!-- A: always-on -->
+  <div class="phone">
+    <h4>A · Always-on inline</h4>
+    <div class="daylabel">TUE <span style="color:#a7adb8;font-weight:600">Jan 20</span><span class="rule"></span></div>
+
+    <div class="card">
+      <div class="time">6:30<br><span style="font-weight:600;color:#9ca3af;font-size:11px">am</span></div>
+      <div class="mid"><div class="nm">TigerWolves</div><div class="loc">Tom Stofka Garden</div><span class="badge b-live">LIVE</span></div>
+      <div class="pencil">✎</div>
+      <div class="join j-live">Joined ✓</div>
+    </div>
+
+    <div class="card">
+      <div class="time">7:00<br><span style="font-weight:600;color:#9ca3af;font-size:11px">am</span></div>
+      <div class="mid"><div class="nm">Bushwick Run</div><div class="loc">Maria Hernandez Park</div><span class="badge b-unc">UNCLAIMED</span></div>
+      <div class="pencil">✎</div>
+      <div class="activate">Activate →</div>
+    </div>
+
+    <div class="card">
+      <div class="time">7:30<br><span style="font-weight:600;color:#9ca3af;font-size:11px">pm</span></div>
+      <div class="mid"><div class="nm">Night Tempo (TNT)</div><div class="loc">McCarren Park</div><span class="badge b-draft">DRAFT</span></div>
+      <div class="pencil">✎</div>
+      <div class="join j-draft">Setup</div>
+    </div>
+
+    <div class="addtile">+ Add a Tuesday run</div>
+  </div>
+
+  <!-- B: edit-mode toggle -->
+  <div class="phone">
+    <h4>B · "Manage" toggle (shown ON)</h4>
+    <div class="toggle"><span>⚙ Manage runs</span><span class="sw"></span></div>
+    <div class="daylabel">TUE <span style="color:#a7adb8;font-weight:600">Jan 20</span><span class="rule"></span></div>
+
+    <div class="card" style="border-color:#fdba74;">
+      <div class="time">6:30<br><span style="font-weight:600;color:#9ca3af;font-size:11px">am</span></div>
+      <div class="mid"><div class="nm">TigerWolves</div><div class="loc">Tom Stofka Garden</div><span class="badge b-live">LIVE</span></div>
+      <div class="pencil">✎</div>
+      <div class="pencil" style="color:#dc2626;border-color:#fecaca">🗑</div>
+    </div>
+
+    <div class="card" style="border-color:#fdba74;">
+      <div class="time">7:00<br><span style="font-weight:600;color:#9ca3af;font-size:11px">am</span></div>
+      <div class="mid"><div class="nm">Bushwick Run</div><div class="loc">Maria Hernandez Park</div><span class="badge b-unc">UNCLAIMED</span></div>
+      <div class="pencil">✎</div>
+      <div class="pencil" style="color:#dc2626;border-color:#fecaca">🗑</div>
+    </div>
+
+    <div class="addtile" style="border-color:#fdba74;color:#c2410c;">+ Add a Tuesday run</div>
+    <div class="caption">Flip the switch off → this exact screen becomes the clean public view, no controls visible.</div>
+  </div>
+</div>
+
+<p class="caption" style="max-width:600px;margin:16px auto 0;">Either way, editing a card opens a small drawer (name · day · time · location · distance · category). "Activate" is the unclaimed → draft step. Click A or B, or tell me in the terminal — and say if any control is missing.</p>

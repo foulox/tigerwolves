@@ -1,0 +1,86 @@
+<h2>Where does "Add run" live?</h2>
+<p class="subtitle">No more per-day dashed tiles. One discoverable, admin-only "Add run" affordance. It's a rare action, so it should be easy to find but not dominate the screen. Three placements — the day list underneath is identical in all three.</p>
+
+<style>
+  .phones { display:flex; gap:24px; flex-wrap:wrap; justify-content:center; }
+  .phone { width:300px; border:1px solid #d7dbe3; border-radius:26px; background:#fbfbfc; box-shadow:0 2px 10px rgba(17,24,39,.06); overflow:hidden; position:relative; }
+  .phone h4 { text-align:center; margin:12px 0 4px; font-size:12.5px; letter-spacing:.04em; text-transform:uppercase; color:#6b7280; }
+  .hdr { background:#fff; border-bottom:1px solid #eef0f3; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; }
+  .hdr .title { font-size:17px; font-weight:800; color:#111827; }
+  .hdr .addbtn { font-size:12px; font-weight:800; color:#c2410c; background:#fff7ed; border:1px solid #fdba74; border-radius:999px; padding:6px 12px; }
+  .body { padding:12px 12px 20px; position:relative; min-height:340px; }
+  .addbar { display:flex; align-items:center; justify-content:center; gap:7px; background:#111827; color:#fff; border-radius:12px; padding:11px; font-size:13px; font-weight:800; margin-bottom:14px; }
+  .daylabel { font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#374151; font-size:11px; display:flex; align-items:center; gap:8px; margin:10px 2px 8px; }
+  .daylabel .rule { flex:1; height:1px; background:#e8eaef; }
+  .card { background:#fff; border:1px solid #eef0f3; border-radius:14px; padding:10px 11px; display:flex; gap:10px; align-items:center; box-shadow:0 1px 3px rgba(17,24,39,.04); margin-bottom:8px; }
+  .card .time { width:48px; flex-shrink:0; font-weight:800; font-size:12px; color:#111827; }
+  .card .mid { flex:1; min-width:0; }
+  .card .nm { font-weight:700; font-size:13px; color:#111827; }
+  .card .loc { font-size:11px; color:#8b93a1; margin-top:1px; }
+  .badge { display:inline-block; font-size:8px; font-weight:800; letter-spacing:.05em; padding:2px 6px; border-radius:999px; margin-top:4px; }
+  .b-live { background:#dcfce7; color:#166534; }
+  .b-unc { background:#eef0f3; color:#9ca3af; }
+  .pencil { flex-shrink:0; width:26px; height:26px; border-radius:999px; border:1px solid #d7dbe3; background:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; color:#6b7280; }
+  .fab { position:absolute; right:16px; bottom:16px; width:52px; height:52px; border-radius:999px; background:#f97316; color:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:400; box-shadow:0 4px 12px rgba(249,115,22,.4); }
+  .note { font-size:11px; color:#9ca3af; text-align:center; padding:0 14px 12px; line-height:1.4; }
+</style>
+
+<div class="options" style="max-width:900px;margin:0 auto 18px;">
+  <div class="option" data-choice="header" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content"><h3>Header button</h3><p>Small "+ Add run" pill in the top bar next to the title. Clean, tucked with the other page-level controls, reads as "admin tools." Rare action → doesn't float over content.</p></div>
+  </div>
+  <div class="option" data-choice="topbar" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content"><h3>Pinned bar under filters</h3><p>A full-width "+ Add run" bar just above the day list. Most obvious of the three — impossible to miss — but takes a permanent stripe of vertical space up top.</p></div>
+  </div>
+  <div class="option" data-choice="fab" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content"><h3>Floating action button</h3><p>Round "+" pinned bottom-right, standard mobile pattern. Always reachable while scrolling, never scrolls away — but floats over cards and can cover content.</p></div>
+  </div>
+</div>
+
+<div class="phones">
+  <!-- A header -->
+  <div class="phone">
+    <h4>A · Header button</h4>
+    <div class="hdr"><span class="title">All Runs</span><span class="addbtn">+ Add run</span></div>
+    <div class="body">
+      <div class="daylabel">TUE<span class="rule"></span></div>
+      <div class="card"><div class="time">6:30a</div><div class="mid"><div class="nm">TigerWolves</div><div class="loc">Tom Stofka Garden</div><span class="badge b-live">LIVE</span></div><div class="pencil">✎</div></div>
+      <div class="card"><div class="time">7:00a</div><div class="mid"><div class="nm">Bushwick Run</div><div class="loc">Maria Hernandez Park</div><span class="badge b-unc">UNCLAIMED</span></div><div class="pencil">✎</div></div>
+      <div class="daylabel">WED<span class="rule"></span></div>
+      <div class="card"><div class="time">6:00a</div><div class="mid"><div class="nm">Mourning Doves</div><div class="loc">Tom Stofka Garden</div><span class="badge b-unc">UNCLAIMED</span></div><div class="pencil">✎</div></div>
+    </div>
+  </div>
+
+  <!-- B pinned bar -->
+  <div class="phone">
+    <h4>B · Pinned bar</h4>
+    <div class="hdr"><span class="title">All Runs</span></div>
+    <div class="body">
+      <div class="addbar">+ Add run</div>
+      <div class="daylabel">TUE<span class="rule"></span></div>
+      <div class="card"><div class="time">6:30a</div><div class="mid"><div class="nm">TigerWolves</div><div class="loc">Tom Stofka Garden</div><span class="badge b-live">LIVE</span></div><div class="pencil">✎</div></div>
+      <div class="card"><div class="time">7:00a</div><div class="mid"><div class="nm">Bushwick Run</div><div class="loc">Maria Hernandez Park</div><span class="badge b-unc">UNCLAIMED</span></div><div class="pencil">✎</div></div>
+      <div class="daylabel">WED<span class="rule"></span></div>
+      <div class="card"><div class="time">6:00a</div><div class="mid"><div class="nm">Mourning Doves</div><div class="loc">Tom Stofka Garden</div><span class="badge b-unc">UNCLAIMED</span></div><div class="pencil">✎</div></div>
+    </div>
+  </div>
+
+  <!-- C fab -->
+  <div class="phone">
+    <h4>C · Floating button</h4>
+    <div class="hdr"><span class="title">All Runs</span></div>
+    <div class="body">
+      <div class="daylabel">TUE<span class="rule"></span></div>
+      <div class="card"><div class="time">6:30a</div><div class="mid"><div class="nm">TigerWolves</div><div class="loc">Tom Stofka Garden</div><span class="badge b-live">LIVE</span></div><div class="pencil">✎</div></div>
+      <div class="card"><div class="time">7:00a</div><div class="mid"><div class="nm">Bushwick Run</div><div class="loc">Maria Hernandez Park</div><span class="badge b-unc">UNCLAIMED</span></div><div class="pencil">✎</div></div>
+      <div class="daylabel">WED<span class="rule"></span></div>
+      <div class="card"><div class="time">6:00a</div><div class="mid"><div class="nm">Mourning Doves</div><div class="loc">Tom Stofka Garden</div><span class="badge b-unc">UNCLAIMED</span></div><div class="pencil">✎</div></div>
+      <div class="fab">+</div>
+    </div>
+  </div>
+</div>
+
+<p class="note" style="font-size:12px;color:#6b7280;max-width:600px;margin:12px auto 0;">In all three, tapping "Add run" opens a drawer where you pick the day + fill details — the run isn't tied to where the button sits. Pick A, B, or C, or tell me in the terminal.</p>
