@@ -17,7 +17,7 @@ vi.mock('next/cache', async importOriginal => {
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn(), captureMessage: vi.fn() }))
 
 import { currentUser } from '@clerk/nextjs/server'
-import { sql, getRunLibraryFamilyIds, dbAdoptRoute, dbUnadoptRoute, leaderLeadsRun } from '../lib/db'
+import { sql, getRunLibraryFamilyIds, dbAdoptRoute, dbUnadoptRoute, leaderLeadsRun, dbRegroupVariants } from '../lib/db'
 import { adoptRoute, unadoptRoute } from '../app/actions'
 
 const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
@@ -181,5 +181,56 @@ describe.skipIf(!onStaging)('adopt / un-adopt membership (staging, AC2/AC4/AC8/A
     const [fam] = await sql`SELECT 1 FROM workout_families WHERE id = ${familyId}`
     expect(fam).toBeTruthy()
     await dbUnadoptRoute(RUN_A, familyId)
+  })
+})
+
+describe.skipIf(!onStaging)('regroup inherits library membership (#404 review)', () => {
+  // Regressions the CI e2e caught: dbRegroupVariants creates a NEW family, and under
+  // the membership model that family had no run_workouts row → the merged workout
+  // vanished from every run's "Your run." It must inherit membership from its sources.
+  const RUN = 'test-regroup-404'
+  let groupId: number
+  let famA: number, famB: number, vA: number, vB: number
+
+  beforeAll(async () => {
+    const existing = await sql`SELECT id FROM run_groups WHERE name = ${'Regroup Test 404'}`
+    groupId = existing.length > 0
+      ? (existing[0].id as number)
+      : ((await sql`INSERT INTO run_groups (name, venue, default_location) VALUES ('Regroup Test 404','road','t') RETURNING id`)[0].id as number)
+    await sql`INSERT INTO runs (id, name) VALUES (${RUN}, 'Regroup Run') ON CONFLICT (id) DO NOTHING`
+    const [a] = await sql`INSERT INTO workout_families (name, category, type, reason, author, run_group_id) VALUES ('Regroup A','Quality','Interval','t','t',${groupId}) RETURNING id`
+    const [b] = await sql`INSERT INTO workout_families (name, category, type, reason, author, run_group_id) VALUES ('Regroup B','Quality','Interval','t','t',${groupId}) RETURNING id`
+    famA = a.id as number; famB = b.id as number
+    vA = (await sql`INSERT INTO workout_variants (family_id, label, sort_order, raw_input, has_turnaround, turnaround, flagged, flag_note) VALUES (${famA}, NULL, NULL, 'a', false, '', false, '') RETURNING id`)[0].id as number
+    vB = (await sql`INSERT INTO workout_variants (family_id, label, sort_order, raw_input, has_turnaround, turnaround, flagged, flag_note) VALUES (${famB}, NULL, NULL, 'b', false, '', false, '') RETURNING id`)[0].id as number
+    // RUN's library holds both source families.
+    await dbAdoptRoute(RUN, famA)
+    await dbAdoptRoute(RUN, famB)
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM run_workouts WHERE run_id = ${RUN}`
+    await sql`DELETE FROM workout_variants WHERE family_id IN (${famA}, ${famB})`
+    await sql`DELETE FROM workout_families WHERE run_group_id = ${groupId}`
+    await sql`DELETE FROM runs WHERE id = ${RUN}`
+    await sql`DELETE FROM run_groups WHERE id = ${groupId}`
+  })
+
+  test('the merged family lands in the run’s library (membership inherited from sources)', async () => {
+    await dbRegroupVariants('Regroup Merged 404', [
+      { variantId: vA, label: 'Short', sortOrder: 1 },
+      { variantId: vB, label: 'Long', sortOrder: 2 },
+    ])
+    const [merged] = await sql`SELECT id FROM workout_families WHERE name = 'Regroup Merged 404'`
+    expect(merged).toBeTruthy()
+    const mergedId = merged.id as number
+    // The new family is in RUN's library; the emptied source families are gone.
+    expect(await getRunLibraryFamilyIds(RUN)).toContain(mergedId)
+    const srcRows = await sql`SELECT 1 FROM workout_families WHERE id IN (${famA}, ${famB})`
+    expect(srcRows.length).toBe(0)
+    // cleanup the merged family + its membership (afterAll's group delete also catches it)
+    await sql`DELETE FROM run_workouts WHERE family_id = ${mergedId}`
+    await sql`DELETE FROM workout_variants WHERE family_id = ${mergedId}`
+    await sql`DELETE FROM workout_families WHERE id = ${mergedId}`
   })
 })

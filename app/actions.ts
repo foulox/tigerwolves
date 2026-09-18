@@ -212,7 +212,12 @@ export async function regroupFamily(
 
 export async function addWorkout(formData: FormData) {
   const userId = await requireAuth()
-  await dbInsertWorkoutVariant(buildWorkoutVariantInput(formData))
+  const { familyId } = await dbInsertWorkoutVariant(buildWorkoutVariantInput(formData))
+  // #404: the creating run auto-joins its own library — a brand-new route must appear
+  // in "Your run," not only "All runs." Membership is the single visibility source now,
+  // so without this the workout would be invisible to the run that just created it.
+  const run = await getLeaderRun(userId)
+  if (run) await dbAdoptRoute(run.id, familyId)
   revalidateAll()
   await captureServerEvent('workout_added', userId, { isVariation: false, isLeader: true })
   redirect('/library')

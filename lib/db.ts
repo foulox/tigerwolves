@@ -554,6 +554,19 @@ export async function dbRegroupVariants(
     `
   }
 
+  // #404: the merged family inherits library membership from every source family, so a
+  // regroup never drops the workout out of any run's "Your run." Must run BEFORE the
+  // orphan cleanup below — deleting an empty source family CASCADE-removes its
+  // run_workouts rows, so we copy them onto the new family first. ON CONFLICT keeps it
+  // idempotent when two source families shared a run.
+  for (const familyId of sourceFamilyIds) {
+    await sql`
+      INSERT INTO run_workouts (run_id, family_id)
+      SELECT run_id, ${newFamilyId} FROM run_workouts WHERE family_id = ${familyId}
+      ON CONFLICT (run_id, family_id) DO NOTHING
+    `
+  }
+
   // Clean up any source families left with zero variants after the move —
   // same orphan-family rule as dbDeleteWorkoutVariant.
   for (const familyId of sourceFamilyIds) {
