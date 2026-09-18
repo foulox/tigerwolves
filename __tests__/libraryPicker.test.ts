@@ -4,7 +4,7 @@ import type { WorkoutVariantRow, RunConfig } from '../lib/data'
 
 // Minimal variant fixture helper — only fields the function reads are set.
 function makeVariant(
-  overrides: Pick<WorkoutVariantRow, 'id' | 'familyId' | 'name' | 'label' | 'sortOrder' | 'category' | 'type'>,
+  overrides: Pick<WorkoutVariantRow, 'id' | 'familyId' | 'name' | 'label' | 'sortOrder' | 'category' | 'type' | 'runGroupId'>,
 ): WorkoutVariantRow {
   return {
     reason: '',
@@ -22,7 +22,6 @@ function makeVariant(
     turnaround: '',
     flagged: false,
     flagNote: '',
-    runGroupId: null,
     lastRan: null,
     ...overrides,
   }
@@ -47,32 +46,39 @@ const workoutConfig: RunConfig = {
   postTemplate: null,
 }
 
-const longConfig: RunConfig = {
+// A config with no reconciled group (legacy) — exercises the category fallback.
+const legacyConfig: RunConfig = {
   ...workoutConfig,
-  kind: 'Long',
-  workoutTypes: [],
+  runGroupId: null,
 }
 
-// Shared mixed-category variants used across tests.
-const qualityVariantA = makeVariant({ id: 1, familyId: 10, name: 'Tempo Ladder', label: 'Standard', sortOrder: 1, category: 'Quality', type: 'Ladder' })
-const qualityVariantB = makeVariant({ id: 2, familyId: 10, name: 'Tempo Ladder', label: 'Longer',   sortOrder: 2, category: 'Quality', type: 'Ladder' })
-const qualityVariantC = makeVariant({ id: 3, familyId: 20, name: 'Track Repeats', label: null,      sortOrder: 1, category: 'Quality', type: 'Hills'  })
-const longVariantA    = makeVariant({ id: 4, familyId: 30, name: 'Long Easy', label: null,           sortOrder: 1, category: 'Long',    type: 'Long'   })
+// Group 1 = this run's own workouts (families 10, 20, 30 — spans Quality AND Long).
+const g1LadderA = makeVariant({ id: 1, familyId: 10, name: 'Tempo Ladder', label: 'Standard', sortOrder: 1, category: 'Quality', type: 'Ladder', runGroupId: 1 })
+const g1LadderB = makeVariant({ id: 2, familyId: 10, name: 'Tempo Ladder', label: 'Longer',   sortOrder: 2, category: 'Quality', type: 'Ladder', runGroupId: 1 })
+const g1Hills   = makeVariant({ id: 3, familyId: 20, name: 'Track Repeats', label: null,       sortOrder: 1, category: 'Quality', type: 'Hills',  runGroupId: 1 })
+const g1Long    = makeVariant({ id: 4, familyId: 30, name: 'Long Easy',     label: null,       sortOrder: 1, category: 'Long',    type: 'Long',   runGroupId: 1 })
+// Group 2 = ANOTHER run's workout — same Quality category, different owner.
+const g2Quality = makeVariant({ id: 5, familyId: 40, name: 'Other Run Tempo', label: null,     sortOrder: 1, category: 'Quality', type: 'Straight Tempo', runGroupId: 2 })
 
-const mixedVariants = [qualityVariantA, qualityVariantB, qualityVariantC, longVariantA]
+const mixedVariants = [g1LadderA, g1LadderB, g1Hills, g1Long, g2Quality]
 
 describe('pickerRecordsForRun', () => {
-  test('type filter — Workout run returns only Quality families; Long run returns only Long families', () => {
-    const qualityRecords = pickerRecordsForRun(mixedVariants, workoutConfig)
-    expect(qualityRecords.every(r => r.variants.every(v => v.category === 'Quality'))).toBe(true)
-    expect(qualityRecords.map(r => r.familyId)).toEqual(expect.arrayContaining([10, 20]))
-    expect(qualityRecords.map(r => r.familyId)).not.toContain(30)
+  test('group scoping — returns only families owned by the run\'s group, across categories', () => {
+    const records = pickerRecordsForRun(mixedVariants, workoutConfig) // runGroupId = 1
+    const familyIds = records.map(r => r.familyId).sort((a, b) => a - b)
+    // All of group 1's families — including the Long family (group scope ignores category)…
+    expect(familyIds).toEqual([10, 20, 30])
+    // …and NOT the other run's Quality workout, even though it shares the category.
+    expect(familyIds).not.toContain(40)
+    expect(records.every(r => r.variants.every(v => v.runGroupId === 1))).toBe(true)
+  })
 
-    const longRecords = pickerRecordsForRun(mixedVariants, longConfig)
-    expect(longRecords.map(r => r.familyId)).toEqual([30])
-    expect(longRecords.every(r => r.variants.every(v => v.category === 'Long'))).toBe(true)
-    expect(longRecords.map(r => r.familyId)).not.toContain(10)
-    expect(longRecords.map(r => r.familyId)).not.toContain(20)
+  test('legacy fallback — a run with no group falls back to category scoping', () => {
+    const records = pickerRecordsForRun(mixedVariants, legacyConfig) // runGroupId = null, kind Workout → Quality
+    const familyIds = records.map(r => r.familyId).sort((a, b) => a - b)
+    // Every Quality family regardless of owner (10, 20, 40); the Long family (30) is excluded.
+    expect(familyIds).toEqual([10, 20, 40])
+    expect(records.every(r => r.variants.every(v => v.category === 'Quality'))).toBe(true)
   })
 
   test('family collapse + order — two variants in same family collapse to ONE PickerRecord with Standard→Longer order', () => {

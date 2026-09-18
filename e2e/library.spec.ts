@@ -1,32 +1,30 @@
 import { test, expect } from '@playwright/test'
 
-test('Library "Your run" mode shows only the 6 Quality-category fixtures (kind→category scoping, #347)', async ({ page }) => {
+test('Library "Your run" mode shows only the run\'s own workouts across categories (run_group scoping, #401 AC1)', async ({ page }) => {
   await page.goto('/library')
   await page.waitForLoadState('load')
 
-  // Default view is "Your run" mode: TigerWolves is kind=Workout → category=Quality.
-  // The category selector is hidden in this mode (category is pinned to Quality).
+  // Default view is "Your run" mode: every workout owned by the TigerWolves
+  // run_group, ACROSS categories (Quality + the Easy/Long fixtures TW owns). The
+  // category selector is available in this mode to narrow further. The 8 count is
+  // the 7 TigerWolves-owned families (McCarren Loop Repeats contributes 2 variant rows).
   const countEl = page.locator('p').filter({ hasText: /workouts · oldest first/ })
-  await expect(countEl).toHaveText('6 workouts · oldest first')
+  await expect(countEl).toHaveText('8 workouts · oldest first')
 
   await expect(page.getByText('Yasso 800s')).toBeVisible()
   await expect(page.getByText('Fort Greene Hills')).toBeVisible()
   await expect(page.getByText('Prospect Park Tempo')).toBeVisible()
   await expect(page.getByText('Track Ladder 400-800-1200')).toBeVisible()
+  // TigerWolves owns these Easy/Long fixtures too — now visible in "Your run" (group scope, not category).
+  await expect(page.getByText('Easy Recovery Run')).toBeVisible()
+  await expect(page.getByText('Long Run — Progressive')).toBeVisible()
 
-  // Easy/Long are TigerWolves-owned but non-Quality — not visible in "Your run" mode.
-  // They are reachable via "All runs" (verified in the next test — AC4).
-  await expect(page.getByText('Easy Recovery Run')).toHaveCount(0)
-  await expect(page.getByText('Long Run — Progressive')).toHaveCount(0)
-
-  // The 6 count includes the two McCarren Loop Repeats variant rows (also Quality),
-  // but their NAME is intentionally not asserted here: admin.spec.ts's regroup test
-  // renames them in place, and since these specs share one seeded suite run (not
-  // reset per test), a name assertion here would be order-dependent. So they are
-  // counted, just not named.
+  // Another run's workout (MMER owns "McCarren Easy Loop") is NOT visible in "Your
+  // run" — the core of per-run scoping. It's reachable via "All runs" (next test — AC2).
+  await expect(page.getByText('McCarren Easy Loop')).toHaveCount(0)
 })
 
-test('Library "All runs" mode reveals the full shared catalog incl. other runs, and the category filter narrows to Quality (#347)', async ({ page }) => {
+test('Library "All runs" mode reveals the full shared catalog incl. other runs, and the category filter narrows to Quality (#401 AC2)', async ({ page }) => {
   await page.goto('/library')
   await page.waitForLoadState('load')
 
@@ -103,9 +101,11 @@ test('Add variation: a new variation shows up immediately in Library AND on Plan
   const familyCard = page.locator('.bg-white.rounded-2xl', { hasText: 'Prospect Park Tempo' })
   await expect(familyCard.getByText('2 versions')).toBeVisible()
 
-  // Schedule's browse picker searches the full library regardless of the scheduled
-  // week's workout type — proves the new variant is visible there too, not just
-  // in the Library (the other half of the addWorkout/addVariation split-brain).
+  // Schedule's browse picker searches this run's own library regardless of the
+  // scheduled week's workout type — Prospect Park Tempo is a TigerWolves-owned
+  // workout, so the new variant is visible there too, not just in the Library
+  // (the other half of the addWorkout/addVariation split-brain). Post-#401 the
+  // picker is run_group-scoped, and this workout is in the run's own group.
   await page.goto('/schedule?week=0')
   await page.waitForLoadState('load')
   const browseTab = page.getByRole('button', { name: 'Change workout', exact: true })

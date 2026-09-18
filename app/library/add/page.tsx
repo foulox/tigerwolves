@@ -1,10 +1,10 @@
-import { fetchData } from '@/lib/db'
+import { fetchData, getLeaderRunGroups, getLeaderRun } from '@/lib/db'
 import AddWorkoutForm from '@/components/AddWorkoutForm'
 import AddVariationForm from '@/components/AddVariationForm'
 import { requireLeaderPage } from '@/lib/requireLeaderPage'
 
 export default async function AddWorkoutPage({ searchParams }: { searchParams: Promise<{ parent?: string }> }) {
-  await requireLeaderPage() // #337: route-level leader gate in front of the write actions
+  const user = await requireLeaderPage() // #337: route-level leader gate in front of the write actions
   const { parent } = await searchParams
 
   if (parent) {
@@ -26,5 +26,19 @@ export default async function AddWorkoutPage({ searchParams }: { searchParams: P
   const existingFamilies = Array.from(
     new Map(workoutVariants.map(w => [w.familyId, w.name])).entries(),
   ).map(([familyId, name]) => ({ familyId, name }))
-  return <AddWorkoutForm existingFamilies={existingFamilies} />
+
+  // #401 (Story A): the owner picker offers ONLY groups this leader is authorized
+  // for (the groups of the runs they lead) — never fetchRunGroups() wholesale, which
+  // reintroduces the 96fcb3e regression of surfacing unrelated runs' groups. The new
+  // workout defaults to the leader's own run's group.
+  const authorizedGroups = await getLeaderRunGroups(user.id)
+  const leaderRun = await getLeaderRun(user.id)
+  const defaultGroupId = leaderRun?.runGroupId ?? authorizedGroups[0]?.id ?? null
+  return (
+    <AddWorkoutForm
+      existingFamilies={existingFamilies}
+      authorizedGroups={authorizedGroups}
+      defaultGroupId={defaultGroupId}
+    />
+  )
 }

@@ -10,7 +10,7 @@ import ReactionPicker from '@/components/ReactionPicker'
 import WorkoutFlagSheet, { FlagBadge } from '@/components/WorkoutFlagSheet'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
-import { resolveAllowedTypes, kindToCategory } from '@/lib/runProfile'
+import { resolveAllowedTypes } from '@/lib/runProfile'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -33,10 +33,12 @@ type DisplayRow = StandaloneRow | FamilyRow
 // Reads workout_variants/workout_families (#277) — replaces the legacy
 // `workouts`-typed version. Family grouping mirrors ScheduleClient's own
 // familyId-based grouping (#276) rather than the old name-string grouping.
-// #347: `variants` is the full shared catalog. "Your run" mode scopes it to the
-// run's category (kindToCategory(runKind)) and hides the category selector;
-// "All runs" browses the whole catalog. See visibleVariants/effectiveCategory below.
-export default function LibraryClient({ variants, isLeader, voteData = {}, runId, allowedTypes, runKind }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runKind?: string }) {
+// #401 (Story A): `variants` is the full shared catalog. "Your run" mode scopes it
+// to the run's OWN workouts (run_group_id === runGroupId); "All runs" browses the
+// whole catalog. The category/type/race filters apply within whichever scope is
+// active — the category selector is available in both modes now (a run's group can
+// span categories). See visibleVariants below.
+export default function LibraryClient({ variants, isLeader, voteData = {}, runId, allowedTypes, runGroupId }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runGroupId?: number | null }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [raceFilter, setRaceFilter] = useState<string | null>(null)
@@ -49,19 +51,19 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
 
   const flaggedWorkout = flagSheetFor ? variants.find(w => w.id === flagSheetFor) ?? null : null
 
-  // #347: the server now returns the full shared catalog. "Your run" scopes it
-  // to the run's own category (kind→category); "All runs" browses everything.
-  // A run with no category mapping (Food/unknown) falls back to the full catalog
-  // so the screen is never empty.
-  const runCategory = runKind ? kindToCategory(runKind) : null
+  // #401: "Your run" scopes the shared catalog to the run's OWN workouts by
+  // run_group_id (the ownership FK reactivated in Story A); "All runs" browses
+  // everything. A run not yet reconciled to a group (runGroupId null) falls back
+  // to the full catalog so the screen is never empty (backfill closes this on
+  // production; the fallback covers any run reconciliation hasn't reached).
   const inYourRun = !!runId && !showAllRuns
-  const visibleVariants = inYourRun && runCategory
-    ? variants.filter(w => w.category === runCategory)
+  const visibleVariants = inYourRun && runGroupId != null
+    ? variants.filter(w => w.runGroupId === runGroupId)
     : variants
 
-  // effectiveCategory: in "Your run" mode the category selector is hidden, so
-  // drive filtering off the run's mapped category instead of the category state.
-  const effectiveCategory = inYourRun && runCategory ? runCategory : category
+  // The category selector is available in both modes now, so filtering is driven
+  // by the category state directly (no per-run pinning).
+  const effectiveCategory = category
 
   const q = search.toLowerCase()
   function matchesSearch(w: WorkoutVariantRow) {
@@ -134,10 +136,8 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
   // exist in the other. Reset the type filter on toggle — same as setcat does on
   // category change — so a stale filter can't silently empty the list with no
   // visible pill to clear it.
-  // #347: also reset the category. In "Your run" mode the category selector is
-  // hidden and category is pinned via effectiveCategory, so a category picked in
-  // "All runs" would otherwise persist (invisibly) and silently re-narrow the list
-  // on the way back. Clearing it on every toggle keeps the two modes independent.
+  // #401: also reset the category on toggle so the two scopes stay independent —
+  // a category narrowed under one scope shouldn't silently carry into the other.
   function setScope(all: boolean) {
     setShowAllRuns(all)
     setTypeFilter(null)
@@ -252,15 +252,13 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
         </div>
       </div>
 
-      {/* Category filter — hidden in "Your run" mode when the run has a mapped category */}
-      {!(inYourRun && runCategory) && (
-        <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-          <button onClick={() => setcat(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!category ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All</button>
-          {CATEGORIES.map(c => (
-            <button key={c} onClick={() => setcat(category === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${category === c ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{c}</button>
-          ))}
-        </div>
-      )}
+      {/* Category filter — available in both "Your run" and "All runs" modes (#401) */}
+      <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
+        <button onClick={() => setcat(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!category ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All</button>
+        {CATEGORIES.map(c => (
+          <button key={c} onClick={() => setcat(category === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${category === c ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{c}</button>
+        ))}
+      </div>
 
       {/* Race type filter */}
       <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>

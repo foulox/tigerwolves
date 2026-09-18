@@ -98,6 +98,11 @@ describe.skipIf(!onStaging)('createRun staging persistence', () => {
     // that wasn't tracked (e.g. a test left early).
     await sql`DELETE FROM runs WHERE id LIKE ${PREFIX + '%'}`
     await sql`DELETE FROM runs WHERE id LIKE ${'mourning-doves-349%'}`
+    // #401: createRun now reconciles each run to a run_group named after the run.
+    // Delete those groups AFTER the runs (runs FK them via run_group_id). Group
+    // names equal the run display names, so sweep by the same distinctive prefixes.
+    await sql`DELETE FROM run_groups WHERE name LIKE ${PREFIX + '%'}`
+    await sql`DELETE FROM run_groups WHERE name LIKE ${'Mourning Doves 349%'}`
   })
 
   test('admin creates a run — returns runId, getRunById round-trips fields', async () => {
@@ -128,10 +133,11 @@ describe.skipIf(!onStaging)('createRun staging persistence', () => {
     expect(run!.status).toBe('draft')
   })
 
-  test('run_group_id is NULL and zero workout_families rows reference it', async () => {
+  test('#401: a created run is reconciled to a run_group (run_group_id NOT NULL) named after the run', async () => {
+    const runName = `${PREFIX}-group`
     const res = await createRun({
       identity: {
-        name: `${PREFIX}-nullgroup`,
+        name: runName,
         dayOfWeek: 'Thursday',
         emoji: '🐢',
         meetingTime: '6:30am',
@@ -144,17 +150,15 @@ describe.skipIf(!onStaging)('createRun staging persistence', () => {
     expect(res.runId).toBeTruthy()
     createdIds.push(res.runId!)
 
+    // AC7: a run created via the app must own a run_group (its library is scoped by
+    // run_group_id, so a NULL owner would leave "Your run" empty). insertRun reconciles
+    // it to a group keyed by the run's name.
     const created = await getRunById(res.runId!)
-    // AC4: a new run gets no run_group and no seeded workout_families —
-    // it inherits the shared catalog by kind/type (fetchWorkoutVariants no longer scopes by run_group_id, #347).
-    expect(created?.runGroupId).toBeNull()
-    // workout_families link to a run only via run_group_id; a NULL group means zero families are scoped to this run.
-    const families = await sql`
-      SELECT 1 FROM workout_families wf
-      JOIN runs r ON r.run_group_id = wf.run_group_id
-      WHERE r.id = ${res.runId!}
-    `
-    expect(families.length).toBe(0)
+    expect(created?.runGroupId).not.toBeNull()
+
+    const [group] = await sql`SELECT id, name FROM run_groups WHERE id = ${created!.runGroupId!}`
+    expect(group).toBeDefined()
+    expect(group.name).toBe(runName)
   })
 
   test("slug from 'Mourning Doves …' name → runId starts 'mourning-doves'", async () => {

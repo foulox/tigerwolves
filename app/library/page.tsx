@@ -27,12 +27,15 @@ export default async function LibraryPage() {
     postTemplate: null,
   }
   const runConfig = (user && isLeader ? await getLeaderRun(user.id) : null) ?? tigerWolvesConfig
-  const workoutVariants = await fetchWorkoutVariants(isLeader ? runConfig.id : undefined)
+  // #401: fetch the FULL shared catalog (no runId scoping) so the "All runs" escape
+  // hatch can browse everything. "Your run" scoping is applied client-side by
+  // runGroupId in LibraryClient — the read that AC1/AC2 turn on.
+  const workoutVariants = await fetchWorkoutVariants()
   const voteData = await getVoteData(workoutVariants.map(w => workoutVoteId(w.name, w.label ?? '')))
   return (
     <div>
       <Header title="Library" isLeader={isLeader} />
-      <LibraryClient variants={workoutVariants} isLeader={isLeader} voteData={voteData} runId={runConfig.id} allowedTypes={runConfig.workoutTypes} runKind={runConfig.kind} />
+      <LibraryClient variants={workoutVariants} isLeader={isLeader} voteData={voteData} runId={runConfig.id} allowedTypes={runConfig.workoutTypes} runGroupId={runConfig.runGroupId} />
     </div>
   )
 }

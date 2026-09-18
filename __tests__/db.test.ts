@@ -5,7 +5,7 @@ import {
   dbAddWorkoutVariant, dbDeleteWorkoutVariant, dbFlagWorkoutVariant,
   dbFixWorkoutVariantAndClearFlag, dbRegroupVariants,
   getLeaderRun, getRunRoster, fetchWorkoutVariants, generateScheduleHorizon,
-  getDirectoryRuns,
+  getDirectoryRuns, getLeaderRunGroups, resolveOrCreateRunGroup,
 } from '../lib/db'
 import type { DirectoryRun } from '../lib/db'
 import { resolveWorkoutType } from '../lib/cycle'
@@ -482,16 +482,16 @@ describe.skipIf(!onStaging)('getRunRoster', () => {
   })
 })
 
-// #318 per-run profile foundation: kind + workout-type allowlist columns on `runs`,
-// and the run↔run_group reconciliation. #318 originally used runs.run_group_id as an
-// FK to scope fetchWorkoutVariants; #347 retired that read filter (the reads below now
-// assert the full shared catalog, not FK-scoped), but the kind/workout_types columns
-// and the run_group_id column itself remain and are still exercised here.
+// #318 per-run profile foundation + #401 (Story A) per-run library scoping.
+// #318 gave runs.run_group_id as a real FK; #347 made it dormant (shared catalog);
+// #401 REACTIVATED it as the read scope — fetchWorkoutVariants(runId) returns only
+// the run's group's families. These assert that scoping plus the kind/workout_types
+// columns from #318.
 // Guarded skipIf(!onStaging) for the same reason as the #310 tests above: these depend
-// on the migration + TigerWolves seed, which are only guaranteed on staging (CI) — a
+// on the migration + TigerWolves/MMER seed, which are only guaranteed on staging (CI) — a
 // local run points at un-migrated production (.env.local), where the new columns don't
 // exist yet (production migration timing is Lou's call, not part of this story's gate).
-describe.skipIf(!onStaging)('#318 per-run profile foundation', () => {
+describe.skipIf(!onStaging)('#318 per-run profile + #401 per-run library scoping', () => {
   const TW_TYPES = ['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold']
 
   it('runs table has kind, workout_types, run_group_id columns', async () => {
@@ -514,22 +514,168 @@ describe.skipIf(!onStaging)('#318 per-run profile foundation', () => {
     expect(tw.run_group_id).toBe(group.id)
   })
 
-  it("fetchWorkoutVariants('tigerwolves') now returns the full shared catalog, including other runs' families (not group-scoped)", async () => {
+  it("fetchWorkoutVariants('tigerwolves') is group-scoped — only TigerWolves-owned families, excludes other runs' (#401 AC1/AC3)", async () => {
     const [group] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
     const tigerWolvesId = group.id as number
     const variants = await fetchWorkoutVariants('tigerwolves')
     expect(variants.length).toBeGreaterThan(0)
-    // MMER's McCarren Easy Loop is seeded with run_group_id = MMER's group (not TW, not null)
-    expect(variants.some(v => v.name === 'McCarren Easy Loop')).toBe(true)
-    // At least one returned variant has a runGroupId that is neither null nor TigerWolves'
-    // — directly proves the read is no longer group-scoped
-    expect(variants.some(v => v.runGroupId !== null && v.runGroupId !== tigerWolvesId)).toBe(true)
+    // Every returned variant is owned by the TigerWolves group — nothing else leaks in.
+    expect(variants.every(v => v.runGroupId === tigerWolvesId)).toBe(true)
+    // MMER's McCarren Easy Loop (owned by MMER's group) must NOT appear in TW's scoped read.
+    expect(variants.some(v => v.name === 'McCarren Easy Loop')).toBe(false)
   })
 
-  it('still returns the seeded TigerWolves Quality families (existing content preserved)', async () => {
+  it('fetchWorkoutVariants() with no run scope returns the full shared catalog — the Library "All runs" read (#401 AC2)', async () => {
+    const all = await fetchWorkoutVariants()
+    // The unscoped read spans groups: it includes MMER's family that the scoped TW read excluded.
+    expect(all.some(v => v.name === 'McCarren Easy Loop')).toBe(true)
+    const distinctGroups = new Set(all.map(v => v.runGroupId).filter(g => g !== null))
+    expect(distinctGroups.size).toBeGreaterThan(1)
+  })
+
+  it('still returns the seeded TigerWolves Quality families under the scoped read (existing content preserved — #401 AC9)', async () => {
     const variants = await fetchWorkoutVariants('tigerwolves')
     expect(variants.some(v => v.category === 'Quality')).toBe(true)
     expect(variants.filter(v => v.category === 'Quality').length).toBeGreaterThan(0)
+  })
+})
+
+// #401 (Story A): the write path persists the chosen owner on create (AC4) and lets
+// an edit reassign it (AC5). Staging-gated (writes); self-seeds against the two
+// seeded groups (TigerWolves, MMER) and cleans up its own family/variant.
+describe.skipIf(!onStaging)('#401 workout ownership write path (AC4/AC5)', () => {
+  const OWN_INPUT = {
+    name: '__test_ownership_401__', category: 'Quality' as const, type: 'Hills' as const,
+    reason: 'ownership fixture', author: null, coachingNotes: null, mapLink: null,
+    instructions: 'WU 10; 5x2min hill; CD 10', distTime: '', energySystem: '', hrZone: '',
+    rpe: '', raceTypes: [], trainingPhases: [], hasTurnaround: false, turnaround: '',
+    label: null, sortOrder: null, runGroupId: null as number | null,
+  }
+  let familyId: number
+  let variantId: number
+
+  afterAll(async () => {
+    if (variantId) await sql`DELETE FROM workout_variants WHERE id = ${variantId}`
+    if (familyId) await sql`DELETE FROM workout_families WHERE id = ${familyId}`
+  })
+
+  it('create persists the chosen run_group_id, and an edit reassigns it', async () => {
+    const [tw] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
+    const [mmer] = await sql`SELECT id FROM run_groups WHERE name = 'MMER'`
+    const groupA = tw.id as number
+    const groupB = mmer.id as number
+
+    // AC4: created with groupA → the family row records it.
+    const res = await dbInsertWorkoutVariant({ ...OWN_INPUT, runGroupId: groupA })
+    familyId = res.familyId
+    variantId = res.variantId
+    const [created] = await sql`SELECT run_group_id FROM workout_families WHERE id = ${familyId}`
+    expect(created.run_group_id).toBe(groupA)
+
+    // AC5: edit to groupB → persisted.
+    await dbUpdateWorkoutVariant(variantId, { ...OWN_INPUT, runGroupId: groupB })
+    const [edited] = await sql`SELECT run_group_id FROM workout_families WHERE id = ${familyId}`
+    expect(edited.run_group_id).toBe(groupB)
+  })
+})
+
+// #401 (Story A): getLeaderRunGroups — the owner-picker authorization boundary. It
+// returns ONLY the run_groups of runs the leader actively leads, never the whole
+// run_groups table (the 96fcb3e regression guard). Staging-gated: depends on the
+// runs/run_leaders/run_groups seed.
+describe.skipIf(!onStaging)('#401 getLeaderRunGroups (owner-picker authorization)', () => {
+  const TEST_CLERK_ID = 'user_401_getleaderrungroups'
+  const TEST_NAME = 'DB Test — getLeaderRunGroups 401'
+
+  beforeAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves' AND name = ${TEST_NAME}`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES ('tigerwolves', ${TEST_NAME}, ${TEST_CLERK_ID}, 998, true)
+    `
+  })
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves' AND name = ${TEST_NAME}`
+  })
+
+  it("returns only the TigerWolves group for a TigerWolves-only leader — never MMER's group", async () => {
+    const groups = await getLeaderRunGroups(TEST_CLERK_ID)
+    const [tw] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
+    expect(groups.map(g => g.id)).toContain(tw.id as number)
+    expect(groups.every(g => g.name === 'TigerWolves')).toBe(true)
+    expect(groups.some(g => g.name === 'MMER')).toBe(false)
+  })
+
+  it('returns an empty array for a clerk id that leads no run', async () => {
+    const groups = await getLeaderRunGroups('user_401_nonexistent_leader')
+    expect(groups).toEqual([])
+  })
+})
+
+// #401 (Story A): resolveOrCreateRunGroup — reused by createRun to reconcile a run to
+// a group (AC7). Reuses an existing same-named group; creates one when absent.
+describe.skipIf(!onStaging)('#401 resolveOrCreateRunGroup', () => {
+  const NEW_GROUP = '__test_group_401__'
+
+  afterAll(async () => {
+    await sql`DELETE FROM run_groups WHERE name = ${NEW_GROUP}`
+  })
+
+  it('reuses the existing TigerWolves group rather than creating a duplicate', async () => {
+    const [existing] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
+    const id = await resolveOrCreateRunGroup('TigerWolves', 'road', 'anywhere')
+    expect(id).toBe(existing.id as number)
+    const rows = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
+    expect(rows.length).toBe(1) // no duplicate created
+  })
+
+  it('creates a new group when none with that name exists, and is idempotent on replay', async () => {
+    const first = await resolveOrCreateRunGroup(NEW_GROUP, 'road', 'The Arch')
+    const second = await resolveOrCreateRunGroup(NEW_GROUP, 'road', 'The Arch')
+    expect(second).toBe(first)
+    const rows = await sql`SELECT id FROM run_groups WHERE name = ${NEW_GROUP}`
+    expect(rows.length).toBe(1)
+  })
+})
+
+// #401 (Story A): backfill correctness (AC8). Mirrors scripts/migrate-401.sql's UPDATE
+// — a NULL-owned family is reassigned to the TigerWolves group, while a family already
+// owned by another group (MMER fixture) is left untouched. Staging-gated + self-seeds
+// its own NULL-owned fixture family, cleaned up afterward.
+describe.skipIf(!onStaging)('#401 ownership backfill (migrate-401.sql)', () => {
+  const NULL_FAMILY = '__test_null_owner_401__'
+  let nullFamilyId: number
+
+  beforeAll(async () => {
+    // A family with NO owner — the exact shape post-#347 workouts have on production.
+    const [fam] = await sql`
+      INSERT INTO workout_families (name, category, type, reason, run_group_id)
+      VALUES (${NULL_FAMILY}, 'Quality', 'Hills', 'backfill fixture', NULL)
+      RETURNING id
+    `
+    nullFamilyId = fam.id as number
+  })
+  afterAll(async () => {
+    await sql`DELETE FROM workout_families WHERE id = ${nullFamilyId}`
+  })
+
+  it('assigns NULL-owned families to TigerWolves and leaves MMER-owned families untouched', async () => {
+    const [tw] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
+    const [mmer] = await sql`SELECT id FROM run_groups WHERE name = 'MMER'`
+
+    // Run the same statement migrate-401.sql applies.
+    await sql`
+      UPDATE workout_families
+      SET run_group_id = (SELECT id FROM run_groups WHERE name = 'TigerWolves')
+      WHERE run_group_id IS NULL
+    `
+
+    const [backfilled] = await sql`SELECT run_group_id FROM workout_families WHERE id = ${nullFamilyId}`
+    expect(backfilled.run_group_id).toBe(tw.id as number)
+
+    // MMER's fixture family keeps its own group — non-NULL owners are never reassigned.
+    const [mmerFam] = await sql`SELECT run_group_id FROM workout_families WHERE name = 'McCarren Easy Loop'`
+    expect(mmerFam.run_group_id).toBe(mmer.id as number)
   })
 })
 

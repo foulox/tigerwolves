@@ -121,26 +121,37 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
   const plannedNotFound = !!entry?.workoutName && plannedWorkout === null
 
+  // #401 (Story A): the picker is scoped to this run's OWN workouts by run_group_id.
+  // Both the default suggestions and the search-all box draw from `ownVariants`, so
+  // a leader can only schedule from their own run's library (no "All runs" escape
+  // hatch here — Schedule is strictly per-run; the Library is where all runs are
+  // browsable). A run not yet reconciled to a group (runGroupId null) falls back to
+  // the full catalog so the picker is never empty.
+  const ownVariants = useMemo(
+    () => runConfig.runGroupId != null ? variants.filter(w => w.runGroupId === runConfig.runGroupId) : variants,
+    [variants, runConfig.runGroupId],
+  )
+
   const allSuggestions = useMemo(() => {
     if (!entry) return []
     // Workout runs suggest by the week's type(s); non-Workout runs suggest from
     // their whole category (they have no per-week type), so an Easy run offers all
     // its Easy workouts. Runs with no category mapping fall back to everything.
     const pool = isWorkout
-      ? variants.filter(w => {
+      ? ownVariants.filter(w => {
           const types = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
           return types.includes(w.type)
         })
-      : variants.filter(w => !runCategory || w.category === runCategory)
+      : ownVariants.filter(w => !runCategory || w.category === runCategory)
     return pool
       .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
-  }, [entry, variants, activeType, plannedWorkout, isWorkout, runCategory])
+  }, [entry, ownVariants, activeType, plannedWorkout, isWorkout, runCategory])
 
   const pickerSource = useMemo(() => {
     const q = pickerSearch.toLowerCase()
     if (!q) return allSuggestions
-    return variants
+    return ownVariants
       .filter(w =>
         w.name.toLowerCase().includes(q) ||
         w.type.toLowerCase().includes(q) ||
@@ -150,7 +161,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       )
       .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
-  }, [pickerSearch, allSuggestions, variants, plannedWorkout])
+  }, [pickerSearch, allSuggestions, ownVariants, plannedWorkout])
 
   const displayRows = useMemo<PlanDisplayRow[]>(() => {
     const rows: PlanDisplayRow[] = []
@@ -447,7 +458,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     type="search"
                     value={pickerSearch}
                     onChange={e => setPickerSearch(e.target.value)}
-                    placeholder="Search all workouts by name, type, race…"
+                    placeholder="Search your run's workouts by name, type, race…"
                     className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-orange-400"
                   />
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
