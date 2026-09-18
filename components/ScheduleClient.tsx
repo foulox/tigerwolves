@@ -190,6 +190,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     const q = pickerSearch.toLowerCase()
     if (!q) return allSuggestions
     return scopeVariants
+      // #405 (review): in "All runs" mode a search stacks ON TOP of the active
+      // category/type browse pills (matching the Library), instead of widening
+      // back out to the whole catalog. No-op in "Your run" mode.
+      .filter(w => !showAllRuns || !browseCategory || w.category === browseCategory)
+      .filter(w => !showAllRuns || !browseType || w.type === browseType)
       .filter(w =>
         w.name.toLowerCase().includes(q) ||
         w.type.toLowerCase().includes(q) ||
@@ -199,7 +204,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       )
       .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
-  }, [pickerSearch, allSuggestions, scopeVariants, plannedWorkout])
+  }, [pickerSearch, allSuggestions, scopeVariants, plannedWorkout, showAllRuns, browseCategory, browseType])
 
   const displayRows = useMemo<PlanDisplayRow[]>(() => {
     const rows: PlanDisplayRow[] = []
@@ -264,6 +269,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setShowAllRuns(all)
     setBrowseCategory(null)
     setBrowseType(null)
+    // #405 (review): reset the week-type chip too, like every other filter — else a
+    // "Hills" selection made in "Your run" silently persists across a scope round-trip.
+    setActiveType(null)
     setPickerSearch('')
     setShowCount(3)
   }
