@@ -52,42 +52,47 @@ export async function fetchSchedule(runId?: string): Promise<ScheduleEntry[]> {
 }
 
 // Joins workout_variants + workout_families (#276) — the read-side counterpart to
-// dbInsertWorkoutVariant/dbUpdateWorkoutVariant (#274). As of #347 this returns the
-// full shared catalog — no run_group_id scoping. kind→category + type filtering now
-// happens client-side. The runId? param stays in the signature for callers (now
-// informational only); per-run resolution is by matching schedule entries to workouts
-// in the shared set.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for callers/tests as intent; #347 read is the full shared catalog and ignores it
+// dbInsertWorkoutVariant/dbUpdateWorkoutVariant (#274).
+//
+// #401 (Story A) reactivates run_group scoping: when `runId` is given AND that run
+// is reconciled to a run_group, only that group's workout_families are returned —
+// the per-run library. #347 had made this the full shared catalog (arg ignored);
+// #401 makes each run curate its own pool again. Callers that need the FULL catalog
+// (Library's "All runs" escape hatch, Schedule's cross-catalog search) call this
+// with no arg / undefined. A run with no run_group yet (legacy NULL) falls back to
+// the full catalog so its library is never empty (backfill closes this gap for
+// production; the fallback covers any run reconciliation hasn't reached).
 export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVariantRow[]> {
-  const rows = await sql`
-    SELECT
-      wv.id AS variant_id,
-      wv.family_id,
-      wf.name,
-      wv.label,
-      wv.sort_order,
-      wf.category,
-      wf.type,
-      wf.reason,
-      wv.raw_input,
-      wv.dist_time,
-      wv.energy_system,
-      wv.hr_zone,
-      wv.rpe,
-      wf.coaching_notes,
-      wf.map_link,
-      wf.author,
-      wv.race_types,
-      wv.training_phases,
-      wv.has_turnaround,
-      wv.turnaround,
-      wv.flagged,
-      wv.flag_note,
-      wf.run_group_id
-    FROM workout_variants wv
-    JOIN workout_families wf ON wf.id = wv.family_id
-    ORDER BY wf.name, wv.sort_order NULLS LAST
-  `
+  let groupId: number | null = null
+  if (runId) {
+    const [run] = await sql`SELECT run_group_id FROM runs WHERE id = ${runId}`
+    groupId = (run?.run_group_id as number | null) ?? null
+  }
+
+  const rows = groupId != null
+    ? await sql`
+        SELECT
+          wv.id AS variant_id, wv.family_id, wf.name, wv.label, wv.sort_order,
+          wf.category, wf.type, wf.reason, wv.raw_input, wv.dist_time,
+          wv.energy_system, wv.hr_zone, wv.rpe, wf.coaching_notes, wf.map_link,
+          wf.author, wv.race_types, wv.training_phases, wv.has_turnaround,
+          wv.turnaround, wv.flagged, wv.flag_note, wf.run_group_id
+        FROM workout_variants wv
+        JOIN workout_families wf ON wf.id = wv.family_id
+        WHERE wf.run_group_id = ${groupId}
+        ORDER BY wf.name, wv.sort_order NULLS LAST
+      `
+    : await sql`
+        SELECT
+          wv.id AS variant_id, wv.family_id, wf.name, wv.label, wv.sort_order,
+          wf.category, wf.type, wf.reason, wv.raw_input, wv.dist_time,
+          wv.energy_system, wv.hr_zone, wv.rpe, wf.coaching_notes, wf.map_link,
+          wf.author, wv.race_types, wv.training_phases, wv.has_turnaround,
+          wv.turnaround, wv.flagged, wv.flag_note, wf.run_group_id
+        FROM workout_variants wv
+        JOIN workout_families wf ON wf.id = wv.family_id
+        ORDER BY wf.name, wv.sort_order NULLS LAST
+      `
   return rows.map((r) => ({
     id: r.variant_id as number,
     familyId: r.family_id as number,
@@ -126,6 +131,48 @@ export async function fetchRunGroups(): Promise<RunGroup[]> {
     venue: r.venue as string,
     defaultLocation: (r.default_location as string | null) ?? null,
   }))
+}
+
+// #401 (Story A): the run_groups a leader is AUTHORIZED to assign a workout to —
+// the groups owned by the runs they actively lead, and nothing else. This is the
+// fix for the 96fcb3e hazard: the workout owner-picker offers ONLY these, never
+// fetchRunGroups() wholesale (which would surface unrelated runs' groups). Distinct
+// by group id (a leader leading two runs in the same group sees it once); runs with
+// no reconciled group are skipped (the JOIN drops NULL run_group_id).
+export async function getLeaderRunGroups(clerkUserId: string): Promise<RunGroup[]> {
+  const rows = await sql`
+    SELECT DISTINCT rg.id, rg.name, rg.venue, rg.default_location
+    FROM run_leaders rl
+    JOIN runs r ON r.id = rl.run_id
+    JOIN run_groups rg ON rg.id = r.run_group_id
+    WHERE rl.clerk_user_id = ${clerkUserId} AND rl.active = true
+    ORDER BY rg.name
+  `
+  return rows.map((r) => ({
+    id: r.id as number,
+    name: r.name as string,
+    venue: r.venue as string,
+    defaultLocation: (r.default_location as string | null) ?? null,
+  }))
+}
+
+// #401 (Story A): find-or-create the run_group that owns a run's workouts, keyed by
+// name (run_groups.name is UNIQUE). Used to reconcile a newly created run to a group
+// so its library isn't NULL-owned (AC7). Idempotent: an existing group with this name
+// is reused, never duplicated.
+export async function resolveOrCreateRunGroup(
+  name: string,
+  venue: string,
+  defaultLocation: string | null,
+): Promise<number> {
+  const existing = await sql`SELECT id FROM run_groups WHERE name = ${name}`
+  if (existing.length > 0) return existing[0].id as number
+  const inserted = await sql`
+    INSERT INTO run_groups (name, venue, default_location)
+    VALUES (${name}, ${venue}, ${defaultLocation})
+    RETURNING id
+  `
+  return inserted[0].id as number
 }
 
 export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | null> {

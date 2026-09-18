@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { addWorkout } from '@/app/actions'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
+import type { RunGroup } from '@/lib/data'
 import { FORM_CATEGORIES, typesForCategory, chipBase, chipDark, chipOrange, chipOff, toggleItem, findCollidingFamily } from '@/lib/workoutForm'
 import type { InferredFields } from '@/lib/workoutInference'
 
@@ -20,14 +21,23 @@ type EntryData = {
   hasTurnaroundHint: boolean
 }
 
-export default function AddWorkoutForm({ existingFamilies = [] }: { existingFamilies?: { familyId: number; name: string }[] }) {
+export default function AddWorkoutForm({
+  existingFamilies = [],
+  authorizedGroups = [],
+  defaultGroupId = null,
+}: {
+  existingFamilies?: { familyId: number; name: string }[]
+  authorizedGroups?: RunGroup[]
+  defaultGroupId?: number | null
+}) {
   const [step, setStep] = useState<Step>('entry')
   const [collision, setCollision] = useState<{ familyId: number; name: string } | null>(null)
   const [entry, setEntry] = useState<EntryData>({
     name: '', category: '', type: '', instructions: '', reason: '', route: '',
-    // #347: run_group_id no longer affects visibility (shared library by category/type),
-    // so new workouts aren't tied to a group — the picker is gone.
-    runGroupId: null,
+    // #401 (Story A): a new workout is owned by the leader's own run's group so it
+    // lands in that run's per-run library. The picker below only appears (and only
+    // offers authorized groups) when the leader leads more than one group.
+    runGroupId: defaultGroupId,
     hasTurnaroundHint: false,
   })
   const [review, setReview] = useState<InferredFields | null>(null)
@@ -283,6 +293,20 @@ export default function AddWorkoutForm({ existingFamilies = [] }: { existingFami
             {typesForCategory(entry.category).map(t => (
               <button type="button" key={t} onClick={() => setEntry(v => ({ ...v, type: t }))}
                 className={`${chipBase} ${entry.type === t ? chipOrange : chipOff}`}>{t}</button>
+            ))}
+          </div>
+        </Field>
+      )}
+
+      {/* #401: owner picker — only when the leader leads more than one run group.
+          Offers ONLY authorized groups (never a global list). A single-group leader
+          gets the default silently (a lone chip would be noise). */}
+      {authorizedGroups.length > 1 && (
+        <Field label="Run group (who owns this workout)">
+          <div className="flex flex-wrap gap-2">
+            {authorizedGroups.map(g => (
+              <button type="button" key={g.id} onClick={() => setEntry(v => ({ ...v, runGroupId: g.id }))}
+                className={`${chipBase} ${entry.runGroupId === g.id ? chipDark : chipOff}`}>{g.name}</button>
             ))}
           </div>
         </Field>

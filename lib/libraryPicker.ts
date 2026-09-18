@@ -10,21 +10,26 @@ export type PickerRecord = {
 }
 
 /**
- * Filters the shared workout-variant catalog to the run's category and groups
+ * Filters the shared workout-variant catalog to the run's OWN workouts and groups
  * the surviving variants into families (each family carries ALL its variants).
  *
- * Category-only filter — do NOT apply runConfig.workoutTypes allowlist.
- * Family order is first-seen; variants within each family are sorted by
+ * #401 (Story A): scope by run_group_id — a run's picker offers only the workouts
+ * its group owns. A run not yet reconciled to a group (runGroupId null) falls back
+ * to the run's category (kind→category), preserving the pre-Story-A behavior so a
+ * legacy run's picker is never empty. Do NOT apply the runConfig.workoutTypes
+ * allowlist. Family order is first-seen; variants within each family are sorted by
  * sortOrder ascending (Standard before Longer).
  */
 export function pickerRecordsForRun(
   variants: WorkoutVariantRow[],
   runConfig: RunConfig,
 ): PickerRecord[] {
-  const category = kindToCategory(runConfig.kind)
-  const filtered = category == null
-    ? variants
-    : variants.filter(w => w.category === category)
+  const filtered = runConfig.runGroupId != null
+    ? variants.filter(w => w.runGroupId === runConfig.runGroupId)
+    : (() => {
+        const category = kindToCategory(runConfig.kind)
+        return category == null ? variants : variants.filter(w => w.category === category)
+      })()
 
   const records: PickerRecord[] = []
   const seen = new Set<number>()

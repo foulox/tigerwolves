@@ -57,11 +57,12 @@ CREATE TABLE IF NOT EXISTS run_leaders (
 
 -- #272: new data model — run_groups / workout_families / workout_variants / routes
 -- Additive alongside the existing workouts table; no application code changes in this story.
--- ⚠️ #347 update: `run_group_id` is DORMANT for library visibility. The workout
--- library is a shared catalog — fetchWorkoutVariants (lib/db.ts) returns every
--- family with no run_group filter, and visibility is filtered client-side by
--- `category`. The per-#274/#318 comments below describe the original ownership-
--- scoping intent; run_group_id now records ownership only, not what a run sees.
+-- ⚠️ #347 → #401 history: #347 made `run_group_id` DORMANT for visibility (shared
+-- catalog filtered client-side by category). #401 (Story A) REACTIVATED it as the
+-- per-run library scope: fetchWorkoutVariants(runId) filters by the run's group, and
+-- the Library "Your run" / Schedule picker scope to run_group_id. "All runs" in the
+-- Library is the escape hatch that still browses the full catalog. Every existing
+-- family was backfilled to the TigerWolves group (scripts/migrate-401.sql).
 -- workout_families and routes both reference run_groups, so run_groups must be created first.
 -- workout_variants references workout_families, so workout_families precedes it.
 CREATE TABLE IF NOT EXISTS run_groups (
@@ -80,8 +81,11 @@ CREATE TABLE IF NOT EXISTS workout_families (
   author         TEXT,
   coaching_notes TEXT,
   map_link       TEXT,
-  run_group_id   INT REFERENCES run_groups(id)  -- NULL = global/inspirational; one group per family for now
+  run_group_id   INT REFERENCES run_groups(id)  -- #401: the owning run_group; scopes each run's "Your run" library (backfilled by migrate-401.sql)
 );
+-- #401: index the ownership FK — the scoped read (fetchWorkoutVariants WHERE
+-- wf.run_group_id = $1) and the "Your run"/picker filters all key off it.
+CREATE INDEX IF NOT EXISTS workout_families_run_group_id_idx ON workout_families (run_group_id);
 
 CREATE TABLE IF NOT EXISTS workout_variants (
   id              SERIAL PRIMARY KEY,
@@ -199,7 +203,7 @@ ALTER TABLE run_leaders ADD COLUMN IF NOT EXISTS clerk_user_id TEXT;
 -- warmup_override: per-workout warm-up override text (null = no per-workout warm-up).
 -- route_description / route_link: turn-by-turn text and map URL for non-quality (route) runs.
 -- Note: run_group_id (existing INT FK) records workout-to-run ownership; no run_id column added here.
--- (Since #347 this is ownership only — it does NOT scope library visibility; see the #347 note above.)
+-- (#401 reactivated this as the per-run library scope; see the #347 → #401 note above.)
 ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS warmup_override TEXT;
 ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS route_description TEXT;
 ALTER TABLE workout_families ADD COLUMN IF NOT EXISTS route_link TEXT;

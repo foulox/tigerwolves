@@ -2,7 +2,7 @@
 import { currentUser } from '@clerk/nextjs/server'
 import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
-import { sql } from '@/lib/db'
+import { sql, resolveOrCreateRunGroup } from '@/lib/db'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity, slugifyRunName } from '@/lib/runIdentity'
 import { NBR_RUNS } from '@/lib/allRunsData'
@@ -47,12 +47,18 @@ async function insertRun(
   }
   const runId = candidate
 
-  // 6. INSERT — leave run_group_id, post_header, closing_notes, leader_intro NULL;
-  //    cycle_mode/cycle take their NOT NULL DEFAULT values ('none'/'{}').
-  //    nbr_directory_id is NULL when nbrDirectoryId is undefined/null (createRun path).
-  //    status is set explicitly to 'draft' — admin publishes via a separate action (#353).
+  // 6. #401 (Story A): reconcile the run to a run_group so its library is owned,
+  //    not NULL — a run created via the app must curate its own per-run pool (AC7).
+  //    Keyed by the run's name (run_groups.name is UNIQUE); an existing same-named
+  //    group is reused. venue defaults to 'road'; default_location = meeting location.
+  const runGroupId = await resolveOrCreateRunGroup(name, 'road', data.identity.meetingLocation)
+
+  // 7. INSERT — post_header, closing_notes, leader_intro left NULL; cycle_mode/cycle
+  //    take their NOT NULL DEFAULT values ('none'/'{}'). nbr_directory_id is NULL when
+  //    nbrDirectoryId is undefined/null (createRun path). status is set explicitly to
+  //    'draft' — admin publishes via a separate action (#353).
   await sql`
-    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind, workout_types, nbr_directory_id, status)
+    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind, workout_types, run_group_id, nbr_directory_id, status)
     VALUES (
       ${runId},
       ${name},
@@ -63,6 +69,7 @@ async function insertRun(
       ${data.identity.meetingLocation},
       ${data.kind},
       ${workoutTypes}::text[],
+      ${runGroupId},
       ${nbrDirectoryId ?? null},
       'draft'
     )

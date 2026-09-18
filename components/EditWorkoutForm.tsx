@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { updateWorkout } from '@/app/actions'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
-import type { WorkoutVariantRow } from '@/lib/data'
+import type { WorkoutVariantRow, RunGroup } from '@/lib/data'
 import { FORM_CATEGORIES, typesForCategory, chipBase, chipDark, chipOrange, chipOff, toggleItem } from '@/lib/workoutForm'
 import type { InferredFields } from '@/lib/workoutInference'
 
@@ -25,7 +25,7 @@ type EntryData = {
 // Rebuilt against workout_variants/variant_id (#277) — mirrors AddWorkoutForm's
 // entry → AI-inference → review flow exactly, pre-filled from the existing
 // variant, rather than the old pre-#274 form's separate re-inference path.
-export default function EditWorkoutForm({ variant }: { variant: WorkoutVariantRow }) {
+export default function EditWorkoutForm({ variant, groupOptions = [] }: { variant: WorkoutVariantRow; groupOptions?: RunGroup[] }) {
   const [step, setStep] = useState<Step>('entry')
   const [entry, setEntry] = useState<EntryData>({
     name: variant.name,
@@ -273,8 +273,20 @@ export default function EditWorkoutForm({ variant }: { variant: WorkoutVariantRo
         )
       })()}
 
-      {/* #347: run group no longer affects visibility — no picker. The existing
-          run_group_id is preserved on save (dormant), just not editable here. */}
+      {/* #401: owner picker — only when there's a real choice (leader leads more
+          than one group, or the workout's current owner differs from the single
+          authorized group). Offers ONLY authorized groups + the current owner,
+          never an unrelated run's group. A single option is preserved silently. */}
+      {groupOptions.length > 1 && (
+        <Field label="Run group (who owns this workout)">
+          <div className="flex flex-wrap gap-2">
+            {groupOptions.map(g => (
+              <button type="button" key={g.id} onClick={() => setEntry(v => ({ ...v, runGroupId: g.id }))}
+                className={`${chipBase} ${entry.runGroupId === g.id ? chipDark : chipOff}`}>{g.name}</button>
+            ))}
+          </div>
+        </Field>
+      )}
 
       <Field label="Instructions">
         <textarea required value={entry.instructions} onChange={e => setEntry(v => ({ ...v, instructions: e.target.value }))}
