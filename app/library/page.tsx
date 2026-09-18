@@ -8,6 +8,10 @@ import type { RunConfig } from '@/lib/data'
 export default async function LibraryPage() {
   const user = await currentUser()
   const isLeader = user?.publicMetadata?.role === 'leader'
+  // #404 (review): route Delete is global (removes the canonical route for every run),
+  // so it's gated to the cross-run admin flag — not any leader. Same flag as
+  // requireAdminPage / isAdminUser. Non-admins un-adopt instead and request a delete.
+  const isAdmin = user?.publicMetadata?.admin === true
 
   // Identify this leader's run (falls back to TigerWolves config if not found)
   const tigerWolvesConfig: RunConfig = {
@@ -53,6 +57,7 @@ export default async function LibraryPage() {
       <LibraryClient
         variants={workoutVariants}
         isLeader={isLeader}
+        isAdmin={isAdmin}
         voteData={voteData}
         runId={runConfig.id}
         allowedTypes={runConfig.workoutTypes}

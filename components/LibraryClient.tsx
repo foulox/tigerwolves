@@ -43,7 +43,7 @@ type DisplayRow = StandaloneRow | FamilyRow
 // ledRuns/runGroupNames drive the adopt affordances (AC5/AC6) and the "adopted from
 // <creator>" label; run_group_id is kept only as creator credit.
 type LedRun = { id: string; name: string }
-export default function LibraryClient({ variants, isLeader, voteData = {}, runId, allowedTypes, runGroupId, libraryFamilyIds = [], ledRuns = [], runGroupNames = {} }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runGroupId?: number | null; libraryFamilyIds?: number[]; ledRuns?: LedRun[]; runGroupNames?: Record<number, string> }) {
+export default function LibraryClient({ variants, isLeader, isAdmin = false, voteData = {}, runId, allowedTypes, runGroupId, libraryFamilyIds = [], ledRuns = [], runGroupNames = {} }: { variants: WorkoutVariantRow[]; isLeader: boolean; isAdmin?: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runGroupId?: number | null; libraryFamilyIds?: number[]; ledRuns?: LedRun[]; runGroupNames?: Record<number, string> }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [raceFilter, setRaceFilter] = useState<string | null>(null)
@@ -322,7 +322,7 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
                     {w.flagged && (
                       <FlagBadge onClick={() => setFlagSheetFor(w.id)} />
                     )}
-                    {isLeader && <DeleteWorkoutButton variantId={w.id} />}
+                    {isAdmin && <DeleteWorkoutButton variantId={w.id} />}
                     {isLeader && (
                       <Link
                         href={`/library/edit?variantId=${w.id}`}
@@ -403,15 +403,13 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
                           {row.base.flagged && (
                             <FlagBadge onClick={() => setFlagSheetFor(row.base!.id)} />
                           )}
+                          {isAdmin && <DeleteWorkoutButton variantId={row.base.id} />}
                           {isLeader && (
-                            <>
-                              <DeleteWorkoutButton variantId={row.base.id} />
-                              <Link
-                                href={`/library/edit?variantId=${row.base.id}`}
-                                className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
-                                title="Edit"
-                              >✎</Link>
-                            </>
+                            <Link
+                              href={`/library/edit?variantId=${row.base.id}`}
+                              className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                              title="Edit"
+                            >✎</Link>
                           )}
                         </div>
                       </div>
@@ -435,15 +433,13 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
                           {p.flagged && (
                             <FlagBadge onClick={() => setFlagSheetFor(p.id)} />
                           )}
+                          {isAdmin && <DeleteWorkoutButton variantId={p.id} />}
                           {isLeader && (
-                            <>
-                              <DeleteWorkoutButton variantId={p.id} />
-                              <Link
-                                href={`/library/edit?variantId=${p.id}`}
-                                className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
-                                title="Edit"
-                              >✎</Link>
-                            </>
+                            <Link
+                              href={`/library/edit?variantId=${p.id}`}
+                              className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                              title="Edit"
+                            >✎</Link>
                           )}
                         </div>
                       </div>

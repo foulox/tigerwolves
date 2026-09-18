@@ -75,12 +75,17 @@ describe.skipIf(!onStaging)('adopt / un-adopt membership (staging, AC2/AC4/AC8/A
   let familyId: number
 
   beforeAll(async () => {
-    // A run_group + a route (family) it created.
-    const [g] = await sql`
-      INSERT INTO run_groups (name, venue, default_location) VALUES (${GROUP}, 'road', 'Test')
-      ON CONFLICT (name) DO UPDATE SET venue = EXCLUDED.venue RETURNING id
-    `
-    groupId = g.id as number
+    // A run_group + a route (family) it created. SELECT-then-INSERT rather than
+    // ON CONFLICT (name): the E2E-wipe staging branch may not carry the UNIQUE(name)
+    // constraint, so ON CONFLICT (name) would throw "no unique or exclusion constraint
+    // matching the ON CONFLICT specification" there (same reason seed-e2e.ts avoids it).
+    const existingGroup = await sql`SELECT id FROM run_groups WHERE name = ${GROUP}`
+    groupId = existingGroup.length > 0
+      ? (existingGroup[0].id as number)
+      : ((await sql`
+          INSERT INTO run_groups (name, venue, default_location) VALUES (${GROUP}, 'road', 'Test')
+          RETURNING id
+        `)[0].id as number)
     const [f] = await sql`
       INSERT INTO workout_families (name, category, type, reason, author, run_group_id)
       VALUES ('Adopt Fixture Route', 'Long', 'Long', 'test', ${GROUP}, ${groupId})

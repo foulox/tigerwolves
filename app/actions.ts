@@ -163,6 +163,18 @@ async function requireAuth(): Promise<string> {
   return user.id
 }
 
+// #404 (review): a route delete is GLOBAL — it removes the one canonical
+// workout_families row for every run that uses it. That's too sharp for any leader
+// to fire; it's gated to the cross-run admin (`publicMetadata.admin === true`, the
+// same flag requireAdminPage / isAdminUser use). Other leaders un-adopt ("Remove
+// from my run") and request a real delete out-of-band. Defense-in-depth behind the
+// UI, which only shows the Delete button to admins.
+async function requireAdmin(): Promise<string> {
+  const user = await currentUser()
+  if (!user || user.publicMetadata?.admin !== true) throw new Error('Unauthorized')
+  return user.id
+}
+
 // Any signed-in user (runner OR leader) — the follow surfaces are open to every
 // authenticated account, unlike requireAuth() which gates leader-only writes.
 async function requireUser(): Promise<string> {
@@ -207,7 +219,7 @@ export async function addWorkout(formData: FormData) {
 }
 
 export async function deleteWorkout(variantId: number) {
-  const userId = await requireAuth()
+  const userId = await requireAdmin()
   await dbDeleteWorkoutVariant(variantId)
   revalidateAll()
   await captureServerEvent('workout_deleted', userId, { isLeader: true })
