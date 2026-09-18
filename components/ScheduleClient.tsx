@@ -570,17 +570,17 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     all runs, no run-scope and no week-type restriction (AC4). */}
                 {showAllRuns && browseCategories.length > 0 && (
                   <div className="flex gap-2 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-                    <button onClick={() => selectBrowseCategory(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!browseCategory ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All</button>
+                    <button onClick={() => selectBrowseCategory(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${!browseCategory ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All</button>
                     {browseCategories.map(c => (
-                      <button key={c} onClick={() => selectBrowseCategory(browseCategory === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${browseCategory === c ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{c}</button>
+                      <button key={c} onClick={() => selectBrowseCategory(browseCategory === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${browseCategory === c ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{c}</button>
                     ))}
                   </div>
                 )}
                 {showAllRuns && browseTypes.length > 1 && (
                   <div className="flex gap-2 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: 'none' }}>
-                    <button onClick={() => setBrowseType(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!browseType ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All types</button>
+                    <button onClick={() => setBrowseType(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${!browseType ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All types</button>
                     {browseTypes.map(t => (
-                      <button key={t} onClick={() => setBrowseType(browseType === t ? null : t)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${browseType === t ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{t}</button>
+                      <button key={t} onClick={() => setBrowseType(browseType === t ? null : t)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${browseType === t ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{t}</button>
                     ))}
                   </div>
                 )}
