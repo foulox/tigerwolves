@@ -133,3 +133,34 @@ test('Flag round trip: leader reviews a reported issue and saves a fix, clearing
   await page.waitForLoadState('load')
   await expect(page.getByRole('button', { name: 'Issue reported — view details' })).toHaveCount(0)
 })
+
+// #404: adopt a route from another run's library into your own, then un-adopt it.
+// Mutating (adds/removes a run_workouts row) — appended last, and it restores state
+// by un-adopting at the end so the count-assertion tests above stay valid on replay.
+// The test leader leads exactly one run (tigerwolves), so adopt is a direct tap with
+// no "which run?" picker.
+test('Adopt: a route from "All runs" appears in "Your run", marked adopted, and can be removed (#404)', async ({ page }) => {
+  await page.goto('/library')
+  await page.waitForLoadState('load')
+
+  // Baseline: MMER's "McCarren Easy Loop" is NOT in TigerWolves' "Your run" library.
+  await expect(page.getByText('McCarren Easy Loop')).toHaveCount(0)
+
+  // Find it under "All runs" and adopt it into our run.
+  await page.getByRole('button', { name: 'All runs', exact: true }).click()
+  const allRunsCard = page.locator('.bg-white.rounded-2xl', { hasText: 'McCarren Easy Loop' })
+  await expect(allRunsCard).toBeVisible()
+  await allRunsCard.getByRole('button', { name: '+ Add to my run' }).click()
+  // After adopting, the add affordance is gone for that card (it's now in the library).
+  await expect(allRunsCard.getByRole('button', { name: '+ Add to my run' })).toHaveCount(0)
+
+  // Switch to "Your run": the adopted route now shows, marked with its creator.
+  await page.getByRole('button', { name: 'Your run', exact: true }).click()
+  const yourRunCard = page.locator('.bg-white.rounded-2xl', { hasText: 'McCarren Easy Loop' })
+  await expect(yourRunCard).toBeVisible()
+  await expect(yourRunCard.getByText(/adopted from MMER/)).toBeVisible()
+
+  // Remove from my run (un-adopt) — it drops back out of "Your run".
+  await yourRunCard.getByRole('button', { name: 'Remove from my run' }).click()
+  await expect(page.getByText('McCarren Easy Loop')).toHaveCount(0)
+})

@@ -81,6 +81,21 @@ describe('pickerRecordsForRun', () => {
     expect(records.every(r => r.variants.every(v => v.category === 'Quality'))).toBe(true)
   })
 
+  test('#404 membership scoping — with libraryFamilyIds, returns exactly the run’s library incl. an adopted cross-group route', () => {
+    // Library = one created route (family 10, group 1) + one ADOPTED route (family 40,
+    // group 2 — another run’s). Membership, not run_group_id, decides visibility now.
+    const records = pickerRecordsForRun(mixedVariants, workoutConfig, [10, 40])
+    const familyIds = records.map(r => r.familyId).sort((a, b) => a - b)
+    expect(familyIds).toEqual([10, 40])
+    // Family 20 (owned but NOT in the membership set) is excluded — the junction is
+    // authoritative, not run_group_id ownership.
+    expect(familyIds).not.toContain(20)
+  })
+
+  test('#404 empty membership — a reconciled run with no library rows offers nothing', () => {
+    expect(pickerRecordsForRun(mixedVariants, workoutConfig, [])).toEqual([])
+  })
+
   test('family collapse + order — two variants in same family collapse to ONE PickerRecord with Standard→Longer order', () => {
     const records = pickerRecordsForRun(mixedVariants, workoutConfig)
     const family10 = records.find(r => r.familyId === 10)

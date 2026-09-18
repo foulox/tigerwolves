@@ -8,6 +8,7 @@ import WorkoutDetails, { PHASE_COLORS } from '@/components/WorkoutDetails'
 import DeleteWorkoutButton from '@/components/DeleteWorkoutButton'
 import ReactionPicker from '@/components/ReactionPicker'
 import WorkoutFlagSheet, { FlagBadge } from '@/components/WorkoutFlagSheet'
+import AdoptRouteControls from '@/components/AdoptRouteControls'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import { resolveAllowedTypes } from '@/lib/runProfile'
@@ -34,11 +35,15 @@ type DisplayRow = StandaloneRow | FamilyRow
 // `workouts`-typed version. Family grouping mirrors ScheduleClient's own
 // familyId-based grouping (#276) rather than the old name-string grouping.
 // #401 (Story A): `variants` is the full shared catalog. "Your run" mode scopes it
-// to the run's OWN workouts (run_group_id === runGroupId); "All runs" browses the
-// whole catalog. The category/type/race filters apply within whichever scope is
-// active — the category selector is available in both modes now (a run's group can
-// span categories). See visibleVariants below.
-export default function LibraryClient({ variants, isLeader, voteData = {}, runId, allowedTypes, runGroupId }: { variants: WorkoutVariantRow[]; isLeader: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runGroupId?: number | null }) {
+// to the run's library; "All runs" browses the whole catalog. The category/type/race
+// filters apply within whichever scope is active — the category selector is available
+// in both modes now (a run's library can span categories). See visibleVariants below.
+// #404: "Your run" scope is now the run's LIBRARY MEMBERSHIP (routes it created OR
+// adopted — libraryFamilyIds), superseding #401's run_group_id ownership check.
+// ledRuns/runGroupNames drive the adopt affordances (AC5/AC6) and the "adopted from
+// <creator>" label; run_group_id is kept only as creator credit.
+type LedRun = { id: string; name: string }
+export default function LibraryClient({ variants, isLeader, isAdmin = false, voteData = {}, runId, allowedTypes, runGroupId, libraryFamilyIds = [], ledRuns = [], runGroupNames = {} }: { variants: WorkoutVariantRow[]; isLeader: boolean; isAdmin?: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runGroupId?: number | null; libraryFamilyIds?: number[]; ledRuns?: LedRun[]; runGroupNames?: Record<number, string> }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [raceFilter, setRaceFilter] = useState<string | null>(null)
@@ -51,15 +56,36 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
 
   const flaggedWorkout = flagSheetFor ? variants.find(w => w.id === flagSheetFor) ?? null : null
 
-  // #401: "Your run" scopes the shared catalog to the run's OWN workouts by
-  // run_group_id (the ownership FK reactivated in Story A); "All runs" browses
-  // everything. A run not yet reconciled to a group (runGroupId null) falls back
-  // to the full catalog so the screen is never empty (backfill closes this on
-  // production; the fallback covers any run reconciliation hasn't reached).
+  // #404: "Your run" scopes the shared catalog to the run's LIBRARY MEMBERSHIP —
+  // the family ids it created OR adopted (libraryFamilyIds); "All runs" browses
+  // everything. A run not yet reconciled to a group (runGroupId null → empty
+  // membership) falls back to the full catalog so the screen is never empty
+  // (anonymous/non-leader views also hit this fallback, runGroupId null).
+  const libSet = useMemo(() => new Set(libraryFamilyIds), [libraryFamilyIds])
   const inYourRun = !!runId && !showAllRuns
   const visibleVariants = inYourRun && runGroupId != null
-    ? variants.filter(w => w.runGroupId === runGroupId)
+    ? variants.filter(w => libSet.has(w.familyId))
     : variants
+
+  // Only leaders who actually lead a reconciled run (non-null group → real membership)
+  // see adopt/remove affordances (AC5/AC8). An unreconciled run falls back to the full
+  // catalog with no membership, so adoption there would be meaningless.
+  const canAdopt = isLeader && ledRuns.length > 0 && !!runId && runGroupId != null
+  function adoptControls(familyId: number, creatorRunGroupId: number | null) {
+    if (!canAdopt) return null
+    return (
+      <AdoptRouteControls
+        familyId={familyId}
+        creatorRunGroupId={creatorRunGroupId}
+        myRunGroupId={runGroupId ?? null}
+        runGroupNames={runGroupNames}
+        inLibrary={libSet.has(familyId)}
+        showAllRuns={showAllRuns}
+        ledRuns={ledRuns}
+        primaryRunId={runId!}
+      />
+    )
+  }
 
   // The category selector is available in both modes now, so filtering is driven
   // by the category state directly (no per-run pinning).
@@ -296,7 +322,7 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
                     {w.flagged && (
                       <FlagBadge onClick={() => setFlagSheetFor(w.id)} />
                     )}
-                    {isLeader && <DeleteWorkoutButton variantId={w.id} />}
+                    {isAdmin && <DeleteWorkoutButton variantId={w.id} />}
                     {isLeader && (
                       <Link
                         href={`/library/edit?variantId=${w.id}`}
@@ -328,11 +354,13 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
                     </Link>
                   </div>
                 )}
+                {adoptControls(w.familyId, w.runGroupId)}
               </div>
             )
           }
 
           const isExpanded = expandedFamily === row.familyId
+          const familyCreatorGroupId = (row.base ?? row.variants[0])?.runGroupId ?? null
           const familyFlagged = row.base?.flagged || row.variants.some(p => p.flagged)
           return (
             <div key={`f-${row.familyId}`} data-tour="library-variations">
@@ -363,6 +391,7 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
                   {row.lastRan ? `Last ran ${formatDate(row.lastRan)}` : 'Never used'} · tap to {isExpanded ? 'collapse' : 'expand'}
                 </div>
               </button>
+              {adoptControls(row.familyId, familyCreatorGroupId)}
 
               {isExpanded && (
                 <div className="mt-1 ml-2 flex flex-col gap-1">
@@ -374,15 +403,13 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
                           {row.base.flagged && (
                             <FlagBadge onClick={() => setFlagSheetFor(row.base!.id)} />
                           )}
+                          {isAdmin && <DeleteWorkoutButton variantId={row.base.id} />}
                           {isLeader && (
-                            <>
-                              <DeleteWorkoutButton variantId={row.base.id} />
-                              <Link
-                                href={`/library/edit?variantId=${row.base.id}`}
-                                className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
-                                title="Edit"
-                              >✎</Link>
-                            </>
+                            <Link
+                              href={`/library/edit?variantId=${row.base.id}`}
+                              className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                              title="Edit"
+                            >✎</Link>
                           )}
                         </div>
                       </div>
@@ -406,15 +433,13 @@ export default function LibraryClient({ variants, isLeader, voteData = {}, runId
                           {p.flagged && (
                             <FlagBadge onClick={() => setFlagSheetFor(p.id)} />
                           )}
+                          {isAdmin && <DeleteWorkoutButton variantId={p.id} />}
                           {isLeader && (
-                            <>
-                              <DeleteWorkoutButton variantId={p.id} />
-                              <Link
-                                href={`/library/edit?variantId=${p.id}`}
-                                className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
-                                title="Edit"
-                              >✎</Link>
-                            </>
+                            <Link
+                              href={`/library/edit?variantId=${p.id}`}
+                              className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                              title="Edit"
+                            >✎</Link>
                           )}
                         </div>
                       </div>

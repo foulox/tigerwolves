@@ -33,7 +33,10 @@ vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn(), captureMessage: vi
 
 // verifyRace is the thinnest action that calls requireAuth() and returns its result
 // to captureServerEvent — exercising the full path without UI noise.
-import { verifyRace } from '../app/actions'
+// deleteWorkout is the one action gated by requireAdmin (#404 review) rather than
+// requireAuth, so it exercises the admin-only path.
+import { verifyRace, deleteWorkout } from '../app/actions'
+import { dbDeleteWorkoutVariant } from '@/lib/db'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -61,5 +64,27 @@ describe('requireAuth', () => {
     await verifyRace(1)
     // If requireAuth() returned the correct id, verifyRace completes without throwing
     expect(currentUserMock).toHaveBeenCalledOnce()
+  })
+})
+
+// #404 (review): a route delete is global, so deleteWorkout is gated to the cross-run
+// admin flag (publicMetadata.admin === true) — a plain leader can no longer delete.
+describe('requireAdmin (deleteWorkout is admin-only)', () => {
+  it('rejects a leader without the admin flag', async () => {
+    currentUserMock.mockResolvedValue({ id: 'user_leader_1', publicMetadata: { role: 'leader' } })
+    await expect(deleteWorkout(1)).rejects.toThrow('Unauthorized')
+    expect(dbDeleteWorkoutVariant).not.toHaveBeenCalled()
+  })
+
+  it('rejects a signed-out user', async () => {
+    currentUserMock.mockResolvedValue(null)
+    await expect(deleteWorkout(1)).rejects.toThrow('Unauthorized')
+    expect(dbDeleteWorkoutVariant).not.toHaveBeenCalled()
+  })
+
+  it('allows a cross-run admin (publicMetadata.admin === true)', async () => {
+    currentUserMock.mockResolvedValue({ id: 'user_admin_1', publicMetadata: { admin: true } })
+    await deleteWorkout(7)
+    expect(dbDeleteWorkoutVariant).toHaveBeenCalledWith(7)
   })
 })

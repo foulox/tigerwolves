@@ -10,26 +10,33 @@ export type PickerRecord = {
 }
 
 /**
- * Filters the shared workout-variant catalog to the run's OWN workouts and groups
- * the surviving variants into families (each family carries ALL its variants).
+ * Filters the shared workout-variant catalog to the run's library (created + adopted)
+ * and groups the surviving variants into families (each family carries ALL its variants).
  *
- * #401 (Story A): scope by run_group_id — a run's picker offers only the workouts
- * its group owns. A run not yet reconciled to a group (runGroupId null) falls back
- * to the run's category (kind→category), preserving the pre-Story-A behavior so a
- * legacy run's picker is never empty. Do NOT apply the runConfig.workoutTypes
- * allowlist. Family order is first-seen; variants within each family are sorted by
- * sortOrder ascending (Standard before Longer).
+ * #404: scope by LIBRARY MEMBERSHIP — when `libraryFamilyIds` is given, the picker
+ * offers exactly the run's library (routes it created OR adopted, run_workouts), which
+ * is now the single source of truth. Callers that can't yet supply membership fall back
+ * to #401's run_group_id ownership scope (created routes only — safe, no regression). A
+ * run not reconciled to a group (runGroupId null, no membership) falls back to the run's
+ * category (kind→category) so a legacy run's picker is never empty.
+ *
+ * Do NOT apply the runConfig.workoutTypes allowlist. Family order is first-seen;
+ * variants within each family are sorted by sortOrder ascending (Standard before Longer).
  */
 export function pickerRecordsForRun(
   variants: WorkoutVariantRow[],
   runConfig: RunConfig,
+  libraryFamilyIds?: number[],
 ): PickerRecord[] {
-  const filtered = runConfig.runGroupId != null
-    ? variants.filter(w => w.runGroupId === runConfig.runGroupId)
-    : (() => {
-        const category = kindToCategory(runConfig.kind)
-        return category == null ? variants : variants.filter(w => w.category === category)
-      })()
+  const libSet = libraryFamilyIds ? new Set(libraryFamilyIds) : null
+  const filtered = libSet
+    ? variants.filter(w => libSet.has(w.familyId))
+    : runConfig.runGroupId != null
+      ? variants.filter(w => w.runGroupId === runConfig.runGroupId)
+      : (() => {
+          const category = kindToCategory(runConfig.kind)
+          return category == null ? variants : variants.filter(w => w.category === category)
+        })()
 
   const records: PickerRecord[] = []
   const seen = new Set<number>()
