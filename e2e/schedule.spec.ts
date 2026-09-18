@@ -119,6 +119,37 @@ test('Schedule page tab switch: Post draft is default, Change workout reveals th
   await expect(page.getByRole('textbox', { name: 'Editable weekly post' })).toHaveValue(/Yasso 800s/)
 })
 
+// #405: one-time cross-run borrow via the Schedule "All runs" toggle. MMER's
+// "McCarren Easy Loop" (Easy) is another run's off-type workout — invisible in the
+// default "Your run" scope, browsable + schedulable once "All runs" is on.
+test('All runs mode: borrow another run\'s off-type workout onto the week', async ({ page }) => {
+  await page.goto('/schedule?week=2')
+  await page.waitForLoadState('load')
+
+  // Unplanned week — the picker shows directly (no Post/Change tabs).
+  const search = page.locator('input[type="search"]')
+  await expect(search).toBeVisible()
+
+  // Default "Your run" scope: MMER's Easy loop is not offered (different run, off-type).
+  await search.fill('McCarren Easy Loop')
+  await expect(page.locator('button').filter({ hasText: 'McCarren Easy Loop' })).toHaveCount(0)
+
+  // Flip to "All runs" — the borrow escape hatch. (setScope clears the search.)
+  await page.getByRole('button', { name: 'All runs', exact: true }).click()
+  await expect(page.getByText(/borrows one for this week only/i)).toBeVisible()
+
+  // Now the cross-run workout is browsable and selectable.
+  await search.fill('McCarren Easy Loop')
+  await page.locator('button').filter({ hasText: 'McCarren Easy Loop' }).first().click()
+
+  // Selecting it generates the week's post — the borrow landed on the week.
+  const post = page.getByRole('textbox', { name: 'Editable weekly post' })
+  await expect(post).toHaveValue(/McCarren Easy Loop/)
+
+  // The card also offers the distinct permanent-adopt action.
+  await expect(page.getByRole('button', { name: '+ Add to my run' })).toBeVisible()
+})
+
 test.describe('redirect: /plan → /schedule', () => {
   test('GET /plan?week=0 lands on /schedule?week=0', async ({ page }) => {
     await page.goto('/plan?week=0')
