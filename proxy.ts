@@ -12,6 +12,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/vote',
   '/api/e2e-revalidate',
   '/api/preview-seed',
+  '/api/health',
 ])
 
 export default clerkMiddleware(

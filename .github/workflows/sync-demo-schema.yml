@@ -8,14 +8,13 @@ name: Sync demo-data schema
 # demo-data branch on every push to main — a lightweight, idempotent, SCHEMA-ONLY
 # apply (run-migrate.ts), NOT the destructive re-fork refresh-demo.ts does.
 #
-# It also verifies, on each successful staging (=demo) deployment, that the demo
-# is actually reading demo-data — catching the #376 silent mis-point loudly
-# instead of letting the demo serve the wrong branch unnoticed.
+# After each apply it also verifies that the demo is actually reading demo-data
+# — catching the #376 silent mis-point loudly instead of letting the demo serve
+# the wrong branch unnoticed.
 
 on:
   push:
     branches: [main]
-  deployment_status:
 
 # Serialize schema applies so two quick merges can't race the same branch.
 concurrency:
@@ -29,9 +28,6 @@ permissions: {}
 
 jobs:
   migrate-demo-schema:
-    # Only the push-to-main event applies migrations. (The deployment_status
-    # event fires the verify job below instead.)
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -87,16 +83,14 @@ jobs:
         run: npx tsx scripts/run-migrate.ts
 
   verify-demo-datasource:
-    # On each successful demo (staging-branch) deployment, assert the demo is
-    # reading demo-data. Catches the #376 silent mis-point loudly.
-    # Match the staging (=demo) deployment. Primary signal is the git ref;
-    # the environment substring is a fallback in case Vercel labels the ref
-    # differently. Neither matches a Production deployment.
-    if: >
-      github.event_name == 'deployment_status' &&
-      github.event.deployment_status.state == 'success' &&
-      (github.event.deployment.ref == 'staging' ||
-       contains(github.event.deployment_status.environment, 'staging'))
+    # Assert the demo is reading demo-data — catches the #376 silent mis-point
+    # loudly. This runs after every schema apply rather than off deployment_status:
+    # the check is DEPLOY-INDEPENDENT (it verifies the demo's DEMO_DATABASE_URL
+    # config, which doesn't change per deploy), and Vercel's deployment_status
+    # payload sets `ref` to the commit SHA and `environment` to "Preview" — never
+    # "staging" — so a deployment_status trigger could never reliably single out
+    # the demo deploy. Keying it to the push guarantees the check actually runs.
+    needs: migrate-demo-schema
     runs-on: ubuntu-latest
     env:
       DEMO_URL: https://demo.tigerwolves.foulox.me
@@ -105,8 +99,8 @@ jobs:
       - name: Assert the demo is reading demo-data
         run: |
           set -euo pipefail
-          # Poll briefly — the alias may take a moment to repoint to the new
-          # deployment after deployment_status=success.
+          # Poll briefly — the demo alias may momentarily 404 /api/health while a
+          # concurrent staging redeploy (ff-staging → Vercel) is still in flight.
           for attempt in $(seq 1 10); do
             BODY=$(curl -sS "$DEMO_URL/api/health" || echo '{}')
             HOST=$(echo "$BODY" | jq -r '.dbHost // empty')
