@@ -17,12 +17,12 @@ Demo: https://demo.tigerwolves.foulox.me (friendlier public alias served by the 
 
 ## Grill me — post-grooming stress test
 
-Lou triggers this by saying "grill me," after grooming has drafted a plan — not before (there's no decision tree to walk until a plan exists). Then:
+Lou triggers this by saying "grill me," after grooming has drafted a plan — not before (there's nothing to walk until a plan exists). Run it in the **same context window** as grooming: that's what makes it work — you still hold grooming's live reasoning, so you can tell which decisions were *verified* and which were *assumed*. From a fresh window with only the terse plan, you'd be guessing.
 
-- Interview relentlessly about every part of the plan, one branch of the decision tree at a time, resolving dependencies as they surface. Recommend an answer for each question.
-- If a question can be answered by exploring the codebase or querying the live system, do that instead of asking — the evidence-before-assertion law above, applied to the plan.
-- Aim first at what grooming treated as *settled*, not just its open questions: "where did we assume instead of verify?" The dangerous decisions are the silently-resolved ones — a wrong `run_id` assumption once rode grooming → build → production before a `SELECT` caught it.
-- If grilling breaks a load-bearing assumption, push the plan back through grooming — don't patch it in place. A grill that can't bounce a plan is a rubber stamp.
+1. **Build the decision tree first.** The plan collapses the tree into prose, so make it explicit: list every load-bearing decision, tag each *verified* (against a file/query/doc) vs *assumed*, and note what depends on what. This is step one — you can't walk a tree you haven't drawn.
+2. **Walk it one branch at a time**, root decisions first, resolving dependencies as they surface — each answer reshapes what's downstream. Recommend an answer for each.
+3. **Verify, don't ask.** If a question can be answered by exploring the codebase or querying the live system, do that — the evidence-before-assertion law above, applied to the plan. Attack the *assumed* tags first: "where did we assume instead of verify?" (A wrong `run_id` assumption once rode grooming → build → production before a `SELECT` caught it.)
+4. **Bounce, don't patch.** If grilling breaks a load-bearing assumption, push the plan back through grooming — don't patch it in place. A grill that can't bounce a plan is a rubber stamp.
 
 ## Where to look
 This file holds only what must never be missed regardless of task — guardrails against reintroducing fixed bugs, and hazards specific to working as an agent in this environment. Everything else (stack, architecture, club context, screen-by-screen behavior, Heylo post format, dev workflow, workout categories) lives in the wiki, organized so you read only the part you need instead of one long file top to bottom.
