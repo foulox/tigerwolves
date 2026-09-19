@@ -1,0 +1,123 @@
+name: Sync demo-data schema
+
+# #415 — keep the demo's DATA MODEL in step with main automatically. The demo's
+# CODE already auto-syncs (ff-staging.yml fast-forwards staging→main on every
+# push), but its schema did not: refresh-demo.ts was the only path and nothing
+# called it, so the demo raced ahead on code while its schema sat still (the
+# #404 run_workouts drift). This applies the merged migration set to the durable
+# demo-data branch on every push to main — a lightweight, idempotent, SCHEMA-ONLY
+# apply (run-migrate.ts), NOT the destructive re-fork refresh-demo.ts does.
+#
+# It also verifies, on each successful staging (=demo) deployment, that the demo
+# is actually reading demo-data — catching the #376 silent mis-point loudly
+# instead of letting the demo serve the wrong branch unnoticed.
+
+on:
+  push:
+    branches: [main]
+  deployment_status:
+
+# Serialize schema applies so two quick merges can't race the same branch.
+concurrency:
+  group: sync-demo-schema
+  cancel-in-progress: false
+
+# Least privilege: the only GITHUB_TOKEN scope any job needs is contents:read
+# (for actions/checkout in the migrate job). All real work talks to the Neon API
+# (NEON_API_KEY) and the public demo URL, never the GITHUB_TOKEN. Scoped per-job.
+permissions: {}
+
+jobs:
+  migrate-demo-schema:
+    # Only the push-to-main event applies migrations. (The deployment_status
+    # event fires the verify job below instead.)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: purple-star-02119717
+      DEMO_BRANCH_ID: br-little-rice-at9l08ja
+      # Host substring the demo-data branch always resolves to (pooled or direct).
+      # run-migrate.ts refuses to apply against any DATABASE_URL not matching it.
+      DEMO_HOST: ep-ancient-math
+    steps:
+      - name: Fail loudly if NEON_API_KEY is missing
+        run: |
+          if [ -z "${NEON_API_KEY:-}" ]; then
+            echo "::error::NEON_API_KEY is not set — cannot fetch the demo-data connection string. \
+            Add it as a repo secret (Settings → Secrets → Actions)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Fetch demo-data connection string (Neon API)
+        run: |
+          set -euo pipefail
+          # --fail-with-body → a Neon outage / auth failure aborts red instead of
+          # returning an empty URI that would then fail the host guard confusingly.
+          URI=$(curl -sS --fail-with-body \
+            -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/connection_uri?branch_id=$DEMO_BRANCH_ID&database_name=neondb&role_name=neondb_owner" \
+            | jq -r '.uri')
+          if [ -z "$URI" ] || [ "$URI" = "null" ]; then
+            echo "::error::Neon API returned no connection URI for branch $DEMO_BRANCH_ID"
+            exit 1
+          fi
+          # Mask the secret so it never prints in later step logs, then hand it to
+          # the migrate step via the env file (not stdout).
+          echo "::add-mask::$URI"
+          echo "DATABASE_URL=$URI" >> "$GITHUB_ENV"
+
+      - name: Apply migrations to demo-data (host-guarded, idempotent)
+        env:
+          # Belt-and-suspenders: even if the wrong URI were resolved above,
+          # run-migrate.ts throws unless the host matches DEMO_HOST — it can never
+          # touch production or the E2E-wipe branch.
+          MIGRATE_ONLY_HOST: ${{ env.DEMO_HOST }}
+        run: npx tsx scripts/run-migrate.ts
+
+  verify-demo-datasource:
+    # On each successful demo (staging-branch) deployment, assert the demo is
+    # reading demo-data. Catches the #376 silent mis-point loudly.
+    # Match the staging (=demo) deployment. Primary signal is the git ref;
+    # the environment substring is a fallback in case Vercel labels the ref
+    # differently. Neither matches a Production deployment.
+    if: >
+      github.event_name == 'deployment_status' &&
+      github.event.deployment_status.state == 'success' &&
+      (github.event.deployment.ref == 'staging' ||
+       contains(github.event.deployment_status.environment, 'staging'))
+    runs-on: ubuntu-latest
+    env:
+      DEMO_URL: https://demo.tigerwolves.foulox.me
+      DEMO_HOST: ep-ancient-math
+    steps:
+      - name: Assert the demo is reading demo-data
+        run: |
+          set -euo pipefail
+          # Poll briefly — the alias may take a moment to repoint to the new
+          # deployment after deployment_status=success.
+          for attempt in $(seq 1 10); do
+            BODY=$(curl -sS "$DEMO_URL/api/health" || echo '{}')
+            HOST=$(echo "$BODY" | jq -r '.dbHost // empty')
+            if [ -n "$HOST" ]; then break; fi
+            echo "attempt $attempt: /api/health not reporting a host yet; retrying..."
+            sleep 6
+          done
+          echo "Demo /api/health reports dbHost=$HOST"
+          if ! echo "$HOST" | grep -q "$DEMO_HOST"; then
+            echo "::error::Demo is NOT reading demo-data (expected host containing '$DEMO_HOST', got '$HOST'). \
+            The demo may be silently serving the wrong branch — see #376. Check DEMO_DATABASE_URL on the staging deploy."
+            exit 1
+          fi
+          echo "✓ Demo is reading demo-data."
