@@ -3,10 +3,11 @@ export type WorkoutType = string
 // One workout_variant row joined with its parent workout_families row (#276),
 // the read shape for the Library/Schedule/Group Run screens — the write side
 // (dbInsertWorkoutVariant/dbUpdateWorkoutVariant) targets these tables (#274).
-// `sport`, `lapStructure`, and `lastRan` have no column on workout_families/
-// workout_variants and are not carried over; lastRan-dependent UI (recency
-// sort, "Last ran"/"Never" display) degrades to a no-op/always-"Never" until
-// the app tracks this some other way.
+// `sport` and `lapStructure` have no column on workout_families/workout_variants
+// and are not carried over. `lastRan` (#402) IS populated: it's per (run, workout),
+// read from run_workouts(viewingRun, family).last_ran via fetchWorkoutVariants — the
+// value here is the VIEWING run's recency, or null ("Never") when that run has never
+// scheduled the route. The recency sort and "Last ran"/"Never" display key off it.
 export type WorkoutVariantRow = {
   id: number                  // workout_variants.id
   familyId: number

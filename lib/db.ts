@@ -62,12 +62,24 @@ export async function fetchSchedule(runId?: string): Promise<ScheduleEntry[]> {
 // with no arg / undefined. A run with no run_group yet (legacy NULL) falls back to
 // the full catalog so its library is never empty (backfill closes this gap for
 // production; the fallback covers any run reconciliation hasn't reached).
-export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVariantRow[]> {
+//
+// #402: `lastRan` is per (run, workout) — a shared route's last-run differs by run —
+// so it's read from run_workouts(recencyRunId, family).last_ran via a LEFT JOIN. The
+// recency run is `recencyRunId ?? runId`: scoped callers get their own run's recency
+// for free, while the Library "All runs" view passes the VIEWER's runId separately
+// (AC6) so recency stays the viewer's even while browsing the full catalog. When no
+// recency run is given, the join matches nothing → lastRan is null everywhere (the
+// pre-#402 behavior), so the aggregate/anonymous paths are unchanged.
+export async function fetchWorkoutVariants(
+  runId?: string,
+  recencyRunId?: string,
+): Promise<WorkoutVariantRow[]> {
   let groupId: number | null = null
   if (runId) {
     const [run] = await sql`SELECT run_group_id FROM runs WHERE id = ${runId}`
     groupId = (run?.run_group_id as number | null) ?? null
   }
+  const recencyRun = recencyRunId ?? runId ?? null
 
   const rows = groupId != null
     ? await sql`
@@ -76,9 +88,10 @@ export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVaria
           wf.category, wf.type, wf.reason, wv.raw_input, wv.dist_time,
           wv.energy_system, wv.hr_zone, wv.rpe, wf.coaching_notes, wf.map_link,
           wf.author, wv.race_types, wv.training_phases, wv.has_turnaround,
-          wv.turnaround, wv.flagged, wv.flag_note, wf.run_group_id
+          wv.turnaround, wv.flagged, wv.flag_note, wf.run_group_id, rw.last_ran
         FROM workout_variants wv
         JOIN workout_families wf ON wf.id = wv.family_id
+        LEFT JOIN run_workouts rw ON rw.family_id = wf.id AND rw.run_id = ${recencyRun}
         WHERE wf.run_group_id = ${groupId}
         ORDER BY wf.name, wv.sort_order NULLS LAST
       `
@@ -88,9 +101,10 @@ export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVaria
           wf.category, wf.type, wf.reason, wv.raw_input, wv.dist_time,
           wv.energy_system, wv.hr_zone, wv.rpe, wf.coaching_notes, wf.map_link,
           wf.author, wv.race_types, wv.training_phases, wv.has_turnaround,
-          wv.turnaround, wv.flagged, wv.flag_note, wf.run_group_id
+          wv.turnaround, wv.flagged, wv.flag_note, wf.run_group_id, rw.last_ran
         FROM workout_variants wv
         JOIN workout_families wf ON wf.id = wv.family_id
+        LEFT JOIN run_workouts rw ON rw.family_id = wf.id AND rw.run_id = ${recencyRun}
         ORDER BY wf.name, wv.sort_order NULLS LAST
       `
   return rows.map((r) => ({
@@ -117,7 +131,9 @@ export async function fetchWorkoutVariants(runId?: string): Promise<WorkoutVaria
     flagged: r.flagged as boolean,
     flagNote: r.flag_note as string,
     runGroupId: (r.run_group_id as number | null) ?? null,
-    lastRan: null,
+    // #402: the recency run's last_ran for this family, or null ("Never"). Normalized
+    // to a 'YYYY-MM-DD' string so the sort/label consumers compare it lexically.
+    lastRan: r.last_ran != null ? toDateString(r.last_ran) : null,
   }))
 }
 
@@ -290,6 +306,24 @@ export async function dbSetScheduleWorkout(date: string, runId: string, workoutN
     UPDATE schedule SET workout_name = ${workoutName}, selected_variations = ${selectedVariations}
     WHERE date = ${date}::date AND run_id = ${runId}
   `
+  // #402: keep this run's recency fresh (AC3). Only for a route ALREADY in the run's
+  // library (a run_workouts membership row) and only for a past/today date — a future
+  // plan hasn't been run yet. GREATEST ignores NULL, so a first run sets last_ran from
+  // NULL; a re-plan onto an older date never regresses a newer one. Deliberately an
+  // UPDATE, not an upsert: the "All runs" one-time borrow (#405) schedules a workout
+  // the run has NOT adopted (no membership row), and its contract is that it "won't
+  // join your library or rotation" — so it must not gain a run_workouts row here.
+  if (workoutName) {
+    await sql`
+      UPDATE run_workouts rw
+      SET last_ran = GREATEST(rw.last_ran, ${date}::date)
+      FROM workout_families wf
+      WHERE rw.run_id = ${runId}
+        AND rw.family_id = wf.id
+        AND wf.name = ${workoutName}
+        AND ${date}::date <= CURRENT_DATE
+    `
+  }
 }
 
 export async function dbInsertRace(race: Omit<Race, 'id'>): Promise<number> {
