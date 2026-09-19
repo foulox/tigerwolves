@@ -191,14 +191,17 @@ export async function seedMourningDoves(
           `
         )[0].id as number)
 
-  // The run row — upsert so re-runs converge. Meeting time/location and post
-  // template are left for the leader to complete in-app (out of scope per #411).
+  // The run row — upsert so re-runs converge. Seeded as 'draft' so the run is NOT
+  // publicly joinable until the leader completes it in-app (roster + meeting
+  // time/location, out of scope per #411) and flips it live. status is set on
+  // INSERT only — NOT in the DO UPDATE set — so a later re-seed never stomps a
+  // leader's in-app activation back to draft.
   await sql`
     INSERT INTO runs (id, name, emoji, description, day_of_week, kind, run_group_id, status)
     VALUES (
       ${runId}, 'Mourning Doves', '🕊️',
       'North Brooklyn Runners'' Wednesday long run.',
-      'Wednesday', 'Long', ${groupId}, 'live'
+      'Wednesday', 'Long', ${groupId}, 'draft'
     )
     ON CONFLICT (id) DO UPDATE SET
       name = EXCLUDED.name, emoji = EXCLUDED.emoji, description = EXCLUDED.description,
