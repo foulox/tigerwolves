@@ -42,9 +42,10 @@ describe('buildRelinkPlan', () => {
     expect(() => buildRelinkPlan(DEMO_LEADERS, partialMap)).toThrow('cicifox@gmail.com')
   })
 
-  test('thrown error message mentions demo Clerk instance for the missing email', () => {
+  test('thrown error message names the missing email and mentions demo Clerk instance', () => {
     const partialMap = { 'cicifox@gmail.com': 'user_B' }
-    expect(() => buildRelinkPlan(DEMO_LEADERS, partialMap)).toThrow(/foulox@gmail\.com/)
-    expect(() => buildRelinkPlan(DEMO_LEADERS, partialMap)).toThrow(/demo.*Clerk/i)
+    expect(() => buildRelinkPlan(DEMO_LEADERS, partialMap)).toThrow(
+      /foulox@gmail\.com[\s\S]*demo.*Clerk/i,
+    )
   })
 })

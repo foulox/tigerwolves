@@ -110,11 +110,16 @@ async function main(): Promise<void> {
   const clerk = createClerkClient({ secretKey: clerkSecretKey })
   const { data: users } = await clerk.users.getUserList({ emailAddress: emails })
 
-  // Build email -> clerk user id map, then validate via buildRelinkPlan
+  // Build email -> clerk user id map, then validate via buildRelinkPlan.
+  // Match against ALL of a user's email addresses (not just the primary) so a leader whose
+  // demo login email is a secondary address still resolves.
   const idByEmail: Record<string, string> = {}
-  for (const user of users ?? []) {
-    const primaryEmail = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress
-    if (primaryEmail) idByEmail[primaryEmail] = user.id
+  for (const requestedEmail of emails) {
+    const lower = requestedEmail.toLowerCase()
+    const match = (users ?? []).find(u =>
+      u.emailAddresses.some(e => e.emailAddress.toLowerCase() === lower)
+    )
+    if (match) idByEmail[requestedEmail] = match.id
   }
   const plan = buildRelinkPlan(DEMO_LEADERS, idByEmail)
   for (const d of plan) {
