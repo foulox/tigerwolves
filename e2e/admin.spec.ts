@@ -24,16 +24,16 @@ test('Regroup flow merges the two reserved fixture workouts into a new family', 
   await page.goto('/admin')
   await page.waitForLoadState('load')
 
-  await page.locator('[data-testid="regroup-option-McCarren Loop Repeats||Short loop, 6x800m"]').click()
-  await page.locator('[data-testid="regroup-option-McCarren Loop Repeats||Long loop, 4x1200m"]').click()
+  await page.locator('[data-testid="regroup-option-Domino Park Loop||8 x 800m"]').click()
+  await page.locator('[data-testid="regroup-option-Domino Park Loop||10 x 800m"]').click()
 
   const configureBtn = page.getByRole('button', { name: /configure/i })
   await expect(configureBtn).toBeEnabled()
   await configureBtn.click()
 
   await page.locator('[data-testid="regroup-family-name"]').fill('Greenpoint Loop Ladder')
-  await page.locator('[data-testid="regroup-variation-input-0"]').fill('Short loop, 6x800m')
-  await page.locator('[data-testid="regroup-variation-input-1"]').fill('Long loop, 4x1200m')
+  await page.locator('[data-testid="regroup-variation-input-0"]').fill('Short loop, 8x800m')
+  await page.locator('[data-testid="regroup-variation-input-1"]').fill('Long loop, 10x800m')
 
   await page.locator('[data-testid="regroup-save"]').click()
 
@@ -43,5 +43,5 @@ test('Regroup flow merges the two reserved fixture workouts into a new family', 
   await page.waitForLoadState('load')
 
   await expect(page.getByText('Greenpoint Loop Ladder').first()).toBeVisible()
-  await expect(page.getByText('McCarren Loop Repeats')).toHaveCount(0)
+  await expect(page.getByText('Domino Park Loop')).toHaveCount(0)
 })
