@@ -22,7 +22,7 @@ This file holds only what must never be missed regardless of task — guardrails
 
 - **[Wiki Home](https://github.com/foulox/tigerwolves/wiki)** — start here if nothing else below obviously matches
 - **[Architecture Overview](https://github.com/foulox/tigerwolves/wiki/Architecture-Overview)** — stack, data flow, key files, auth model, observability, AI-assist feature, Heylo post generation — **read this before any non-trivial architecture change, full stop**
-- **[Contributing](https://github.com/foulox/tigerwolves/wiki/Contributing)** — branching, PR workflow, self-review checklist, testing standard, epic tracking, labels — **read this before opening a PR, every time**
+- **[Contributing](https://github.com/foulox/tigerwolves/wiki/Contributing)** — the superpowers-first workflow, branching, PR workflow, self-review checklist, testing standard, epic tracking, labels — **read this before opening a PR or starting a build, every time**
 - **[PostHog Events](https://github.com/foulox/tigerwolves/wiki/PostHog-Events)** — what analytics events are tracked and why — **read before adding or modifying any `posthog.capture()` call**
 - **[Leader Guide](https://github.com/foulox/tigerwolves/wiki/Leader-Guide)** — what the app does screen-by-screen, workout categories/types, rotation
 - **[Architecture Decisions](https://github.com/foulox/tigerwolves/wiki/Architecture-Decisions)** — ADRs, the "why" behind non-obvious choices
@@ -30,7 +30,7 @@ This file holds only what must never be missed regardless of task — guardrails
 - **[Running Apps project board](https://github.com/users/foulox/projects/2)** — shared with trainer_v1
 - **[Issues](https://github.com/foulox/tigerwolves/issues)** — stories, bugs, epics
 
-This is the only enforcement mechanism that actually works: Claude Code plugin skills (like `/agent-session-start`) can't be overridden per-project, so there's no way to force a skill to auto-fetch these pages. This file, by contrast, is always loaded — so the instruction has to live here, as an action to take, not a link to notice.
+This is the only enforcement mechanism that actually works: Claude Code plugin skills can't be reliably forced per-project context. This file, by contrast, is always loaded — so the instruction has to live here, as an action to take, not a link to notice.
 
 ## Key Constraints
 - Volunteer club, no budget — keep hosting and services free/cheap
@@ -72,7 +72,7 @@ This is the only enforcement mechanism that actually works: Claude Code plugin s
 - **Always `git fetch origin main` before reading files at the start of a new branch session** — read key files from `git show origin/main:{file}` rather than the local checkout; the local branch may be stale from a previous session on a different machine.
 - **There is no tool called `chromium-cli`** — checked npm and Homebrew (2026-07-19), neither has a package by that name; Homebrew's closest match, `chrome-cli`, is a different tool (drives an already-open Chrome window via macOS scripting, not a clean isolated session) and doesn't fit this use case anyway. For browser-driven verification, write a throwaway Playwright script instead — `@playwright/test` is already a devDependency, and Chromium is typically already installed locally (`~/Library/Caches/ms-playwright/`). The onboarding tour no longer auto-launches (#233, 2026-07-21) and `WhatsNewOverlay` stays closed by default in a fresh context (`!storedVersion && !tourSeen` both true), so a fresh `localStorage` no longer needs any suppression setup before navigating.
 - **A real Clerk test-leader account exists for signed-in verification** — `.env.local`'s `PLAYWRIGHT_TEST_EMAIL` / `PLAYWRIGHT_TEST_PASSWORD` is a genuine Clerk leader login, not a bypass or mock. Any bug that only reproduces for signed-in leaders should be verified live via Playwright signing in with these credentials — don't settle for static analysis or a screenshot when this account can actually reproduce it (missed on #246, 2026-07-27, where the session didn't know this existed).
-- **`@vercel/kv` is deprecated** — Vercel KV migrated to Upstash Redis. The package API is unchanged (`kv.mget`, `kv.pipeline`, etc.) and `KV_REST_API_URL` / `KV_REST_API_TOKEN` env vars are still the right names. Install via Vercel Marketplace → Upstash for Redis, prefix `KV`, Production + Preview environments. Don't use the "Official Redis Cloud" integration — that's a different product with no free tier and incompatible env vars.
+- **Upstash Redis (migrated from Vercel KV / `@vercel/kv`)** — package API unchanged (`kv.mget`, `kv.pipeline`, etc.); `KV_REST_API_URL` / `KV_REST_API_TOKEN` env vars are still the right names. Install via Vercel Marketplace → Upstash for Redis, prefix `KV`, Production + Preview environments. Don't use the "Official Redis Cloud" integration — that's a different product with no free tier and incompatible env vars.
 - **vitest `@/` path alias** — `vitest.config.ts` has `resolve.alias: { '@': path.resolve(__dirname, '.') }` so route handler tests can use `@/` imports. Already in place; don't remove it.
 - **Sentry was scaffolded by hand, not via `@sentry/wizard`** — the wizard CLI needs an interactive TTY/browser login, unavailable in an agent-driven terminal session. If Sentry setup ever needs redoing, expect to hand-write `instrumentation.ts`/`sentry.*.config.ts`/`app/global-error.tsx` again rather than running the wizard.
 - **Wiki edits need SSH, not the `GH_TOKEN= ` pattern** — GitHub wikis have no PR mechanism and aren't reachable via `gh`; clone/push directly: `git@github.com:foulox/tigerwolves.wiki.git`, push to `master`. The empty-`GH_TOKEN= ` prefix that unblocks `gh` commands doesn't apply to raw `git push` — that needs `gh`'s own configured SSH auth instead (confirmed working during the #227 PostHog wiki-page restructure, 2026-07-26).
@@ -89,7 +89,7 @@ This is the only enforcement mechanism that actually works: Claude Code plugin s
 ## GitHub Workflow
 
 **Issues**
-- The issue body is what to build. When grooming resolves open questions, edit the body — don't leave resolutions only in comments. Fold context-dependent mid-discussion decisions into the relevant issue rather than filing a new one.
+- The issue body is what to build. When the brainstorming or writing-plans phase resolves open questions, edit the body — don't leave resolutions only in comments. Fold context-dependent mid-discussion decisions into the relevant issue rather than filing a new one.
 - Write mid-project progress and learnings as a comment on the relevant issue, not in a memory file. Comments are versioned, searchable, and live next to the work.
 - Add every issue to a project board at creation — no floating issues. Use `--add-project` on `gh issue create`, or follow up immediately with `gh issue edit N --add-project`.
 - Bugs are children of stories, not epics (Epic → Story → Bug). File as separate issues with `Part of #N` — bugs don't require `ready-to-build`; verbal approval plus a posted implementation plan is enough.
@@ -98,7 +98,7 @@ This is the only enforcement mechanism that actually works: Claude Code plugin s
 - Linking a story to an epic requires two steps — body bullets alone don't create the actual GitHub link:
   1. `gh api repos/{owner}/{repo}/issues/{epic-number}/sub_issues -F sub_issue_id={story-rest-id}` — use the REST numeric ID from `gh api repos/{owner}/{repo}/issues/{number} -q .id` (not the GraphQL node id)
   2. Add the story to the project board
-- During grooming, verify the "Epic: #N" line in the body matches the actual sub_issues parent — they drift silently. Query via GraphQL before adding a new parent (REST 422s with "may only have one parent" if a link already exists).
+- When filing or updating a story, verify the "Epic: #N" line in the body matches the actual sub_issues parent — they drift silently. Query via GraphQL before adding a new parent (REST 422s with "may only have one parent" if a link already exists).
 
 **PRs**
 - Every PR with verification steps gets two labeled sections: **Test plan (Claude)** and **Manual steps (Lou)**.
