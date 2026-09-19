@@ -1,0 +1,117 @@
+name: Data-model change flag
+
+# #428 — the demo half of the hybrid demo-schema guardrail. Safe (additive/
+# idempotent) migrations auto-apply to demo-data on merge via sync-demo-schema.yml.
+# The RISKY ones (drop / rename / destructive backfill) run against demo-data's
+# DIVERGENT data, where blind auto-apply can silently corrupt or lose demo
+# content — so they need a conscious human decision before merge, not after.
+#
+# This job flags every PR that adds or changes a scripts/migrate*.sql file:
+# it stamps the `data-model-change` label and posts (or refreshes) a merge
+# checklist prompting that decision. It only flags — it does not block; the
+# call (auto-apply is enough vs. handle manually / full refresh) stays Lou's.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Serialize per-PR so two quick pushes (synchronize events) can't both read an
+# empty comment list and each post a duplicate checklist. cancel-in-progress is
+# safe here: the newer push's file set is the one we want to flag on anyway.
+concurrency:
+  group: data-model-flag-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# Least privilege: the label + comment are the only writes, both on the PR
+# itself — pull-requests: write covers them, and also the "list PR files" read
+# (that's the Pull Requests API, not Contents). No checkout, no git blob reads,
+# no secrets, so contents access isn't needed at all. Everything runs against
+# this repo's own PR via GITHUB_TOKEN. NOTE: on a fork-origin PR that token is
+# read-only, so the label/comment step would 403 — moot today (private, single-
+# contributor repo, no forks); if this repo ever opens up, move to the
+# pull_request_target pattern (see pr-template-check.yml) for a write token.
+permissions:
+  pull-requests: write
+
+jobs:
+  flag-migration:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR: ${{ github.event.pull_request.number }}
+      # Bump this marker only if the checklist wording is redesigned — it keys
+      # the find-and-refresh so re-runs edit one comment instead of stacking.
+      MARKER: "<!-- data-model-change-flag -->"
+    steps:
+      - name: Detect changed scripts/migrate*.sql files
+        id: detect
+        run: |
+          set -euo pipefail
+          # Drive off the PR's own file list (API), not a local diff — no checkout
+          # needed, and it's exactly the set of files the merge would change.
+          FILES=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
+          # Match scripts/migrate.sql and scripts/migrate-*.sql (run-migrate.ts's
+          # apply set); [^/]* keeps it to that dir and excludes the .gs library file.
+          MIGRATIONS=$(echo "$FILES" | grep -E '^scripts/migrate[^/]*\.sql$' || true)
+          if [ -n "$MIGRATIONS" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Migration file(s) changed by this PR:"
+            echo "$MIGRATIONS"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No scripts/migrate*.sql change in this PR."
+          fi
+
+      - name: Flag PR — label + refresh checklist comment
+        if: steps.detect.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          gh pr edit "$PR" --repo "$REPO" --add-label data-model-change
+
+          # Write the comment to a file with a quoted heredoc (delimiter in quotes
+          # → fully literal, no shell expansion): backticks and apostrophes need no
+          # escaping, and there's no $(...) wrapper to trip over. The first line IS
+          # the $MARKER string verbatim — keep the two in sync.
+          BODY_FILE="$RUNNER_TEMP/data-model-flag-body.md"
+          cat > "$BODY_FILE" <<'EOF'
+          <!-- data-model-change-flag -->
+          ### ⚠️ Data-model change — decide how it reaches `demo-data` before merging
+
+          This PR adds or changes a `scripts/migrate*.sql` file. The **demo-data** branch holds durable, divergent demo content (never overwritten on push), so a migration hits it differently than it hits a fresh DB. Pick one before merging:
+
+          - [ ] **Safe — additive / idempotent** (new table/column, `IF NOT EXISTS`, `ON CONFLICT`). `sync-demo-schema.yml` auto-applies it to `demo-data` on merge. Nothing else to do.
+          - [ ] **Risky — drop / rename / destructive backfill.** Auto-apply is **not** enough against demo's divergent data. Decide in real time: apply manually with care, or do a full `scripts/refresh-demo.ts` re-fork from production.
+
+          _Auto-posted by the hybrid demo-schema guardrail (#428). Flag only — it does not block merge._
+          EOF
+
+          # Idempotent: edit the existing marker comment if present, else create one,
+          # so re-runs on each push refresh one comment instead of stacking duplicates.
+          EXISTING=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -n1)
+          if [ -n "$EXISTING" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$EXISTING" -F body=@"$BODY_FILE" >/dev/null
+            echo "Refreshed existing checklist comment ($EXISTING)."
+          else
+            gh pr comment "$PR" --repo "$REPO" --body-file "$BODY_FILE"
+            echo "Posted new checklist comment."
+          fi
+
+      - name: Unflag PR — retract stale label + checklist comment
+        if: steps.detect.outputs.changed == 'false'
+        run: |
+          set -euo pipefail
+          # Keep the flag a pure function of the CURRENT diff, not accumulated state:
+          # if an earlier push added a migration (flagging the PR) and a later push
+          # removes it, retract the label and delete the now-stale checklist comment.
+          # --remove-label errors when the label isn't on the PR (the common case:
+          # a PR that never touched a migration), so swallow that — it's a no-op.
+          gh pr edit "$PR" --repo "$REPO" --remove-label data-model-change 2>/dev/null || true
+
+          EXISTING=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -n1)
+          if [ -n "$EXISTING" ]; then
+            gh api -X DELETE "repos/$REPO/issues/comments/$EXISTING" >/dev/null
+            echo "Deleted stale checklist comment ($EXISTING) — no migration in current diff."
+          fi
