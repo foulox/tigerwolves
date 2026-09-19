@@ -133,32 +133,30 @@ describe.skipIf(!onStaging)('seedMourningDoves writes the library + membership +
   const GROUP = 'Mourning Doves TEST 411'
   let groupId: number
 
-  afterAll(async () => {
+  // seedMourningDoves is ~200 sequential Neon round-trips (a one-time data load, not
+  // perf-critical), so the seeding hooks need a generous timeout — the default 10s is
+  // not enough, and a half-run seed would race teardown into an FK violation.
+  const HOOK_MS = 90_000
+
+  // Scoped, FK-safe teardown (run_workouts → variants → families → run → group).
+  async function cleanup(): Promise<void> {
     const g = await sql`SELECT id FROM run_groups WHERE name = ${GROUP}`
-    if (g.length) {
-      const gid = g[0].id as number
-      await sql`DELETE FROM run_workouts WHERE run_id = ${RUN}`
-      await sql`DELETE FROM workout_variants WHERE family_id IN (SELECT id FROM workout_families WHERE run_group_id = ${gid})`
-      await sql`DELETE FROM workout_families WHERE run_group_id = ${gid}`
-      await sql`DELETE FROM runs WHERE id = ${RUN}`
-      await sql`DELETE FROM run_groups WHERE id = ${gid}`
-    }
-  })
+    if (!g.length) return
+    const gid = g[0].id as number
+    await sql`DELETE FROM run_workouts WHERE run_id = ${RUN}`
+    await sql`DELETE FROM workout_variants WHERE family_id IN (SELECT id FROM workout_families WHERE run_group_id = ${gid})`
+    await sql`DELETE FROM workout_families WHERE run_group_id = ${gid}`
+    await sql`DELETE FROM runs WHERE id = ${RUN}`
+    await sql`DELETE FROM run_groups WHERE id = ${gid}`
+  }
+
+  afterAll(cleanup, HOOK_MS)
 
   beforeAll(async () => {
-    // Clean any leftovers from a prior aborted run, then seed.
-    const g = await sql`SELECT id FROM run_groups WHERE name = ${GROUP}`
-    if (g.length) {
-      const gid = g[0].id as number
-      await sql`DELETE FROM run_workouts WHERE run_id = ${RUN}`
-      await sql`DELETE FROM workout_variants WHERE family_id IN (SELECT id FROM workout_families WHERE run_group_id = ${gid})`
-      await sql`DELETE FROM workout_families WHERE run_group_id = ${gid}`
-      await sql`DELETE FROM runs WHERE id = ${RUN}`
-      await sql`DELETE FROM run_groups WHERE id = ${gid}`
-    }
+    await cleanup() // clear any leftovers from a prior aborted run, then seed.
     await seedMourningDoves(sql, { runId: RUN, groupName: GROUP })
     groupId = (await sql`SELECT id FROM run_groups WHERE name = ${GROUP}`)[0].id as number
-  })
+  }, HOOK_MS)
 
   test('loads 42 families / 48 variants owned by the group, category Long', async () => {
     const fams = await sql`SELECT COUNT(*)::int AS n FROM workout_families WHERE run_group_id = ${groupId}`
@@ -215,5 +213,5 @@ describe.skipIf(!onStaging)('seedMourningDoves writes the library + membership +
     expect(fams[0].n).toBe(42)
     expect(vars[0].n).toBe(48)
     expect(mem[0].n).toBe(42)
-  })
+  }, HOOK_MS) // re-seeds — needs the same generous timeout as the seeding hooks.
 })
