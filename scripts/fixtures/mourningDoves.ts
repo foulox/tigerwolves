@@ -153,61 +153,64 @@ export function familyLastRan(family: DovesFamily): string | null {
   return dates.length ? dates.reduce((a, b) => (a >= b ? a : b)) : null
 }
 
-export const MOURNING_DOVES_RUN_ID = 'mourning-doves'
-export const MOURNING_DOVES_GROUP = 'Mourning Doves'
+// The Doves run is the one activated via the in-app NBR directory flow — run_id
+// 'wednesday-mourning-doves', owned by the "Wednesday Mourning Doves" run_group
+// that activation creates. This seed loads the LIBRARY into that already-activated
+// run; it deliberately does NOT create the run (the leader activates it, controls
+// its draft/live status, and owns its identity/config). NOTE: not 'mourning-doves'
+// — that was an early grooming guess that didn't match the activated run id.
+export const DOVES_RUN_ID = 'wednesday-mourning-doves'
+export const DOVES_GROUP = 'Wednesday Mourning Doves'
 
 /**
- * Seed the real Mourning Doves run + its 42-family / 48-variant route library into
- * the database named by DATABASE_URL. Idempotent and additive:
- *  - run_group "Mourning Doves" is reused by name if present (shared with the
- *    `doves` e2e/preview fixture), else created — never clobbered.
- *  - the run row is upserted by id.
+ * Load the real Mourning Doves 42-family / 48-variant route library into the
+ * database named by DATABASE_URL. Idempotent and additive.
+ *
+ * It loads the library into an ALREADY-ACTIVATED run (activate it in-app first):
+ *  - resolves the target run's run_group_id — it does NOT create the run, and
+ *    never touches the run's own config (name, meeting details, draft/live status).
  *  - families are matched by (run_group_id, name); variants by (family_id, label).
  *    Re-runs converge (update in place, no duplicates).
  *  - run_workouts membership + last_ran is upserted per family for this run.
- * It never wipes a table and only ever writes rows for THIS run/group, so it is
- * safe against production, demo-data, and production-forked Preview branches.
+ * It never wipes a table and only ever writes library rows for the run's group, so
+ * it is safe against production, demo-data, and production-forked Preview branches.
  *
- * runId/groupName are injectable so tests can seed an isolated sandbox without
- * touching the shared "Mourning Doves" group or the real run.
+ * Throws if the run doesn't exist yet — a clear signal to activate it in-app first.
+ * runId/groupName are injectable so tests can seed an isolated sandbox run.
  */
 export async function seedMourningDoves(
   sql: Sql,
   opts: { runId?: string; groupName?: string } = {},
 ): Promise<void> {
-  const runId = opts.runId ?? MOURNING_DOVES_RUN_ID
-  const groupName = opts.groupName ?? MOURNING_DOVES_GROUP
+  const runId = opts.runId ?? DOVES_RUN_ID
 
-  // run_group: reuse by name if present, else create. Never deleted.
-  const existingGroup = await sql`SELECT id FROM run_groups WHERE name = ${groupName}`
-  const groupId =
-    existingGroup.length > 0
-      ? (existingGroup[0].id as number)
-      : ((
-          await sql`
-            INSERT INTO run_groups (name, venue, default_location)
-            VALUES (${groupName}, 'road', NULL)
-            RETURNING id
-          `
-        )[0].id as number)
-
-  // The run row — upsert so re-runs converge. Seeded as 'draft' so the run is NOT
-  // publicly joinable until the leader completes it in-app (roster + meeting
-  // time/location, out of scope per #411) and flips it live. status is set on
-  // INSERT only — NOT in the DO UPDATE set — so a later re-seed never stomps a
-  // leader's in-app activation back to draft.
-  await sql`
-    INSERT INTO runs (id, name, emoji, description, day_of_week, kind, run_group_id, status)
-    VALUES (
-      ${runId}, 'Mourning Doves', '🕊️',
-      'North Brooklyn Runners'' Wednesday long run.',
-      'Wednesday', 'Long', ${groupId}, 'draft'
+  // Resolve the group from the already-activated run — do NOT create the run.
+  const [run] = await sql`SELECT run_group_id FROM runs WHERE id = ${runId}`
+  if (!run) {
+    throw new Error(
+      `run '${runId}' does not exist. This seed loads the Doves library into an ` +
+        `already-activated run; activate "Wednesday Mourning Doves" in-app first, then re-run.`,
     )
-    ON CONFLICT (id) DO UPDATE SET
-      name = EXCLUDED.name, emoji = EXCLUDED.emoji, description = EXCLUDED.description,
-      day_of_week = EXCLUDED.day_of_week, kind = EXCLUDED.kind,
-      run_group_id = EXCLUDED.run_group_id
-  `
+  }
+
+  // Activation normally sets run_group_id. Fall back to creating/reusing a group by
+  // name and attaching it only if the run somehow has none (never clobbers a set one).
+  let groupId = run.run_group_id as number | null
+  if (groupId == null) {
+    const groupName = opts.groupName ?? DOVES_GROUP
+    const existingGroup = await sql`SELECT id FROM run_groups WHERE name = ${groupName}`
+    groupId =
+      existingGroup.length > 0
+        ? (existingGroup[0].id as number)
+        : ((
+            await sql`
+              INSERT INTO run_groups (name, venue, default_location)
+              VALUES (${groupName}, 'road', NULL)
+              RETURNING id
+            `
+          )[0].id as number)
+    await sql`UPDATE runs SET run_group_id = ${groupId} WHERE id = ${runId}`
+  }
 
   for (const family of MOURNING_DOVES_FAMILIES) {
     // Family map_link fallback = the primary (first) variant's link.

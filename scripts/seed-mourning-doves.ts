@@ -26,8 +26,7 @@ import { neon } from '@neondatabase/serverless'
 import {
   seedMourningDoves,
   MOURNING_DOVES_FAMILIES,
-  MOURNING_DOVES_RUN_ID,
-  MOURNING_DOVES_GROUP,
+  DOVES_RUN_ID,
 } from './fixtures/mourningDoves'
 
 function hostOf(url: string): string {
@@ -49,19 +48,20 @@ async function main(): Promise<void> {
   if (!confirmed) {
     throw new Error(
       `seed-mourning-doves.ts will load the REAL Mourning Doves library ` +
-        `(${MOURNING_DOVES_FAMILIES.length} families / ${variantCount} variants, run ` +
-        `'${MOURNING_DOVES_RUN_ID}', group '${MOURNING_DOVES_GROUP}') into host:\n  ${host}\n` +
+        `(${MOURNING_DOVES_FAMILIES.length} families / ${variantCount} variants) into the ` +
+        `already-activated run '${DOVES_RUN_ID}' on host:\n  ${host}\n` +
+        `Activate "Wednesday Mourning Doves" in-app first if it doesn't exist here yet. ` +
         `Re-run with --yes (or SEED_MOURNING_DOVES_YES=1) to confirm this is the branch you intend.`,
     )
   }
 
   console.log(
-    `Seeding ${MOURNING_DOVES_FAMILIES.length} families / ${variantCount} variants ` +
-      `for '${MOURNING_DOVES_RUN_ID}' into ${host}...`,
+    `Loading ${MOURNING_DOVES_FAMILIES.length} families / ${variantCount} variants ` +
+      `into '${DOVES_RUN_ID}' on ${host}...`,
   )
   const sql = neon(url)
   await seedMourningDoves(sql)
-  console.log(`✓ Loaded. run '${MOURNING_DOVES_RUN_ID}' now has its ${variantCount}-route library + last_ran.`)
+  console.log(`✓ Loaded. run '${DOVES_RUN_ID}' now has its ${variantCount}-route library + last_ran.`)
 
   const revalidateUrl = process.env.REVALIDATE_URL
   if (revalidateUrl) {

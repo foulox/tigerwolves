@@ -153,9 +153,17 @@ describe.skipIf(!onStaging)('seedMourningDoves writes the library + membership +
   afterAll(cleanup, HOOK_MS)
 
   beforeAll(async () => {
-    await cleanup() // clear any leftovers from a prior aborted run, then seed.
-    await seedMourningDoves(sql, { runId: RUN, groupName: GROUP })
-    groupId = (await sql`SELECT id FROM run_groups WHERE name = ${GROUP}`)[0].id as number
+    await cleanup() // clear any leftovers from a prior aborted run.
+    // Stand up an ALREADY-ACTIVATED sandbox run + group (the seed loads the library
+    // into an existing run; it no longer creates one). Then load the library.
+    groupId = (
+      await sql`INSERT INTO run_groups (name, venue, default_location) VALUES (${GROUP}, 'road', NULL) RETURNING id`
+    )[0].id as number
+    await sql`
+      INSERT INTO runs (id, name, day_of_week, kind, run_group_id, status)
+      VALUES (${RUN}, 'Sandbox Doves 411', 'Wednesday', 'Long', ${groupId}, 'draft')
+    `
+    await seedMourningDoves(sql, { runId: RUN })
   }, HOOK_MS)
 
   test('loads 42 families / 48 variants owned by the group, category Long', async () => {
@@ -214,4 +222,10 @@ describe.skipIf(!onStaging)('seedMourningDoves writes the library + membership +
     expect(vars[0].n).toBe(48)
     expect(mem[0].n).toBe(42)
   }, HOOK_MS) // re-seeds — needs the same generous timeout as the seeding hooks.
+
+  test('throws if the target run has not been activated yet (load-only, never creates the run)', async () => {
+    await expect(
+      seedMourningDoves(sql, { runId: 'test-doves-not-activated-411' }),
+    ).rejects.toThrow(/does not exist/)
+  })
 })
