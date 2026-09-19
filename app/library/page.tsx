@@ -30,27 +30,27 @@ export default async function LibraryPage() {
     status: 'live',
     postTemplate: null,
   }
-  const runConfig = (user && isLeader ? await getLeaderRun(user.id) : null) ?? tigerWolvesConfig
+  // The run this leader actually leads (null for anonymous/non-leader/unlinked).
+  const leaderRun = user && isLeader ? await getLeaderRun(user.id) : null
+  const runConfig = leaderRun ?? tigerWolvesConfig
   // #401: fetch the FULL shared catalog (no runId scoping) so the "All runs" escape
   // hatch can browse everything. "Your run" scoping is applied client-side by library
   // membership in LibraryClient — the read that AC2 turns on.
-  // #402: pass the viewer's runId as the recency run (2nd arg) so each card's "Last ran"
-  // is THIS leader's run's date even while browsing the full catalog (AC6). Only for a
-  // real reconciled leader run — anonymous/non-leader views have no run to key recency
-  // to, so they keep the full "Never" fallback.
-  const isRealLeaderRun = !!(user && isLeader && runConfig.runGroupId != null)
-  const workoutVariants = await fetchWorkoutVariants(
-    undefined,
-    isRealLeaderRun ? runConfig.id : undefined,
-  )
+  // #402: key recency to the run this leader LEADS (`leaderRun.id`), so each card's
+  // "Last ran" is that run's date even while browsing the full catalog (AC6). Keyed on
+  // the led run itself — NOT on run_group_id — because recency lives on run_workouts
+  // (keyed by run_id) and is independent of whether the run is reconciled to a group; a
+  // group-less run (e.g. MMER) still has its own recency. Null led run → no recency run
+  // → "Never" everywhere (anonymous/unlinked fallback).
+  const workoutVariants = await fetchWorkoutVariants(undefined, leaderRun?.id)
 
   // #404: "Your run" = the run's library membership (created + adopted), not the old
   // run_group_id ownership check. Only meaningful for a signed-in leader with a
   // reconciled run; anonymous/non-leader views keep the full-catalog fallback
   // (empty membership + null runGroupId in LibraryClient). ledRuns drives the adopt
   // affordance + the multi-run "which run?" picker; runGroupNames labels a route's
-  // creator ("adopted from <creator>"). isRealLeaderRun is computed above (it also
-  // gates the recency read).
+  // creator ("adopted from <creator>").
+  const isRealLeaderRun = !!(leaderRun && runConfig.runGroupId != null)
   const [libraryFamilyIds, ledRuns, runGroups] = await Promise.all([
     isRealLeaderRun ? getRunLibraryFamilyIds(runConfig.id) : Promise.resolve<number[]>([]),
     user && isLeader ? getLeaderRuns(user.id) : Promise.resolve<Array<{ id: string; name: string }>>([]),
