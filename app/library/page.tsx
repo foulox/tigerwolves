@@ -21,7 +21,7 @@ export default async function LibraryPage() {
     leaderIntro: 'Run Leaders:',
     closingNotes: 'Bag Drop: Sorry, Not available',
     kind: 'Workout',
-    workoutTypes: ['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold'],
+    workoutTypes: ['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold', 'Intervals'],
     // Fallback only serves anonymous/non-leader views (no workout scoping); the real
     // run_group_id comes from getLeaderRun for signed-in leaders.
     runGroupId: null,

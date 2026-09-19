@@ -1,8 +1,8 @@
 import type { NeonQueryFunction } from '@neondatabase/serverless'
 
 // A Neon tagged-template SQL client (what `neon(url)` returns — default
-// non-array, non-full-results mode). Matches dovesLongRun.ts so the fixture is
-// portable across seed scripts and its query results are plain row arrays.
+// non-array, non-full-results mode), so the fixture is portable across seed
+// scripts and its query results are plain row arrays.
 type Sql = NeonQueryFunction<false, false>
 
 // ─────────────────────────────────────────────────────────────────────────────

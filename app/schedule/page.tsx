@@ -17,7 +17,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     leaderIntro: 'Run Leaders:',
     closingNotes: 'Bag Drop: Sorry, Not available',
     kind: 'Workout',
-    workoutTypes: ['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold'],
+    workoutTypes: ['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold', 'Intervals'],
     // Fallback serves a leader not yet linked to a run (no workout scoping); a linked
     // leader's real run_group_id comes from getLeaderRun.
     runGroupId: null,

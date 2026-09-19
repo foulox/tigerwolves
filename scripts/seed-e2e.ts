@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 import type { Race } from '../lib/data'
-import { seedDovesLongRun } from './fixtures/dovesLongRun'
+import { CURATED_FAMILIES, CURATED_DOVES_ROUTES } from './fixtures/curatedWorkouts'
 
 // Guards against ever running this destructive wipe-and-reseed against
 // production — only the staging branch's host is allowed through. Update this
@@ -76,6 +76,21 @@ function nextMondays(count: number): string[] {
   return dates
 }
 
+/** Next N Wednesdays from today (inclusive if today is a Wednesday), as YYYY-MM-DD — for the Mourning Doves (Wednesday) fixture. */
+function nextWednesdays(count: number): string[] {
+  const dates: string[] = []
+  const d = new Date()
+  d.setUTCHours(0, 0, 0, 0)
+  const dayOfWeek = d.getUTCDay() // 0 = Sunday, 3 = Wednesday
+  const daysUntilWednesday = (3 - dayOfWeek + 7) % 7
+  d.setUTCDate(d.getUTCDate() + daysUntilWednesday)
+  for (let i = 0; i < count; i++) {
+    dates.push(d.toISOString().slice(0, 10))
+    d.setUTCDate(d.getUTCDate() + 7)
+  }
+  return dates
+}
+
 /** N days from today, as YYYY-MM-DD — used for race dates, which don't need to fall on a Tuesday. */
 function daysFromNow(days: number): string {
   const d = new Date()
@@ -90,60 +105,10 @@ const RACES: Omit<Race, 'id'>[] = [
 ]
 
 // #276/#277: Library/Schedule/Group Run/Admin all read workout_families/
-// workout_variants exclusively — these fixtures are what the e2e specs
-// assert against.
-type VariantFixture = {
-  label: string | null
-  sortOrder: number | null
-  rawInput: string
-  flagged?: boolean
-  flagNote?: string
-}
-
-type FamilyFixture = {
-  name: string
-  category: string
-  type: string
-  reason: string
-  variants: VariantFixture[]
-}
-
-const FAMILIES: FamilyFixture[] = [
-  {
-    name: 'Easy Recovery Run', category: 'Easy', type: 'Recovery', reason: 'E2E fixture workout.',
-    variants: [{ label: null, sortOrder: null, rawInput: 'Fixture instructions — seeded by scripts/seed-e2e.ts.' }],
-  },
-  {
-    name: 'Long Run — Progressive', category: 'Long', type: 'Progressive', reason: 'E2E fixture workout.',
-    variants: [{ label: null, sortOrder: null, rawInput: 'Fixture instructions — seeded by scripts/seed-e2e.ts.' }],
-  },
-  {
-    name: 'Yasso 800s', category: 'Quality', type: 'Interval', reason: 'E2E fixture workout.',
-    variants: [{
-      label: null, sortOrder: null, rawInput: '10x800m @ 5K effort, 400m jog recovery.',
-      flagged: true, flagNote: "We've actually been running 8 reps lately, not 10 — might be worth double-checking.",
-    }],
-  },
-  {
-    name: 'Fort Greene Hills', category: 'Quality', type: 'Hills', reason: 'E2E fixture workout.',
-    variants: [{ label: null, sortOrder: null, rawInput: '8x90sec hill repeats, jog down recovery.' }],
-  },
-  {
-    name: 'Prospect Park Tempo', category: 'Quality', type: 'Straight Tempo', reason: 'E2E fixture workout.',
-    variants: [{ label: null, sortOrder: null, rawInput: '20min @ tempo effort around the loop.' }],
-  },
-  {
-    name: 'Track Ladder 400-800-1200', category: 'Quality', type: 'Ladder', reason: 'E2E fixture workout.',
-    variants: [{ label: null, sortOrder: null, rawInput: '400-800-1200-800-400 @ 5K effort, equal jog recovery.' }],
-  },
-  {
-    name: 'McCarren Loop Repeats', category: 'Quality', type: 'Interval', reason: 'E2E fixture workout.',
-    variants: [
-      { label: 'Short loop, 6x800m', sortOrder: 1, rawInput: 'Short loop, 6x800m' },
-      { label: 'Long loop, 4x1200m', sortOrder: 2, rawInput: 'Long loop, 4x1200m' },
-    ],
-  },
-]
+// workout_variants exclusively — these fixtures are what the e2e specs assert
+// against. #426: the fixtures are now a curated subset of REAL production
+// workouts (scripts/fixtures/curatedWorkouts.ts), covering every supported
+// quality type, seeded onto the REAL runs — no invented shadow run.
 
 export async function seedE2E(): Promise<void> {
   // #360: Ensure nbr_directory_id column exists before fixture seeding (idempotent).
@@ -170,6 +135,7 @@ export async function seedE2E(): Promise<void> {
 
   const [week1, week2, week3] = nextTuesdays(3)
   const [mon1] = nextMondays(1)
+  const [wed1, wed2] = nextWednesdays(2)
   RACES[0].date = daysFromNow(10)
   RACES[1].date = daysFromNow(24)
 
@@ -187,13 +153,13 @@ export async function seedE2E(): Promise<void> {
   await sql`DELETE FROM run_workouts`
   await sql`DELETE FROM workout_variants`
   await sql`DELETE FROM workout_families`
-  await sql`DELETE FROM run_leaders WHERE run_id IN ('tigerwolves', 'mmer', 'doves')`
+  await sql`DELETE FROM run_leaders WHERE run_id IN ('tigerwolves', 'mmer', 'wednesday-mourning-doves')`
   // #330/#331: clear follows on the fixture runs so each run starts from a known
   // clean slate (runner_follows is never wiped otherwise; a mid-test failure could
   // leave a stray row). #331 My Week is follow-based, so the test-leader must start
   // following nothing — both the join/leave e2e and the My Week zero-follows e2e
   // depend on this.
-  await sql`DELETE FROM runner_follows WHERE run_id IN ('mmer', 'tigerwolves', 'doves')`
+  await sql`DELETE FROM runner_follows WHERE run_id IN ('mmer', 'tigerwolves', 'wednesday-mourning-doves')`
 
   const [tigerWolves] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
   if (!tigerWolves) {
@@ -221,7 +187,9 @@ export async function seedE2E(): Promise<void> {
         RETURNING id
       `)[0].id as number)
 
-  for (const f of FAMILIES) {
+  // #426: TigerWolves owns every curated quality-type family (real production
+  // rows, frozen in scripts/fixtures/curatedWorkouts.ts).
+  for (const f of CURATED_FAMILIES) {
     const [family] = await sql`
       INSERT INTO workout_families (name, category, type, reason, author, run_group_id)
       VALUES (${f.name}, ${f.category}, ${f.type}, ${f.reason}, 'TigerWolves', ${tigerWolvesId})
@@ -230,8 +198,8 @@ export async function seedE2E(): Promise<void> {
     const familyId = family.id as number
     for (const v of f.variants) {
       await sql`
-        INSERT INTO workout_variants (family_id, label, sort_order, raw_input, has_turnaround, turnaround, flagged, flag_note)
-        VALUES (${familyId}, ${v.label}, ${v.sortOrder}, ${v.rawInput}, false, '', ${v.flagged ?? false}, ${v.flagNote ?? ''})
+        INSERT INTO workout_variants (family_id, label, sort_order, raw_input, dist_time, map_link, has_turnaround, turnaround, flagged, flag_note)
+        VALUES (${familyId}, ${v.label}, ${v.sortOrder}, ${v.rawInput}, ${v.distTime ?? ''}, ${v.mapLink ?? null}, false, '', ${v.flagged ?? false}, ${v.flagNote ?? ''})
       `
     }
   }
@@ -330,14 +298,15 @@ export async function seedE2E(): Promise<void> {
   // workout_type must match the assigned workout's own "type" field (not its
   // "category") — ScheduleClient's suggestion picker filters library workouts by
   // types.includes(w.type) against this column, so a mismatch here silently
-  // empties the picker instead of erroring.
+  // empties the picker instead of erroring. #426: types are now the canonical
+  // WORKOUT_TYPE_OPTIONS values (Intervals/Hills, not the old 'Interval').
   await sql`
     INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
-    VALUES (${week1}::date, 'tigerwolves', 'Interval', 'Dana Kim', 'Yasso 800s')
+    VALUES (${week1}::date, 'tigerwolves', 'Intervals', 'Dana Kim', '300m''s on Down')
   `
   await sql`
     INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
-    VALUES (${week2}::date, 'tigerwolves', 'Hills', 'Marcus Ade', 'Fort Greene Hills')
+    VALUES (${week2}::date, 'tigerwolves', 'Hills', 'Marcus Ade', 'Hills - 2 Sets 7x30s')
   `
   await sql`
     INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
@@ -351,12 +320,54 @@ export async function seedE2E(): Promise<void> {
     VALUES (${mon1}::date, 'mmer', 'Easy', 'Sam Rivera', 'McCarren Easy Loop')
   `
 
-  // #391: a durable Mourning Doves Long/route run (run_id 'doves', kind 'Long')
-  // so #387's route-post path and #382's route-run preview have a real fixture.
-  // Extracted to a shared, additive/fixture-scoped helper so the SAME run seeds
-  // into the demo branch (refresh-demo) and per-PR Preview branches (seed-doves).
-  // clerk_user_id is NULL — link an account to run_id 'doves' to browse it.
-  await seedDovesLongRun(sql)
+  // #426: the REAL Mourning Doves run (run_id 'wednesday-mourning-doves', kind
+  // 'Long') — no longer a separate shadow run. It owns a couple of curated
+  // REAL Long routes (CURATED_DOVES_ROUTES) so #382's route-run preview and the
+  // per-run route card have a genuine Long/route fixture to exercise. Its group is
+  // the same "Wednesday Mourning Doves" activation creates in production.
+  // clerk_user_id on the leader is NULL — link an account to browse it as leader.
+  const existingDovesGroup = await sql`SELECT id FROM run_groups WHERE name = 'Wednesday Mourning Doves'`
+  const dovesGroupId = existingDovesGroup.length > 0
+    ? (existingDovesGroup[0].id as number)
+    : ((await sql`
+        INSERT INTO run_groups (name, venue, default_location)
+        VALUES ('Wednesday Mourning Doves', 'road', 'Grand Army Plaza')
+        RETURNING id
+      `)[0].id as number)
+  await sql`
+    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind, run_group_id, status)
+    VALUES (
+      'wednesday-mourning-doves', 'Wednesday Mourning Doves', '🕊️',
+      'A steady, social long run through Brooklyn — conversational pace, no one left behind.',
+      'Wednesday', '6:00 AM', 'Prospect Park — Grand Army Plaza entrance',
+      'Long', ${dovesGroupId}, 'live'
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      kind = EXCLUDED.kind, run_group_id = EXCLUDED.run_group_id, status = EXCLUDED.status
+  `
+  await sql`
+    INSERT INTO run_leaders (run_id, name, sort_order, clerk_user_id, active) VALUES
+      ('wednesday-mourning-doves', 'Doves Lead', 1, NULL, true)
+  `
+  for (const route of CURATED_DOVES_ROUTES) {
+    const [dovesFamily] = await sql`
+      INSERT INTO workout_families (name, category, type, reason, author, run_group_id, map_link)
+      VALUES (${route.name}, 'Long', 'Long', 'A social long route at conversational effort.', 'Wednesday Mourning Doves', ${dovesGroupId}, ${route.mapLink})
+      RETURNING id
+    `
+    await sql`
+      INSERT INTO workout_variants (family_id, label, sort_order, raw_input, dist_time, map_link, has_turnaround, turnaround, flagged, flag_note)
+      VALUES (${dovesFamily.id as number}, NULL, NULL, '', ${route.distTime}, ${route.mapLink}, false, '', false, '')
+    `
+  }
+  await sql`
+    INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
+    VALUES (${wed1}::date, 'wednesday-mourning-doves', 'Long', 'Doves Lead', ${CURATED_DOVES_ROUTES[0].name})
+  `
+  await sql`
+    INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
+    VALUES (${wed2}::date, 'wednesday-mourning-doves', 'Long', 'Doves Lead', ${CURATED_DOVES_ROUTES[1].name})
+  `
 
   for (const r of RACES) {
     await sql`
@@ -378,5 +389,6 @@ export async function seedE2E(): Promise<void> {
     ON CONFLICT (run_id, family_id) DO NOTHING
   `
 
-  console.log(`  seeded ${FAMILIES.length + 3} workout_families, 3 runs (tigerwolves + mmer + doves) + 5 run_leaders, 6 schedule entries (tigerwolves: ${week1}, ${week2}, ${week3}; mmer: ${mon1}; doves: Long routes on 2 Wednesdays), ${RACES.length} races, run_workouts membership seeded`)
+  const familyCount = CURATED_FAMILIES.length + 1 + CURATED_DOVES_ROUTES.length // + MMER Easy + doves routes
+  console.log(`  seeded ${familyCount} workout_families, 3 runs (tigerwolves + mmer + wednesday-mourning-doves) + 5 run_leaders, ${4 + CURATED_DOVES_ROUTES.length} schedule entries (tigerwolves: ${week1}, ${week2}, ${week3}; mmer: ${mon1}; doves: ${wed1}, ${wed2}), ${RACES.length} races, run_workouts membership seeded`)
 }

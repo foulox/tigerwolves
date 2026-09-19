@@ -59,8 +59,8 @@ test.describe('My Plan (/my-plan) — signed-in leader', () => {
     expect(await page.locator('[data-testid^="day-group-"]').count()).toBeGreaterThan(0)
 
     // TigerWolves (Workout kind) → type pill + short set line, no route link.
-    await expect(page.locator('[data-testid="my-plan-type-tigerwolves"]')).toContainText('Interval')
-    await expect(page.locator('[data-testid="my-plan-set-tigerwolves"]')).toContainText('10x800m @ 5K effort')
+    await expect(page.locator('[data-testid="my-plan-type-tigerwolves"]')).toContainText('Intervals')
+    await expect(page.locator('[data-testid="my-plan-set-tigerwolves"]')).toContainText('45 sec rec btwn reps')
     await expect(page.locator('[data-testid="my-plan-route-tigerwolves"]')).toHaveCount(0)
 
     // MMER (Easy/route kind) → distance + "View route ↗", no type pill.

@@ -1,23 +1,26 @@
 import { test, expect } from '@playwright/test'
 
+// #426: fixtures are now a curated subset of REAL production workouts. TigerWolves
+// owns 15 single-variant quality-type families (2 of each type, 1 Threshold) plus
+// one reserved 2-variant family ("Domino Park Loop") for the admin regroup e2e, so
+// the "Your run" count is a deterministic 17 variant rows.
 test('Library "Your run" mode shows only the run\'s own workouts across categories (run_group scoping, #401 AC1)', async ({ page }) => {
   await page.goto('/library')
   await page.waitForLoadState('load')
 
-  // Default view is "Your run" mode: every workout owned by the TigerWolves
-  // run_group, ACROSS categories (Quality + the Easy/Long fixtures TW owns). The
-  // category selector is available in this mode to narrow further. The 8 count is
-  // the 7 TigerWolves-owned families (McCarren Loop Repeats contributes 2 variant rows).
+  // Default view is "Your run" mode: every workout TigerWolves owns. 15 single-variant
+  // families + 1 two-variant reserved family → 17 rows.
   const countEl = page.locator('p').filter({ hasText: /workouts · oldest first/ })
-  await expect(countEl).toHaveText('8 workouts · oldest first')
+  await expect(countEl).toHaveText('17 workouts · oldest first')
 
-  await expect(page.getByText('Yasso 800s')).toBeVisible()
-  await expect(page.getByText('Fort Greene Hills')).toBeVisible()
-  await expect(page.getByText('Prospect Park Tempo')).toBeVisible()
-  await expect(page.getByText('Track Ladder 400-800-1200')).toBeVisible()
-  // TigerWolves owns these Easy/Long fixtures too — now visible in "Your run" (group scope, not category).
-  await expect(page.getByText('Easy Recovery Run')).toBeVisible()
-  await expect(page.getByText('Long Run — Progressive')).toBeVisible()
+  // Spot-check a spread of the curated real names across types. Each name is unique
+  // (never also a type-pill string), so a bare toBeVisible() stays single-match.
+  await expect(page.getByText("300m's on Down")).toBeVisible()
+  await expect(page.getByText('Hills - 2 Sets 7x30s')).toBeVisible()
+  await expect(page.getByText('The Moneghetti')).toBeVisible()
+  await expect(page.getByText('Ladder - 1 to 5 to 1')).toBeVisible()
+  await expect(page.getByText('Power Endurance for Elites')).toBeVisible()
+  await expect(page.getByText('800s', { exact: true })).toBeVisible()
 
   // Another run's workout (MMER owns "McCarren Easy Loop") is NOT visible in "Your
   // run" — the core of per-run scoping. It's reachable via "All runs" (next test — AC2).
@@ -31,26 +34,48 @@ test('Library "All runs" mode reveals the full shared catalog incl. other runs, 
   // Switch to "All runs" — shared catalog, all categories, category selector visible.
   await page.getByRole('button', { name: 'All runs', exact: true }).click()
 
-  // TigerWolves' own Easy/Long families now appear (AC4: no content loss).
-  await expect(page.getByText('Easy Recovery Run')).toBeVisible()
-  await expect(page.getByText('Long Run — Progressive')).toBeVisible()
-
-  // Another run's workout also appears (AC2: shared pool).
+  // Other runs' non-Quality workouts now appear: a Doves Long route + MMER's Easy loop.
+  await expect(page.getByText('All The Water Fountains')).toBeVisible()
   await expect(page.getByText('McCarren Easy Loop')).toBeVisible()
 
   // Category selector is now visible in "All runs" mode — filter to Quality.
   await page.getByRole('button', { name: 'Quality', exact: true }).click()
 
-  // Easy, Long, and the other run's Easy workout drop out of the Quality-filtered view.
-  await expect(page.getByText('Easy Recovery Run')).toHaveCount(0)
-  await expect(page.getByText('Long Run — Progressive')).toHaveCount(0)
+  // The Long route and the other run's Easy workout drop out of the Quality-filtered view.
+  await expect(page.getByText('All The Water Fountains')).toHaveCount(0)
   await expect(page.getByText('McCarren Easy Loop')).toHaveCount(0)
 
   // Quality rows stay visible — spot-check one.
-  await expect(page.getByText('Fort Greene Hills')).toBeVisible()
+  await expect(page.getByText('Hills - 2 Sets 7x30s')).toBeVisible()
 
   // No exact total-count assertion here: the shared catalog can grow as more runs
   // are added, so a hard number would become a maintenance burden.
+})
+
+// #426 full-e2e coverage: at least one workout of EVERY seeded type is visible in
+// the Library. "All runs" mode is used so the Long routes (on the Doves run) show
+// alongside TigerWolves' quality types. Each type is asserted two ways: its exact
+// type pill and a known real workout of that type.
+test('Library shows ≥1 workout of every seeded type (#426 per-type coverage)', async ({ page }) => {
+  await page.goto('/library')
+  await page.waitForLoadState('load')
+  await page.getByRole('button', { name: 'All runs', exact: true }).click()
+
+  const byType: Record<string, string> = {
+    Hills: 'Hills - 2 Sets 7x30s',
+    'Broken Tempo': '800s',
+    Progression: 'Progression w/ Rests',
+    Ladder: 'Ladder - 1 to 5 to 1',
+    Superset: "Sir Blake's SuperSet",
+    'Straight Tempo': 'Straight Tempo',
+    Intervals: 'Generic Track Intervals',
+    Threshold: 'Power Endurance for Elites',
+    Long: 'All The Water Fountains',
+  }
+  for (const [type, workout] of Object.entries(byType)) {
+    await expect(page.getByText(type, { exact: true }).first(), `type pill: ${type}`).toBeVisible()
+    await expect(page.getByText(workout).first(), `workout: ${workout}`).toBeVisible()
+  }
 })
 
 // #354: duplicate-name detection on create. Non-mutating (never saves), so it's
@@ -61,7 +86,7 @@ test('Add workout: a duplicate name surfaces the existing family and offers to a
 
   // Enter a name that already exists (a seeded TigerWolves family). Category +
   // Type are required before "Next" is enabled; Instructions is a required field.
-  await page.getByPlaceholder('e.g. Hills', { exact: false }).fill('Yasso 800s')
+  await page.getByPlaceholder('e.g. Hills', { exact: false }).fill('Generic Track Intervals')
   await page.getByRole('button', { name: 'Quality', exact: true }).click()
   await page.getByRole('button', { name: 'Intervals', exact: true }).click()
   await page.getByPlaceholder('WU:', { exact: false }).fill('WU 10; Main 8x800; CD 10')
@@ -88,21 +113,23 @@ test('Add variation: a new variation shows up immediately in Library AND on Plan
   await page.goto('/library')
   await page.waitForLoadState('load')
 
-  const card = page.locator('.bg-white.rounded-2xl', { hasText: 'Prospect Park Tempo' })
+  // "Kostas Fartlek" (a single-variant curated Broken Tempo family) — its name
+  // never collides with a type pill, so the card locator is unambiguous.
+  const card = page.locator('.bg-white.rounded-2xl', { hasText: 'Kostas Fartlek' })
   await card.getByText('+ Add variation').click()
 
   await page.waitForLoadState('load')
   await expect(page.getByRole('heading', { name: 'Add Variation' })).toBeVisible()
-  await page.getByPlaceholder('e.g. 3×2mi@HMP, r3min').fill('12min tempo instead of 20min')
+  await page.getByPlaceholder('e.g. 3×2mi@HMP, r3min').fill('ADDED VARIATION — 4x(5min tempo/5min MP)')
   await page.getByRole('button', { name: 'Save Variation' }).click()
 
   await page.waitForURL(/\/library/)
   await page.waitForLoadState('load')
-  const familyCard = page.locator('.bg-white.rounded-2xl', { hasText: 'Prospect Park Tempo' })
+  const familyCard = page.locator('.bg-white.rounded-2xl', { hasText: 'Kostas Fartlek' })
   await expect(familyCard.getByText('2 versions')).toBeVisible()
 
   // Schedule's browse picker searches this run's own library regardless of the
-  // scheduled week's workout type — Prospect Park Tempo is a TigerWolves-owned
+  // scheduled week's workout type — Kostas Fartlek is a TigerWolves-owned
   // workout, so the new variant is visible there too, not just in the Library
   // (the other half of the addWorkout/addVariation split-brain). Post-#401 the
   // picker is run_group-scoped, and this workout is in the run's own group.
@@ -110,8 +137,8 @@ test('Add variation: a new variation shows up immediately in Library AND on Plan
   await page.waitForLoadState('load')
   const browseTab = page.getByRole('button', { name: 'Change workout', exact: true })
   if (await browseTab.isVisible()) await browseTab.click()
-  await page.locator('input[type="search"]').fill('Prospect Park Tempo')
-  await expect(page.getByText('12min tempo instead of 20min')).toBeVisible()
+  await page.locator('input[type="search"]').fill('Kostas Fartlek')
+  await expect(page.getByText('ADDED VARIATION — 4x(5min tempo/5min MP)')).toBeVisible()
 })
 
 test('Flag round trip: leader reviews a reported issue and saves a fix, clearing the flag (#277 — variant_id write path)', async ({ page }) => {
@@ -120,7 +147,7 @@ test('Flag round trip: leader reviews a reported issue and saves a fix, clearing
 
   await page.getByRole('button', { name: 'Issue reported — view details' }).click()
   await expect(page.getByRole('heading', { name: 'Review & fix' })).toBeVisible()
-  await expect(page.getByText("We've actually been running 8 reps lately")).toBeVisible()
+  await expect(page.getByText("We've been running 6x800m lately")).toBeVisible()
 
   await page.getByRole('button', { name: 'Save fix & clear flag' }).click()
   // The sheet closes client-side as soon as the action resolves, but the

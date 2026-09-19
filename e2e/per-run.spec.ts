@@ -40,7 +40,7 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
     await page.locator('[data-testid="schedule-card-0"]').click()
     const detail = page.locator('[data-testid="schedule-detail-0"]')
     await expect(detail).toBeVisible()
-    await expect(detail).toContainText('10x800m @ 5K effort')
+    await expect(detail).toContainText('45 sec rec btwn reps')
   })
 
   // #332: migrated from the retired schedule.spec.ts (the old `/` Schedule page).
@@ -49,9 +49,9 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
     await page.goto('/runs/tigerwolves')
     await page.waitForLoadState('load')
 
-    await expect(page.locator('[data-testid="schedule-card-0"]')).toContainText('Yasso 800s')
+    await expect(page.locator('[data-testid="schedule-card-0"]')).toContainText("300m's on Down")
     await expect(page.locator('[data-testid="schedule-card-0"]')).toContainText('Led by Dana Kim')
-    await expect(page.locator('[data-testid="schedule-card-1"]')).toContainText('Fort Greene Hills')
+    await expect(page.locator('[data-testid="schedule-card-1"]')).toContainText('Hills - 2 Sets 7x30s')
     await expect(page.locator('[data-testid="schedule-card-1"]')).toContainText('Led by Marcus Ade')
     await expect(page.locator('[data-testid="schedule-card-2"]')).toContainText('Not planned yet')
     await expect(page.locator('[data-testid="schedule-card-2"]')).toContainText('Led by Priya Shah')

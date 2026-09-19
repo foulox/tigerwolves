@@ -6,8 +6,8 @@ test('Schedule page for the already-planned week shows the Heylo post with fixtu
 
   await expect(page.getByRole('button', { name: 'Post draft', exact: true })).toBeVisible()
   const post = page.getByRole('textbox', { name: 'Editable weekly post' })
-  await expect(post).toHaveValue(/Yasso 800s/)
-  await expect(post).toHaveValue(/10x800m @ 5K effort/)
+  await expect(post).toHaveValue(/300m's on Down/)
+  await expect(post).toHaveValue(/45 sec rec btwn reps/)
   await expect(page.getByRole('button', { name: /copy to clipboard/i })).toBeVisible()
 })
 
@@ -18,11 +18,11 @@ test('Schedule page for the unplanned week lets a leader pick a fixture workout 
   // No workout planned yet for this week — the picker shows directly, no tabs.
   await expect(page.getByRole('button', { name: 'Post draft', exact: true })).toHaveCount(0)
 
-  await page.locator('button').filter({ hasText: 'Fort Greene Hills' }).first().click()
+  await page.locator('button').filter({ hasText: 'Hills - Ladder' }).first().click()
 
   const post = page.getByRole('textbox', { name: 'Editable weekly post' })
-  await expect(post).toHaveValue(/Fort Greene Hills/)
-  await expect(post).toHaveValue(/8x90sec hill repeats/)
+  await expect(post).toHaveValue(/Hills - Ladder/)
+  await expect(post).toHaveValue(/Jog back down as recovery/)
 })
 
 test('generated post is editable inline with an "editable" cue and no Edit button', async ({ page }) => {
@@ -55,7 +55,7 @@ test('regenerating the post discards inline edits', async ({ page }) => {
 
   const postAgain = page.getByRole('textbox', { name: 'Editable weekly post' })
   await expect(postAgain).not.toHaveValue(/SENTINEL EDIT/)
-  await expect(postAgain).toHaveValue(/Yasso 800s/)
+  await expect(postAgain).toHaveValue(/300m's on Down/)
 })
 
 test('the edited text is what gets copied to the clipboard', async ({ page, context }) => {
@@ -116,7 +116,7 @@ test('Schedule page tab switch: Post draft is default, Change workout reveals th
   await postTab.click()
   await expect(page.getByRole('button', { name: /copy to clipboard/i })).toBeVisible()
   await expect(page.locator('input[type="search"]')).not.toBeVisible()
-  await expect(page.getByRole('textbox', { name: 'Editable weekly post' })).toHaveValue(/Yasso 800s/)
+  await expect(page.getByRole('textbox', { name: 'Editable weekly post' })).toHaveValue(/300m's on Down/)
 })
 
 // #405: one-time cross-run borrow via the Schedule "All runs" toggle. MMER's
