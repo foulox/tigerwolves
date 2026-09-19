@@ -15,6 +15,15 @@ Demo: https://demo.tigerwolves.foulox.me (friendlier public alias served by the 
 
 **Don't assume you're blocked — test.** If you believe a permission or mode prevents an action, *attempt the read-only version first* and escalate to Lou only on an *actual* denial. Cautionary tale (2026-09-18): an agent spent an entire session guessing at a live demo bug because it assumed "Auto Mode blocks the database" (from the Tooling Note below) and never once tried a query — Lou was in auto-edit the whole time; the block was imagined, and a single `SELECT` on turn one would have replaced hours of theorizing with the answer.
 
+## Grill me — post-grooming stress test
+
+Lou triggers this by saying "grill me," after grooming has drafted a plan — not before (there's no decision tree to walk until a plan exists). Then:
+
+- Interview relentlessly about every part of the plan, one branch of the decision tree at a time, resolving dependencies as they surface. Recommend an answer for each question.
+- If a question can be answered by exploring the codebase or querying the live system, do that instead of asking — the evidence-before-assertion law above, applied to the plan.
+- Aim first at what grooming treated as *settled*, not just its open questions: "where did we assume instead of verify?" The dangerous decisions are the silently-resolved ones — a wrong `run_id` assumption once rode grooming → build → production before a `SELECT` caught it.
+- If grilling breaks a load-bearing assumption, push the plan back through grooming — don't patch it in place. A grill that can't bounce a plan is a rubber stamp.
+
 ## Where to look
 This file holds only what must never be missed regardless of task — guardrails against reintroducing fixed bugs, and hazards specific to working as an agent in this environment. Everything else (stack, architecture, club context, screen-by-screen behavior, Heylo post format, dev workflow, workout categories) lives in the wiki, organized so you read only the part you need instead of one long file top to bottom.
 
