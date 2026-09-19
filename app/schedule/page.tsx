@@ -2,7 +2,7 @@ import { fetchWorkoutVariants, fetchSchedule, getLeaderRun, getRunRoster, genera
 import ScheduleClient from '@/components/ScheduleClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 import { requireLeaderPage } from '@/lib/requireLeaderPage'
-import type { RunConfig } from '@/lib/data'
+import type { RunConfig, WorkoutVariantRow } from '@/lib/data'
 
 export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   // #337: block signed-in non-leaders at the route, not just at the write actions.
@@ -44,6 +44,11 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   // always returned lastRan=null here, which is why the Schedule picker showed "Never"
   // for every workout while the Library (already per-run) showed real dates. The
   // trade-off is one uncached per-run query per load, same as the Library page.
+  // The `.catch(() => [])` restores the error isolation fetchData() gave for free: on
+  // a branch where migrate-402's `last_ran` column hasn't been applied yet (the #238/
+  // #272 hazard — a deploy landing ahead of its migration), the workout_variants read
+  // throws; degrade to an empty picker rather than crashing the whole Schedule page
+  // (schedule + roster still render). Same posture as fetchData's own try/catch.
   // #404: the run's library membership (created + adopted) — the Schedule picker
   // scopes to it (AC3), replacing #401's run_group_id ownership check. Empty for a
   // run not reconciled to a group (runGroupId null), where ScheduleClient falls back
@@ -53,7 +58,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   // credit — mirrors what the Library page fetches for the same control.
   const [schedule, workoutVariants, libraryFamilyIds, ledRuns, runGroups] = await Promise.all([
     fetchSchedule(runConfig.id),
-    fetchWorkoutVariants(undefined, leaderRun?.id),
+    fetchWorkoutVariants(undefined, leaderRun?.id).catch((): WorkoutVariantRow[] => []),
     runConfig.runGroupId != null ? getRunLibraryFamilyIds(runConfig.id) : Promise.resolve<number[]>([]),
     getLeaderRuns(user.id),
     fetchRunGroups(),

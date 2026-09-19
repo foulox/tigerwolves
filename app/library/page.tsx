@@ -3,7 +3,7 @@ import { fetchWorkoutVariants, getLeaderRun, getRunLibraryFamilyIds, getLeaderRu
 import LibraryClient from '@/components/LibraryClient'
 import Header from '@/components/Header'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
-import type { RunConfig } from '@/lib/data'
+import type { RunConfig, WorkoutVariantRow } from '@/lib/data'
 
 export default async function LibraryPage() {
   const user = await currentUser()
@@ -42,7 +42,11 @@ export default async function LibraryPage() {
   // (keyed by run_id) and is independent of whether the run is reconciled to a group; a
   // group-less run (e.g. MMER) still has its own recency. Null led run → no recency run
   // → "Never" everywhere (anonymous/unlinked fallback).
-  const workoutVariants = await fetchWorkoutVariants(undefined, leaderRun?.id)
+  // `.catch(() => [])`: this call (like the Schedule page's) now hard-depends on
+  // migrate-402's `last_ran` column. On a branch where the migration hasn't landed yet
+  // (#238/#272 hazard), degrade to an empty library rather than crashing the page — the
+  // same error isolation fetchData() provides for the pages that still read through it.
+  const workoutVariants = await fetchWorkoutVariants(undefined, leaderRun?.id).catch((): WorkoutVariantRow[] => [])
 
   // #404: "Your run" = the run's library membership (created + adopted), not the old
   // run_group_id ownership check. Only meaningful for a signed-in leader with a
