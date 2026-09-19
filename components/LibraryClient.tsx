@@ -176,7 +176,10 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   // excluded so they don't duplicate.
   function WorkoutMeta({ w }: { w: WorkoutVariantRow }) {
     const showDetails = expandedNotes === w.id
-    const hasDetails = !!(w.reason || w.energySystem || w.hrZone || w.rpe || (w.hasTurnaround && w.turnaround) || w.mapLink)
+    // #411: the map link (route) is shown inline below — always visible, no
+    // "Show details" click needed — so it's dropped from hasDetails and excluded
+    // from the collapsed WorkoutDetails to avoid duplicating it.
+    const hasDetails = !!(w.reason || w.energySystem || w.hrZone || w.rpe || (w.hasTurnaround && w.turnaround))
     return (
       <div className="mt-2.5 space-y-2">
         <div className="flex gap-3 text-xs text-gray-400">
@@ -184,6 +187,17 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           {w.distTime && w.lastRan && <span>·</span>}
           <span>{w.lastRan ? `Last ran ${formatDate(w.lastRan)}` : 'Never used'}</span>
         </div>
+        {w.mapLink && (
+          <a
+            href={w.mapLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="text-xs font-semibold text-blue-500 touch-manipulation block"
+          >
+            Map ↗
+          </a>
+        )}
         {(w.raceTypes.length > 0 || w.trainingPhases.length > 0) && (
           <div className="flex flex-wrap gap-1.5">
             {w.raceTypes.map(r => (
@@ -207,7 +221,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
             </button>
             {showDetails && (
               <div className="mt-1">
-                <WorkoutDetails w={w} exclude={['raceTypes', 'trainingPhases', 'author']} />
+                <WorkoutDetails w={w} exclude={['raceTypes', 'trainingPhases', 'author', 'mapLink']} />
               </div>
             )}
           </div>
