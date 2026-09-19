@@ -71,6 +71,11 @@ describe('assertHostAllowed', () => {
     expect(() => assertHostAllowed(prodUrl, 'ep-ancient-math')).toThrow(/ep-ancient-math/)
   })
 
+  it('checks the host only — the substring hiding in the password does not pass', () => {
+    const sneaky = 'postgresql://user:ep-ancient-math@ep-square-river-atjn0mzq.us-east-2.aws.neon.tech/neondb'
+    expect(() => assertHostAllowed(sneaky, 'ep-ancient-math')).toThrow()
+  })
+
   it('is a no-op when no host constraint is given', () => {
     expect(() => assertHostAllowed(prodUrl, undefined)).not.toThrow()
   })

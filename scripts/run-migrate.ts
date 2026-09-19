@@ -61,9 +61,18 @@ export function assertHostAllowed(url: string | undefined, onlyHost: string | un
       `run-migrate refuses to run: MIGRATE_ONLY_HOST is set to "${onlyHost}" but DATABASE_URL is not set.`
     )
   }
-  if (!url.includes(onlyHost)) {
+  // Match against the parsed HOST only — never the credentials or db name — so a
+  // substring appearing in a username/password can't sneak a wrong branch past
+  // the guard. Fall back to the raw string if the url is unparseable.
+  let host: string
+  try {
+    host = new URL(url).hostname
+  } catch {
+    host = url
+  }
+  if (!host.includes(onlyHost)) {
     throw new Error(
-      `run-migrate refuses to run: DATABASE_URL host does not contain the required "${onlyHost}". ` +
+      `run-migrate refuses to run: DATABASE_URL host "${host}" does not contain the required "${onlyHost}". ` +
         `Refusing to apply migrations to an unexpected database.`
     )
   }
