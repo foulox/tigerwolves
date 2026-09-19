@@ -3,7 +3,7 @@ import { fetchWorkoutVariants, getLeaderRun, getRunLibraryFamilyIds, getLeaderRu
 import LibraryClient from '@/components/LibraryClient'
 import Header from '@/components/Header'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
-import type { RunConfig } from '@/lib/data'
+import type { RunConfig, WorkoutVariantRow } from '@/lib/data'
 
 export default async function LibraryPage() {
   const user = await currentUser()
@@ -30,11 +30,23 @@ export default async function LibraryPage() {
     status: 'live',
     postTemplate: null,
   }
-  const runConfig = (user && isLeader ? await getLeaderRun(user.id) : null) ?? tigerWolvesConfig
+  // The run this leader actually leads (null for anonymous/non-leader/unlinked).
+  const leaderRun = user && isLeader ? await getLeaderRun(user.id) : null
+  const runConfig = leaderRun ?? tigerWolvesConfig
   // #401: fetch the FULL shared catalog (no runId scoping) so the "All runs" escape
   // hatch can browse everything. "Your run" scoping is applied client-side by library
   // membership in LibraryClient — the read that AC2 turns on.
-  const workoutVariants = await fetchWorkoutVariants()
+  // #402: key recency to the run this leader LEADS (`leaderRun.id`), so each card's
+  // "Last ran" is that run's date even while browsing the full catalog (AC6). Keyed on
+  // the led run itself — NOT on run_group_id — because recency lives on run_workouts
+  // (keyed by run_id) and is independent of whether the run is reconciled to a group; a
+  // group-less run (e.g. MMER) still has its own recency. Null led run → no recency run
+  // → "Never" everywhere (anonymous/unlinked fallback).
+  // `.catch(() => [])`: this call (like the Schedule page's) now hard-depends on
+  // migrate-402's `last_ran` column. On a branch where the migration hasn't landed yet
+  // (#238/#272 hazard), degrade to an empty library rather than crashing the page — the
+  // same error isolation fetchData() provides for the pages that still read through it.
+  const workoutVariants = await fetchWorkoutVariants(undefined, leaderRun?.id).catch((): WorkoutVariantRow[] => [])
 
   // #404: "Your run" = the run's library membership (created + adopted), not the old
   // run_group_id ownership check. Only meaningful for a signed-in leader with a
@@ -42,7 +54,7 @@ export default async function LibraryPage() {
   // (empty membership + null runGroupId in LibraryClient). ledRuns drives the adopt
   // affordance + the multi-run "which run?" picker; runGroupNames labels a route's
   // creator ("adopted from <creator>").
-  const isRealLeaderRun = !!(user && isLeader && runConfig.runGroupId != null)
+  const isRealLeaderRun = !!(leaderRun && runConfig.runGroupId != null)
   const [libraryFamilyIds, ledRuns, runGroups] = await Promise.all([
     isRealLeaderRun ? getRunLibraryFamilyIds(runConfig.id) : Promise.resolve<number[]>([]),
     user && isLeader ? getLeaderRuns(user.id) : Promise.resolve<Array<{ id: string; name: string }>>([]),

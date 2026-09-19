@@ -1,8 +1,8 @@
-import { fetchData, fetchSchedule, getLeaderRun, getRunRoster, generateScheduleHorizon, getRunLibraryFamilyIds, getLeaderRuns, fetchRunGroups } from '@/lib/db'
+import { fetchWorkoutVariants, fetchSchedule, getLeaderRun, getRunRoster, generateScheduleHorizon, getRunLibraryFamilyIds, getLeaderRuns, fetchRunGroups } from '@/lib/db'
 import ScheduleClient from '@/components/ScheduleClient'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
 import { requireLeaderPage } from '@/lib/requireLeaderPage'
-import type { RunConfig } from '@/lib/data'
+import type { RunConfig, WorkoutVariantRow } from '@/lib/data'
 
 export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   // #337: block signed-in non-leaders at the route, not just at the write actions.
@@ -26,7 +26,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     status: 'live',
     postTemplate: null,
   }
-  const runConfig = (await getLeaderRun(user.id)) ?? tigerWolvesConfig
+  const leaderRun = await getLeaderRun(user.id)
+  const runConfig = leaderRun ?? tigerWolvesConfig
   const runLeaders = await getRunRoster(runConfig.id)
   const roster = runLeaders
     .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999))
@@ -35,9 +36,19 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   // Auto-generate schedule horizon (idempotent, runs outside cache)
   await generateScheduleHorizon(runConfig.id, runConfig.dayOfWeek, runLeaders)
 
-  // Schedule filtered to this leader's run; workout variants come from the cached
-  // aggregate (fetchData), which as of #347 returns the full shared catalog — ScheduleClient
-  // scopes it client-side by category + the run's types. Benefits from the 5-min cache.
+  // Schedule filtered to this leader's run. Workout variants are the full shared catalog
+  // (#347) — ScheduleClient scopes it client-side by category + the run's types.
+  // #402: read variants via fetchWorkoutVariants keyed to the run this leader LEADS
+  // (`leaderRun.id`), NOT via the cached fetchData() aggregate. fetchData() is a single
+  // global cache shared across every user/run, so it can't carry per-run recency — it
+  // always returned lastRan=null here, which is why the Schedule picker showed "Never"
+  // for every workout while the Library (already per-run) showed real dates. The
+  // trade-off is one uncached per-run query per load, same as the Library page.
+  // The `.catch(() => [])` restores the error isolation fetchData() gave for free: on
+  // a branch where migrate-402's `last_ran` column hasn't been applied yet (the #238/
+  // #272 hazard — a deploy landing ahead of its migration), the workout_variants read
+  // throws; degrade to an empty picker rather than crashing the whole Schedule page
+  // (schedule + roster still render). Same posture as fetchData's own try/catch.
   // #404: the run's library membership (created + adopted) — the Schedule picker
   // scopes to it (AC3), replacing #401's run_group_id ownership check. Empty for a
   // run not reconciled to a group (runGroupId null), where ScheduleClient falls back
@@ -45,9 +56,9 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   // #405: ledRuns + runGroupNames drive the "All runs" borrow mode's "+ Add to my run"
   // adopt affordance (reusing #404's AdoptRouteControls) and the "adopted from <creator>"
   // credit — mirrors what the Library page fetches for the same control.
-  const [schedule, { workoutVariants }, libraryFamilyIds, ledRuns, runGroups] = await Promise.all([
+  const [schedule, workoutVariants, libraryFamilyIds, ledRuns, runGroups] = await Promise.all([
     fetchSchedule(runConfig.id),
-    fetchData(),
+    fetchWorkoutVariants(undefined, leaderRun?.id).catch((): WorkoutVariantRow[] => []),
     runConfig.runGroupId != null ? getRunLibraryFamilyIds(runConfig.id) : Promise.resolve<number[]>([]),
     getLeaderRuns(user.id),
     fetchRunGroups(),
