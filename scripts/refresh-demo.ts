@@ -1,14 +1,14 @@
 /**
- * Refresh the demo database from production and re-link the demo leader.
+ * Refresh the demo database from production and re-link all demo leaders.
  *
  * Usage:
- *   DATABASE_URL=<neon-demo-url> NEON_API_KEY=<key> CLERK_SECRET_KEY=<dev-clerk-key> \
+ *   DATABASE_URL=<neon-demo-url> NEON_API_KEY=<key> CLERK_SECRET_KEY=<demo-clerk-key> \
  *     npx tsx scripts/refresh-demo.ts
  *
  * Required env vars:
  *   DATABASE_URL   — must point at the demo-data Neon branch (host ep-ancient-math-atvtz5p9)
  *   NEON_API_KEY   — Neon API key with access to project purple-star-02119717
- *   CLERK_SECRET_KEY — dev Clerk instance secret key (the demo leader lives there)
+ *   CLERK_SECRET_KEY — demo Clerk instance secret key (all DEMO_LEADERS must exist there)
  *
  * CRITICAL: this script guards against running against any other database.
  * It will throw immediately if DATABASE_URL does not contain the demo host.
@@ -23,11 +23,15 @@ const DEMO_HOST = 'ep-ancient-math-atvtz5p9'
 const NEON_PROJECT_ID = 'purple-star-02119717'
 const DEMO_BRANCH_ID = 'br-little-rice-at9l08ja'
 const PRODUCTION_BRANCH_ID = 'br-square-river-atjn0mzq'
-// Single email identity across all environments (#385). The forked prod leader
-// row's backfilled email already equals this login email, so the relink just
-// repoints clerk_user_id — no email rewrite, no stray "Lou Fox" row to clean up.
-const DEMO_LEADER_EMAIL = 'foulox@gmail.com'
 const DEMO_URL = 'https://demo.tigerwolves.foulox.me'
+
+// ── Demo leaders — all must exist in the demo Clerk instance ─────────────────
+// VERIFIED against prod run_leaders rows — use verbatim.
+
+export const DEMO_LEADERS: { runId: string; email: string }[] = [
+  { runId: 'tigerwolves', email: 'foulox@gmail.com' },
+  { runId: 'wednesday-mourning-doves', email: 'cicifox@gmail.com' },
+]
 
 // ── Host guard helper (exported for unit testing) ─────────────────────────────
 
@@ -38,6 +42,32 @@ const DEMO_URL = 'https://demo.tigerwolves.foulox.me'
  */
 export function isDemoHost(url: string | undefined): boolean {
   return !!url && url.includes(DEMO_HOST)
+}
+
+// ── buildRelinkPlan (exported for unit testing) ───────────────────────────────
+
+/**
+ * Given the DEMO_LEADERS list and a map of email -> resolved Clerk user id,
+ * returns one relink descriptor per leader. Throws if ANY leader's email is
+ * missing from the map (unresolved). Pure: no DB, no network, no env reads.
+ */
+export function buildRelinkPlan(
+  leaders: { runId: string; email: string }[],
+  idByEmail: Record<string, string>,
+): { runId: string; email: string; clerkUserId: string }[] {
+  const missing = leaders.filter(l => !idByEmail[l.email]).map(l => l.email)
+  if (missing.length > 0) {
+    throw new Error(
+      `refresh-demo.ts: no Clerk user found for ${missing.join(', ')}. ` +
+      `Ensure the demo Clerk account for that email exists in the demo Clerk instance ` +
+      `and CLERK_SECRET_KEY is the demo key.`
+    )
+  }
+  return leaders.map(l => ({
+    runId: l.runId,
+    email: l.email,
+    clerkUserId: idByEmail[l.email],
+  }))
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -74,18 +104,22 @@ async function main(): Promise<void> {
   const clerkSecretKey = process.env.CLERK_SECRET_KEY
   if (!clerkSecretKey) throw new Error('CLERK_SECRET_KEY is not set')
 
-  // Step 2: Resolve Clerk user ID at runtime — no hardcoded ID
-  console.log(`[1/5] Resolving Clerk user for ${DEMO_LEADER_EMAIL}...`)
+  // Step 2: Resolve all DEMO_LEADERS emails against the demo Clerk instance in one call
+  const emails = DEMO_LEADERS.map(l => l.email)
+  console.log(`[1/5] Resolving Clerk users for ${emails.join(', ')}...`)
   const clerk = createClerkClient({ secretKey: clerkSecretKey })
-  const { data: users } = await clerk.users.getUserList({ emailAddress: [DEMO_LEADER_EMAIL] })
-  if (!users || users.length === 0) {
-    throw new Error(
-      `refresh-demo.ts: no Clerk user found for ${DEMO_LEADER_EMAIL}. ` +
-      `Ensure the demo account exists in the dev Clerk instance and CLERK_SECRET_KEY is the dev key.`
-    )
+  const { data: users } = await clerk.users.getUserList({ emailAddress: emails })
+
+  // Build email -> clerk user id map, then validate via buildRelinkPlan
+  const idByEmail: Record<string, string> = {}
+  for (const user of users ?? []) {
+    const primaryEmail = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress
+    if (primaryEmail) idByEmail[primaryEmail] = user.id
   }
-  const clerkUserId = users[0].id
-  console.log(`  ✓ Found Clerk user: ${clerkUserId}`)
+  const plan = buildRelinkPlan(DEMO_LEADERS, idByEmail)
+  for (const d of plan) {
+    console.log(`  ✓ Found Clerk user for ${d.email}: ${d.clerkUserId}`)
+  }
 
   // Step 3: Restore demo branch from production via Neon API, then poll to completion
   console.log(`[2/5] Restoring demo branch (${DEMO_BRANCH_ID}) from production (${PRODUCTION_BRANCH_ID})...`)
@@ -117,35 +151,39 @@ async function main(): Promise<void> {
 
   // #426: no fake Doves fixture is seeded here anymore. The restore above already
   // brings production's REAL runs (including the real Mourning Doves run) into the
-  // demo, so there is nothing to fabricate. (refresh-demo is reworked further in #427.)
+  // demo, so there is nothing to fabricate.
 
-  // Step 4: Re-link the demo leader by email (assert exactly 1 row matched).
-  // Email is the stable identity — the prod snapshot's row already carries this
-  // email (backfilled in #385), so we only repoint clerk_user_id to the dev instance.
-  console.log(`[3/5] Re-linking demo leader (${DEMO_LEADER_EMAIL})...`)
-  const updated = await sql`
-    UPDATE run_leaders
-    SET clerk_user_id = ${clerkUserId}, active = true
-    WHERE run_id = 'tigerwolves' AND email = ${DEMO_LEADER_EMAIL}
-    RETURNING id
-  `
-  if (updated.length !== 1) {
-    throw new Error(
-      `refresh-demo.ts: UPDATE run_leaders matched ${updated.length} row(s) for ` +
-      `email="${DEMO_LEADER_EMAIL}" in run "tigerwolves" — expected exactly 1. ` +
-      `Confirm the production row for this leader has its email backfilled (#385).`
-    )
+  // Step 4: Re-link each demo leader by email (assert exactly 1 row matched per leader).
+  // Email is the stable identity — the prod snapshot's rows already carry these
+  // emails (backfilled in #385), so we only repoint clerk_user_id to the demo instance.
+  console.log(`[3/5] Re-linking ${plan.length} demo leader(s)...`)
+  for (const d of plan) {
+    const updated = await sql`
+      UPDATE run_leaders
+      SET clerk_user_id = ${d.clerkUserId}, active = true
+      WHERE run_id = ${d.runId} AND email = ${d.email}
+      RETURNING id
+    `
+    if (updated.length !== 1) {
+      throw new Error(
+        `refresh-demo.ts: UPDATE run_leaders matched ${updated.length} row(s) for ` +
+        `email="${d.email}" in run "${d.runId}" — expected exactly 1. ` +
+        `Confirm the production row for this leader has its email backfilled (#385).`
+      )
+    }
+    console.log(`  ✓ Leader re-linked (${d.email} → ${d.runId}, run_leaders.id = ${updated[0].id})`)
   }
-  console.log(`  ✓ Leader re-linked (run_leaders.id = ${updated[0].id})`)
 
-  // Step 5: Self-follow
-  console.log(`[4/5] Ensuring demo leader self-follows tigerwolves...`)
-  await sql`
-    INSERT INTO runner_follows (clerk_user_id, run_id)
-    VALUES (${clerkUserId}, 'tigerwolves')
-    ON CONFLICT DO NOTHING
-  `
-  console.log('  ✓ Self-follow asserted')
+  // Step 5: Self-follow for each leader (run_id is per-leader, not hardcoded)
+  console.log(`[4/5] Ensuring each demo leader self-follows their run...`)
+  for (const d of plan) {
+    await sql`
+      INSERT INTO runner_follows (clerk_user_id, run_id)
+      VALUES (${d.clerkUserId}, ${d.runId})
+      ON CONFLICT DO NOTHING
+    `
+    console.log(`  ✓ Self-follow asserted (${d.email} → ${d.runId})`)
+  }
 
   // Step 6: Invalidate demo app cache
   console.log(`[5/5] Invalidating demo cache at ${DEMO_URL}/api/e2e-revalidate...`)
