@@ -63,11 +63,26 @@ export function buildRelinkPlan(
       `and CLERK_SECRET_KEY is the demo key.`
     )
   }
-  return leaders.map(l => ({
+  const plan = leaders.map(l => ({
     runId: l.runId,
     email: l.email,
     clerkUserId: idByEmail[l.email],
   }))
+  // Each demo leader must be a distinct Clerk account. Two leaders resolving to the
+  // same clerk_user_id (e.g. one Clerk account carrying both emails as addresses)
+  // would silently relink two run_leaders rows to a single user — guard against it.
+  const seenById = new Map<string, string>()
+  for (const d of plan) {
+    const prior = seenById.get(d.clerkUserId)
+    if (prior) {
+      throw new Error(
+        `refresh-demo.ts: ${d.email} and ${prior} resolved to the same Clerk user id ` +
+        `(${d.clerkUserId}) — each demo leader must be a distinct Clerk account.`
+      )
+    }
+    seenById.set(d.clerkUserId, d.email)
+  }
+  return plan
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -190,16 +205,30 @@ async function main(): Promise<void> {
     console.log(`  ✓ Self-follow asserted (${d.email} → ${d.runId})`)
   }
 
-  // Step 6: Invalidate demo app cache
+  // Step 6: Invalidate demo app cache (best-effort).
+  // The demo is now its own Vercel PRODUCTION deployment, and /api/e2e-revalidate is
+  // gated off in production (isSeedAllowed → VERCEL_ENV !== 'production'), so this POST
+  // returns 403. It also fails from a network that blocks the demo domain. Either way
+  // the DB relink above has already succeeded — the only cost of a failed flush is that
+  // fetchData's cache serves stale reads until its 5-minute revalidate window elapses.
+  // So we warn and finish successfully instead of throwing away a completed rebuild.
   console.log(`[5/5] Invalidating demo cache at ${DEMO_URL}/api/e2e-revalidate...`)
-  const revalidateRes = await fetch(`${DEMO_URL}/api/e2e-revalidate`, { method: 'POST' })
-  if (!revalidateRes.ok) {
-    throw new Error(
-      `Cache revalidation failed: ${revalidateRes.status} ${revalidateRes.statusText}. ` +
-      `The demo data was refreshed but the cache may be stale for up to 5 minutes.`
+  try {
+    const revalidateRes = await fetch(`${DEMO_URL}/api/e2e-revalidate`, { method: 'POST' })
+    if (revalidateRes.ok) {
+      console.log('  ✓ Cache invalidated')
+    } else {
+      console.warn(
+        `  ⚠ Cache revalidation returned ${revalidateRes.status} ${revalidateRes.statusText}. ` +
+        `The demo data was refreshed; the cache will self-heal within ~5 minutes.`
+      )
+    }
+  } catch (err) {
+    console.warn(
+      `  ⚠ Cache revalidation request failed (${err instanceof Error ? err.message : String(err)}). ` +
+      `The demo data was refreshed; the cache will self-heal within ~5 minutes.`
     )
   }
-  console.log('  ✓ Cache invalidated')
 
   console.log('\nDone. Demo environment refreshed from production.')
 }

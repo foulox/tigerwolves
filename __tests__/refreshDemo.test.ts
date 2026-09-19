@@ -48,4 +48,16 @@ describe('buildRelinkPlan', () => {
       /foulox@gmail\.com[\s\S]*demo.*Clerk/i,
     )
   })
+
+  test('throws when two leaders resolve to the same Clerk user id', () => {
+    const collidingMap = {
+      'foulox@gmail.com': 'user_SAME',
+      'cicifox@gmail.com': 'user_SAME',
+    }
+    expect(() => buildRelinkPlan(DEMO_LEADERS, collidingMap)).toThrow(/same Clerk user id/i)
+    // and it names both colliding emails
+    expect(() => buildRelinkPlan(DEMO_LEADERS, collidingMap)).toThrow(
+      /cicifox@gmail\.com[\s\S]*foulox@gmail\.com|foulox@gmail\.com[\s\S]*cicifox@gmail\.com/i,
+    )
+  })
 })
