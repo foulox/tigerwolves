@@ -15,12 +15,23 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-# Least privilege: label + comment on the PR (pull-requests: write), read the
-# changed-file list (contents: read). No checkout, no secrets — all work is
-# GITHUB_TOKEN against this repo's own PR.
+# Serialize per-PR so two quick pushes (synchronize events) can't both read an
+# empty comment list and each post a duplicate checklist. cancel-in-progress is
+# safe here: the newer push's file set is the one we want to flag on anyway.
+concurrency:
+  group: data-model-flag-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# Least privilege: the label + comment are the only writes, both on the PR
+# itself — pull-requests: write covers them, and also the "list PR files" read
+# (that's the Pull Requests API, not Contents). No checkout, no git blob reads,
+# no secrets, so contents access isn't needed at all. Everything runs against
+# this repo's own PR via GITHUB_TOKEN. NOTE: on a fork-origin PR that token is
+# read-only, so the label/comment step would 403 — moot today (private, single-
+# contributor repo, no forks); if this repo ever opens up, move to the
+# pull_request_target pattern (see pr-template-check.yml) for a write token.
 permissions:
   pull-requests: write
-  contents: read
 
 jobs:
   flag-migration:
