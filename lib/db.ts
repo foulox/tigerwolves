@@ -86,7 +86,8 @@ export async function fetchWorkoutVariants(
         SELECT
           wv.id AS variant_id, wv.family_id, wf.name, wv.label, wv.sort_order,
           wf.category, wf.type, wf.reason, wv.raw_input, wv.dist_time,
-          wv.energy_system, wv.hr_zone, wv.rpe, wf.coaching_notes, wf.map_link,
+          wv.energy_system, wv.hr_zone, wv.rpe, wf.coaching_notes,
+          COALESCE(wv.map_link, wf.map_link) AS map_link,
           wf.author, wv.race_types, wv.training_phases, wv.has_turnaround,
           wv.turnaround, wv.flagged, wv.flag_note, wf.run_group_id, rw.last_ran
         FROM workout_variants wv
@@ -99,7 +100,8 @@ export async function fetchWorkoutVariants(
         SELECT
           wv.id AS variant_id, wv.family_id, wf.name, wv.label, wv.sort_order,
           wf.category, wf.type, wf.reason, wv.raw_input, wv.dist_time,
-          wv.energy_system, wv.hr_zone, wv.rpe, wf.coaching_notes, wf.map_link,
+          wv.energy_system, wv.hr_zone, wv.rpe, wf.coaching_notes,
+          COALESCE(wv.map_link, wf.map_link) AS map_link,
           wf.author, wv.race_types, wv.training_phases, wv.has_turnaround,
           wv.turnaround, wv.flagged, wv.flag_note, wf.run_group_id, rw.last_ran
         FROM workout_variants wv

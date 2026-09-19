@@ -38,7 +38,7 @@ export function ChipRow({ label, chips, getChipClass }: {
   )
 }
 
-type ExcludeField = 'raceTypes' | 'trainingPhases' | 'author'
+type ExcludeField = 'raceTypes' | 'trainingPhases' | 'author' | 'mapLink'
 
 export default function WorkoutDetails({ w, exclude = [] }: {
   w: WorkoutVariantRow
@@ -47,6 +47,7 @@ export default function WorkoutDetails({ w, exclude = [] }: {
   const showRaceTypes = !exclude.includes('raceTypes')
   const showPhases = !exclude.includes('trainingPhases')
   const showAuthor = !exclude.includes('author')
+  const showMap = !exclude.includes('mapLink')
 
   const hasContent = !!(
     w.reason ||
@@ -57,7 +58,7 @@ export default function WorkoutDetails({ w, exclude = [] }: {
     (showPhases && w.trainingPhases.length > 0) ||
     (showRaceTypes && w.raceTypes.length > 0) ||
     (showAuthor && w.author) ||
-    w.mapLink
+    (showMap && w.mapLink)
   )
 
   if (!hasContent) return null
@@ -84,7 +85,7 @@ export default function WorkoutDetails({ w, exclude = [] }: {
         <ChipRow label="Race Types" chips={w.raceTypes} />
       )}
       {showAuthor && w.author && <DetailRow label="Author" value={w.author} />}
-      {w.mapLink && (
+      {showMap && w.mapLink && (
         <a
           href={w.mapLink}
           target="_blank"
