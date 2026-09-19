@@ -97,3 +97,21 @@ jobs:
             gh pr comment "$PR" --repo "$REPO" --body-file "$BODY_FILE"
             echo "Posted new checklist comment."
           fi
+
+      - name: Unflag PR — retract stale label + checklist comment
+        if: steps.detect.outputs.changed == 'false'
+        run: |
+          set -euo pipefail
+          # Keep the flag a pure function of the CURRENT diff, not accumulated state:
+          # if an earlier push added a migration (flagging the PR) and a later push
+          # removes it, retract the label and delete the now-stale checklist comment.
+          # --remove-label errors when the label isn't on the PR (the common case:
+          # a PR that never touched a migration), so swallow that — it's a no-op.
+          gh pr edit "$PR" --repo "$REPO" --remove-label data-model-change 2>/dev/null || true
+
+          EXISTING=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -n1)
+          if [ -n "$EXISTING" ]; then
+            gh api -X DELETE "repos/$REPO/issues/comments/$EXISTING" >/dev/null
+            echo "Deleted stale checklist comment ($EXISTING) — no migration in current diff."
+          fi
