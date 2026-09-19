@@ -63,11 +63,12 @@ describe('shadow-run guard (AC1)', () => {
   })
 
   test('no seed script contains the deleted `doves` shadow run-id literal', () => {
-    // Scan every TS seed script for the shadow run-id literal `'doves'` (the real
-    // run id is 'wednesday-mourning-doves', which is a different quoted string).
+    // Scan every TS script (scripts/ + scripts/fixtures/) for the shadow run-id
+    // literal `'doves'` — a new seed script that reintroduced it is caught too, not
+    // just the two that used to reference it. (The real run id is
+    // 'wednesday-mourning-doves', a different quoted string.)
     const files = [
-      join(SCRIPTS_DIR, 'seed-e2e.ts'),
-      join(SCRIPTS_DIR, 'refresh-demo.ts'),
+      ...readdirSync(SCRIPTS_DIR).filter(f => f.endsWith('.ts')).map(f => join(SCRIPTS_DIR, f)),
       ...readdirSync(FIXTURES_DIR).filter(f => f.endsWith('.ts')).map(f => join(FIXTURES_DIR, f)),
     ]
     for (const file of files) {
