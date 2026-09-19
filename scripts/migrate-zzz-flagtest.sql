@@ -1,1 +1,2 @@
 -- Throwaway migration to test the data-model-change flag (#428). Do not merge.
+-- second line to trigger synchronize.
