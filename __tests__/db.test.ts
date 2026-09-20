@@ -11,10 +11,10 @@ import type { DirectoryRun } from '../lib/db'
 import { resolveWorkoutType } from '../lib/cycle'
 
 // Tests that depend on the e2e seed data (fetchSchedule/fetchRaces/dbSetScheduleWorkout),
-// or that WRITE, only run against the staging branch — never a fresh local DB (where the
+// or that WRITE, only run against the test-data branch — never a fresh local DB (where the
 // e2e seed hasn't run) or production. Module-scoped so every describe.skipIf below sees it.
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 describe('database connection and schema', () => {
   it('connects to the database', async () => {
@@ -28,7 +28,7 @@ describe('database connection and schema', () => {
   // row count (incidental to what the rename is meant to prove). The non-empty
   // assertion relies on this DB already having pre-#278 `workouts` data — true
   // for every real database this migration will ever run against, since Neon's
-  // Preview/staging/production branches are always forks of a parent branch
+  // Preview/test-data/production branches are always forks of a parent branch
   // that already has it (CLAUDE.md), never a from-scratch empty schema.
   it('workouts_legacy exists and retains its data after the #278 rename', async () => {
     const rows = await sql`
@@ -77,7 +77,7 @@ describe('database connection and schema', () => {
   })
 })
 
-describe.skipIf(!onStaging)('fetchSchedule', () => {
+describe.skipIf(!onTestData)('fetchSchedule', () => {
   it('returns schedule entries with date and weekOfMonth', async () => {
     const entries = await fetchSchedule()
     expect(Array.isArray(entries)).toBe(true)
@@ -91,7 +91,7 @@ describe.skipIf(!onStaging)('fetchSchedule', () => {
   })
 })
 
-describe.skipIf(!onStaging)('fetchRaces', () => {
+describe.skipIf(!onTestData)('fetchRaces', () => {
   it('returns race entries with expected shape', async () => {
     const races = await fetchRaces()
     expect(Array.isArray(races)).toBe(true)
@@ -108,7 +108,7 @@ describe.skipIf(!onStaging)('fetchRaces', () => {
   })
 })
 
-describe.skipIf(!onStaging)('dbSetScheduleWorkout', () => {
+describe.skipIf(!onTestData)('dbSetScheduleWorkout', () => {
   it('saves workout_name and a single variation (standalone)', async () => {
     const rows = await fetchSchedule('tigerwolves')
     expect(rows.length).toBeGreaterThan(0)
@@ -412,14 +412,14 @@ describe('workout_variants write path additions (#277)', () => {
 })
 
 // These tests require the #310 migration (leader_intro on runs; away_periods/email
-// on run_leaders) to have been applied to the staging branch. They self-seed their
-// own run_leaders rows rather than depend on ambient staging state (which the e2e
+// on run_leaders) to have been applied to the test-data branch. They self-seed their
+// own run_leaders rows rather than depend on ambient test-data state (which the e2e
 // seed wipes and rewrites) or on a hand-maintained clerk-id secret matching a row.
-// .env.local's DATABASE_URL points at during a local run. CI uses staging.
+// .env.local's DATABASE_URL points at during a local run. CI uses test-data.
 
-describe.skipIf(!onStaging)('getLeaderRun', () => {
+describe.skipIf(!onTestData)('getLeaderRun', () => {
   // A clerk id that only this test uses, linked to the real 'tigerwolves' run
-  // (its runs row is created by scripts/migrate.sql and always present on staging).
+  // (its runs row is created by scripts/migrate.sql and always present on test-data).
   const TEST_CLERK_ID = 'user_dbtest310_getleaderrun'
   const TEST_NAME = 'DB Test — getLeaderRun 310'
 
@@ -457,7 +457,7 @@ describe.skipIf(!onStaging)('getLeaderRun', () => {
   })
 })
 
-describe.skipIf(!onStaging)('getRunRoster', () => {
+describe.skipIf(!onTestData)('getRunRoster', () => {
   // Fully isolated under a synthetic run_id (run_leaders has no FK to runs, so no
   // runs row is needed) — independent of the tigerwolves roster the e2e seed rewrites.
   const RID = 'test-run-310-getrunroster'
@@ -487,11 +487,11 @@ describe.skipIf(!onStaging)('getRunRoster', () => {
 // #401 REACTIVATED it as the read scope — fetchWorkoutVariants(runId) returns only
 // the run's group's families. These assert that scoping plus the kind/workout_types
 // columns from #318.
-// Guarded skipIf(!onStaging) for the same reason as the #310 tests above: these depend
-// on the migration + TigerWolves/MMER seed, which are only guaranteed on staging (CI) — a
+// Guarded skipIf(!onTestData) for the same reason as the #310 tests above: these depend
+// on the migration + TigerWolves/MMER seed, which are only guaranteed on test-data (CI) — a
 // local run points at un-migrated production (.env.local), where the new columns don't
 // exist yet (production migration timing is Lou's call, not part of this story's gate).
-describe.skipIf(!onStaging)('#318 per-run profile + #401 per-run library scoping', () => {
+describe.skipIf(!onTestData)('#318 per-run profile + #401 per-run library scoping', () => {
   const TW_TYPES = ['Hills', 'Broken Tempo', 'Progression', 'Ladder', 'Superset', 'Straight Tempo', 'Threshold']
 
   it('runs table has kind, workout_types, run_group_id columns', async () => {
@@ -541,9 +541,9 @@ describe.skipIf(!onStaging)('#318 per-run profile + #401 per-run library scoping
 })
 
 // #401 (Story A): the write path persists the chosen owner on create (AC4) and lets
-// an edit reassign it (AC5). Staging-gated (writes); self-seeds against the two
+// an edit reassign it (AC5). Test-data-gated (writes); self-seeds against the two
 // seeded groups (TigerWolves, MMER) and cleans up its own family/variant.
-describe.skipIf(!onStaging)('#401 workout ownership write path (AC4/AC5)', () => {
+describe.skipIf(!onTestData)('#401 workout ownership write path (AC4/AC5)', () => {
   const OWN_INPUT = {
     name: '__test_ownership_401__', category: 'Quality' as const, type: 'Hills' as const,
     reason: 'ownership fixture', author: null, coachingNotes: null, mapLink: null,
@@ -581,9 +581,9 @@ describe.skipIf(!onStaging)('#401 workout ownership write path (AC4/AC5)', () =>
 
 // #401 (Story A): getLeaderRunGroups — the owner-picker authorization boundary. It
 // returns ONLY the run_groups of runs the leader actively leads, never the whole
-// run_groups table (the 96fcb3e regression guard). Staging-gated: depends on the
+// run_groups table (the 96fcb3e regression guard). Test-data-gated: depends on the
 // runs/run_leaders/run_groups seed.
-describe.skipIf(!onStaging)('#401 getLeaderRunGroups (owner-picker authorization)', () => {
+describe.skipIf(!onTestData)('#401 getLeaderRunGroups (owner-picker authorization)', () => {
   const TEST_CLERK_ID = 'user_401_getleaderrungroups'
   const TEST_NAME = 'DB Test — getLeaderRunGroups 401'
 
@@ -614,7 +614,7 @@ describe.skipIf(!onStaging)('#401 getLeaderRunGroups (owner-picker authorization
 
 // #401 (Story A): resolveOrCreateRunGroup — reused by createRun to reconcile a run to
 // a group (AC7). Reuses an existing same-named group; creates one when absent.
-describe.skipIf(!onStaging)('#401 resolveOrCreateRunGroup', () => {
+describe.skipIf(!onTestData)('#401 resolveOrCreateRunGroup', () => {
   const NEW_GROUP = '__test_group_401__'
 
   afterAll(async () => {
@@ -640,9 +640,9 @@ describe.skipIf(!onStaging)('#401 resolveOrCreateRunGroup', () => {
 
 // #401 (Story A): backfill correctness (AC8). Mirrors scripts/migrate-401.sql's UPDATE
 // — a NULL-owned family is reassigned to the TigerWolves group, while a family already
-// owned by another group (MMER fixture) is left untouched. Staging-gated + self-seeds
+// owned by another group (MMER fixture) is left untouched. Test-data-gated + self-seeds
 // its own NULL-owned fixture family, cleaned up afterward.
-describe.skipIf(!onStaging)('#401 ownership backfill (migrate-401.sql)', () => {
+describe.skipIf(!onTestData)('#401 ownership backfill (migrate-401.sql)', () => {
   const NULL_FAMILY = '__test_null_owner_401__'
   let nullFamilyId: number
 
@@ -680,10 +680,10 @@ describe.skipIf(!onStaging)('#401 ownership backfill (migrate-401.sql)', () => {
 })
 
 // #360: getDirectoryRuns returns the runs table rows needed to render All Runs cards
-// and link to the NBR directory. Staging-gated: depends on the nbr_directory_id column
+// and link to the NBR directory. Test-data-gated: depends on the nbr_directory_id column
 // and the Task 1 seed that sets it on the two fixtures (runs locally when DATABASE_URL
-// is the staging host; no-ops otherwise).
-describe.skipIf(!onStaging)('#360 getDirectoryRuns', () => {
+// is the test-data host; no-ops otherwise).
+describe.skipIf(!onTestData)('#360 getDirectoryRuns', () => {
   const DIRECTORY_RUN_KEYS: (keyof DirectoryRun)[] = [
     'id', 'name', 'day_of_week', 'meeting_time', 'meeting_location', 'kind', 'emoji', 'nbr_directory_id',
   ]
@@ -723,10 +723,10 @@ describe.skipIf(!onStaging)('#360 getDirectoryRuns', () => {
 
 // #319 per-run workout-type cycle engine: cycle_mode + cycle columns on `runs`, the
 // TigerWolves cadence seed, and generateScheduleHorizon filling newly generated weeks'
-// workout_type from the cycle. Staging-gated for the same reason as #310/#318 above:
-// depends on the migration + seed, only guaranteed on staging (CI). The integration
+// workout_type from the cycle. Test-data-gated for the same reason as #310/#318 above:
+// depends on the migration + seed, only guaranteed on test-data (CI). The integration
 // test also WRITES (generates schedule rows), so it must never touch production.
-describe.skipIf(!onStaging)('#319 per-run workout-type cycle engine', () => {
+describe.skipIf(!onTestData)('#319 per-run workout-type cycle engine', () => {
   const TW_CYCLE = {
     '1': 'Hills',
     '2': 'Broken Tempo',
@@ -755,7 +755,7 @@ describe.skipIf(!onStaging)('#319 per-run workout-type cycle engine', () => {
     // would otherwise survive and break the "every future week matches the resolver"
     // assertion below. This test runs before the e2e seed (test:unit precedes test:e2e
     // in CI), so it can't assume a clean schedule and must establish its own precondition.
-    // Safe: onStaging-gated (never production), and the e2e seed wipes `schedule` wholesale.
+    // Safe: onTestData-gated (never production), and the e2e seed wipes `schedule` wholesale.
     await sql`DELETE FROM schedule WHERE run_id = 'tigerwolves' AND date > CURRENT_DATE`
 
     // Now generate out to the 24-week horizon: every future row is freshly created and

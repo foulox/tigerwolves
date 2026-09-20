@@ -3,13 +3,13 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 // createRun is the admin-only Server Action that provisions a new run row.
 // This suite proves:
 //   1. The admin gate: non-admin members and leaders-without-admin:true are refused.
-//   2. Staging persistence: round-trip via getRunById, slug generation, slug
+//   2. Test-data persistence: round-trip via getRunById, slug generation, slug
 //      collision handling, duplicate-name rejection, validation rejections, and
 //      kind/workoutTypes handling.
 //
 // currentUser() is Clerk server context (no session in vitest), so it's mocked.
 // updateTag() is a Server-Action-only Next primitive that throws outside a request,
-// so it's stubbed. Everything else runs against the real staging DB.
+// so it's stubbed. Everything else runs against the real test-data DB.
 vi.mock('@clerk/nextjs/server', () => ({
   currentUser: vi.fn(),
   clerkClient: vi.fn(),
@@ -26,11 +26,11 @@ import { currentUser } from '@clerk/nextjs/server'
 import { sql, getRunById } from '../lib/db'
 import { createRun } from '../app/admin/actions'
 
-// Staging-only DB tests gated with describe.skipIf(!onStaging). CI sets
-// DATABASE_URL to the staging branch; local dev has no DATABASE_URL and the
-// module fails to load off-staging (same documented behavior as runConfigAuth.test.ts).
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+// Test-data-only DB tests gated with describe.skipIf(!onTestData). CI sets
+// DATABASE_URL to the test-data branch; local dev has no DATABASE_URL and the
+// module fails to load off-test-data (same documented behavior as runConfigAuth.test.ts).
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 // Fixture name prefix — distinctive so cleanup never clobbers real rows.
 const PREFIX = 'test-create-349'
@@ -73,10 +73,10 @@ describe('createRun authorization', () => {
 })
 
 // ---------------------------------------------------------------------------
-// STAGING — real DB writes; skipped when DATABASE_URL is not the staging branch.
+// TEST-DATA — real DB writes; skipped when DATABASE_URL is not the test-data branch.
 // ---------------------------------------------------------------------------
 
-describe.skipIf(!onStaging)('createRun staging persistence', () => {
+describe.skipIf(!onTestData)('createRun test-data persistence', () => {
   // Track all run ids created during this suite so afterAll can delete them.
   const createdIds: string[] = []
 

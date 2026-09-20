@@ -3,7 +3,7 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 // toggleRunFollow (#330) is the runner follow/unfollow write path — open to ANY
 // signed-in user (not leader-only). currentUser() is Clerk server context (mocked);
 // updateTag() throws outside a Server Action (stubbed, real next/cache otherwise so
-// lib/db's unstable_cache still imports). The DB is real staging — the write tests
+// lib/db's unstable_cache still imports). The DB is real test-data — the write tests
 // provision their own run + user and clean up, so they never touch shared fixtures.
 vi.mock('@clerk/nextjs/server', () => ({ currentUser: vi.fn(), clerkClient: vi.fn() }))
 vi.mock('next/cache', async importOriginal => {
@@ -17,14 +17,14 @@ import { sql } from '../lib/db'
 import { toggleRunFollow } from '../app/actions'
 import { setRunStatus } from '../app/run-config/actions'
 
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 function signInAs(clerkId: string | null) {
   vi.mocked(currentUser).mockResolvedValue(clerkId ? ({ id: clerkId } as never) : (null as never))
 }
 
-// The auth guard short-circuits before any DB access, so this runs without staging.
+// The auth guard short-circuits before any DB access, so this runs without test-data.
 describe('toggleRunFollow authorization', () => {
   test('returns Unauthorized when signed out', async () => {
     signInAs(null)
@@ -33,7 +33,7 @@ describe('toggleRunFollow authorization', () => {
   })
 })
 
-describe.skipIf(!onStaging)('toggleRunFollow follow/unfollow (staging)', () => {
+describe.skipIf(!onTestData)('toggleRunFollow follow/unfollow (test-data)', () => {
   const RUN = 'test-follow-330'
   const RUNNER = 'user_follow_330' // a signed-in NON-leader
 
@@ -70,7 +70,7 @@ describe.skipIf(!onStaging)('toggleRunFollow follow/unfollow (staging)', () => {
   })
 })
 
-describe.skipIf(!onStaging)('toggleRunFollow draft-gate (#353)', () => {
+describe.skipIf(!onTestData)('toggleRunFollow draft-gate (#353)', () => {
   const RUN = 'test-draft-follow-353'
   const OWNER = 'user_draft_owner_353' // leader who owns this run
   const RUNNER = 'user_draft_runner_353' // non-owner signed-in user

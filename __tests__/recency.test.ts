@@ -3,12 +3,12 @@ import { sql, fetchWorkoutVariants, dbSetScheduleWorkout, dbAdoptRoute } from '.
 import { schedulePickerSuggestions } from '../lib/schedulePicker'
 import type { WorkoutVariantRow } from '../lib/data'
 
-// #402: per-run last-run recency on the run_workouts junction. Staging-only for the DB
+// #402: per-run last-run recency on the run_workouts junction. Test-data-only for the DB
 // tests (they write) — same guard as db.test.ts/adoptRoute.test.ts. The pure sort test
 // runs anywhere. Fixtures are fully self-provisioned + torn down; they never touch shared
 // rows. Yesterday/today/tomorrow are computed once so the ≤-today cutoff is deterministic.
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 // ── AC5: recency sort (pure — runs without a DB) ──────────────────────────────
 describe('recency sort orders stalest-first, "Never" (null) on top (AC5)', () => {
@@ -42,8 +42,8 @@ describe('recency sort orders stalest-first, "Never" (null) on top (AC5)', () =>
   })
 })
 
-// ── AC2 / AC3 / AC4 / AC6: per-run recency on the junction (staging) ───────────
-describe.skipIf(!onStaging)('per-run last_ran on run_workouts (AC2/AC3/AC4/AC6)', () => {
+// ── AC2 / AC3 / AC4 / AC6: per-run recency on the junction (test-data) ───────────
+describe.skipIf(!onTestData)('per-run last_ran on run_workouts (AC2/AC3/AC4/AC6)', () => {
   const GROUP = 'Recency Test 402'
   const RUN_A = 'test-recency-402-a'
   const RUN_B = 'test-recency-402-b'

@@ -18,17 +18,17 @@ describe('isSeedAllowed', () => {
 })
 
 // ---------------------------------------------------------------------------
-// ensureLeaderLink email dedup (#385, AC4) — staging DB
+// ensureLeaderLink email dedup (#385, AC4) — test-data DB
 // ---------------------------------------------------------------------------
 // A preview branched from production carries a leader row with the real email but
 // a *production*-instance clerk_user_id, which can never match this deployment's
 // dev-instance id. Linking must match on email, repoint clerk_user_id, and create
-// NO second row. Staging-gated like the other DB tests.
+// NO second row. Test-data-gated like the other DB tests.
 
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
-describe.skipIf(!onStaging)('ensureLeaderLink dedupes a forked prod row by email (staging)', () => {
+describe.skipIf(!onTestData)('ensureLeaderLink dedupes a forked prod row by email (test-data)', () => {
   const RUN = 'test-ensurelink-385'
   const EMAIL = 'ensurelink-385@example.com'
   const PROD_CLERK_ID = 'user_prodinstance_385' // as forked from production

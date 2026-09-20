@@ -3,7 +3,7 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 // #404: adopt/un-adopt routes into a run's library (run_workouts membership).
 // currentUser() is Clerk server context (mocked); updateTag() throws outside a Server
 // Action (stubbed, real next/cache otherwise so lib/db's unstable_cache still imports).
-// The DB is real staging — the write tests provision their own group/runs/family and
+// The DB is real test-data — the write tests provision their own group/runs/family and
 // clean up, so they never touch shared fixtures.
 vi.mock('@clerk/nextjs/server', () => ({ currentUser: vi.fn(), clerkClient: vi.fn() }))
 vi.mock('next/cache', async importOriginal => {
@@ -11,7 +11,7 @@ vi.mock('next/cache', async importOriginal => {
   // adoptRoute/unadoptRoute call revalidateAll() = revalidatePath + updateTag; BOTH
   // throw outside a real request scope, so both must be stubbed (unlike followActions,
   // which only calls updateTag). Leaving revalidatePath real made the happy-path adopt
-  // throw into its own try/catch and return an error — the CI-only failure on staging.
+  // throw into its own try/catch and return an error — the CI-only failure on test-data.
   return { ...actual, updateTag: vi.fn(), revalidatePath: vi.fn() }
 })
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn(), captureMessage: vi.fn() }))
@@ -20,8 +20,8 @@ import { currentUser } from '@clerk/nextjs/server'
 import { sql, getRunLibraryFamilyIds, dbAdoptRoute, dbUnadoptRoute, leaderLeadsRun, dbRegroupVariants } from '../lib/db'
 import { adoptRoute, unadoptRoute } from '../app/actions'
 
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 function signInAs(clerkId: string | null, role: 'leader' | null = 'leader') {
   vi.mocked(currentUser).mockResolvedValue(
@@ -29,7 +29,7 @@ function signInAs(clerkId: string | null, role: 'leader' | null = 'leader') {
   )
 }
 
-// The auth guard short-circuits before any DB access, so these run without staging.
+// The auth guard short-circuits before any DB access, so these run without test-data.
 describe('adoptRoute / unadoptRoute authorization (no DB)', () => {
   test('signed-out callers are Unauthorized', async () => {
     signInAs(null)
@@ -44,7 +44,7 @@ describe('adoptRoute / unadoptRoute authorization (no DB)', () => {
   })
 })
 
-describe.skipIf(!onStaging)('run_workouts junction schema (AC1)', () => {
+describe.skipIf(!onTestData)('run_workouts junction schema (AC1)', () => {
   test('exists with a (run_id, family_id) primary key and FKs to runs + workout_families', async () => {
     const cols = (await sql`
       SELECT column_name FROM information_schema.columns WHERE table_name = 'run_workouts'
@@ -70,7 +70,7 @@ describe.skipIf(!onStaging)('run_workouts junction schema (AC1)', () => {
   })
 })
 
-describe.skipIf(!onStaging)('adopt / un-adopt membership (staging, AC2/AC4/AC8/AC9)', () => {
+describe.skipIf(!onTestData)('adopt / un-adopt membership (test-data, AC2/AC4/AC8/AC9)', () => {
   const GROUP = 'Adopt Test 404'
   const RUN_A = 'test-adopt-404-a' // led by LEADER
   const RUN_B = 'test-adopt-404-b' // NOT led by LEADER
@@ -80,7 +80,7 @@ describe.skipIf(!onStaging)('adopt / un-adopt membership (staging, AC2/AC4/AC8/A
 
   beforeAll(async () => {
     // A run_group + a route (family) it created. SELECT-then-INSERT rather than
-    // ON CONFLICT (name): the E2E-wipe staging branch may not carry the UNIQUE(name)
+    // ON CONFLICT (name): the E2E-wipe test-data branch may not carry the UNIQUE(name)
     // constraint, so ON CONFLICT (name) would throw "no unique or exclusion constraint
     // matching the ON CONFLICT specification" there (same reason seed-e2e.ts avoids it).
     const existingGroup = await sql`SELECT id FROM run_groups WHERE name = ${GROUP}`
@@ -184,7 +184,7 @@ describe.skipIf(!onStaging)('adopt / un-adopt membership (staging, AC2/AC4/AC8/A
   })
 })
 
-describe.skipIf(!onStaging)('regroup inherits library membership (#404 review)', () => {
+describe.skipIf(!onTestData)('regroup inherits library membership (#404 review)', () => {
   // Regressions the CI e2e caught: dbRegroupVariants creates a NEW family, and under
   // the membership model that family had no run_workouts row → the merged workout
   // vanished from every run's "Your run." It must inherit membership from its sources.

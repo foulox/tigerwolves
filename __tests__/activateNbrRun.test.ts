@@ -9,7 +9,7 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 //   3. Unknown nbrId: admin + bogus id → 'Unknown run', no row created.
 //   4. Empty leaderEmail → error before any DB write.
 //   5. Unknown leaderEmail → error before any DB write.
-//   6. Staging activation: round-trip with getRunById, nbr_directory_id stored,
+//   6. Test-data activation: round-trip with getRunById, nbr_directory_id stored,
 //      run_leaders row inserted, Clerk role granted with publicMetadata merge.
 //   7. Re-activation: second call for the same nbrId → 'This run is already activated'.
 //   8. Non-Workout kind → workout_types stored as [].
@@ -18,7 +18,7 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 // currentUser() is Clerk server context (no session in vitest), so it's mocked.
 // clerkClient() is mocked so Clerk API calls never hit the network.
 // updateTag() is a Server-Action-only Next primitive that throws outside a request,
-// so it's stubbed. Everything else runs against the real staging DB.
+// so it's stubbed. Everything else runs against the real test-data DB.
 
 // vi.hoisted() runs before module imports and hoisted vi.mock() factories,
 // so these refs are safely defined when the factory closure captures them.
@@ -50,11 +50,11 @@ import { activateNbrRun } from '../app/admin/actions'
 import { nbrRunToIdentity } from '../lib/allRunsData'
 import { NBR_RUNS } from '../lib/allRunsData'
 
-// Staging-only DB tests gated with describe.skipIf(!onStaging). CI sets
-// DATABASE_URL to the staging branch; local dev has no DATABASE_URL and the
-// module fails to load off-staging (same documented behavior as createRun.test.ts).
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+// Test-data-only DB tests gated with describe.skipIf(!onTestData). CI sets
+// DATABASE_URL to the test-data branch; local dev has no DATABASE_URL and the
+// module fails to load off-test-data (same documented behavior as createRun.test.ts).
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 // Fixture name prefix — distinctive so cleanup never clobbers real rows.
 const PREFIX = 'test-activate-361'
@@ -269,10 +269,10 @@ describe('activateNbrRun leader validation', () => {
 })
 
 // ---------------------------------------------------------------------------
-// STAGING — real DB writes; skipped when DATABASE_URL is not the staging branch.
+// TEST-DATA — real DB writes; skipped when DATABASE_URL is not the test-data branch.
 // ---------------------------------------------------------------------------
 
-describe.skipIf(!onStaging)('activateNbrRun staging persistence', () => {
+describe.skipIf(!onTestData)('activateNbrRun test-data persistence', () => {
   // Track all run ids created during this suite so afterAll can delete them.
   const createdIds: string[] = []
 
@@ -302,7 +302,7 @@ describe.skipIf(!onStaging)('activateNbrRun staging persistence', () => {
   })
 
   test('admin activates un-activated entry → runId returned; round-trips name/day_of_week/kind; nbr_directory_id stored', async () => {
-    // Use wed-night-beginner — unlikely to be pre-activated in staging
+    // Use wed-night-beginner — unlikely to be pre-activated in test-data
     const nbrId = 'wed-night-beginner'
     const nbrEntry = NBR_RUNS.find(r => r.id === nbrId)!
     const { identity, kind } = nbrRunToIdentity(nbrEntry)
