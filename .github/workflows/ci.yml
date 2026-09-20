@@ -3,6 +3,17 @@ name: CI
 on:
   pull_request:
 
+# Every CI run seeds + mutates ONE shared Neon branch (test-data, via
+# secrets.DATABASE_URL). Two runs overlapping — e.g. two quick pushes, or two open
+# PRs — race that single DB: one run's seedE2E() wipe/reseed and its e2e writes
+# land in the other's mid-flight view (off-by-one row counts, reset follow/react
+# state). So serialize ALL ci runs on one global group (a constant key, NOT
+# github.ref — the DB is shared across every PR). cancel-in-progress:false queues
+# instead of cancelling, since cancelling mid-seed would leave the DB dirty.
+concurrency:
+  group: ci-shared-test-db
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: ubuntu-latest
