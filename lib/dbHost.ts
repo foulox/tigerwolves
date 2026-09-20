@@ -5,15 +5,16 @@
 // and CI can assert the demo is reading demo-data.
 
 /**
- * Resolve the connection string this deployment reads, using the SAME precedence
- * as lib/db.ts: DEMO_DATABASE_URL (set only on the demo/staging deploy, points at
- * the durable demo-data branch) wins over DATABASE_URL. Kept in lockstep with
- * lib/db.ts's `const dbUrl = process.env.DEMO_DATABASE_URL || process.env.DATABASE_URL`.
+ * Resolve the connection string this deployment reads. Every environment — prod,
+ * demo (its own Vercel project), per-PR preview, and the test-data branch — reads
+ * DATABASE_URL directly. Kept in lockstep with lib/db.ts's
+ * `const dbUrl = process.env.DATABASE_URL`. (The DEMO_DATABASE_URL override was
+ * retired in #429 once the demo became its own environment.)
  */
 export function resolveDbUrl(
   env: Record<string, string | undefined> = process.env
 ): string | undefined {
-  return env.DEMO_DATABASE_URL || env.DATABASE_URL
+  return env.DATABASE_URL
 }
 
 /**

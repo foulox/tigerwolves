@@ -2,15 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { resolveDbUrl, extractHost } from '@/lib/dbHost'
 
 describe('resolveDbUrl', () => {
-  it('prefers DEMO_DATABASE_URL over DATABASE_URL (mirrors lib/db.ts)', () => {
-    expect(resolveDbUrl({ DEMO_DATABASE_URL: 'demo', DATABASE_URL: 'prod' })).toBe('demo')
-  })
-
-  it('falls back to DATABASE_URL when DEMO_DATABASE_URL is unset', () => {
+  it('returns DATABASE_URL (mirrors lib/db.ts)', () => {
     expect(resolveDbUrl({ DATABASE_URL: 'prod' })).toBe('prod')
   })
 
-  it('returns undefined when neither is set', () => {
+  it('ignores DEMO_DATABASE_URL — it is retired; the demo now sets its own DATABASE_URL', () => {
+    expect(resolveDbUrl({ DEMO_DATABASE_URL: 'demo', DATABASE_URL: 'prod' })).toBe('prod')
+  })
+
+  it('returns undefined when DATABASE_URL is not set', () => {
     expect(resolveDbUrl({})).toBeUndefined()
   })
 })

@@ -3,21 +3,22 @@ import type { Race } from '../lib/data'
 import { CURATED_FAMILIES, CURATED_DOVES_ROUTES } from './fixtures/curatedWorkouts'
 
 // Guards against ever running this destructive wipe-and-reseed against
-// production — only the staging branch's host is allowed through. Update this
-// if the staging branch is ever recreated (see CLAUDE.md Tooling Notes for how
-// to fetch the current connection string).
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+// production — only the test-data branch's host is allowed through. (Renaming the
+// Neon branch does NOT change this compute-endpoint host — the guard value is
+// stable across the rename.) Update this only if the branch is ever recreated
+// (see CLAUDE.md Tooling Notes for how to fetch the current connection string).
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
 
-// Guards the KV flush the same way STAGING_HOST guards the DB wipe: only the
+// Guards the KV flush the same way TEST_DATA_HOST guards the DB wipe: only the
 // dedicated CI-only Upstash instance may be flushed, never Preview/production KV.
 // Update this if the tigerwolves-ci Upstash DB is ever recreated.
 const CI_KV_HOST = 'destined-fox-282177.upstash.io'
 
 const url = process.env.DATABASE_URL
 if (!url) throw new Error('DATABASE_URL is not set')
-if (!url.includes(STAGING_HOST)) {
+if (!url.includes(TEST_DATA_HOST)) {
   throw new Error(
-    `seed-e2e.ts refuses to run: DATABASE_URL does not point at the staging Neon branch (expected host ${STAGING_HOST}). Refusing to wipe an unrecognized database.`
+    `seed-e2e.ts refuses to run: DATABASE_URL does not point at the test-data Neon branch (expected host ${TEST_DATA_HOST}). Refusing to wipe an unrecognized database.`
   )
 }
 
@@ -121,7 +122,7 @@ export async function seedE2E(): Promise<void> {
       ON runs (nbr_directory_id) WHERE nbr_directory_id IS NOT NULL
   `
   // #404: the library-membership junction (see scripts/migrate-404.sql). Created
-  // inline here so CI's staging DB has it before both the unit suite (globalSetup
+  // inline here so CI's test-data DB has it before both the unit suite (globalSetup
   // seeds first) and the e2e run, without a separate migration step. Membership
   // rows are seeded near the end, after all fixture families + runs exist.
   await sql`
@@ -149,7 +150,7 @@ export async function seedE2E(): Promise<void> {
   await sql`DELETE FROM races`
   // #404: clear library memberships before their families — run_workouts.family_id
   // FKs workout_families(id). CASCADE would handle it, but being explicit keeps the
-  // wipe correct even against a staging table created before the CASCADE was added.
+  // wipe correct even against a test-data table created before the CASCADE was added.
   await sql`DELETE FROM run_workouts`
   await sql`DELETE FROM workout_variants`
   await sql`DELETE FROM workout_families`
@@ -174,7 +175,7 @@ export async function seedE2E(): Promise<void> {
   // returns the full shared catalog (no run_group filter; its runId arg is ignored)
   // and visibility is filtered client-side by category. Group = ownership only.
   // Select-then-insert rather than a try/catch around the insert: idempotent whether
-  // or not the staging branch actually carries the UNIQUE(name) constraint (a bare
+  // or not the test-data branch actually carries the UNIQUE(name) constraint (a bare
   // catch would either swallow a real insert failure — then crash with a misleading
   // "undefined id" on the next line — or, without the constraint, silently accumulate
   // duplicate rows across runs).

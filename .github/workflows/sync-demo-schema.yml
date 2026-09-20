@@ -1,7 +1,7 @@
 name: Sync demo-data schema
 
 # #415 — keep the demo's DATA MODEL in step with main automatically. The demo's
-# CODE already auto-syncs (ff-staging.yml fast-forwards staging→main on every
+# CODE already auto-syncs (the demo Vercel project deploys from main on every
 # push), but its schema did not: refresh-demo.ts was the only path and nothing
 # called it, so the demo raced ahead on code while its schema sat still (the
 # #404 run_workouts drift). This applies the merged migration set to the durable
@@ -85,11 +85,10 @@ jobs:
   verify-demo-datasource:
     # Assert the demo is reading demo-data — catches the #376 silent mis-point
     # loudly. This runs after every schema apply rather than off deployment_status:
-    # the check is DEPLOY-INDEPENDENT (it verifies the demo's DEMO_DATABASE_URL
-    # config, which doesn't change per deploy), and Vercel's deployment_status
-    # payload sets `ref` to the commit SHA and `environment` to "Preview" — never
-    # "staging" — so a deployment_status trigger could never reliably single out
-    # the demo deploy. Keying it to the push guarantees the check actually runs.
+    # the check is DEPLOY-INDEPENDENT (it verifies the demo project's DATABASE_URL,
+    # which doesn't change per deploy), and Vercel's deployment_status payload for
+    # the demo project would need its own event plumbing to single out — keying it
+    # to the push guarantees the check actually runs.
     needs: migrate-demo-schema
     runs-on: ubuntu-latest
     env:
@@ -99,8 +98,8 @@ jobs:
       - name: Assert the demo is reading demo-data
         run: |
           set -euo pipefail
-          # Poll until /api/health reports a host. The demo alias lags main by one
-          # deploy cycle (ff-staging → Vercel redeploy runs concurrently), so right
+          # Poll until /api/health reports a host. The demo project's redeploy from
+          # main runs concurrently with this workflow, so right
           # after a merge it may briefly serve the previous deployment — where
           # /api/health can still 404 or redirect (e.g. the merge that first made it
           # public). `-f` turns any HTTP 4xx/3xx into a curl error so the `{}`
@@ -118,7 +117,7 @@ jobs:
           echo "Demo /api/health reports dbHost=$HOST"
           if ! echo "$HOST" | grep -q "$DEMO_HOST"; then
             echo "::error::Demo is NOT reading demo-data (expected host containing '$DEMO_HOST', got '$HOST'). \
-            The demo may be silently serving the wrong branch — see #376. Check DEMO_DATABASE_URL on the staging deploy."
+            The demo may be silently serving the wrong branch — see #376. Check DATABASE_URL on the demo Vercel project."
             exit 1
           fi
           echo "✓ Demo is reading demo-data."
