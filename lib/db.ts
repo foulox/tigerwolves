@@ -11,7 +11,7 @@ import type { MyPlanItem } from './myPlan'
 // Every environment reads DATABASE_URL directly. Production and per-PR previews
 // get it from the Neon–Vercel integration (prod / per-PR isolated branch); the
 // demo is its own Vercel project (no integration) whose DATABASE_URL is set by
-// hand to the durable demo-data branch. The old DEMO_DATABASE_URL override — a
+// hand to the durable demo-data branch. The old demo-only env-var override — a
 // workaround from when the demo rode on the staging deploy — was retired once the
 // demo became a first-class environment (#429, epic #422).
 const dbUrl = process.env.DATABASE_URL

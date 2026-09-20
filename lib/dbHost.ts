@@ -8,7 +8,7 @@
  * Resolve the connection string this deployment reads. Every environment — prod,
  * demo (its own Vercel project), per-PR preview, and the test-data branch — reads
  * DATABASE_URL directly. Kept in lockstep with lib/db.ts's
- * `const dbUrl = process.env.DATABASE_URL`. (The DEMO_DATABASE_URL override was
+ * `const dbUrl = process.env.DATABASE_URL`. (The old demo-only override was
  * retired in #429 once the demo became its own environment.)
  */
 export function resolveDbUrl(
