@@ -1,13 +1,13 @@
 import { describe, test, expect, beforeAll, afterAll } from 'vitest'
 import { sql, getFollowerCounts, getActiveLeadersByRun } from '../lib/db'
 
-// DB-touching tests: only run against the staging E2E-wipe branch.
+// DB-touching tests: only run against the test-data E2E-wipe branch.
 // These skip locally (where DATABASE_URL points at production) and only execute
 // in CI. That is expected and correct — see CLAUDE.md "Test-run reality".
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
-describe.skipIf(!onStaging)('getFollowerCounts and getActiveLeadersByRun (staging)', () => {
+describe.skipIf(!onTestData)('getFollowerCounts and getActiveLeadersByRun (test-data)', () => {
   // Isolated run ids that only this suite uses. run_leaders has no FK to runs, so we
   // insert minimal runs rows and clean up both tables in afterAll.
   const RUN_A = 'test-admin-378-a'

@@ -16,13 +16,13 @@
 
 import { neon } from '@neondatabase/serverless'
 
-// Guard against running against the staging E2E database.
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+// Guard against running against the test-data E2E database.
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
 
 const url = process.env.DATABASE_URL
 if (!url) throw new Error('DATABASE_URL is not set')
-if (url.includes(STAGING_HOST)) {
-  throw new Error('import-run.ts refuses to run: DATABASE_URL points at the staging E2E database. Use the production connection string.')
+if (url.includes(TEST_DATA_HOST)) {
+  throw new Error('import-run.ts refuses to run: DATABASE_URL points at the test-data E2E database. Use the production connection string.')
 }
 
 const sql = neon(url)

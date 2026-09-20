@@ -3,6 +3,31 @@ name: CI
 on:
   pull_request:
 
+# Every CI run seeds + mutates ONE shared Neon branch (test-data, via
+# secrets.DATABASE_URL). Two runs overlapping — e.g. two quick pushes, or two open
+# PRs — race that single DB: one run's seedE2E() wipe/reseed and its e2e writes
+# land in the other's mid-flight view (off-by-one row counts, reset follow/react
+# state). So serialize ci WORKFLOW runs on one global group (a constant key, NOT
+# github.ref — the DB is shared across every PR). cancel-in-progress:false queues
+# instead of cancelling, since cancelling mid-seed would leave the DB dirty.
+#
+# Scope + trade-offs (deliberate, not oversights):
+#  - This serializes CI runs only. It is NOT a DB mutex: a local `npm run test:e2e`
+#    (or any non-Actions writer) pointed at the same test-data DATABASE_URL can
+#    still race a live CI run. The seed-e2e host guard limits blast radius, not
+#    concurrency.
+#  - Global serialization means two active PRs' CI queue behind each other
+#    (~doubling time-to-green). Acceptable at solo/low volume; if throughput ever
+#    matters, the real fix is a per-run isolated Neon branch instead of one shared
+#    test-data DB (then this guard can drop).
+#  - With a constant group, a burst of 3+ runs can leave an older PENDING run
+#    auto-cancelled by GitHub (cancel-in-progress:false only protects the RUNNING
+#    one). Harmless here — no required status checks on this free-tier repo — so a
+#    cancelled run is just re-run, never a silent merge block.
+concurrency:
+  group: ci-shared-test-db
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: ubuntu-latest

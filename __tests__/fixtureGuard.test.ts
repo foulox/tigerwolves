@@ -89,11 +89,11 @@ describe('migrate-426 idempotency (AC4)', () => {
     expect(statements[0]).toMatch(/UPDATE\s+workout_families\s+SET\s+type\s*=\s*'Straight Tempo'\s+WHERE\s+type\s*=\s*'Tempo'/i)
   })
 
-  // Staging-gated integration: actually apply it twice against a sandbox row.
-  const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-  const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+  // Test-data-gated integration: actually apply it twice against a sandbox row.
+  const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+  const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
-  describe.skipIf(!onStaging)('applies twice with no drift (staging)', () => {
+  describe.skipIf(!onTestData)('applies twice with no drift (test-data)', () => {
     const GROUP = 'Tempo Migration TEST 426'
     let groupId: number
 

@@ -156,7 +156,15 @@ test('signed-in: join MMER → appears in Following tier; leave → removed (AC:
 
   const rowToggle = page.locator('[data-testid="follow-toggle-mmer"]')
   await expect(rowToggle).toBeVisible()
-  await expect(rowToggle).toContainText('Join')
+
+  // Known starting state (not following) — the test-leader account is shared across
+  // specs, so normalize rather than assume; an inherited follow would make the
+  // "Join" click below unfollow instead.
+  if (((await rowToggle.textContent()) ?? '').includes('Joined')) {
+    await rowToggle.click()
+    await expect(rowToggle).toContainText('+ Join')
+  }
+  await expect(rowToggle).toContainText('+ Join')
 
   // Join
   await rowToggle.click()
@@ -166,7 +174,7 @@ test('signed-in: join MMER → appears in Following tier; leave → removed (AC:
   // Leave (from the row toggle) — Following tier entry disappears
   await rowToggle.click()
   await expect(page.locator('[data-testid="following-run-mmer"]')).toHaveCount(0)
-  await expect(rowToggle).toContainText('Join')
+  await expect(rowToggle).toContainText('+ Join')
 })
 
 // ── #357: All Runs intro box — three-audience coverage ────────────────────────

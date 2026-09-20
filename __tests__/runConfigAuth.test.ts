@@ -7,7 +7,7 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 //
 // currentUser()/clerkClient() are Clerk server context (no session in vitest), so
 // they're mocked. updateTag() is a Server-Action-only Next primitive that throws
-// outside a request, so it's stubbed. Everything else runs against the real staging
+// outside a request, so it's stubbed. Everything else runs against the real test-data
 // DB — the guards (assertCallerOwnsRun / assertCallerOwnsLeaderRow) do real lookups.
 vi.mock('@clerk/nextjs/server', () => ({
   currentUser: vi.fn(),
@@ -36,11 +36,11 @@ import {
   setRunStatus,
 } from '../app/run-config/actions'
 
-// These tests write run_leaders/runs rows, so they only run against the staging
+// These tests write run_leaders/runs rows, so they only run against the test-data
 // branch — never production (which is what .env.local's DATABASE_URL points at
-// during a local `npm run test:unit`). CI sets DATABASE_URL to staging.
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+// during a local `npm run test:unit`). CI sets DATABASE_URL to test-data.
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 const LEADER_A = 'user_authtest_A_310' // leads tigerwolves
 const LEADER_B = 'user_authtest_B_310' // leads the other run
@@ -57,10 +57,10 @@ function signInAs(clerkId: string, role: string = 'leader') {
   vi.mocked(currentUser).mockResolvedValue({ id: clerkId, publicMetadata: { role } } as never)
 }
 
-describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', () => {
+describe.skipIf(!onTestData)('run-leader access is scoped to the run they lead', () => {
   // Hooks live inside the guarded describe so no DB writes happen when skipped.
   beforeAll(async () => {
-    // A second run this leader does NOT lead. tigerwolves already exists on staging.
+    // A second run this leader does NOT lead. tigerwolves already exists on test-data.
     await sql`INSERT INTO runs (id, name) VALUES (${OTHER_RUN}, 'Auth Test Doves 310') ON CONFLICT (id) DO NOTHING`
     await sql`DELETE FROM run_leaders WHERE name IN (${NAME_A}, ${NAME_B}, ${NAME_C})`
     const a = await sql`
@@ -212,7 +212,7 @@ describe.skipIf(!onStaging)('run-leader access is scoped to the run they lead', 
 
 // saveRunProfile writes the caller's own runs.kind / runs.workout_types (#321).
 // The role gate short-circuits before any DB access, so the Unauthorized case runs
-// without a staging DB; persistence is proven against staging like its siblings.
+// without a test-data DB; persistence is proven against test-data like its siblings.
 describe('saveRunProfile authorization', () => {
   test('returns Unauthorized when caller is not a leader', async () => {
     signInAs('user_notaleader_321', 'member')
@@ -221,7 +221,7 @@ describe('saveRunProfile authorization', () => {
   })
 })
 
-describe.skipIf(!onStaging)('saveRunProfile persists to the caller’s own run', () => {
+describe.skipIf(!onTestData)('saveRunProfile persists to the caller’s own run', () => {
   // Provision a dedicated run + leader so this suite never mutates a shared fixture
   // row. tigerwolves' kind/workout_types are read and asserted on by db.test.ts's
   // #318 suite; since vitest runs test files in parallel, writing them here would
@@ -264,7 +264,7 @@ describe.skipIf(!onStaging)('saveRunProfile persists to the caller’s own run',
 
 // saveRunCycle writes the caller's own runs.cycle_mode / runs.cycle (#323). Like
 // saveRunProfile, the role gate short-circuits before any DB access, so the
-// Unauthorized case runs without a staging DB.
+// Unauthorized case runs without a test-data DB.
 describe('saveRunCycle authorization', () => {
   test('returns Unauthorized when caller is not a leader', async () => {
     signInAs('user_notaleader_323', 'member')
@@ -273,7 +273,7 @@ describe('saveRunCycle authorization', () => {
   })
 })
 
-describe.skipIf(!onStaging)('saveRunCycle persists to the caller’s own run', () => {
+describe.skipIf(!onTestData)('saveRunCycle persists to the caller’s own run', () => {
   // Dedicated run + leader with a known allowlist, so the allowlist-drop assertion
   // is meaningful and the write never touches a shared fixture row.
   const RUN = 'test-cycle-323'
@@ -334,7 +334,7 @@ describe.skipIf(!onStaging)('saveRunCycle persists to the caller’s own run', (
   })
 })
 
-describe.skipIf(!onStaging)('removing a leader reassigns their future weeks', () => {
+describe.skipIf(!onTestData)('removing a leader reassigns their future weeks', () => {
   const RUN = 'test-remove-310'
   const CALLER = 'user_remtest_A_310' // RemA, leads RUN — the caller
   const FUTURE = '2099-06-16'
@@ -387,7 +387,7 @@ describe.skipIf(!onStaging)('removing a leader reassigns their future weeks', ()
 
 // saveRunIdentity writes the caller's own run's seven identity fields (#348).
 // The role gate short-circuits before any DB access, so the Unauthorized case
-// runs without a staging DB.
+// runs without a test-data DB.
 describe('saveRunIdentity authorization', () => {
   test('returns Unauthorized when caller is not a leader', async () => {
     signInAs('user_notaleader_348', 'member')
@@ -403,7 +403,7 @@ describe('saveRunIdentity authorization', () => {
   })
 })
 
-describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run', () => {
+describe.skipIf(!onTestData)('saveRunIdentity persists to the caller’s own run', () => {
   // Dedicated run + leader to avoid mutating shared fixture rows.
   const RUN = 'test-identity-348'
   const IDENT_LEADER = 'user_identtest_A_348'
@@ -504,7 +504,7 @@ describe.skipIf(!onStaging)('saveRunIdentity persists to the caller’s own run'
 
 // setRunStatus publishes/unpublishes a run (#353). The auth check short-circuits
 // before any DB access when the caller is signed out, so the Unauthorized case
-// runs without a staging DB.
+// runs without a test-data DB.
 describe('setRunStatus authorization (signed out)', () => {
   test('returns Unauthorized when caller is signed out', async () => {
     vi.mocked(currentUser).mockResolvedValue(null as never)
@@ -513,7 +513,7 @@ describe('setRunStatus authorization (signed out)', () => {
   })
 })
 
-describe.skipIf(!onStaging)('setRunStatus — DB-backed cases', () => {
+describe.skipIf(!onTestData)('setRunStatus — DB-backed cases', () => {
   // Dedicated run + two leaders: one that owns the run (STATUS_LEADER_A), one that
   // does not (STATUS_LEADER_B leads a different run). A second sibling run
   // (STATUS_OTHER_RUN) lets us assert that changing one run's status never touches

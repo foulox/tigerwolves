@@ -41,6 +41,11 @@ test.describe('entry routing (/) — signed-in leader', () => {
     await page.goto('/')
     await page.waitForURL(/\/my-plan$/)
     expect(page.url()).toContain('/my-plan')
+
+    // Cleanup: this suite shares the one test-leader account with other specs
+    // (e.g. per-run's join-MMER test), so leave MMER un-followed rather than
+    // leaking a follow downstream — the leak that made per-run.spec.ts flaky.
+    await setFollow(page, 'mmer', false)
   })
 })
 

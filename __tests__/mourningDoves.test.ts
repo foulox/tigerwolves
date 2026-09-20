@@ -11,7 +11,7 @@ import {
 
 // #411: load the real Mourning Doves library — 42 families / 48 variants, family-level
 // last_ran (most-recent-variant-wins), per-variant map links. Pure tests run anywhere;
-// the seed-integration test is staging-gated (it writes), same guard as recency.test.ts,
+// the seed-integration test is test-data-gated (it writes), same guard as recency.test.ts,
 // and fully self-provisions into an isolated sandbox run/group it tears down.
 
 // ── AC1: the fixture data itself — 42 families / 48 variants (pure) ────────────
@@ -122,13 +122,13 @@ describe('recency sort orders stalest-first for the Doves library (AC4)', () => 
   })
 })
 
-// ── AC1/AC3 + #411 map_link: the seed writes it all, idempotently (staging) ────
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+// ── AC1/AC3 + #411 map_link: the seed writes it all, idempotently (test-data) ────
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
-describe.skipIf(!onStaging)('seedMourningDoves writes the library + membership + last_ran (staging)', () => {
+describe.skipIf(!onTestData)('seedMourningDoves writes the library + membership + last_ran (test-data)', () => {
   // Isolated sandbox so we never touch the shared "Mourning Doves" group, the real
-  // `mourning-doves` run, or race the other DB suites on this staging branch.
+  // `mourning-doves` run, or race the other DB suites on this test-data branch.
   const RUN = 'test-mourning-doves-411'
   const GROUP = 'Mourning Doves TEST 411'
   let groupId: number

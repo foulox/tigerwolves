@@ -8,7 +8,7 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 //
 // Mocks mirror adoptRoute.test.ts: currentUser is Clerk server context; updateTag +
 // revalidatePath both throw outside a real request scope (revalidateAll calls both),
-// so both are stubbed. DB is real staging — the test provisions its own group/run/
+// so both are stubbed. DB is real test-data — the test provisions its own group/run/
 // family and cleans up, never touching shared fixtures.
 vi.mock('@clerk/nextjs/server', () => ({ currentUser: vi.fn(), clerkClient: vi.fn() }))
 vi.mock('next/cache', async importOriginal => {
@@ -21,14 +21,14 @@ import { currentUser } from '@clerk/nextjs/server'
 import { sql, getRunLibraryFamilyIds, dbAdoptRoute } from '../lib/db'
 import { setPlanWorkout } from '../app/actions'
 
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 function signInAs(clerkId: string, role: 'leader' | null = 'leader') {
   vi.mocked(currentUser).mockResolvedValue({ id: clerkId, publicMetadata: role ? { role } : {} } as never)
 }
 
-describe.skipIf(!onStaging)('one-time cross-run borrow (AC5/AC7)', () => {
+describe.skipIf(!onTestData)('one-time cross-run borrow (AC5/AC7)', () => {
   const GROUP_MINE = 'Borrow Test Mine 405'
   const GROUP_OTHER = 'Borrow Test Other 405'
   const RUN = 'test-borrow-405'

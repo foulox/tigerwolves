@@ -8,16 +8,13 @@ import { getNextLeader } from './rotation'
 import { resolveWorkoutVariant } from './scheduleUtils'
 import type { MyPlanItem } from './myPlan'
 
-// The Neon–Vercel integration injects DATABASE_URL dynamically per git-branch at
-// deploy time, which overrides any manually-set value — so the durable demo can't be
-// pinned to its demo-data branch via DATABASE_URL alone (the integration keeps handing
-// the `staging` branch the auto-provisioned preview/staging DB = the E2E-wipe branch).
-// DEMO_DATABASE_URL is a name the integration never manages: it's set ONLY on the demo
-// (Preview, gitBranch=staging) and points at the durable demo-data branch. Production and
-// PR-preview deploys leave it unset and read their own DATABASE_URL (prod / per-PR
-// isolated branch) unchanged — that per-PR isolation is the integration behaviour we
-// intentionally keep. See #376.
-const dbUrl = process.env.DEMO_DATABASE_URL || process.env.DATABASE_URL
+// Every environment reads DATABASE_URL directly. Production and per-PR previews
+// get it from the Neon–Vercel integration (prod / per-PR isolated branch); the
+// demo is its own Vercel project (no integration) whose DATABASE_URL is set by
+// hand to the durable demo-data branch. The old demo-only env-var override — a
+// workaround from when the demo rode on the staging deploy — was retired once the
+// demo became a first-class environment (#429, epic #422).
+const dbUrl = process.env.DATABASE_URL
 
 if (!dbUrl) {
   throw new Error('DATABASE_URL is not set')

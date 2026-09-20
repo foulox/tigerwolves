@@ -131,7 +131,15 @@ test.describe('per-run page (/runs/[id]) — follow toggle (#330)', () => {
 
     const toggle = page.locator('[data-testid="run-follow-toggle"]')
     await expect(toggle).toBeVisible()
-    await expect(toggle).toContainText('Join')
+
+    // Establish a known starting state (not following). The test-leader account is
+    // shared across specs, so don't assume a prior test left MMER un-followed — if
+    // it's already "Joined", clicking join would UNFOLLOW and this test would fail.
+    if (((await toggle.textContent()) ?? '').includes('Joined')) {
+      await toggle.click()
+      await expect(toggle).toContainText('+ Join')
+    }
+    await expect(toggle).toContainText('+ Join')
 
     // Join — persists across reload
     await toggle.click()
@@ -142,7 +150,7 @@ test.describe('per-run page (/runs/[id]) — follow toggle (#330)', () => {
 
     // Leave — flips back
     await page.locator('[data-testid="run-follow-toggle"]').click()
-    await expect(page.locator('[data-testid="run-follow-toggle"]')).toContainText('Join')
+    await expect(page.locator('[data-testid="run-follow-toggle"]')).toContainText('+ Join')
   })
 })
 

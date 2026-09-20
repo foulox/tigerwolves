@@ -16,7 +16,7 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 // currentUser() / clerkClient() are Clerk server context (no session in vitest),
 // so they're mocked. updateTag() is a Server-Action-only Next primitive that
 // throws outside a request, so it's stubbed. DB-touching tests run only on
-// staging (same guard as activateNbrRun.test.ts / runConfigAuth.test.ts).
+// test-data (same guard as activateNbrRun.test.ts / runConfigAuth.test.ts).
 
 const { mockGetUserList, mockUpdateUser, mockGetUser } = vi.hoisted(() => ({
   mockGetUserList: vi.fn(),
@@ -47,11 +47,11 @@ import { sql } from '../lib/db'
 import { addRunLeaderByEmail, removeRunLeader } from '../app/run-config/actions'
 import { leadsAnyActiveRun } from '../lib/db'
 
-// Staging-only DB tests gated with describe.skipIf(!onStaging). CI sets
-// DATABASE_URL to the staging branch; local dev has no DATABASE_URL and the
-// module fails to load off-staging (same documented behavior as activateNbrRun.test.ts).
-const STAGING_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
-const onStaging = (process.env.DATABASE_URL ?? '').includes(STAGING_HOST)
+// Test-data-only DB tests gated with describe.skipIf(!onTestData). CI sets
+// DATABASE_URL to the test-data branch; local dev has no DATABASE_URL and the
+// module fails to load off-test-data (same documented behavior as activateNbrRun.test.ts).
+const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 /** Set currentUser mock to a user with the given publicMetadata. */
 function signInAs(id: string, { role }: { role?: string } = {}) {
@@ -112,12 +112,12 @@ describe('addRunLeaderByEmail authorization', () => {
 })
 
 // ---------------------------------------------------------------------------
-// STAGING — real DB writes; skipped when DATABASE_URL is not the staging branch.
+// TEST-DATA — real DB writes; skipped when DATABASE_URL is not the test-data branch.
 // ---------------------------------------------------------------------------
 
-describe.skipIf(!onStaging)('addRunLeaderByEmail grant path (staging)', () => {
+describe.skipIf(!onTestData)('addRunLeaderByEmail grant path (test-data)', () => {
   // A dedicated run + owning leader row. We use 'tigerwolves' as the cross-run
-  // target (it already exists on staging). The caller leads their own separate run.
+  // target (it already exists on test-data). The caller leads their own separate run.
   const CALLER_RUN = 'test-grant-350'
   const CALLER_CLERK_ID = 'user_granttest_caller_350'
   const CALLER_NAME = 'GrantTest Caller 350'
@@ -206,7 +206,7 @@ describe.skipIf(!onStaging)('addRunLeaderByEmail grant path (staging)', () => {
 // already a leader of the run — same email, but Clerk now resolves a different
 // display name — must update the existing row, never insert a second.
 
-describe.skipIf(!onStaging)('addRunLeaderByEmail dedupes on email (AC3, staging)', () => {
+describe.skipIf(!onTestData)('addRunLeaderByEmail dedupes on email (AC3, test-data)', () => {
   const CALLER_RUN = 'test-emaildedup-385'
   const CALLER_CLERK_ID = 'user_emaildedup_caller_385'
   const CALLER_NAME = 'EmailDedup Caller 385'
@@ -280,7 +280,7 @@ describe.skipIf(!onStaging)('addRunLeaderByEmail dedupes on email (AC3, staging)
 // The fix: use the codebase's existing `toDateString()` helper from lib/db.ts,
 // which handles both Date objects and strings safely.
 
-describe.skipIf(!onStaging)('removeRunLeader reassigns upcoming week (regression #378)', () => {
+describe.skipIf(!onTestData)('removeRunLeader reassigns upcoming week (regression #378)', () => {
   const CALLER_RUN = 'test-remove-378'
   const CALLER_CLERK_ID = 'user_remove378_caller'
   const CALLER_NAME = 'Remove378 Caller'
@@ -356,7 +356,7 @@ describe.skipIf(!onStaging)('removeRunLeader reassigns upcoming week (regression
   })
 })
 
-describe.skipIf(!onStaging)('removeRunLeader revoke path (staging)', () => {
+describe.skipIf(!onTestData)('removeRunLeader revoke path (test-data)', () => {
   // Two runs: CALLER_RUN (owned by the test caller), SECOND_RUN (the removed
   // leader's other run — used to prove the "still leads another" branch).
   const CALLER_RUN = 'test-revoke-350'
