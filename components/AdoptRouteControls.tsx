@@ -10,9 +10,13 @@ type LedRun = { id: string; name: string; kind: string; workoutTypes: string[] }
 /**
  * #404: per-family adopt / un-adopt affordance shown on Library cards.
  *
- * - "All runs" mode, a route NOT in the run's library → **[+ Add to my run]**. A
- *   single-run leader adopts straight into their run; a multi-run leader first picks
- *   which of their runs to adopt into (AC6). Optimistic-feeling via useTransition.
+ * - "All runs" mode, a route NOT in the run's library → **[+ Add to my run]**, but
+ *   only for the runs the route is type-compatible with (#412 `adoptableRuns`). If
+ *   exactly one led run fits → adopt straight into it; if several fit → the leader
+ *   first picks which (AC6); if none fit → the affordance is hidden entirely. The
+ *   single/multi branch keys on the ADOPTABLE subset, not the total led-run count, so
+ *   a two-run leader with one compatible run still gets the direct-adopt path.
+ *   Optimistic-feeling via useTransition.
  * - "Your run" mode, an ADOPTED route (in the library but created by another run) →
  *   an "adopted from <creator>" note + **[Remove from my run]** (un-adopt — membership
  *   only, NEVER a global delete; that stays the separate 🗑 Delete control, AC7).

@@ -287,8 +287,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
   // #405: the "+ Add to my run" adopt affordance (reuses #404's control), shown per
   // card ONLY in "All runs" mode — distinct from the one-time "Schedule for this week"
-  // borrow (the card select + save). Renders nothing for a route already in the library
-  // (AdoptRouteControls short-circuits) or when the leader can't adopt.
+  // borrow (the card select + save). Renders nothing for a route already in the library,
+  // when the leader can't adopt, or (#412) when the route's type fits none of the runs
+  // the leader leads (AdoptRouteControls short-circuits on all three).
   function adoptControls(familyId: number, creatorRunGroupId: number | null, workoutCategory: string, workoutType: string) {
     if (!showAllRuns || !canAdopt) return null
     return (

@@ -185,9 +185,9 @@ describe.skipIf(!onTestData)('adopt / un-adopt membership (test-data, AC2/AC4/AC
 })
 
 describe.skipIf(!onTestData)('cross-type adoption guard (#412)', () => {
-  // Uses the same fixture family as the membership suite above (Long/Long).
-  // A dedicated run is provisioned with kind='Workout' (Long routes are off-type
-  // for Workout runs) so the guard is exercised without touching the shared fixtures.
+  // Provisions its own fixture family (Long/Long category/type) and two dedicated
+  // runs — one kind='Workout' (a Long route is off-type there) and one kind='Long'
+  // (a Long route fits) — so the guard is tested in isolation from the membership suite.
   const GROUP = 'Cross-Type Test 412'
   const RUN_WORKOUT = 'test-cross-type-412-workout' // kind = 'Workout'
   const RUN_LONG = 'test-cross-type-412-long'       // kind = 'Long'
