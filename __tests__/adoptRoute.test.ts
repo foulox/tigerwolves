@@ -184,6 +184,91 @@ describe.skipIf(!onTestData)('adopt / un-adopt membership (test-data, AC2/AC4/AC
   })
 })
 
+describe.skipIf(!onTestData)('cross-type adoption guard (#412)', () => {
+  // Provisions its own fixture family (Long/Long category/type) and two dedicated
+  // runs — one kind='Workout' (a Long route is off-type there) and one kind='Long'
+  // (a Long route fits) — so the guard is tested in isolation from the membership suite.
+  const GROUP = 'Cross-Type Test 412'
+  const RUN_WORKOUT = 'test-cross-type-412-workout' // kind = 'Workout'
+  const RUN_LONG = 'test-cross-type-412-long'       // kind = 'Long'
+  const LEADER = 'user_crosstype_leader_412'
+  let groupId: number
+  let familyId: number
+
+  beforeAll(async () => {
+    const existingGroup = await sql`SELECT id FROM run_groups WHERE name = ${GROUP}`
+    groupId = existingGroup.length > 0
+      ? (existingGroup[0].id as number)
+      : ((await sql`
+          INSERT INTO run_groups (name, venue, default_location) VALUES (${GROUP}, 'road', 'Test')
+          RETURNING id
+        `)[0].id as number)
+
+    const [f] = await sql`
+      INSERT INTO workout_families (name, category, type, reason, author, run_group_id)
+      VALUES ('Cross-Type Fixture Route', 'Long', 'Long', 'test', ${GROUP}, ${groupId})
+      RETURNING id
+    `
+    familyId = f.id as number
+    await sql`
+      INSERT INTO workout_variants (family_id, label, sort_order, raw_input, has_turnaround, turnaround, flagged, flag_note)
+      VALUES (${familyId}, NULL, NULL, 'test cross-type route', false, '', false, '')
+    `
+
+    // Workout-kind run — Long routes are off-type here
+    await sql`
+      INSERT INTO runs (id, name, kind) VALUES (${RUN_WORKOUT}, 'Cross-Type Workout Run', 'Workout')
+      ON CONFLICT (id) DO UPDATE SET kind = 'Workout'
+    `
+    // Long-kind run — Long routes fit here
+    await sql`
+      INSERT INTO runs (id, name, kind) VALUES (${RUN_LONG}, 'Cross-Type Long Run', 'Long')
+      ON CONFLICT (id) DO UPDATE SET kind = 'Long'
+    `
+
+    await sql`DELETE FROM run_leaders WHERE clerk_user_id = ${LEADER}`
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${RUN_WORKOUT}, 'Cross-Type Leader', ${LEADER}, 1, true)
+    `
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${RUN_LONG}, 'Cross-Type Leader', ${LEADER}, 2, true)
+    `
+    await sql`DELETE FROM run_workouts WHERE run_id IN (${RUN_WORKOUT}, ${RUN_LONG})`
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM run_workouts WHERE run_id IN (${RUN_WORKOUT}, ${RUN_LONG})`
+    await sql`DELETE FROM run_leaders WHERE clerk_user_id = ${LEADER}`
+    await sql`DELETE FROM workout_variants WHERE family_id = ${familyId}`
+    await sql`DELETE FROM workout_families WHERE id = ${familyId}`
+    await sql`DELETE FROM runs WHERE id IN (${RUN_WORKOUT}, ${RUN_LONG})`
+    await sql`DELETE FROM run_groups WHERE id = ${groupId}`
+  })
+
+  test('cross-type adopt returns an error and writes no run_workouts row', async () => {
+    signInAs(LEADER)
+    // Long family into a Workout run — isRouteAdoptable returns false
+    const res = await adoptRoute(RUN_WORKOUT, familyId)
+    expect(res.error).toBeTruthy()
+    expect(res.error).toBe("This route's type doesn't fit that run — you can borrow it for a week instead.")
+    const rows = await sql`SELECT 1 FROM run_workouts WHERE run_id = ${RUN_WORKOUT} AND family_id = ${familyId}`
+    expect(rows.length).toBe(0)
+  })
+
+  test('same-type adopt succeeds and writes the membership row', async () => {
+    signInAs(LEADER)
+    // Long family into a Long run — isRouteAdoptable returns true
+    const res = await adoptRoute(RUN_LONG, familyId)
+    expect(res.error).toBeUndefined()
+    const rows = await sql`SELECT 1 FROM run_workouts WHERE run_id = ${RUN_LONG} AND family_id = ${familyId}`
+    expect(rows.length).toBe(1)
+    // cleanup membership so afterAll teardown is clean
+    await sql`DELETE FROM run_workouts WHERE run_id = ${RUN_LONG} AND family_id = ${familyId}`
+  })
+})
+
 describe.skipIf(!onTestData)('regroup inherits library membership (#404 review)', () => {
   // Regressions the CI e2e caught: dbRegroupVariants creates a NEW family, and under
   // the membership model that family had no run_workouts row → the merged workout

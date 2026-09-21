@@ -175,15 +175,15 @@ export async function getLeaderRunGroups(clerkUserId: string): Promise<RunGroup[
 // adopts with no extra step; a multi-run leader is prompted to pick which of these
 // to adopt into (AC6). Distinct by run id (a leader with two roster rows on the same
 // run sees it once). Ordered by name for a stable picker.
-export async function getLeaderRuns(clerkUserId: string): Promise<Array<{ id: string; name: string }>> {
+export async function getLeaderRuns(clerkUserId: string): Promise<Array<{ id: string; name: string; kind: string; workoutTypes: string[] }>> {
   const rows = await sql`
-    SELECT DISTINCT r.id, r.name
+    SELECT DISTINCT r.id, r.name, r.kind, r.workout_types
     FROM run_leaders rl
     JOIN runs r ON r.id = rl.run_id
     WHERE rl.clerk_user_id = ${clerkUserId} AND rl.active = true
     ORDER BY r.name
   `
-  return rows.map((r) => ({ id: r.id as string, name: r.name as string }))
+  return rows.map((r) => ({ id: r.id as string, name: r.name as string, kind: (r.kind as string | null) ?? '', workoutTypes: (r.workout_types as string[]) ?? [] }))
 }
 
 // #404: does this leader actively lead this run? The authz predicate behind
@@ -493,6 +493,18 @@ export async function dbDeleteWorkoutVariant(variantId: number): Promise<void> {
   if ((remaining.count as number) === 0) {
     await sql`DELETE FROM workout_families WHERE id = ${familyId}`
   }
+}
+
+// #412: lightweight read of a workout_families row's (category, type) — the only
+// fields adoptRoute's cross-type guard needs. Returns null if the family doesn't exist.
+export async function getWorkoutFamilyMeta(
+  familyId: number,
+): Promise<{ category: string; type: string } | null> {
+  const rows = await sql`
+    SELECT category, type FROM workout_families WHERE id = ${familyId} LIMIT 1
+  `
+  if (!rows[0]) return null
+  return { category: rows[0].category as string, type: rows[0].type as string }
 }
 
 // #404: adopt = add a library-membership row (a run references a route it did not

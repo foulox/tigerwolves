@@ -42,7 +42,7 @@ type DisplayRow = StandaloneRow | FamilyRow
 // adopted — libraryFamilyIds), superseding #401's run_group_id ownership check.
 // ledRuns/runGroupNames drive the adopt affordances (AC5/AC6) and the "adopted from
 // <creator>" label; run_group_id is kept only as creator credit.
-type LedRun = { id: string; name: string }
+type LedRun = { id: string; name: string; kind: string; workoutTypes: string[] }
 export default function LibraryClient({ variants, isLeader, isAdmin = false, voteData = {}, runId, allowedTypes, runGroupId, libraryFamilyIds = [], ledRuns = [], runGroupNames = {} }: { variants: WorkoutVariantRow[]; isLeader: boolean; isAdmin?: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runGroupId?: number | null; libraryFamilyIds?: number[]; ledRuns?: LedRun[]; runGroupNames?: Record<number, string> }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
@@ -71,7 +71,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   // see adopt/remove affordances (AC5/AC8). An unreconciled run falls back to the full
   // catalog with no membership, so adoption there would be meaningless.
   const canAdopt = isLeader && ledRuns.length > 0 && !!runId && runGroupId != null
-  function adoptControls(familyId: number, creatorRunGroupId: number | null) {
+  function adoptControls(familyId: number, creatorRunGroupId: number | null, workoutCategory: string, workoutType: string) {
     if (!canAdopt) return null
     return (
       <AdoptRouteControls
@@ -83,6 +83,8 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
         showAllRuns={showAllRuns}
         ledRuns={ledRuns}
         primaryRunId={runId!}
+        workoutCategory={workoutCategory}
+        workoutType={workoutType}
       />
     )
   }
@@ -368,7 +370,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                     </Link>
                   </div>
                 )}
-                {adoptControls(w.familyId, w.runGroupId)}
+                {adoptControls(w.familyId, w.runGroupId, w.category, w.type)}
               </div>
             )
           }
@@ -405,7 +407,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                   {row.lastRan ? `Last ran ${formatDate(row.lastRan)}` : 'Never used'} · tap to {isExpanded ? 'collapse' : 'expand'}
                 </div>
               </button>
-              {adoptControls(row.familyId, familyCreatorGroupId)}
+              {adoptControls(row.familyId, familyCreatorGroupId, (row.base ?? row.variants[0])?.category ?? '', row.type)}
 
               {isExpanded && (
                 <div className="mt-1 ml-2 flex flex-col gap-1">

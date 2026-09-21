@@ -3,15 +3,20 @@
 import { useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { adoptRoute, unadoptRoute } from '@/app/actions'
+import { adoptableRunsFor } from '@/lib/runProfile'
 
-type LedRun = { id: string; name: string }
+type LedRun = { id: string; name: string; kind: string; workoutTypes: string[] }
 
 /**
  * #404: per-family adopt / un-adopt affordance shown on Library cards.
  *
- * - "All runs" mode, a route NOT in the run's library → **[+ Add to my run]**. A
- *   single-run leader adopts straight into their run; a multi-run leader first picks
- *   which of their runs to adopt into (AC6). Optimistic-feeling via useTransition.
+ * - "All runs" mode, a route NOT in the run's library → **[+ Add to my run]**, but
+ *   only for the runs the route is type-compatible with (#412 `adoptableRuns`). If
+ *   exactly one led run fits → adopt straight into it; if several fit → the leader
+ *   first picks which (AC6); if none fit → the affordance is hidden entirely. The
+ *   single/multi branch keys on the ADOPTABLE subset, not the total led-run count, so
+ *   a two-run leader with one compatible run still gets the direct-adopt path.
+ *   Optimistic-feeling via useTransition.
  * - "Your run" mode, an ADOPTED route (in the library but created by another run) →
  *   an "adopted from <creator>" note + **[Remove from my run]** (un-adopt — membership
  *   only, NEVER a global delete; that stays the separate 🗑 Delete control, AC7).
@@ -29,6 +34,8 @@ export default function AdoptRouteControls({
   showAllRuns,
   ledRuns,
   primaryRunId,
+  workoutCategory,
+  workoutType,
 }: {
   familyId: number
   creatorRunGroupId: number | null
@@ -38,6 +45,8 @@ export default function AdoptRouteControls({
   showAllRuns: boolean
   ledRuns: LedRun[]
   primaryRunId: string
+  workoutCategory: string
+  workoutType: string
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState('')
@@ -45,6 +54,7 @@ export default function AdoptRouteControls({
 
   const isAdopted = inLibrary && creatorRunGroupId != null && creatorRunGroupId !== myRunGroupId
   const creatorName = creatorRunGroupId != null ? runGroupNames[creatorRunGroupId] : undefined
+  const adoptableRuns = adoptableRunsFor({ category: workoutCategory, type: workoutType }, ledRuns)
 
   function doAdopt(runId: string) {
     setError('')
@@ -99,6 +109,9 @@ export default function AdoptRouteControls({
   // "All runs" → a route already in the library needs no add affordance.
   if (inLibrary) return null
 
+  // "All runs" → no adoptable runs for this workout type — hide the control entirely (AC1).
+  if (adoptableRuns.length === 0) return null
+
   // "All runs" → offer to add. Multi-run leaders pick a target run first.
   return (
     <div className="mt-1.5 px-1 flex flex-col items-end gap-1">
@@ -106,7 +119,7 @@ export default function AdoptRouteControls({
         <div className="flex flex-col items-end gap-1">
           <span className="text-xs text-gray-500 font-semibold">Add to which run?</span>
           <div className="flex flex-wrap gap-1.5 justify-end">
-            {ledRuns.map(r => (
+            {adoptableRuns.map(r => (
               <button
                 key={r.id}
                 type="button"
@@ -129,7 +142,7 @@ export default function AdoptRouteControls({
       ) : (
         <button
           type="button"
-          onClick={() => (ledRuns.length > 1 ? setPickingRun(true) : doAdopt(ledRuns[0]?.id ?? primaryRunId))}
+          onClick={() => (adoptableRuns.length > 1 ? setPickingRun(true) : doAdopt(adoptableRuns[0].id))}
           disabled={isPending}
           className="text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-full px-3 py-1 disabled:opacity-40 touch-manipulation"
         >
