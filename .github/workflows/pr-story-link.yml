@@ -1,0 +1,9 @@
+name: PR story link
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  link:
+    uses: foulox/.github/.github/workflows/pr-story-link.yml@main

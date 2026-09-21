@@ -1,0 +1,9 @@
+name: Epic link
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  link:
+    uses: foulox/.github/.github/workflows/epic-link.yml@main
