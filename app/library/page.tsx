@@ -57,7 +57,7 @@ export default async function LibraryPage() {
   const isRealLeaderRun = !!(leaderRun && runConfig.runGroupId != null)
   const [libraryFamilyIds, ledRuns, runGroups] = await Promise.all([
     isRealLeaderRun ? getRunLibraryFamilyIds(runConfig.id) : Promise.resolve<number[]>([]),
-    user && isLeader ? getLeaderRuns(user.id) : Promise.resolve<Array<{ id: string; name: string }>>([]),
+    user && isLeader ? getLeaderRuns(user.id) : Promise.resolve<Array<{ id: string; name: string; kind: string; workoutTypes: string[] }>>([]),
     fetchRunGroups(),
   ])
   const runGroupNames: Record<number, string> = Object.fromEntries(runGroups.map(g => [g.id, g.name]))

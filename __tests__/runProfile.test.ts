@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { resolveAllowedTypes, isWorkoutKind, WEEK_SLOTS, parseSlotValue, joinSlotValue, kindToCategory, isRouteAdoptable } from '../lib/runProfile'
+import { resolveAllowedTypes, isWorkoutKind, WEEK_SLOTS, parseSlotValue, joinSlotValue, kindToCategory, isRouteAdoptable, adoptableRunsFor } from '../lib/runProfile'
 
 describe('resolveAllowedTypes', () => {
   test('intersects present types with the allowlist, sorted', () => {
@@ -129,5 +129,39 @@ describe('isRouteAdoptable', () => {
 
   test('Food run rejects a Quality-category workout', () => {
     expect(isRouteAdoptable({ category: 'Quality', type: 'Hills' }, { kind: 'Food', workoutTypes: [] })).toBe(false)
+  })
+})
+
+describe('adoptableRunsFor', () => {
+  const workoutRun = { id: 'tw', name: 'TigerWolves', kind: 'Workout', workoutTypes: ['Hills', 'Threshold'] }
+  const longRun = { id: 'lr', name: 'Long Runners', kind: 'Long', workoutTypes: [] }
+  const easyRun = { id: 'er', name: 'Easy Runners', kind: 'Easy', workoutTypes: [] }
+  const ledRuns = [workoutRun, longRun, easyRun]
+
+  test('AC1: a workout that fits none of the led runs returns empty array', () => {
+    // Quality/Hills fits only Workout runs — Long and Easy runs reject it
+    expect(adoptableRunsFor({ category: 'Quality', type: 'Hills' }, [longRun, easyRun])).toEqual([])
+  })
+
+  test('AC2: mixed ledRuns — returns only adoptable ones, preserving order', () => {
+    // Quality/Hills fits only workoutRun (Workout kind, Hills in allowlist)
+    expect(adoptableRunsFor({ category: 'Quality', type: 'Hills' }, ledRuns)).toEqual([workoutRun])
+  })
+
+  test('AC2: a Long workout fits only the Long run in a mixed array', () => {
+    expect(adoptableRunsFor({ category: 'Long', type: 'Long' }, ledRuns)).toEqual([longRun])
+  })
+
+  test('AC2: an Easy workout fits only the Easy run in a mixed array', () => {
+    expect(adoptableRunsFor({ category: 'Easy', type: 'Easy' }, ledRuns)).toEqual([easyRun])
+  })
+
+  test('a Quality workout with a type not in the Workout allowlist returns empty', () => {
+    expect(adoptableRunsFor({ category: 'Quality', type: 'Intervals' }, [workoutRun])).toEqual([])
+  })
+
+  test('a Workout run with empty allowlist accepts any Quality type', () => {
+    const openWorkoutRun = { id: 'tw2', name: 'Open Workout', kind: 'Workout', workoutTypes: [] }
+    expect(adoptableRunsFor({ category: 'Quality', type: 'Intervals' }, [openWorkoutRun])).toEqual([openWorkoutRun])
   })
 })

@@ -39,7 +39,7 @@ function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined
   return <span className="text-xs text-gray-300">🙂</span>
 }
 
-type LedRun = { id: string; name: string }
+type LedRun = { id: string; name: string; kind: string; workoutTypes: string[] }
 
 type Props = {
   upcoming: ScheduleEntry[]
@@ -289,7 +289,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   // card ONLY in "All runs" mode — distinct from the one-time "Schedule for this week"
   // borrow (the card select + save). Renders nothing for a route already in the library
   // (AdoptRouteControls short-circuits) or when the leader can't adopt.
-  function adoptControls(familyId: number, creatorRunGroupId: number | null) {
+  function adoptControls(familyId: number, creatorRunGroupId: number | null, workoutCategory: string, workoutType: string) {
     if (!showAllRuns || !canAdopt) return null
     return (
       <div className="px-4 pb-3">
@@ -302,6 +302,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
           showAllRuns={showAllRuns}
           ledRuns={ledRuns}
           primaryRunId={runConfig.id}
+          workoutCategory={workoutCategory}
+          workoutType={workoutType}
         />
       </div>
     )
@@ -559,7 +561,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
                 {showAllRuns && (
                   <p className="text-xs text-gray-400 mb-3 leading-snug">
-                    Browsing every run&rsquo;s workouts. <span className="font-semibold text-gray-500">Schedule for this week</span> borrows one for this week only — it won&rsquo;t join your library or rotation. <span className="font-semibold text-orange-600">+ Add to my run</span> adopts it permanently.
+                    Browsing every run&rsquo;s workouts. <span className="font-semibold text-gray-500">Schedule for this week</span> borrows one for this week only — it won&rsquo;t join your library or rotation. <span className="font-semibold text-orange-600">+ Add to my run</span> adopts it permanently. You can only <span className="font-semibold text-orange-600">+ Add</span> a route whose type fits one of your runs — borrow works for any type.
                   </p>
                 )}
 
@@ -652,7 +654,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                   <WorkoutDetails w={w} />
                                 </div>
                               )}
-                              {adoptControls(w.familyId, w.runGroupId)}
+                              {adoptControls(w.familyId, w.runGroupId, w.category, w.type)}
                             </div>
                           )
                         }
@@ -706,7 +708,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                 </div>
                               )
                             })}
-                            {adoptControls(row.familyId, row.variants[0]?.runGroupId ?? null)}
+                            {adoptControls(row.familyId, row.variants[0]?.runGroupId ?? null, row.variants[0]?.category ?? '', row.variants[0]?.type ?? '')}
                           </div>
                         )
                       })}

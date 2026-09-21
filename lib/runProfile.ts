@@ -97,6 +97,16 @@ export function isRouteAdoptable(
   return cat != null && workout.category === cat
 }
 
+// Filter a list of led runs to only those a given workout can be adopted into.
+// Generic over R so callers can pass their enriched LedRun objects directly and
+// get back a typed subarray without casting.
+export function adoptableRunsFor<R extends { kind: string; workoutTypes: string[] }>(
+  workout: { category: string; type: string },
+  runs: R[],
+): R[] {
+  return runs.filter(r => isRouteAdoptable(workout, r))
+}
+
 // #360: NBR directory category maps. KIND_TO_NBR_CATEGORY maps a run's `kind`
 // (DB column) to the NBRRun.category value used by the All Runs directory.
 // This is distinct from kindToCategory() above which maps to workout-library categories.
