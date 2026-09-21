@@ -26,7 +26,9 @@ import {
   dbAdoptRoute,
   dbUnadoptRoute,
   leaderLeadsRun,
+  getWorkoutFamilyMeta,
 } from '@/lib/db'
+import { isRouteAdoptable } from '@/lib/runProfile'
 import { buildWorkoutVariantInput } from '@/lib/workoutVariant'
 import { captureServerEvent } from '@/lib/analytics'
 import { feedbackLabel, feedbackTitle, feedbackBody, type FeedbackType } from '@/lib/feedbackUtils'
@@ -450,6 +452,14 @@ export async function adoptRoute(runId: string, familyId: number): Promise<{ err
   try {
     const userId = await requireAuth()
     if (!(await leaderLeadsRun(userId, runId))) return { error: 'You can only add routes to a run you lead' }
+    // #412: cross-type adoption guard — resolve both the target run and the workout
+    // family, then reject if the family's type doesn't fit the run. Runs before the
+    // DB write so no row is ever committed for an off-type combination.
+    const [run, family] = await Promise.all([getRunById(runId), getWorkoutFamilyMeta(familyId)])
+    if (!run || !family) return { error: 'Route or run not found' }
+    if (!isRouteAdoptable({ category: family.category, type: family.type }, { kind: run.kind, workoutTypes: run.workoutTypes })) {
+      return { error: "This route's type doesn't fit that run — you can borrow it for a week instead." }
+    }
     await dbAdoptRoute(runId, familyId)
     revalidateAll()
     return {}
