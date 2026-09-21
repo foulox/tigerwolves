@@ -82,6 +82,21 @@ export function resolveAllowedTypes(presentTypes: string[], allowlist: string[])
   return resolved.sort()
 }
 
+// Returns true when a workout from the shared library is adoptable by a given run.
+// Workout runs gate by category (must be 'Quality') and optionally by type allowlist.
+// Non-Workout runs gate by category match via kindToCategory.
+export function isRouteAdoptable(
+  workout: { category: string; type: string },
+  run: { kind: string; workoutTypes: string[] },
+): boolean {
+  if (run.kind === 'Workout') {
+    // Empty allowlist means "any type" — mirrors resolveAllowedTypes' no-profile fallback.
+    return workout.category === 'Quality' && (run.workoutTypes.length === 0 || run.workoutTypes.includes(workout.type))
+  }
+  const cat = kindToCategory(run.kind)
+  return cat != null && workout.category === cat
+}
+
 // #360: NBR directory category maps. KIND_TO_NBR_CATEGORY maps a run's `kind`
 // (DB column) to the NBRRun.category value used by the All Runs directory.
 // This is distinct from kindToCategory() above which maps to workout-library categories.

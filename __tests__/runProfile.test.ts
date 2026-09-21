@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { resolveAllowedTypes, isWorkoutKind, WEEK_SLOTS, parseSlotValue, joinSlotValue, kindToCategory } from '../lib/runProfile'
+import { resolveAllowedTypes, isWorkoutKind, WEEK_SLOTS, parseSlotValue, joinSlotValue, kindToCategory, isRouteAdoptable } from '../lib/runProfile'
 
 describe('resolveAllowedTypes', () => {
   test('intersects present types with the allowlist, sorted', () => {
@@ -83,5 +83,51 @@ describe('kindToCategory', () => {
 
   test('maps unknown kind to null', () => {
     expect(kindToCategory('SomethingUnknown')).toBe(null)
+  })
+})
+
+describe('isRouteAdoptable', () => {
+  test('Workout run with matching allowlist and matching type → adoptable', () => {
+    expect(isRouteAdoptable({ category: 'Quality', type: 'Hills' }, { kind: 'Workout', workoutTypes: ['Hills', 'Threshold'] })).toBe(true)
+  })
+
+  test('Workout run with allowlist that excludes the workout type → not adoptable', () => {
+    expect(isRouteAdoptable({ category: 'Quality', type: 'Intervals' }, { kind: 'Workout', workoutTypes: ['Hills', 'Threshold'] })).toBe(false)
+  })
+
+  test('Workout run with empty allowlist → any Quality type is adoptable', () => {
+    expect(isRouteAdoptable({ category: 'Quality', type: 'Intervals' }, { kind: 'Workout', workoutTypes: [] })).toBe(true)
+  })
+
+  test('Workout run rejects non-Quality category even when type matches allowlist', () => {
+    expect(isRouteAdoptable({ category: 'Easy', type: 'Easy' }, { kind: 'Workout', workoutTypes: ['Hills'] })).toBe(false)
+  })
+
+  test('Long run accepts a Long-category workout', () => {
+    expect(isRouteAdoptable({ category: 'Long', type: 'Long' }, { kind: 'Long', workoutTypes: [] })).toBe(true)
+  })
+
+  test('Long run rejects a Quality-category workout', () => {
+    expect(isRouteAdoptable({ category: 'Quality', type: 'Hills' }, { kind: 'Long', workoutTypes: [] })).toBe(false)
+  })
+
+  test('Easy run accepts an Easy-category workout', () => {
+    expect(isRouteAdoptable({ category: 'Easy', type: 'Easy' }, { kind: 'Easy', workoutTypes: [] })).toBe(true)
+  })
+
+  test('Beginner-Friendly run accepts an Easy-category workout (maps to Easy)', () => {
+    expect(isRouteAdoptable({ category: 'Easy', type: 'Easy' }, { kind: 'Beginner-Friendly', workoutTypes: [] })).toBe(true)
+  })
+
+  test('Easy run rejects a Long-category workout', () => {
+    expect(isRouteAdoptable({ category: 'Long', type: 'Long' }, { kind: 'Easy', workoutTypes: [] })).toBe(false)
+  })
+
+  test('Food run rejects a Long-category workout (Food maps to null)', () => {
+    expect(isRouteAdoptable({ category: 'Long', type: 'Long' }, { kind: 'Food', workoutTypes: [] })).toBe(false)
+  })
+
+  test('Food run rejects a Quality-category workout', () => {
+    expect(isRouteAdoptable({ category: 'Quality', type: 'Hills' }, { kind: 'Food', workoutTypes: [] })).toBe(false)
   })
 })
