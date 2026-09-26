@@ -112,15 +112,6 @@ const RACES: Omit<Race, 'id'>[] = [
 // quality type, seeded onto the REAL runs — no invented shadow run.
 
 export async function seedE2E(): Promise<void> {
-  // #360: Ensure nbr_directory_id column exists before fixture seeding (idempotent).
-  await sql`ALTER TABLE runs ADD COLUMN IF NOT EXISTS nbr_directory_id TEXT`
-  // #361: Ensure the partial unique index exists too, so the E2E DB schema matches
-  // production and activateNbrRun's race backstop (pg 23505 on runs_nbr_directory_id_key)
-  // is actually enforced/exercised here, not only guarded by the pre-check.
-  await sql`
-    CREATE UNIQUE INDEX IF NOT EXISTS runs_nbr_directory_id_key
-      ON runs (nbr_directory_id) WHERE nbr_directory_id IS NOT NULL
-  `
   // #404: the library-membership junction (see scripts/migrate-404.sql). Created
   // inline here so CI's test-data DB has it before both the unit suite (globalSetup
   // seeds first) and the e2e run, without a separate migration step. Membership
@@ -164,16 +155,13 @@ export async function seedE2E(): Promise<void> {
 
   // #445: self-heal against legacy run ids this normalization renames. The seed
   // upserts fixtures by id, so on a branch that still holds a pre-#445 'mmer' row
-  // (its old id, now 'monday-morning-easy-run') that stale row would (a) collide
-  // with the new row's nbr_directory_id='mon-morning-easy' on the unique index at
-  // the UPDATE below, crashing the seed, and (b) fail the id-convention test. Drop
-  // the legacy ids first ('tigerwolves' too, as a safety net — migrate-445 renames
-  // it). We deliberately do NOT list the deleted Mourning-Doves shadow id here —
-  // fixtureGuard forbids that literal in seed scripts, and that shadow only ever
-  // existed on test-data and nothing recreates it. schedule/run_workouts are fully
-  // wiped above; clear
-  // runner_follows/run_leaders for these ids first (run_leaders has no FK, but
-  // leaving orphans is untidy).
+  // (its old id, now 'monday-morning-easy-run') that stale row would fail the
+  // id-convention test. Drop the legacy ids first ('tigerwolves' too, as a safety
+  // net — migrate-445 renames it). We deliberately do NOT list the deleted
+  // Mourning-Doves shadow id here — fixtureGuard forbids that literal in seed
+  // scripts, and that shadow only ever existed on test-data and nothing recreates it.
+  // schedule/run_workouts are fully wiped above; clear runner_follows/run_leaders
+  // for these ids first (run_leaders has no FK, but leaving orphans is untidy).
   await sql`DELETE FROM runner_follows WHERE run_id IN ('mmer', 'tigerwolves')`
   await sql`DELETE FROM run_leaders WHERE run_id IN ('mmer', 'tigerwolves')`
   await sql`DELETE FROM runs WHERE id IN ('mmer', 'tigerwolves')`
@@ -253,7 +241,7 @@ export async function seedE2E(): Promise<void> {
 
   // #330: a second platform run (MMER, Monday) so All Runs has a run the
   // tigerwolves test-leader does NOT own — the join target for the join/leave
-  // e2e. Maps from NBR_RUNS 'mon-morning-easy' via NBR_TO_DB_RUN.
+  // e2e. NBR directory id 'mon-morning-easy'.
   // #331: now a fully-realized Easy run — run_group_id set so its Easy workout
   // resolves, and a schedule + leader below — so My Week shows a real cross-run,
   // kind-driven (Easy/route) card alongside TigerWolves' Workout card.
@@ -268,10 +256,6 @@ export async function seedE2E(): Promise<void> {
       kind = EXCLUDED.kind,
       run_group_id = EXCLUDED.run_group_id
   `
-
-  // #360: Set directory links for the fixture runs (migration backfill wiped on each seed).
-  await sql`UPDATE runs SET nbr_directory_id = 'tue-tigerwolves' WHERE id = 'tuesday-morning-tigerwolves'`
-  await sql`UPDATE runs SET nbr_directory_id = 'mon-morning-easy' WHERE id = 'monday-morning-easy-run'`
 
   // #331: MMER's Easy workout — an Easy/route-kind family so the My Week card
   // renders the route shape (distance from dist_time + "View route ↗" from

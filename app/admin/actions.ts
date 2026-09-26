@@ -5,14 +5,11 @@ import * as Sentry from '@sentry/nextjs'
 import { sql, resolveOrCreateRunGroup } from '@/lib/db'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity, slugifyRunName } from '@/lib/runIdentity'
-import { NBR_RUNS } from '@/lib/allRunsData'
-import { resolveClerkUserByEmail, leaderDisplayName, grantLeaderRole } from '@/lib/runLeaders'
 
-// Private helper — no admin gate, no cache invalidation. Called by both createRun
-// and activateNbrRun after each performs its own auth + pre-checks.
+// Private helper — no admin gate, no cache invalidation. Called by createRun
+// after it performs its own auth + pre-checks.
 async function insertRun(
   data: { identity: RunIdentityValues; kind: string; workoutTypes: string[] },
-  nbrDirectoryId?: string | null,
 ): Promise<{ error?: string; runId?: string }> {
   // 1. Validate identity fields
   const invalid = validateRunIdentity(data.identity)
@@ -54,11 +51,10 @@ async function insertRun(
   const runGroupId = await resolveOrCreateRunGroup(name, 'road', data.identity.meetingLocation)
 
   // 7. INSERT — post_header, closing_notes, leader_intro left NULL; cycle_mode/cycle
-  //    take their NOT NULL DEFAULT values ('none'/'{}'). nbr_directory_id is NULL when
-  //    nbrDirectoryId is undefined/null (createRun path). status is set explicitly to
+  //    take their NOT NULL DEFAULT values ('none'/'{}'). status is set explicitly to
   //    'draft' — admin publishes via a separate action (#353).
   await sql`
-    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind, workout_types, run_group_id, nbr_directory_id, status)
+    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind, workout_types, run_group_id, status)
     VALUES (
       ${runId},
       ${name},
@@ -70,7 +66,6 @@ async function insertRun(
       ${data.kind},
       ${workoutTypes}::text[],
       ${runGroupId},
-      ${nbrDirectoryId ?? null},
       'draft'
     )
   `
@@ -102,75 +97,3 @@ export async function createRun(data: {
   }
 }
 
-export async function activateNbrRun(data: {
-  nbrId: string
-  identity: RunIdentityValues
-  kind: string
-  workoutTypes: string[]
-  leaderEmail: string
-}): Promise<{ error?: string; runId?: string }> {
-  try {
-    // 1. Admin gate — identical inline check to createRun
-    const user = await currentUser()
-    if (!user || user.publicMetadata?.admin !== true) return { error: 'Unauthorized' }
-
-    // 2. Validate nbrId — must be a known entry in the static directory
-    const nbrEntry = NBR_RUNS.find(r => r.id === data.nbrId)
-    if (!nbrEntry) return { error: 'Unknown run' }
-
-    // 3. Pre-check already-activated — common-case guard before the INSERT
-    const alreadyActivated = await sql`
-      SELECT 1 FROM runs WHERE nbr_directory_id = ${data.nbrId} LIMIT 1
-    `
-    if (alreadyActivated.length > 0) return { error: 'This run is already activated' }
-
-    // 4. Resolve the initial leader BEFORE creating anything — a bad email must
-    //    leave no orphan run behind.
-    const normalizedEmail = data.leaderEmail.trim().toLowerCase()
-    if (!normalizedEmail) return { error: "Enter the run leader's email" }
-
-    const clerkUser = await resolveClerkUserByEmail(normalizedEmail)
-    if (!clerkUser) {
-      return { error: 'No account found for that email — they need to sign in once before they can be added.' }
-    }
-    const leaderName = leaderDisplayName(clerkUser, normalizedEmail)
-
-    // 5. Insert run row
-    const result = await insertRun(data, data.nbrId)
-
-    // 6. Surface insertRun's returned errors (invalid identity/kind, duplicate name).
-    //    The concurrent-race case (pg 23505) is handled by the outer catch below.
-    if (result.error) return result
-
-    const runId = result.runId!
-
-    // 7. Insert the roster row — brand-new run, so sort_order = 1; no ON CONFLICT needed.
-    await sql`
-      INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
-      VALUES (${runId}, ${leaderName}, ${normalizedEmail}, ${clerkUser.id}, 1, true)
-    `
-
-    // 8. Grant the Clerk role via the shared helper — it merges with existing
-    //    publicMetadata so admin: true (and any other flags) are never clobbered.
-    await grantLeaderRole(clerkUser)
-
-    // 9. Invalidate cache on success
-    updateTag('tigerwolves-data')
-
-    return { runId }
-  } catch (err: unknown) {
-    // Catch pg unique-violation on nbr_directory_id (concurrent race — the pre-check
-    // covers the common case; the partial unique index covers concurrent requests).
-    if (
-      typeof err === 'object' &&
-      err !== null &&
-      'code' in err &&
-      (err as { code: string }).code === '23505' &&
-      (err as { constraint?: string }).constraint === 'runs_nbr_directory_id_key'
-    ) {
-      return { error: 'This run is already activated' }
-    }
-    Sentry.captureException(err)
-    return { error: 'Failed to activate run' }
-  }
-}

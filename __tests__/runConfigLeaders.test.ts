@@ -16,7 +16,7 @@ import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest'
 // currentUser() / clerkClient() are Clerk server context (no session in vitest),
 // so they're mocked. updateTag() is a Server-Action-only Next primitive that
 // throws outside a request, so it's stubbed. DB-touching tests run only on
-// test-data (same guard as activateNbrRun.test.ts / runConfigAuth.test.ts).
+// test-data (same guard as runConfigAuth.test.ts).
 
 const { mockGetUserList, mockUpdateUser, mockGetUser } = vi.hoisted(() => ({
   mockGetUserList: vi.fn(),
@@ -49,7 +49,7 @@ import { leadsAnyActiveRun } from '../lib/db'
 
 // Test-data-only DB tests gated with describe.skipIf(!onTestData). CI sets
 // DATABASE_URL to the test-data branch; local dev has no DATABASE_URL and the
-// module fails to load off-test-data (same documented behavior as activateNbrRun.test.ts).
+// module fails to load off-test-data (same documented behavior as runConfigAuth.test.ts).
 const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
 const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
