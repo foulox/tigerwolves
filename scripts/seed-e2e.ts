@@ -398,7 +398,7 @@ export async function seedE2E(): Promise<void> {
   // ON CONFLICT keeps it draft on re-seed.
   await sql`
     INSERT INTO runs (id, name, emoji, day_of_week, meeting_time, meeting_location, kind, distance, status)
-    VALUES ('e2e-draft-thursday', 'E2E Draft Thursday Run', NULL, 'Thursday', '6:30am', 'McCarren Park', 'Easy', '3–4 mi', 'draft')
+    VALUES ('e2e-draft-thursday', 'E2E Draft Thursday', NULL, 'Thursday', '6:30am', 'McCarren Park', 'Easy', '3–4 mi', 'draft')
     ON CONFLICT (id) DO UPDATE SET
       status = 'draft',
       day_of_week = EXCLUDED.day_of_week,

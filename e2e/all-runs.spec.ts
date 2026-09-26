@@ -218,7 +218,7 @@ test('draft-gating: logged-out does not see the draft run', async ({ browser }) 
   const page = await context.newPage()
   await page.goto('/all-runs')
   await page.waitForLoadState('load')
-  await expect(page.getByText('E2E Draft Thursday Run')).toHaveCount(0)
+  await expect(page.getByText('E2E Draft Thursday')).toHaveCount(0)
   await context.close()
 })
 
@@ -229,7 +229,7 @@ test.describe('draft-gating: signed-in runner sees draft run but inert', () => {
     await page.goto('/all-runs')
     await page.waitForLoadState('load')
     // Draft run is visible to logged-in users
-    await expect(page.getByText('E2E Draft Thursday Run')).toBeVisible()
+    await expect(page.getByText('E2E Draft Thursday')).toBeVisible()
     // No Join button — runner is not the owning leader (no run_leaders row)
     await expect(page.locator('[data-testid="follow-toggle-e2e-draft-thursday"]')).toHaveCount(0)
     // Not a link — draft runs are not linkable for non-managers
