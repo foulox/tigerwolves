@@ -212,13 +212,16 @@ test.describe('intro box: signed-in runner, 0 follows (AC-intro-2)', () => {
 
 // ── #365: draft-gating tests ──────────────────────────────────────────────────
 
-test('draft-gating: logged-out does not see the draft run', async ({ browser }) => {
-  // Anonymous visitors never see draft rows — filtered in page.tsx before render.
+test('draft-gating: logged-out sees the draft run as an inert card', async ({ browser }) => {
+  // Draft runs ARE shown to anonymous visitors, but as inert cards: visible, yet
+  // no Join, no link, no Draft badge. Interactivity is gated, not visibility.
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   const page = await context.newPage()
   await page.goto('/all-runs')
   await page.waitForLoadState('load')
-  await expect(page.getByText('E2E Draft Thursday')).toHaveCount(0)
+  await expect(page.getByText('E2E Draft Thursday')).toBeVisible()
+  await expect(page.locator('[data-testid="follow-toggle-e2e-draft-thursday"]')).toHaveCount(0)
+  await expect(page.locator('a[href="/runs/e2e-draft-thursday"]')).toHaveCount(0)
   await context.close()
 })
 

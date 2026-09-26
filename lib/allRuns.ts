@@ -77,7 +77,10 @@ export function cardAffordance(
   const canManage =
     viewer.isAdmin ||
     (viewer.owningLeaderRunId != null && viewer.owningLeaderRunId === run.id)
-  const visible = run.status === 'draft' ? viewer.isLoggedIn : true
+  // Every card is visible to everyone (incl. logged-out) — draft runs show as a
+  // plain inert card (no link, no Join, no Draft badge for non-managers), not hidden.
+  // Interactivity, not visibility, is what status+viewer gates.
+  const visible = true
   const following = viewer.followedRunIds.includes(run.id)
   const joinable =
     run.status === 'live'

@@ -49,8 +49,9 @@ describe('cardAffordance', () => {
   test('draft for a plain runner: visible but inert', () => {
     expect(cardAffordance({ id: 'd', status: 'draft' }, viewer())).toMatchObject({ visible: true, joinable: false, linkable: false, showDraftBadge: false })
   })
-  test('draft hidden from anonymous', () => {
-    expect(cardAffordance({ id: 'd', status: 'draft' }, viewer({ isLoggedIn: false })).visible).toBe(false)
+  test('draft visible but inert for anonymous', () => {
+    expect(cardAffordance({ id: 'd', status: 'draft' }, viewer({ isLoggedIn: false })))
+      .toMatchObject({ visible: true, joinable: false, linkable: false, showDraftBadge: false })
   })
   test('draft for the owning leader: managed', () => {
     expect(cardAffordance({ id: 'd', status: 'draft' }, viewer({ owningLeaderRunId: 'd' })))

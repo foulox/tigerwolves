@@ -22,8 +22,9 @@ export default async function AllRunsPage() {
     followedIds = await getFollowedRunIds(user.id)
     if (isLeader) owningLeaderRunId = (await getLeaderRun(user.id))?.id ?? null
   }
-  // Anonymous never sees draft rows.
-  const visibleRuns = isLoggedIn ? dbRuns : dbRuns.filter(r => r.status !== 'draft')
+  // Draft runs are shown to everyone (incl. logged-out) as inert cards — cardAffordance
+  // gates interactivity, not visibility. The run PAGE stays gated (draft 404s non-managers).
+  const visibleRuns = dbRuns
   const showIntro = shouldShowIntro(isLoggedIn, followedIds.length)
 
   return (
