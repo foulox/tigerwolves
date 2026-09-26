@@ -152,6 +152,13 @@ export const DAY_ABBREV_TO_FULL: Record<DayAbbrev, string> = {
   'sun': 'Sunday',
 }
 
+// #365: normalize a stored meeting_time to the compact directory display form.
+// DB rows are inconsistent ('6:30 AM' vs '6:00am'); the card always shows '6:30am'.
+export function formatMeetingTimeShort(raw: string | null | undefined): string {
+  if (!raw) return ''
+  return raw.trim().replace(/\s+(AM|PM)$/i, (_, m) => m.toLowerCase()).replace(/\s+/g, '')
+}
+
 // #360: Parse a display time string into a 24h float for sort/filter.
 // Handles the space-before-meridiem, uppercase forms the DB uses ('6:30 AM')
 // and the lowercase no-space forms the NBR static data uses ('6:30am', '7pm').
