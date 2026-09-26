@@ -10,7 +10,7 @@ import {
 export default async function AdminRunsPage() {
   await requireAdminPage()
 
-  const runs = await getDirectoryRuns()
+  const runs = (await getDirectoryRuns()).filter(r => r.status !== 'unclaimed')
   const runIds = runs.map(r => r.id)
   const [leadersByRun, followerCounts] = await Promise.all([
     getActiveLeadersByRun(runIds),

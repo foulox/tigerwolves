@@ -4,8 +4,10 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import FeedbackDrawer from './FeedbackDrawer'
-import type { NBRRun } from '@/lib/allRunsData'
-import type { PlatformInfo } from '@/lib/allRuns'
+import type { DirectoryRun } from '@/lib/db'
+import type { DirectoryCard, ViewerContext } from '@/lib/allRuns'
+import { directoryRunToCard, cardAffordance } from '@/lib/allRuns'
+import type { RunStatus } from '@/lib/allRuns'
 import { toggleRunFollow } from '@/app/actions'
 import { formatDateShort } from '@/lib/dateUtils'
 
@@ -44,30 +46,25 @@ function nextOccurrence(base: Date, targetJsDay: number): Date {
 }
 
 type Props = {
-  runs: NBRRun[]
+  runs: DirectoryRun[]
+  viewer: { isLoggedIn: boolean; isAdmin: boolean; owningLeaderRunId: string | null }
+  initialFollowedIds: string[]
   // ISO date string from the server (e.g. "2026-09-05") — used as the stable
   // "today" anchor for both SSR and hydration to prevent React mismatch warnings.
   serverDate: string
-  // #330: auth-aware personalization. Logged out → today's marketing directory
-  // (no Following tier, no join affordances). Logged in → platform maps NBR id →
-  // { runId, following } for entries that exist on the platform (joinable).
-  isLoggedIn?: boolean
-  platform?: Record<string, PlatformInfo>
   // #357: show the intro box for anonymous users and signed-in users with no follows.
   showIntro?: boolean
 }
 
-export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, platform = {}, showIntro = false }: Props) {
+export default function AllRunsClient({ runs, viewer, initialFollowedIds, serverDate, showIntro = false }: Props) {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const [catFilter, setCatFilter] = useState<Category>('All')
   const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   // Follow state seeded from the server, then updated optimistically on toggle.
-  const [followed, setFollowed] = useState<Record<string, boolean>>(() => {
-    const seed: Record<string, boolean> = {}
-    for (const info of Object.values(platform)) seed[info.runId] = info.following
-    return seed
-  })
+  const [followedSet, setFollowedSet] = useState<Set<string>>(
+    () => new Set(initialFollowedIds)
+  )
   const [pendingRunId, setPendingRunId] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
@@ -76,7 +73,15 @@ export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, pl
     startTransition(async () => {
       const res = await toggleRunFollow(runId)
       if (!res.error) {
-        setFollowed(prev => ({ ...prev, [runId]: res.following ?? !prev[runId] }))
+        setFollowedSet(prev => {
+          const next = new Set(prev)
+          if (res.following ?? !prev.has(runId)) {
+            next.add(runId)
+          } else {
+            next.delete(runId)
+          }
+          return next
+        })
       }
       setPendingRunId(null)
     })
@@ -85,9 +90,20 @@ export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, pl
   // Interpret serverDate as midnight local time — intentional, see page.tsx comment.
   const today = new Date(`${serverDate}T00:00:00`)
 
-  // Runs the user currently follows (platform runs only), for the Following tier.
-  const followingRuns = isLoggedIn
-    ? runs.filter(r => { const p = platform[r.id]; return p && followed[p.runId] })
+  // Build cards once from DB runs; cast status since DirectoryRun.status is string.
+  const cards: DirectoryCard[] = runs.map(r =>
+    directoryRunToCard({ ...r, status: r.status as RunStatus })
+  )
+
+  // Build the viewer context each render, incorporating current follow state.
+  const viewerCtx: ViewerContext = {
+    ...viewer,
+    followedRunIds: [...followedSet],
+  }
+
+  // Runs the user currently follows, for the Following tier.
+  const followingCards = viewer.isLoggedIn
+    ? cards.filter(card => followedSet.has(card.id))
     : []
 
   function orderedDays(): { day: Day; date: Date; isLead: boolean; label: string }[] {
@@ -117,58 +133,12 @@ export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, pl
     })
   }
 
-  function matchesFilter(run: NBRRun): boolean {
-    if (timeFilter === 'am'   && run.startHour >= 12) return false
-    if (timeFilter === 'pm'   && run.startHour < 12)  return false
-    if (timeFilter === 'wknd' && run.day !== 'sat' && run.day !== 'sun') return false
-    if (catFilter !== 'All'   && run.category !== catFilter) return false
+  function matchesFilter(card: DirectoryCard): boolean {
+    if (timeFilter === 'am'   && card.startHour >= 12) return false
+    if (timeFilter === 'pm'   && card.startHour < 12)  return false
+    if (timeFilter === 'wknd' && card.day !== 'sat' && card.day !== 'sun') return false
+    if (catFilter !== 'All'   && card.category !== catFilter) return false
     return true
-  }
-
-  // Right-side affordance on a run row (logged-in only): a Join/Joined toggle for
-  // platform runs, a muted "Not on the app yet" for directory-only runs.
-  function runAffordance(run: NBRRun) {
-    if (!isLoggedIn) return null
-    const p = platform[run.id]
-    if (!p) {
-      return (
-        <span
-          data-testid={`not-on-app-${run.id}`}
-          className="flex-shrink-0 text-[11px] font-semibold text-[#a7adb8] whitespace-nowrap"
-        >
-          Not on the app yet
-        </span>
-      )
-    }
-    const isFollowing = !!followed[p.runId]
-    // #353: draft run that the viewer hasn't joined — muted, disabled, non-interactive
-    if (p.draft && !isFollowing) {
-      return (
-        <button
-          disabled
-          data-testid={`follow-disabled-${p.runId}`}
-          aria-label={`${run.name} isn't open to join yet`}
-          className="flex-shrink-0 text-[12.5px] font-bold rounded-full px-3.5 py-1.5 touch-manipulation whitespace-nowrap flex items-center gap-1 bg-gray-100 text-gray-400 cursor-not-allowed"
-        >
-          + Join
-        </button>
-      )
-    }
-    return (
-      <button
-        data-testid={`follow-toggle-${p.runId}`}
-        aria-label={isFollowing ? `Leave ${run.name}` : `Join ${run.name}`}
-        onClick={() => toggleFollow(p.runId)}
-        disabled={pendingRunId === p.runId}
-        className={`flex-shrink-0 text-[12.5px] font-bold rounded-full px-3.5 py-1.5 touch-manipulation disabled:opacity-50 whitespace-nowrap flex items-center gap-1 ${
-          isFollowing
-            ? 'bg-green-100 text-green-800'
-            : 'bg-orange-500 text-white shadow-sm'
-        }`}
-      >
-        {isFollowing ? <><Check size={12} strokeWidth={3} /> Joined</> : '+ Join'}
-      </button>
-    )
   }
 
   const days = orderedDays()
@@ -188,7 +158,7 @@ export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, pl
           >
             See the TigerWolves schedule →
           </Link>
-          {isLoggedIn ? (
+          {viewer.isLoggedIn ? (
             <>
               <p className="text-[13px] leading-[1.45] text-[#4b5568] max-w-[270px]">
                 Tap <strong className="text-[#c2410c]">Join</strong> on any run below and it lands in <strong className="text-[#c2410c]">My Plan</strong>.
@@ -217,34 +187,31 @@ export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, pl
         </div>
       )}
 
-      {/* Following tier (signed-in, when the user follows at least one platform run) */}
-      {isLoggedIn && followingRuns.length > 0 && (
+      {/* Following tier (signed-in, when the user follows at least one run) */}
+      {viewer.isLoggedIn && followingCards.length > 0 && (
         <div className="px-4 pb-3 flex flex-col gap-2" data-testid="following-tier">
           <div className="text-[11px] font-bold tracking-widest uppercase text-gray-400">Following</div>
-          {followingRuns.map(run => {
-            const p = platform[run.id]!
-            return (
-              <div
-                key={run.id}
-                data-testid={`following-run-${p.runId}`}
-                className="bg-white border border-green-200 rounded-2xl px-4 py-3 flex gap-3 items-center"
+          {followingCards.map(card => (
+            <div
+              key={card.id}
+              data-testid={`following-run-${card.id}`}
+              className="bg-white border border-green-200 rounded-2xl px-4 py-3 flex gap-3 items-center"
+            >
+              <Link href={`/runs/${card.id}`} className="flex-1 min-w-0 touch-manipulation">
+                <div className="text-[15px] font-bold text-gray-900 truncate">{card.name}</div>
+                <div className="text-[12.5px] text-gray-400">{DAY_NAMES[card.day]}s · {card.startTime}</div>
+              </Link>
+              <button
+                data-testid={`following-toggle-${card.id}`}
+                aria-label={`Leave ${card.name}`}
+                onClick={() => toggleFollow(card.id)}
+                disabled={pendingRunId === card.id}
+                className="flex-shrink-0 text-[12.5px] font-bold rounded-full px-3.5 py-1.5 bg-green-100 text-green-800 touch-manipulation disabled:opacity-50 flex items-center gap-1"
               >
-                <Link href={`/runs/${p.runId}`} className="flex-1 min-w-0 touch-manipulation">
-                  <div className="text-[15px] font-bold text-gray-900 truncate">{run.name}</div>
-                  <div className="text-[12.5px] text-gray-400">{DAY_NAMES[run.day]}s · {run.startTime}</div>
-                </Link>
-                <button
-                  data-testid={`following-toggle-${p.runId}`}
-                  aria-label={`Leave ${run.name}`}
-                  onClick={() => toggleFollow(p.runId)}
-                  disabled={pendingRunId === p.runId}
-                  className="flex-shrink-0 text-[12.5px] font-bold rounded-full px-3.5 py-1.5 bg-green-100 text-green-800 touch-manipulation disabled:opacity-50 flex items-center gap-1"
-                >
-                  <Check size={12} strokeWidth={3} /> Joined
-                </button>
-              </div>
-            )
-          })}
+                <Check size={12} strokeWidth={3} /> Joined
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -298,11 +265,14 @@ export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, pl
       {/* Day blocks */}
       <div className="flex flex-col gap-[18px] px-4 pt-0.5">
         {days.map(({ day, date, isLead, label }) => {
-          const dayRuns = runs
-            .filter(r => r.day === day && matchesFilter(r))
+          const dayCards = cards
+            .filter(card => {
+              const a = cardAffordance(card, viewerCtx)
+              return a.visible && card.day === day && matchesFilter(card)
+            })
             .sort((a, b) => a.startHour - b.startHour)
 
-          if (!isLead && dayRuns.length === 0) return null
+          if (!isLead && dayCards.length === 0) return null
 
           return (
             <div key={day} className="flex flex-col gap-[9px]" data-testid={`day-block-${day}`}>
@@ -320,7 +290,7 @@ export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, pl
               </div>
 
               {/* Run rows or lead-day empty state */}
-              {dayRuns.length === 0 ? (
+              {dayCards.length === 0 ? (
                 <div
                   className="border-[1.5px] border-dashed border-[#d7dbe3] rounded-2xl px-4 py-4 text-[13.5px] text-[#a7adb8] text-center"
                   data-testid="empty-day-state"
@@ -328,43 +298,93 @@ export default function AllRunsClient({ runs, serverDate, isLoggedIn = false, pl
                   Nothing matching this filter
                 </div>
               ) : (
-                dayRuns.map(run => (
-                  <div
-                    key={run.id}
-                    data-testid="run-row"
-                    className={`rounded-2xl px-[14px] py-3 flex gap-3 items-center bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04)] ${
-                      isLead ? 'border border-[#fdba74]' : 'border border-[#f1f2f5]'
-                    }`}
-                  >
-                    <span
-                      className={`w-[62px] flex-shrink-0 text-[13.5px] font-extrabold tracking-tight ${
-                        run.startHour < 12 ? 'text-[#f97316]' : 'text-[#6366f1]'
+                dayCards.map(card => {
+                  const a = cardAffordance(card, viewerCtx)
+                  const isFollowing = followedSet.has(card.id)
+
+                  const cardBody = (
+                    <>
+                      <span
+                        className={`w-[62px] flex-shrink-0 text-[13.5px] font-extrabold tracking-tight ${
+                          card.startHour < 12 ? 'text-[#f97316]' : 'text-[#6366f1]'
+                        }`}
+                      >
+                        {card.startTime}
+                      </span>
+                      <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
+                        <span
+                          className={`font-bold tracking-tight leading-snug ${
+                            isLead ? 'text-[17px]' : 'text-[15px]'
+                          }`}
+                          data-testid="run-name"
+                        >
+                          {card.name}
+                        </span>
+                        <span className="text-[12.5px] text-[#8b93a1]">
+                          {card.location} · {card.distance}
+                        </span>
+                        <span
+                          className={`self-start text-[11px] font-bold rounded-full px-2 py-[3px] mt-px ${CATEGORY_PILL[card.category]}`}
+                          data-testid="run-category-pill"
+                        >
+                          {card.category}
+                        </span>
+                      </div>
+                    </>
+                  )
+
+                  const joinButton = a.joinable ? (
+                    <button
+                      data-testid={`follow-toggle-${card.id}`}
+                      aria-label={isFollowing ? `Leave ${card.name}` : `Join ${card.name}`}
+                      onClick={() => toggleFollow(card.id)}
+                      disabled={pendingRunId === card.id}
+                      className={`flex-shrink-0 text-[12.5px] font-bold rounded-full px-3.5 py-1.5 touch-manipulation disabled:opacity-50 whitespace-nowrap flex items-center gap-1 ${
+                        isFollowing
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-orange-500 text-white shadow-sm'
                       }`}
                     >
-                      {run.startTime}
-                    </span>
-                    <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
-                      <span
-                        className={`font-bold tracking-tight leading-snug ${
-                          isLead ? 'text-[17px]' : 'text-[15px]'
-                        }`}
-                        data-testid="run-name"
-                      >
-                        {run.name}
-                      </span>
-                      <span className="text-[12.5px] text-[#8b93a1]">
-                        {run.location} · {run.distance}
-                      </span>
-                      <span
-                        className={`self-start text-[11px] font-bold rounded-full px-2 py-[3px] mt-px ${CATEGORY_PILL[run.category]}`}
-                        data-testid="run-category-pill"
-                      >
-                        {run.category}
-                      </span>
+                      {isFollowing ? <><Check size={12} strokeWidth={3} /> Joined</> : '+ Join'}
+                    </button>
+                  ) : null
+
+                  return (
+                    <div
+                      key={card.id}
+                      data-testid="run-row"
+                      className={`relative rounded-2xl px-[14px] py-3 flex gap-3 items-center bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04)] ${
+                        isLead ? 'border border-[#fdba74]' : 'border border-[#f1f2f5]'
+                      }`}
+                    >
+                      {a.showDraftBadge && (
+                        <span className="absolute -top-2 left-3 text-[9.5px] font-extrabold tracking-wide uppercase rounded-full px-2 py-[2px] bg-amber-100 text-amber-800 border border-amber-200">
+                          Draft
+                        </span>
+                      )}
+                      {a.linkable ? (
+                        <>
+                          <Link
+                            href={`/runs/${card.id}`}
+                            className="flex-1 min-w-0 flex gap-3 items-center touch-manipulation"
+                          >
+                            {cardBody}
+                            <span className="flex-shrink-0 text-[20px] font-bold text-[#c7ccd6] ml-0.5">›</span>
+                          </Link>
+                          {joinButton}
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex-1 min-w-0 flex gap-3 items-center">
+                            {cardBody}
+                          </div>
+                          {/* Non-linkable rows: no chevron, no Join button for non-joinable */}
+                          {joinButton}
+                        </>
+                      )}
                     </div>
-                    {runAffordance(run)}
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
           )

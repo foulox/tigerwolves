@@ -1,0 +1,121 @@
+<style>
+  .stage { display:flex; gap:28px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
+  .phone { width:340px; background:#f7f8fa; border:1px solid #e8eaef; border-radius:22px; padding:14px 12px 20px; box-shadow:0 6px 22px rgba(17,24,39,.08); }
+  .phone-cap { text-align:center; font-weight:800; font-size:13px; letter-spacing:.02em; color:#111827; margin:2px 0 4px; }
+  .phone-sub { text-align:center; font-size:11.5px; color:#8b93a1; margin-bottom:14px; }
+  .daylabel { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#8b93a1; margin:14px 4px 8px; }
+  .card { position:relative; background:#fff; border-radius:16px; padding:11px 13px; display:flex; gap:11px; align-items:center; box-shadow:0 1px 3px rgba(17,24,39,.04); margin-bottom:9px; border:1px solid #f1f2f5; }
+  .card.lead { border:1px solid #fdba74; }
+  .card.tap { cursor:pointer; }
+  .time { width:56px; flex-shrink:0; font-size:13px; font-weight:800; letter-spacing:-.02em; }
+  .time.am { color:#f97316; } .time.pm { color:#6366f1; }
+  .body { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .name { font-weight:800; font-size:15px; letter-spacing:-.01em; line-height:1.15; color:#111827; }
+  .meta { font-size:12px; color:#8b93a1; }
+  .pill { align-self:flex-start; font-size:10.5px; font-weight:800; border-radius:999px; padding:2px 8px; margin-top:1px; }
+  .p-work{ background:#dbeafe; color:#1e40af;} .p-long{ background:#f3e8ff; color:#6b21a8;} .p-easy{ background:#e0f2fe; color:#075985;}
+  .btn { flex-shrink:0; font-size:12.5px; font-weight:800; border-radius:999px; padding:6px 14px; white-space:nowrap; display:flex; align-items:center; gap:4px; }
+  .btn-join { background:#f97316; color:#fff; box-shadow:0 1px 2px rgba(249,115,22,.3);}
+  .btn-joined { background:#dcfce7; color:#166534; }
+  .chev { flex-shrink:0; color:#c7ccd6; font-size:20px; font-weight:700; margin-left:2px; }
+  .badge { position:absolute; top:-8px; left:12px; font-size:9.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; border-radius:999px; padding:2px 8px; }
+  .b-draft { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+  .note { font-size:10.5px; color:#a7adb8; margin:-4px 4px 10px; line-height:1.35; }
+  .legend { max-width:760px; margin:26px auto 0; font-size:12.5px; color:#4b5568; line-height:1.6; background:#fff; border:1px solid #eceef2; border-radius:14px; padding:14px 18px; }
+  .legend b { color:#111827; }
+</style>
+
+<h2>All Runs — card states (v4, final)</h2>
+<p class="subtitle">Draft badge is amber, on a normal white card. No green — that was just a mockup highlight.</p>
+
+<div class="stage">
+
+  <!-- ===================== REGULAR RUNNER ===================== -->
+  <div class="phone">
+    <div class="phone-cap">A regular runner</div>
+    <div class="phone-sub">signed in · not a leader/admin</div>
+
+    <div class="daylabel">Tuesday · Sep 29</div>
+
+    <div class="card lead tap">
+      <span class="time am">6:30am</span>
+      <div class="body">
+        <span class="name">Tuesday Morning Tigerwolves</span>
+        <span class="meta">McCarren Park · 4–7 mi</span>
+        <span class="pill p-work">Workouts</span>
+      </div>
+      <span class="btn btn-joined">✓ Joined</span>
+      <span class="chev">›</span>
+    </div>
+    <div class="note"><b>live</b> — tappable to the schedule, Join/Joined shown</div>
+
+    <div class="card">
+      <span class="time am">6:00am</span>
+      <div class="body">
+        <span class="name">Wednesday Mourning Doves</span>
+        <span class="meta">Tom Stofka Garden · 7–11 mi</span>
+        <span class="pill p-long">Long Runs</span>
+      </div>
+    </div>
+    <div class="note"><b>draft</b> — full-color card, blank right side, not clickable</div>
+
+    <div class="card">
+      <span class="time am">7:00am</span>
+      <div class="body">
+        <span class="name">Tuesday Bushwick Run</span>
+        <span class="meta">Maria Hernandez Park · 4–6 mi</span>
+        <span class="pill p-easy">Easy Runs</span>
+      </div>
+    </div>
+    <div class="note"><b>not active</b> — identical: full-color, blank, not clickable</div>
+  </div>
+
+  <!-- ===================== YOU (ADMIN / OWNING LEADER) ===================== -->
+  <div class="phone">
+    <div class="phone-cap">You — admin / owning leader</div>
+    <div class="phone-sub">admin: true (or the run's leader)</div>
+
+    <div class="daylabel">Tuesday · Sep 29</div>
+
+    <div class="card lead tap">
+      <span class="time am">6:30am</span>
+      <div class="body">
+        <span class="name">Tuesday Morning Tigerwolves</span>
+        <span class="meta">McCarren Park · 4–7 mi</span>
+        <span class="pill p-work">Workouts</span>
+      </div>
+      <span class="btn btn-joined">✓ Joined</span>
+      <span class="chev">›</span>
+    </div>
+    <div class="note"><b>live</b> — same as everyone</div>
+
+    <div class="card tap">
+      <span class="badge b-draft">Draft</span>
+      <span class="time am">6:00am</span>
+      <div class="body">
+        <span class="name">Wednesday Mourning Doves</span>
+        <span class="meta">Tom Stofka Garden · 7–11 mi</span>
+        <span class="pill p-long">Long Runs</span>
+      </div>
+      <span class="btn btn-join">+ Join</span>
+      <span class="chev">›</span>
+    </div>
+    <div class="note"><b>draft</b> — amber Draft badge, Join, and tappable to preview the schedule</div>
+
+    <div class="card">
+      <span class="time am">7:00am</span>
+      <div class="body">
+        <span class="name">Tuesday Bushwick Run</span>
+        <span class="meta">Maria Hernandez Park · 4–6 mi</span>
+        <span class="pill p-easy">Easy Runs</span>
+      </div>
+    </div>
+    <div class="note"><b>not active</b> — same blank card (add/activate is #365b)</div>
+  </div>
+
+</div>
+
+<div class="legend">
+  <div><b>Runner:</b> live = full card, tappable, Join/Joined · draft &amp; not-active = full card, blank right side, not clickable.</div>
+  <div style="margin-top:6px"><b>You (leader/admin):</b> draft row shows the <b>amber Draft badge</b>, Join, and taps through. The draft run page 404s for everyone else.</div>
+</div>

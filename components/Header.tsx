@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { UserButton, useUser } from '@clerk/nextjs'
-import { ChevronLeft, Settings, Wrench, Plus, Zap, List } from 'lucide-react'
+import { ChevronLeft, Settings, Wrench, Plus, List } from 'lucide-react'
 import FeedbackButton from './FeedbackButton'
 import { PersonIcon } from './icons'
 
@@ -61,9 +61,6 @@ export default function Header({
                 )}
                 {isAdmin && (
                   <UserButton.Link label="Create a Run" labelIcon={<Plus size={16} />} href="/admin/create-run" />
-                )}
-                {isAdmin && (
-                  <UserButton.Link label="Activate an NBR Run" labelIcon={<Zap size={16} />} href="/admin/activate-run" />
                 )}
                 {isAdmin && (
                   <UserButton.Link label="Manage Runs" labelIcon={<List size={16} />} href="/admin/runs" />

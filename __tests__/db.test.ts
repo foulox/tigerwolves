@@ -5,7 +5,7 @@ import {
   dbAddWorkoutVariant, dbDeleteWorkoutVariant, dbFlagWorkoutVariant,
   dbFixWorkoutVariantAndClearFlag, dbRegroupVariants,
   getLeaderRun, getRunRoster, fetchWorkoutVariants, generateScheduleHorizon,
-  getDirectoryRuns, getLeaderRunGroups, resolveOrCreateRunGroup,
+  getDirectoryRuns, getRunById, getLeaderRunGroups, resolveOrCreateRunGroup,
 } from '../lib/db'
 import type { DirectoryRun } from '../lib/db'
 import { resolveWorkoutType } from '../lib/cycle'
@@ -679,13 +679,12 @@ describe.skipIf(!onTestData)('#401 ownership backfill (migrate-401.sql)', () => 
   })
 })
 
-// #360: getDirectoryRuns returns the runs table rows needed to render All Runs cards
-// and link to the NBR directory. Test-data-gated: depends on the nbr_directory_id column
-// and the Task 1 seed that sets it on the two fixtures (runs locally when DATABASE_URL
+// #365: getDirectoryRuns returns the unified-directory shape from the runs table —
+// status + distance replace nbr_directory_id. Test-data-gated (runs when DATABASE_URL
 // is the test-data host; no-ops otherwise).
-describe.skipIf(!onTestData)('#360 getDirectoryRuns', () => {
+describe.skipIf(!onTestData)('#365 getDirectoryRuns + getRunById unclaimed', () => {
   const DIRECTORY_RUN_KEYS: (keyof DirectoryRun)[] = [
-    'id', 'name', 'day_of_week', 'meeting_time', 'meeting_location', 'kind', 'emoji', 'nbr_directory_id',
+    'id', 'name', 'day_of_week', 'meeting_time', 'meeting_location', 'kind', 'emoji', 'status', 'distance',
   ]
 
   it('returns an array that includes tigerwolves and mmer rows', async () => {
@@ -706,18 +705,8 @@ describe.skipIf(!onTestData)('#360 getDirectoryRuns', () => {
     }
   })
 
-  it('tigerwolves row has nbr_directory_id === "tue-tigerwolves"', async () => {
-    const runs = await getDirectoryRuns()
-    const tw = runs.find(r => r.id === 'tuesday-morning-tigerwolves')
-    expect(tw).toBeDefined()
-    expect(tw?.nbr_directory_id).toBe('tue-tigerwolves')
-  })
-
-  it('mmer row has nbr_directory_id === "mon-morning-easy"', async () => {
-    const runs = await getDirectoryRuns()
-    const mmer = runs.find(r => r.id === 'monday-morning-easy-run')
-    expect(mmer).toBeDefined()
-    expect(mmer?.nbr_directory_id).toBe('mon-morning-easy')
+  it('getRunById returns null for an unclaimed catalog row', async () => {
+    expect(await getRunById('tuesday-bushwick-run')).toBeNull()
   })
 })
 

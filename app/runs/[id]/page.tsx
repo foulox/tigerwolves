@@ -41,6 +41,17 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
     isFollowing = followed.includes(id)
   }
 
+  // Draft runs are only visible to the owning leader or admins.
+  const isAdmin = user?.publicMetadata?.admin === true
+  if (runConfig.status === 'draft' && !isOwningLeader && !isAdmin) {
+    return (
+      <div>
+        <Header title="Run not found" isLeader={false} />
+        <p className="px-4 text-gray-500">We couldn&apos;t find that run.</p>
+      </div>
+    )
+  }
+
   // As of #347, fetchWorkoutVariants(id) returns the full shared catalog — no
   // run_group_id scoping. Per-run resolution happens by matching the run's schedule
   // entries against that catalog. The runId arg is kept for callers (now informational).
@@ -86,7 +97,7 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
             runId={id}
             runName={runConfig.name}
             initialFollowing={isFollowing}
-            joinable={runConfig.status !== 'draft' || isOwningLeader}
+            joinable={runConfig.status !== 'draft' || isOwningLeader || isAdmin}
           />
         </div>
       )}
