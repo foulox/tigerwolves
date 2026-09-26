@@ -312,12 +312,6 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                         {card.startTime}
                       </span>
                       <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
-                        {/* Draft badge: amber pill, only for owning leader / admin */}
-                        {a.showDraftBadge && (
-                          <span className="self-start text-[10px] font-bold tracking-wide uppercase rounded-full px-2 py-[2px] bg-amber-100 text-amber-800 border border-amber-200">
-                            Draft
-                          </span>
-                        )}
                         <span
                           className={`font-bold tracking-tight leading-snug ${
                             isLead ? 'text-[17px]' : 'text-[15px]'
@@ -359,10 +353,15 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                     <div
                       key={card.id}
                       data-testid="run-row"
-                      className={`rounded-2xl px-[14px] py-3 flex gap-3 items-center bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04)] ${
+                      className={`relative rounded-2xl px-[14px] py-3 flex gap-3 items-center bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04)] ${
                         isLead ? 'border border-[#fdba74]' : 'border border-[#f1f2f5]'
                       }`}
                     >
+                      {a.showDraftBadge && (
+                        <span className="absolute -top-2 left-3 text-[9.5px] font-extrabold tracking-wide uppercase rounded-full px-2 py-[2px] bg-amber-100 text-amber-800 border border-amber-200">
+                          Draft
+                        </span>
+                      )}
                       {a.linkable ? (
                         <>
                           <Link
