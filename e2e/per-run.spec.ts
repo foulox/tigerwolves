@@ -6,15 +6,15 @@ import { test, expect } from '@playwright/test'
 //
 // The default project runs signed in as the TigerWolves test-leader (see
 // playwright.config.ts storageState + e2e/auth.setup.ts, which links that Clerk
-// account to the tigerwolves roster). So the default context IS the owning
+// account to the tuesday-morning-tigerwolves roster). So the default context IS the owning
 // leader; the read-only cases use a fresh anonymous context.
 
 test.describe('per-run page (/runs/[id]) — owning leader', () => {
   test('renders run identity header (emoji + name, day) and schedule cards', async ({ page }) => {
-    await page.goto('/runs/tigerwolves')
+    await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
 
-    await expect(page.locator('header h1')).toContainText('TigerWolves')
+    await expect(page.locator('header h1')).toContainText('Tuesday Morning Tigerwolves')
     await expect(page.locator('header p')).toContainText('Tuesday')
 
     const cards = page.locator('[data-testid^="schedule-card-"]')
@@ -23,7 +23,7 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
   })
 
   test('sees "Edit schedule →" on upcoming cards and it navigates to /schedule?week=N', async ({ page }) => {
-    await page.goto('/runs/tigerwolves')
+    await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
 
     const planBtn = page.locator('[data-testid="schedule-week-0"]')
@@ -34,7 +34,7 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
   })
 
   test('expanded card shows fixture instructions (parity with Schedule page)', async ({ page }) => {
-    await page.goto('/runs/tigerwolves')
+    await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
 
     await page.locator('[data-testid="schedule-card-0"]').click()
@@ -46,7 +46,7 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
   // #332: migrated from the retired schedule.spec.ts (the old `/` Schedule page).
   // Same seeded-fixture fidelity assertions, now against the per-run page.
   test('shows the three seeded upcoming Tuesdays with their leaders', async ({ page }) => {
-    await page.goto('/runs/tigerwolves')
+    await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
 
     await expect(page.locator('[data-testid="schedule-card-0"]')).toContainText("300m's on Down")
@@ -58,7 +58,7 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
   })
 
   test('expanded card collapses on second tap', async ({ page }) => {
-    await page.goto('/runs/tigerwolves')
+    await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
 
     const card = page.locator('[data-testid="schedule-card-0"]')
@@ -70,7 +70,7 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
   })
 
   test('unplanned card has no expand affordance', async ({ page }) => {
-    await page.goto('/runs/tigerwolves')
+    await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
 
     // Card 2 has no workout — clicking it must not reveal a detail panel.
@@ -79,7 +79,7 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
   })
 
   test('fixture has no past history — past-card testids never appear', async ({ page }) => {
-    await page.goto('/runs/tigerwolves')
+    await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
 
     await expect(page.locator('[data-testid^="past-card-"]')).toHaveCount(0)
@@ -103,10 +103,10 @@ test.describe('per-run page (/runs/[id]) — anonymous read-only', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
   test('shows the schedule but no "Plan week →" affordances', async ({ page }) => {
-    await page.goto('/runs/tigerwolves')
+    await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
 
-    await expect(page.locator('header h1')).toContainText('TigerWolves')
+    await expect(page.locator('header h1')).toContainText('Tuesday Morning Tigerwolves')
 
     const cards = page.locator('[data-testid^="schedule-card-"]')
     await expect(cards.first()).toBeVisible()
@@ -116,7 +116,7 @@ test.describe('per-run page (/runs/[id]) — anonymous read-only', () => {
   })
 
   test('shows no follow toggle for a logged-out visitor', async ({ page }) => {
-    await page.goto('/runs/tigerwolves')
+    await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
     await expect(page.locator('[data-testid="run-follow-toggle"]')).toHaveCount(0)
   })
@@ -126,7 +126,7 @@ test.describe('per-run page (/runs/[id]) — follow toggle (#330)', () => {
   // Default context is the signed-in TigerWolves test-leader. MMER is a seeded
   // platform run the test-leader does NOT own, so join/leave has a live target.
   test('signed-in: join MMER from its page → toggle flips; leave → flips back', async ({ page }) => {
-    await page.goto('/runs/mmer')
+    await page.goto('/runs/monday-morning-easy-run')
     await page.waitForLoadState('load')
 
     const toggle = page.locator('[data-testid="run-follow-toggle"]')
@@ -157,10 +157,10 @@ test.describe('per-run page (/runs/[id]) — follow toggle (#330)', () => {
 test.describe('per-run page (/runs/[id]) — kind-aware rendering (#331)', () => {
   // MMER is a seeded Easy run owning its OWN workout family (run_group_id = MMER's
   // group). The page must resolve variants via fetchWorkoutVariants(id), not
-  // fetchData() (which is tigerwolves-scoped and would drop MMER's workout, leaving
+  // fetchData() (which is tuesday-morning-tigerwolves-scoped and would drop MMER's workout, leaving
   // the card stuck on "Not planned yet"). Asserts the Easy/route compact shape.
   test('MMER (Easy kind) card shows its resolved workout — distance + route link, no type pill', async ({ page }) => {
-    await page.goto('/runs/mmer')
+    await page.goto('/runs/monday-morning-easy-run')
     await page.waitForLoadState('load')
 
     const card = page.locator('[data-testid="schedule-card-0"]')

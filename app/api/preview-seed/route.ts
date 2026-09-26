@@ -10,7 +10,7 @@ import { leaderDisplayName } from '@/lib/runLeaders'
 // input surface — there is no request body, so the endpoint can never link an
 // arbitrary account, only these two known ones.
 const PREVIEW_LEADERS: { email: string; runId: string; runName: string }[] = [
-  { email: 'foulox@gmail.com', runId: 'tigerwolves', runName: 'TigerWolves' },
+  { email: 'foulox@gmail.com', runId: 'tuesday-morning-tigerwolves', runName: 'Tuesday Morning Tigerwolves' },
   { email: 'foulox+mmer@gmail.com', runId: 'mmer', runName: 'MMER' },
 ]
 

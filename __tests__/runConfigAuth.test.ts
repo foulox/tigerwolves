@@ -65,7 +65,7 @@ describe.skipIf(!onTestData)('run-leader access is scoped to the run they lead',
     await sql`DELETE FROM run_leaders WHERE name IN (${NAME_A}, ${NAME_B}, ${NAME_C})`
     const a = await sql`
       INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
-      VALUES ('tigerwolves', ${NAME_A}, ${LEADER_A}, 990, true)
+      VALUES ('tuesday-morning-tigerwolves', ${NAME_A}, ${LEADER_A}, 990, true)
       RETURNING id
     `
     leaderAId = a[0].id as number
@@ -91,7 +91,7 @@ describe.skipIf(!onTestData)('run-leader access is scoped to the run they lead',
   })
 
   test('each leader resolves only to the run they lead', async () => {
-    expect((await getLeaderRun(LEADER_A))?.id).toBe('tigerwolves')
+    expect((await getLeaderRun(LEADER_A))?.id).toBe('tuesday-morning-tigerwolves')
     expect((await getLeaderRun(LEADER_B))?.id).toBe(OTHER_RUN)
     // the tigerwolves leader must not resolve to the run they don't lead
     expect((await getLeaderRun(LEADER_A))?.id).not.toBe(OTHER_RUN)
@@ -101,7 +101,7 @@ describe.skipIf(!onTestData)('run-leader access is scoped to the run they lead',
     beforeAll(() => signInAs(LEADER_A))
 
     test('CAN reorder rotation within their own run', async () => {
-      const res = await saveRotationOrder('tigerwolves', [leaderAId])
+      const res = await saveRotationOrder('tuesday-morning-tigerwolves', [leaderAId])
       expect(res.error).toBeUndefined()
     })
 
@@ -138,7 +138,7 @@ describe.skipIf(!onTestData)('run-leader access is scoped to the run they lead',
     test("CANNOT reorder rotation using another run's leader ids", async () => {
       // Pointing at their own run but supplying OTHER_RUN's leader id: the per-id
       // ownership sweep rejects a row that belongs to a different run.
-      const res = await saveRotationOrder('tigerwolves', [leaderBId])
+      const res = await saveRotationOrder('tuesday-morning-tigerwolves', [leaderBId])
       expect(res.error).toBe('Forbidden')
     })
   })
@@ -188,16 +188,16 @@ describe.skipIf(!onTestData)('run-leader access is scoped to the run they lead',
     beforeAll(() => signInAs(LEADER_A, 'member'))
 
     test('is rejected with Unauthorized on every run-config action', async () => {
-      expect((await saveRotationOrder('tigerwolves', [leaderAId])).error).toBe('Unauthorized')
+      expect((await saveRotationOrder('tuesday-morning-tigerwolves', [leaderAId])).error).toBe('Unauthorized')
       expect((await saveAwayPeriod(leaderAId, { from: '2099-01-01', to: '2099-01-07' })).error).toBe('Unauthorized')
       expect((await removeRunLeader(leaderAId)).error).toBe('Unauthorized')
       expect((await removeAwayPeriod(leaderAId, 0)).error).toBe('Unauthorized')
-      expect((await addRunLeaderByEmail('tigerwolves', 'whoever@example.com')).error).toBe('Unauthorized')
-      expect((await savePostTemplate('tigerwolves', { postTemplate: 'template' })).error).toBe('Unauthorized')
-      expect((await saveRunProfile('tigerwolves', { kind: 'Workout', workoutTypes: ['Hills'] })).error).toBe('Unauthorized')
-      expect((await saveRunCycle('tigerwolves', { cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })).error).toBe('Unauthorized')
+      expect((await addRunLeaderByEmail('tuesday-morning-tigerwolves', 'whoever@example.com')).error).toBe('Unauthorized')
+      expect((await savePostTemplate('tuesday-morning-tigerwolves', { postTemplate: 'template' })).error).toBe('Unauthorized')
+      expect((await saveRunProfile('tuesday-morning-tigerwolves', { kind: 'Workout', workoutTypes: ['Hills'] })).error).toBe('Unauthorized')
+      expect((await saveRunCycle('tuesday-morning-tigerwolves', { cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })).error).toBe('Unauthorized')
       expect(
-        (await saveRunIdentity('tigerwolves', {
+        (await saveRunIdentity('tuesday-morning-tigerwolves', {
           name: 'TigerWolves',
           dayOfWeek: 'Tuesday',
           emoji: '🐯',
@@ -216,7 +216,7 @@ describe.skipIf(!onTestData)('run-leader access is scoped to the run they lead',
 describe('saveRunProfile authorization', () => {
   test('returns Unauthorized when caller is not a leader', async () => {
     signInAs('user_notaleader_321', 'member')
-    const res = await saveRunProfile('tigerwolves', { kind: 'Workout', workoutTypes: ['Hills'] })
+    const res = await saveRunProfile('tuesday-morning-tigerwolves', { kind: 'Workout', workoutTypes: ['Hills'] })
     expect(res.error).toBe('Unauthorized')
   })
 })
@@ -268,7 +268,7 @@ describe.skipIf(!onTestData)('saveRunProfile persists to the caller’s own run'
 describe('saveRunCycle authorization', () => {
   test('returns Unauthorized when caller is not a leader', async () => {
     signInAs('user_notaleader_323', 'member')
-    const res = await saveRunCycle('tigerwolves', { cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })
+    const res = await saveRunCycle('tuesday-morning-tigerwolves', { cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })
     expect(res.error).toBe('Unauthorized')
   })
 })
@@ -391,7 +391,7 @@ describe.skipIf(!onTestData)('removing a leader reassigns their future weeks', (
 describe('saveRunIdentity authorization', () => {
   test('returns Unauthorized when caller is not a leader', async () => {
     signInAs('user_notaleader_348', 'member')
-    const res = await saveRunIdentity('tigerwolves', {
+    const res = await saveRunIdentity('tuesday-morning-tigerwolves', {
       name: 'TigerWolves',
       dayOfWeek: 'Tuesday',
       emoji: '🐯',
@@ -508,7 +508,7 @@ describe.skipIf(!onTestData)('saveRunIdentity persists to the caller’s own run
 describe('setRunStatus authorization (signed out)', () => {
   test('returns Unauthorized when caller is signed out', async () => {
     vi.mocked(currentUser).mockResolvedValue(null as never)
-    const res = await setRunStatus('tigerwolves', 'live')
+    const res = await setRunStatus('tuesday-morning-tigerwolves', 'live')
     expect(res.error).toBe('Unauthorized')
   })
 })

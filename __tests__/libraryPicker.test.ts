@@ -29,7 +29,7 @@ function makeVariant(
 
 // Minimal RunConfig — only `kind` matters for this function.
 const workoutConfig: RunConfig = {
-  id: 'tigerwolves',
+  id: 'tuesday-morning-tigerwolves',
   name: 'TigerWolves',
   emoji: '🐯🐺',
   dayOfWeek: 'Tuesday',

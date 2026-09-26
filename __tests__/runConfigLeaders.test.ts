@@ -98,14 +98,14 @@ function mockClerkUserNotFound() {
 describe('addRunLeaderByEmail authorization', () => {
   test('returns Unauthorized for a non-leader caller (role !== leader)', async () => {
     signInAs('user_coleader_member_350', { role: 'member' })
-    const res = await addRunLeaderByEmail('tigerwolves', 'coleader@example.com')
+    const res = await addRunLeaderByEmail('tuesday-morning-tigerwolves', 'coleader@example.com')
     expect(res.error).toBe('Unauthorized')
     expect(mockUpdateUser).not.toHaveBeenCalled()
   })
 
   test('returns Unauthorized for a caller with no role at all', async () => {
     signInAs('user_coleader_norole_350')
-    const res = await addRunLeaderByEmail('tigerwolves', 'coleader@example.com')
+    const res = await addRunLeaderByEmail('tuesday-morning-tigerwolves', 'coleader@example.com')
     expect(res.error).toBe('Unauthorized')
     expect(mockUpdateUser).not.toHaveBeenCalled()
   })
@@ -116,7 +116,7 @@ describe('addRunLeaderByEmail authorization', () => {
 // ---------------------------------------------------------------------------
 
 describe.skipIf(!onTestData)('addRunLeaderByEmail grant path (test-data)', () => {
-  // A dedicated run + owning leader row. We use 'tigerwolves' as the cross-run
+  // A dedicated run + owning leader row. We use 'tuesday-morning-tigerwolves' as the cross-run
   // target (it already exists on test-data). The caller leads their own separate run.
   const CALLER_RUN = 'test-grant-350'
   const CALLER_CLERK_ID = 'user_granttest_caller_350'
@@ -143,8 +143,8 @@ describe.skipIf(!onTestData)('addRunLeaderByEmail grant path (test-data)', () =>
     signInAs(CALLER_CLERK_ID, { role: 'leader' })
     mockUpdateUser.mockClear()
 
-    // CALLER_CLERK_ID leads CALLER_RUN, not 'tigerwolves'
-    const res = await addRunLeaderByEmail('tigerwolves', COLEADER_EMAIL)
+    // CALLER_CLERK_ID leads CALLER_RUN, not 'tuesday-morning-tigerwolves'
+    const res = await addRunLeaderByEmail('tuesday-morning-tigerwolves', COLEADER_EMAIL)
     expect(res.error).toBe('Forbidden')
     expect(mockUpdateUser).not.toHaveBeenCalled()
   })

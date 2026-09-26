@@ -196,7 +196,7 @@ export const CURATED_DOVES_ROUTES: { name: string; distTime: string; mapLink: st
 // the shadow-run guard (__tests__/fixtureGuard.test.ts). No id here may be a
 // near-miss (edit-distance ≤ 1) of another, and none may be an invented shadow.
 export const SEEDED_RUNS: { id: string; name: string }[] = [
-  { id: 'tigerwolves', name: 'TigerWolves' },
-  { id: 'mmer', name: 'Monday Morning Easy Run' },
+  { id: 'tuesday-morning-tigerwolves', name: 'Tuesday Morning Tigerwolves' },
+  { id: 'monday-morning-easy-run', name: 'Monday Morning Easy Run' },
   { id: 'wednesday-mourning-doves', name: 'Wednesday Mourning Doves' },
 ]

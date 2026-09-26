@@ -154,13 +154,29 @@ export async function seedE2E(): Promise<void> {
   await sql`DELETE FROM run_workouts`
   await sql`DELETE FROM workout_variants`
   await sql`DELETE FROM workout_families`
-  await sql`DELETE FROM run_leaders WHERE run_id IN ('tigerwolves', 'mmer', 'wednesday-mourning-doves')`
+  await sql`DELETE FROM run_leaders WHERE run_id IN ('tuesday-morning-tigerwolves', 'monday-morning-easy-run', 'wednesday-mourning-doves')`
   // #330/#331: clear follows on the fixture runs so each run starts from a known
   // clean slate (runner_follows is never wiped otherwise; a mid-test failure could
   // leave a stray row). #331 My Week is follow-based, so the test-leader must start
   // following nothing — both the join/leave e2e and the My Week zero-follows e2e
   // depend on this.
-  await sql`DELETE FROM runner_follows WHERE run_id IN ('mmer', 'tigerwolves', 'wednesday-mourning-doves')`
+  await sql`DELETE FROM runner_follows WHERE run_id IN ('monday-morning-easy-run', 'tuesday-morning-tigerwolves', 'wednesday-mourning-doves')`
+
+  // #445: self-heal against legacy run ids this normalization renames. The seed
+  // upserts fixtures by id, so on a branch that still holds a pre-#445 'mmer' row
+  // (its old id, now 'monday-morning-easy-run') that stale row would (a) collide
+  // with the new row's nbr_directory_id='mon-morning-easy' on the unique index at
+  // the UPDATE below, crashing the seed, and (b) fail the id-convention test. Drop
+  // the legacy ids first ('tigerwolves' too, as a safety net — migrate-445 renames
+  // it). We deliberately do NOT list the deleted Mourning-Doves shadow id here —
+  // fixtureGuard forbids that literal in seed scripts, and that shadow only ever
+  // existed on test-data and nothing recreates it. schedule/run_workouts are fully
+  // wiped above; clear
+  // runner_follows/run_leaders for these ids first (run_leaders has no FK, but
+  // leaving orphans is untidy).
+  await sql`DELETE FROM runner_follows WHERE run_id IN ('mmer', 'tigerwolves')`
+  await sql`DELETE FROM run_leaders WHERE run_id IN ('mmer', 'tigerwolves')`
+  await sql`DELETE FROM runs WHERE id IN ('mmer', 'tigerwolves')`
 
   const [tigerWolves] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
   if (!tigerWolves) {
@@ -222,7 +238,7 @@ export async function seedE2E(): Promise<void> {
   await sql`
     INSERT INTO runs (id, name, emoji, day_of_week, meeting_time, meeting_location, closing_notes, post_header, leader_intro)
     VALUES (
-      'tigerwolves', 'TigerWolves', '🐯🐺', 'Tuesday', '6:30 AM',
+      'tuesday-morning-tigerwolves', 'Tuesday Morning Tigerwolves', '🐯🐺', 'Tuesday', '6:30 AM',
       'Tom Stofka Garden, aka "Da Bins"',
       'Bag Drop: Sorry, Not available',
       ${tigerWolvesPostHeader},
@@ -244,7 +260,7 @@ export async function seedE2E(): Promise<void> {
   await sql`
     INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind, run_group_id)
     VALUES (
-      'mmer', 'Monday Morning Easy Run', '🌅',
+      'monday-morning-easy-run', 'Monday Morning Easy Run', '🌅',
       'North Brooklyn Runners'' Monday morning easy run.',
       'Monday', '6:45 AM', 'McCarren Park', 'Easy', ${mmerGroupId}
     )
@@ -254,8 +270,8 @@ export async function seedE2E(): Promise<void> {
   `
 
   // #360: Set directory links for the fixture runs (migration backfill wiped on each seed).
-  await sql`UPDATE runs SET nbr_directory_id = 'tue-tigerwolves' WHERE id = 'tigerwolves'`
-  await sql`UPDATE runs SET nbr_directory_id = 'mon-morning-easy' WHERE id = 'mmer'`
+  await sql`UPDATE runs SET nbr_directory_id = 'tue-tigerwolves' WHERE id = 'tuesday-morning-tigerwolves'`
+  await sql`UPDATE runs SET nbr_directory_id = 'mon-morning-easy' WHERE id = 'monday-morning-easy-run'`
 
   // #331: MMER's Easy workout — an Easy/route-kind family so the My Week card
   // renders the route shape (distance from dist_time + "View route ↗" from
@@ -277,6 +293,28 @@ export async function seedE2E(): Promise<void> {
     )
   `
 
+  // #412/#404: a SAME-TYPE cross-run route the TigerWolves (Workout) leader can
+  // permanently adopt. Owned by the MMER group but category 'Quality' / type
+  // 'Threshold' (in TigerWolves' workout_types), so #412's isRouteAdoptable allows
+  // adopt (McCarren Easy is off-type and only borrowable — see schedule.spec.ts).
+  // This is the adopt happy-path target for e2e/library.spec.ts; the route category is
+  // independent of the owning run's kind.
+  const [mmerQualityFamily] = await sql`
+    INSERT INTO workout_families (name, category, type, reason, author, run_group_id)
+    VALUES (
+      'MMER Threshold Session', 'Quality', 'Threshold', 'A borrowable tempo session.',
+      'MMER', ${mmerGroupId}
+    )
+    RETURNING id
+  `
+  await sql`
+    INSERT INTO workout_variants (family_id, label, sort_order, raw_input, has_turnaround, turnaround, flagged, flag_note)
+    VALUES (
+      ${mmerQualityFamily.id as number}, NULL, NULL,
+      '4x(6min @ threshold, 90s float)', false, '', false, ''
+    )
+  `
+
   // Roster names match the schedule leaders below so rotation and away-period
   // reassignment resolve to real names. clerk_user_id is left NULL here on purpose:
   // the login is the source of truth for the leader link. e2e/auth.setup.ts reads the
@@ -285,15 +323,15 @@ export async function seedE2E(): Promise<void> {
   // hand-maintained id secret. away_periods/email take their column defaults.
   await sql`
     INSERT INTO run_leaders (run_id, name, sort_order, clerk_user_id, active) VALUES
-      ('tigerwolves', 'Dana Kim',   1, NULL, true),
-      ('tigerwolves', 'Marcus Ade', 2, NULL, true),
-      ('tigerwolves', 'Priya Shah', 3, NULL, true)
+      ('tuesday-morning-tigerwolves', 'Dana Kim',   1, NULL, true),
+      ('tuesday-morning-tigerwolves', 'Marcus Ade', 2, NULL, true),
+      ('tuesday-morning-tigerwolves', 'Priya Shah', 3, NULL, true)
   `
   // #331: MMER's leader — the "Led by" name on its My Week card. (R4 wires
   // foulox+mmer as MMER's signed-in owning leader; for R3 this is just a name.)
   await sql`
     INSERT INTO run_leaders (run_id, name, sort_order, clerk_user_id, active) VALUES
-      ('mmer', 'Sam Rivera', 1, NULL, true)
+      ('monday-morning-easy-run', 'Sam Rivera', 1, NULL, true)
   `
 
   // workout_type must match the assigned workout's own "type" field (not its
@@ -303,22 +341,22 @@ export async function seedE2E(): Promise<void> {
   // WORKOUT_TYPE_OPTIONS values (Intervals/Hills, not the old 'Interval').
   await sql`
     INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
-    VALUES (${week1}::date, 'tigerwolves', 'Intervals', 'Dana Kim', '300m''s on Down')
+    VALUES (${week1}::date, 'tuesday-morning-tigerwolves', 'Intervals', 'Dana Kim', '300m''s on Down')
   `
   await sql`
     INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
-    VALUES (${week2}::date, 'tigerwolves', 'Hills', 'Marcus Ade', 'Hills - 2 Sets 7x30s')
+    VALUES (${week2}::date, 'tuesday-morning-tigerwolves', 'Hills', 'Marcus Ade', 'Hills - 2 Sets 7x30s')
   `
   await sql`
     INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
-    VALUES (${week3}::date, 'tigerwolves', 'Hills', 'Priya Shah', NULL)
+    VALUES (${week3}::date, 'tuesday-morning-tigerwolves', 'Hills', 'Priya Shah', NULL)
   `
   // #331: MMER's next-Monday entry — inside the My Week default forward window, so
   // a follower sees it interleaved with TigerWolves' Tuesday. workout_type matches
   // the Easy family's own "type" (see note above).
   await sql`
     INSERT INTO schedule (date, run_id, workout_type, leader, workout_name)
-    VALUES (${mon1}::date, 'mmer', 'Easy', 'Sam Rivera', 'McCarren Easy Loop')
+    VALUES (${mon1}::date, 'monday-morning-easy-run', 'Easy', 'Sam Rivera', 'McCarren Easy Loop')
   `
 
   // #426: the REAL Mourning Doves run (run_id 'wednesday-mourning-doves', kind
@@ -391,5 +429,5 @@ export async function seedE2E(): Promise<void> {
   `
 
   const familyCount = CURATED_FAMILIES.length + 1 + CURATED_DOVES_ROUTES.length // + MMER Easy + doves routes
-  console.log(`  seeded ${familyCount} workout_families, 3 runs (tigerwolves + mmer + wednesday-mourning-doves) + 5 run_leaders, ${4 + CURATED_DOVES_ROUTES.length} schedule entries (tigerwolves: ${week1}, ${week2}, ${week3}; mmer: ${mon1}; doves: ${wed1}, ${wed2}), ${RACES.length} races, run_workouts membership seeded`)
+  console.log(`  seeded ${familyCount} workout_families, 3 runs (tuesday-morning-tigerwolves + monday-morning-easy-run + wednesday-mourning-doves) + 5 run_leaders, ${4 + CURATED_DOVES_ROUTES.length} schedule entries (tuesday-morning-tigerwolves: ${week1}, ${week2}, ${week3}; monday-morning-easy-run: ${mon1}; wednesday-mourning-doves: ${wed1}, ${wed2}), ${RACES.length} races, run_workouts membership seeded`)
 }

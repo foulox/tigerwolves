@@ -28,7 +28,7 @@ function signInAs(clerkId: string | null) {
 describe('toggleRunFollow authorization', () => {
   test('returns Unauthorized when signed out', async () => {
     signInAs(null)
-    const res = await toggleRunFollow('tigerwolves')
+    const res = await toggleRunFollow('tuesday-morning-tigerwolves')
     expect(res.error).toBe('Unauthorized')
   })
 })

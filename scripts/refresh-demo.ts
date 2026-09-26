@@ -29,7 +29,7 @@ const DEMO_URL = 'https://demo.tigerwolves.foulox.me'
 // VERIFIED against prod run_leaders rows — use verbatim.
 
 export const DEMO_LEADERS: { runId: string; email: string }[] = [
-  { runId: 'tigerwolves', email: 'foulox@gmail.com' },
+  { runId: 'tuesday-morning-tigerwolves', email: 'foulox@gmail.com' },
   { runId: 'wednesday-mourning-doves', email: 'cicifox@gmail.com' },
 ]
 

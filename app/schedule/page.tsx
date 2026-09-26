@@ -11,7 +11,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
   // Identify this leader's run (falls back to TigerWolves config if not found)
   const tigerWolvesConfig: RunConfig = {
-    id: 'tigerwolves', name: 'TigerWolves', emoji: '🐯🐺', dayOfWeek: 'Tuesday',
+    id: 'tuesday-morning-tigerwolves', name: 'Tuesday Morning Tigerwolves', emoji: '🐯🐺', dayOfWeek: 'Tuesday',
     postHeader: '🐯🐺 TigerWolves Tuesday Workout',
     meetingLocation: 'Starting point and route: Tom Stofka Garden, aka "Da Bins."\nWe\'ll warm up by jogging to Marsha P. Johnson which is at the corner of North 8th and Kent\nThe run will be along the Kent Avenue Speedway\nWe\'ll finish up back at Marsha P. Johnson State Park and cool down with a jog to the track',
     leaderIntro: 'Run Leaders:',

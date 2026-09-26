@@ -173,7 +173,13 @@ SELECT
 👉 https://tigerwolves.foulox.me 👈
 👀 See every workout between now and the NYC Marathon in the app
 🗳️ React to let us know what you like — and what you don't$$
-WHERE NOT EXISTS (SELECT 1 FROM runs WHERE id = 'tigerwolves');
+-- #445: guard also skips the post-rename id so a replay never re-creates a stray
+-- 'tigerwolves' after migrate-445 renames it to 'tuesday-morning-tigerwolves'
+-- (base is replayed on every run-migrate pass — there is no migration-tracking table).
+-- A stray would collide with migrate-360's unique nbr_directory_id index and with
+-- migrate-445's PK rename. Fresh-DB behavior is unchanged (neither id exists → insert
+-- 'tigerwolves', so the WHERE id='tigerwolves' UPDATEs below still configure it).
+WHERE NOT EXISTS (SELECT 1 FROM runs WHERE id IN ('tigerwolves', 'tuesday-morning-tigerwolves'));
 
 CREATE TABLE IF NOT EXISTS runner_follows (
   clerk_user_id  TEXT NOT NULL,

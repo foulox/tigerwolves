@@ -100,8 +100,11 @@ describe.skipIf(!onTestData)('adopt / un-adopt membership (test-data, AC2/AC4/AC
       INSERT INTO workout_variants (family_id, label, sort_order, raw_input, has_turnaround, turnaround, flagged, flag_note)
       VALUES (${familyId}, NULL, NULL, 'test route', false, '', false, '')
     `
-    // Two runs; LEADER actively leads RUN_A only.
-    await sql`INSERT INTO runs (id, name) VALUES (${RUN_A}, 'Adopt Run A') ON CONFLICT (id) DO NOTHING`
+    // Two runs; LEADER actively leads RUN_A only. RUN_A is kind='Long' so the Long
+    // fixture route is on-type there (#412's isRouteAdoptable guard rejects a Long
+    // route into a null-kind run — this test predates that guard and asserts a
+    // successful adopt, so it needs a fitting kind).
+    await sql`INSERT INTO runs (id, name, kind) VALUES (${RUN_A}, 'Adopt Run A', 'Long') ON CONFLICT (id) DO UPDATE SET kind = 'Long'`
     await sql`INSERT INTO runs (id, name) VALUES (${RUN_B}, 'Adopt Run B') ON CONFLICT (id) DO NOTHING`
     await sql`DELETE FROM run_leaders WHERE clerk_user_id = ${LEADER}`
     await sql`INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active) VALUES (${RUN_A}, 'Adopt Leader', ${LEADER}, 1, true)`

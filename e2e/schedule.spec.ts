@@ -146,8 +146,10 @@ test('All runs mode: borrow another run\'s off-type workout onto the week', asyn
   const post = page.getByRole('textbox', { name: 'Editable weekly post' })
   await expect(post).toHaveValue(/McCarren Easy Loop/)
 
-  // The card also offers the distinct permanent-adopt action.
-  await expect(page.getByRole('button', { name: '+ Add to my run' })).toBeVisible()
+  // #412: McCarren Easy Loop is off-type for this Workout run, so it can be BORROWED
+  // for the week (above) but NOT permanently adopted — the '+ Add to my run' action is
+  // hidden for cross-type routes (same-type adopt; borrow stays cross-type).
+  await expect(page.getByRole('button', { name: '+ Add to my run' })).toHaveCount(0)
 })
 
 test.describe('redirect: /plan → /schedule', () => {

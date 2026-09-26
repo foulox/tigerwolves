@@ -8,7 +8,7 @@ const validKeys = new Set(POST_FIELDS.map(f => f.key))
 
 // Copied verbatim from __tests__/postBuilder.test.ts — RunConfig requires postTemplate field.
 const tigerWolvesConfig: RunConfig = {
-  id: 'tigerwolves',
+  id: 'tuesday-morning-tigerwolves',
   name: 'TigerWolves',
   emoji: '🐯🐺',
   dayOfWeek: 'Tuesday',
