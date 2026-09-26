@@ -14,7 +14,7 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
     await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
 
-    await expect(page.locator('header h1')).toContainText('TigerWolves')
+    await expect(page.locator('header h1')).toContainText('Tuesday Morning Tigerwolves')
     await expect(page.locator('header p')).toContainText('Tuesday')
 
     const cards = page.locator('[data-testid^="schedule-card-"]')
@@ -106,7 +106,7 @@ test.describe('per-run page (/runs/[id]) — anonymous read-only', () => {
     await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
 
-    await expect(page.locator('header h1')).toContainText('TigerWolves')
+    await expect(page.locator('header h1')).toContainText('Tuesday Morning Tigerwolves')
 
     const cards = page.locator('[data-testid^="schedule-card-"]')
     await expect(cards.first()).toBeVisible()
