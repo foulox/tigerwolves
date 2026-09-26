@@ -28,8 +28,8 @@ export type RunStatus = 'unclaimed' | 'draft' | 'live'
 
 export type DirectoryCard = NBRRun & { status: RunStatus }
 
-// #365: Synthesize a DirectoryCard from a DB run row. Mirrors the old
-// dbRunToNbrCard field mapping but adds `distance` (pass-through) and
+// #365: Synthesize a DirectoryCard from a DB run row. Maps the run's
+// kind/day/time to the card fields, adds `distance` (pass-through) and
 // `status`, and runs `startTime` through `formatMeetingTimeShort` so the
 // card always shows the compact form ('6:30am') regardless of DB format.
 export function directoryRunToCard(run: DirectoryRunInput): DirectoryCard {
