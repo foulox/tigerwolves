@@ -748,6 +748,7 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
   `
   if (!rows[0]) return null
   const r = rows[0]
+  if ((r.status as string | null) === 'unclaimed') return null
   return {
     id: r.id as string,
     name: r.name as string,
@@ -781,13 +782,13 @@ export type DirectoryRun = {
   meeting_location: string | null
   kind: string | null
   emoji: string | null
-  nbr_directory_id: string | null
   status: string
+  distance: string | null
 }
 
 export async function getDirectoryRuns(): Promise<DirectoryRun[]> {
   const rows = await sql`
-    SELECT id, name, day_of_week, meeting_time, meeting_location, kind, emoji, nbr_directory_id, status
+    SELECT id, name, day_of_week, meeting_time, meeting_location, kind, emoji, status, distance
     FROM runs ORDER BY id
   `
   return rows.map(r => ({
@@ -798,17 +799,9 @@ export async function getDirectoryRuns(): Promise<DirectoryRun[]> {
     meeting_location: (r.meeting_location as string | null) ?? null,
     kind: (r.kind as string | null) ?? null,
     emoji: (r.emoji as string | null) ?? null,
-    nbr_directory_id: (r.nbr_directory_id as string | null) ?? null,
     status: (r.status as string | null) ?? 'live',
+    distance: (r.distance as string | null) ?? null,
   }))
-}
-
-// #361: NBR directory ids that already have a linked run, so the picker can exclude them.
-export async function getActivatedNbrDirectoryIds(): Promise<string[]> {
-  const rows = await sql`
-    SELECT nbr_directory_id FROM runs WHERE nbr_directory_id IS NOT NULL
-  `
-  return rows.map(r => r.nbr_directory_id as string)
 }
 
 // #350: check whether a Clerk user leads ANY active run across the platform.
