@@ -151,7 +151,7 @@ export async function seedE2E(): Promise<void> {
   // leave a stray row). #331 My Week is follow-based, so the test-leader must start
   // following nothing — both the join/leave e2e and the My Week zero-follows e2e
   // depend on this.
-  await sql`DELETE FROM runner_follows WHERE run_id IN ('monday-morning-easy-run', 'tuesday-morning-tigerwolves', 'wednesday-mourning-doves')`
+  await sql`DELETE FROM runner_follows WHERE run_id IN ('monday-morning-easy-run', 'tuesday-morning-tigerwolves', 'wednesday-mourning-doves', 'e2e-draft-thursday')`
 
   // #445: self-heal against legacy run ids this normalization renames. The seed
   // upserts fixtures by id, so on a branch that still holds a pre-#445 'mmer' row
@@ -392,6 +392,23 @@ export async function seedE2E(): Promise<void> {
     VALUES (${wed2}::date, 'wednesday-mourning-doves', 'Long', 'Doves Lead', ${CURATED_DOVES_ROUTES[1].name})
   `
 
+  // #365/Task 9: a dedicated draft run for draft-gating e2e tests. Kind 'Easy',
+  // day 'Thursday' — chosen to not affect any filter count assertion in all-runs.spec.ts.
+  // No schedule, no run_leaders row needed (draft-gating tests only need the runs row).
+  // ON CONFLICT keeps it draft on re-seed.
+  await sql`
+    INSERT INTO runs (id, name, emoji, day_of_week, meeting_time, meeting_location, kind, distance, status)
+    VALUES ('e2e-draft-thursday', 'E2E Draft Thursday Run', NULL, 'Thursday', '6:30am', 'McCarren Park', 'Easy', '3–4 mi', 'draft')
+    ON CONFLICT (id) DO UPDATE SET
+      status = 'draft',
+      day_of_week = EXCLUDED.day_of_week,
+      kind = EXCLUDED.kind,
+      meeting_time = EXCLUDED.meeting_time,
+      meeting_location = EXCLUDED.meeting_location,
+      distance = EXCLUDED.distance,
+      name = EXCLUDED.name
+  `
+
   for (const r of RACES) {
     await sql`
       INSERT INTO races (date, name, distance, location, organizer, verified, flagged, flag_note)
@@ -413,5 +430,5 @@ export async function seedE2E(): Promise<void> {
   `
 
   const familyCount = CURATED_FAMILIES.length + 1 + CURATED_DOVES_ROUTES.length // + MMER Easy + doves routes
-  console.log(`  seeded ${familyCount} workout_families, 3 runs (tuesday-morning-tigerwolves + monday-morning-easy-run + wednesday-mourning-doves) + 5 run_leaders, ${4 + CURATED_DOVES_ROUTES.length} schedule entries (tuesday-morning-tigerwolves: ${week1}, ${week2}, ${week3}; monday-morning-easy-run: ${mon1}; wednesday-mourning-doves: ${wed1}, ${wed2}), ${RACES.length} races, run_workouts membership seeded`)
+  console.log(`  seeded ${familyCount} workout_families, 4 runs (tuesday-morning-tigerwolves + monday-morning-easy-run + wednesday-mourning-doves + e2e-draft-thursday) + 5 run_leaders, ${4 + CURATED_DOVES_ROUTES.length} schedule entries (tuesday-morning-tigerwolves: ${week1}, ${week2}, ${week3}; monday-morning-easy-run: ${mon1}; wednesday-mourning-doves: ${wed1}, ${wed2}), ${RACES.length} races, run_workouts membership seeded`)
 }

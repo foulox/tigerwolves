@@ -96,6 +96,36 @@ test.describe('per-run page (/runs/[id]) — owning leader', () => {
     await expect(page.locator('text=Run not found')).toBeVisible()
     await expect(page.locator('[data-testid^="schedule-card-"]')).toHaveCount(0)
   })
+
+  // #365: unclaimed runs — getRunById returns null for 'unclaimed' status, so
+  // the page shows "Run not found" for everyone including leaders.
+  test('unclaimed run id shows "Run not found"', async ({ page }) => {
+    await page.goto('/runs/tuesday-bushwick-run')
+    await expect(page.locator('text=Run not found')).toBeVisible()
+    await expect(page.locator('[data-testid^="schedule-card-"]')).toHaveCount(0)
+  })
+})
+
+// ── #365: run-page gating — draft and unclaimed 404s ─────────────────────────
+
+test.describe('per-run page (/runs/[id]) — draft gating (anonymous)', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('draft run shows "Run not found" for anonymous visitor', async ({ page }) => {
+    await page.goto('/runs/e2e-draft-thursday')
+    await expect(page.locator('text=Run not found')).toBeVisible()
+    await expect(page.locator('[data-testid^="schedule-card-"]')).toHaveCount(0)
+  })
+})
+
+test.describe('per-run page (/runs/[id]) — draft gating (signed-in runner)', () => {
+  test.use({ storageState: 'e2e/.auth/runner.json' })
+
+  test('draft run shows "Run not found" for signed-in runner', async ({ page }) => {
+    await page.goto('/runs/e2e-draft-thursday')
+    await expect(page.locator('text=Run not found')).toBeVisible()
+    await expect(page.locator('[data-testid^="schedule-card-"]')).toHaveCount(0)
+  })
 })
 
 test.describe('per-run page (/runs/[id]) — anonymous read-only', () => {

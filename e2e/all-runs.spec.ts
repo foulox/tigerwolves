@@ -130,24 +130,30 @@ test('header is standard Header.tsx — no Join NBR, no NORTH BROOKLYN RUNNERS e
 
 // ── #330: auth-aware personalization (join/leave + tiers) ──────────────────────
 
-test('logged-out: no follow toggles, no Following tier, no "not on the app" markers', async ({ browser }) => {
+test('logged-out: no follow toggles, no Following tier; live run links out', async ({ browser }) => {
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   const page = await context.newPage()
   await page.goto('/all-runs')
   await page.waitForLoadState('load')
   await expect(page.locator('[data-testid="following-tier"]')).toHaveCount(0)
   await expect(page.locator('[data-testid^="follow-toggle-"]')).toHaveCount(0)
-  await expect(page.locator('[data-testid^="not-on-app-"]')).toHaveCount(0)
+  // Live runs link out to their run page
+  await expect(page.locator('a[href="/runs/monday-morning-easy-run"]')).toBeVisible()
   await context.close()
 })
 
-test('signed-in: a directory-only NBR run is muted "Not on the app yet"', async ({ page }) => {
-  // Default context is the signed-in TigerWolves leader. tue-bushwick is a real
-  // NBR run with no platform mapping → not joinable.
+test('signed-in: an unclaimed NBR run is visible but inert (no Join, no link)', async ({ page }) => {
+  // Default context is the signed-in TigerWolves leader. tuesday-bushwick-run is an
+  // unclaimed catalog row — visible as a run card but not joinable and not a link.
   await page.goto('/all-runs')
   await page.waitForLoadState('load')
-  await expect(page.locator('[data-testid="not-on-app-tue-bushwick"]')).toBeVisible()
-  await expect(page.locator('[data-testid="follow-toggle-tue-bushwick"]')).toHaveCount(0)
+  // The run name is present
+  const nameEl = page.locator('[data-testid="run-name"]').filter({ hasText: 'Tuesday Bushwick Run' })
+  await expect(nameEl).toBeVisible()
+  // No Join button for an unclaimed run
+  await expect(page.locator('[data-testid="follow-toggle-tuesday-bushwick-run"]')).toHaveCount(0)
+  // Not a link
+  await expect(page.locator('a[href="/runs/tuesday-bushwick-run"]')).toHaveCount(0)
 })
 
 test('signed-in: join MMER → appears in Following tier; leave → removed (AC: join/leave)', async ({ page }) => {
@@ -201,6 +207,33 @@ test.describe('intro box: signed-in runner, 0 follows (AC-intro-2)', () => {
     await expect(page.locator('[data-testid="intro-schedule-link"]')).toBeVisible()
     await expect(page.locator('[data-testid="intro-nudge"]')).toBeVisible()
     await expect(page.locator('[data-testid="intro-signup-link"]')).toHaveCount(0)
+  })
+})
+
+// ── #365: draft-gating tests ──────────────────────────────────────────────────
+
+test('draft-gating: logged-out does not see the draft run', async ({ browser }) => {
+  // Anonymous visitors never see draft rows — filtered in page.tsx before render.
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  const page = await context.newPage()
+  await page.goto('/all-runs')
+  await page.waitForLoadState('load')
+  await expect(page.getByText('E2E Draft Thursday Run')).toHaveCount(0)
+  await context.close()
+})
+
+test.describe('draft-gating: signed-in runner sees draft run but inert', () => {
+  test.use({ storageState: 'e2e/.auth/runner.json' })
+
+  test('draft run is visible but has no Join button and is not a link', async ({ page }) => {
+    await page.goto('/all-runs')
+    await page.waitForLoadState('load')
+    // Draft run is visible to logged-in users
+    await expect(page.getByText('E2E Draft Thursday Run')).toBeVisible()
+    // No Join button — runner is not the owning leader (no run_leaders row)
+    await expect(page.locator('[data-testid="follow-toggle-e2e-draft-thursday"]')).toHaveCount(0)
+    // Not a link — draft runs are not linkable for non-managers
+    await expect(page.locator('a[href="/runs/e2e-draft-thursday"]')).toHaveCount(0)
   })
 })
 
