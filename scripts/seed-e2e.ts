@@ -293,6 +293,28 @@ export async function seedE2E(): Promise<void> {
     )
   `
 
+  // #412/#404: a SAME-TYPE cross-run route the TigerWolves (Workout) leader can
+  // permanently adopt. Owned by the MMER group but category 'Quality' / type
+  // 'Threshold' (in TigerWolves' workout_types), so #412's isRouteAdoptable allows
+  // adopt (McCarren Easy is off-type and only borrowable — see schedule.spec.ts).
+  // This is the adopt happy-path target for e2e/library.spec.ts; the route category is
+  // independent of the owning run's kind.
+  const [mmerQualityFamily] = await sql`
+    INSERT INTO workout_families (name, category, type, reason, author, run_group_id)
+    VALUES (
+      'MMER Threshold Session', 'Quality', 'Threshold', 'A borrowable tempo session.',
+      'MMER', ${mmerGroupId}
+    )
+    RETURNING id
+  `
+  await sql`
+    INSERT INTO workout_variants (family_id, label, sort_order, raw_input, has_turnaround, turnaround, flagged, flag_note)
+    VALUES (
+      ${mmerQualityFamily.id as number}, NULL, NULL,
+      '4x(6min @ threshold, 90s float)', false, '', false, ''
+    )
+  `
+
   // Roster names match the schedule leaders below so rotation and away-period
   // reassignment resolve to real names. clerk_user_id is left NULL here on purpose:
   // the login is the source of truth for the leader link. e2e/auth.setup.ts reads the

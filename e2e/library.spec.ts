@@ -170,12 +170,15 @@ test('Adopt: a route from "All runs" appears in "Your run", marked adopted, and 
   await page.goto('/library')
   await page.waitForLoadState('load')
 
-  // Baseline: MMER's "McCarren Easy Loop" is NOT in TigerWolves' "Your run" library.
-  await expect(page.getByText('McCarren Easy Loop')).toHaveCount(0)
+  // #412: adopt is same-type only, so the target is MMER's "MMER Threshold Session"
+  // (a Quality route the TigerWolves Workout leader CAN adopt) — not its off-type
+  // "McCarren Easy Loop", which is borrow-only (see schedule.spec.ts).
+  // Baseline: it's NOT in TigerWolves' "Your run" library.
+  await expect(page.getByText('MMER Threshold Session')).toHaveCount(0)
 
   // Find it under "All runs" and adopt it into our run.
   await page.getByRole('button', { name: 'All runs', exact: true }).click()
-  const allRunsCard = page.locator('.bg-white.rounded-2xl', { hasText: 'McCarren Easy Loop' })
+  const allRunsCard = page.locator('.bg-white.rounded-2xl', { hasText: 'MMER Threshold Session' })
   await expect(allRunsCard).toBeVisible()
   await allRunsCard.getByRole('button', { name: '+ Add to my run' }).click()
   // After adopting, the add affordance is gone for that card (it's now in the library).
@@ -183,11 +186,11 @@ test('Adopt: a route from "All runs" appears in "Your run", marked adopted, and 
 
   // Switch to "Your run": the adopted route now shows, marked with its creator.
   await page.getByRole('button', { name: 'Your run', exact: true }).click()
-  const yourRunCard = page.locator('.bg-white.rounded-2xl', { hasText: 'McCarren Easy Loop' })
+  const yourRunCard = page.locator('.bg-white.rounded-2xl', { hasText: 'MMER Threshold Session' })
   await expect(yourRunCard).toBeVisible()
   await expect(yourRunCard.getByText(/adopted from MMER/)).toBeVisible()
 
   // Remove from my run (un-adopt) — it drops back out of "Your run".
   await yourRunCard.getByRole('button', { name: 'Remove from my run' }).click()
-  await expect(page.getByText('McCarren Easy Loop')).toHaveCount(0)
+  await expect(page.getByText('MMER Threshold Session')).toHaveCount(0)
 })
