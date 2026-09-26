@@ -118,6 +118,18 @@ describe.skipIf(!onTestData)('toggleRunFollow draft-gate (#353)', () => {
     expect(rows.length).toBe(1)
   })
 
+  test('an admin (non-owner) CAN follow a draft run', async () => {
+    // #365: admins manage any draft — the client shows them the Join button, so
+    // toggleRunFollow must honor it (regression: admin was refused as a non-owner).
+    const ADMIN = 'user_draft_admin_353'
+    vi.mocked(currentUser).mockResolvedValue({ id: ADMIN, publicMetadata: { admin: true } } as never)
+    const res = await toggleRunFollow(RUN)
+    expect(res.error).toBeUndefined()
+    expect(res.following).toBe(true)
+    const rows = await sql`SELECT 1 FROM runner_follows WHERE clerk_user_id = ${ADMIN} AND run_id = ${RUN}`
+    expect(rows.length).toBe(1)
+  })
+
   test('after setRunStatus to live, the non-owner runner can follow', async () => {
     // Flip run to live — setRunStatus checks ownership; sign in as owner
     vi.mocked(currentUser).mockResolvedValue({ id: OWNER, publicMetadata: { role: 'leader' } } as never)

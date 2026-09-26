@@ -418,11 +418,15 @@ export async function toggleRunFollow(runId: string): Promise<{ error?: string; 
       await sql`DELETE FROM runner_follows WHERE clerk_user_id = ${userId} AND run_id = ${runId}`
       following = false
     } else {
-      // A draft run is visible but not joinable: only its owning leader may follow it
-      // (leaders trial their run pre-launch); every other signed-in user is refused.
+      // A draft run is visible but not joinable to the public: only its owning
+      // leader OR an admin may follow it (leaders trial their run pre-launch;
+      // admins manage any draft). Mirrors cardAffordance's canManage — the client
+      // shows the Join button under the same condition, so this must match it.
       if (run.status === 'draft') {
+        const user = await currentUser()
+        const isAdmin = user?.publicMetadata?.admin === true
         const leaderRun = await getLeaderRun(userId)
-        if (leaderRun?.id !== runId) {
+        if (!isAdmin && leaderRun?.id !== runId) {
           return { error: "This run isn't open to join yet" }
         }
       }
