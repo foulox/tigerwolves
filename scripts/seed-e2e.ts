@@ -162,6 +162,22 @@ export async function seedE2E(): Promise<void> {
   // depend on this.
   await sql`DELETE FROM runner_follows WHERE run_id IN ('monday-morning-easy-run', 'tuesday-morning-tigerwolves', 'wednesday-mourning-doves')`
 
+  // #445: self-heal against legacy run ids this normalization renames. The seed
+  // upserts fixtures by id, so on a branch that still holds a pre-#445 'mmer' row
+  // (its old id, now 'monday-morning-easy-run') that stale row would (a) collide
+  // with the new row's nbr_directory_id='mon-morning-easy' on the unique index at
+  // the UPDATE below, crashing the seed, and (b) fail the id-convention test. Drop
+  // the legacy ids first ('tigerwolves' too, as a safety net — migrate-445 renames
+  // it). We deliberately do NOT list the deleted Mourning-Doves shadow id here —
+  // fixtureGuard forbids that literal in seed scripts, and that shadow only ever
+  // existed on test-data and nothing recreates it. schedule/run_workouts are fully
+  // wiped above; clear
+  // runner_follows/run_leaders for these ids first (run_leaders has no FK, but
+  // leaving orphans is untidy).
+  await sql`DELETE FROM runner_follows WHERE run_id IN ('mmer', 'tigerwolves')`
+  await sql`DELETE FROM run_leaders WHERE run_id IN ('mmer', 'tigerwolves')`
+  await sql`DELETE FROM runs WHERE id IN ('mmer', 'tigerwolves')`
+
   const [tigerWolves] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
   if (!tigerWolves) {
     throw new Error(
