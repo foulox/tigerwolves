@@ -6,7 +6,7 @@ test.describe('Run Settings', () => {
 
   test('Run Settings + Edit Workouts appear in the leader UserButton menu', async ({ page }) => {
     // #342: leader menu items moved from LeaderMenu button to UserButton
-    await page.goto('/runs/tigerwolves')
+    await page.goto('/runs/tuesday-morning-tigerwolves')
     await page.waitForLoadState('load')
     // Run Settings + Edit Workouts live in the UserButton menu. Clerk's
     // UserButton.Link items are NOT exposed as role="menuitem" (the popover isn't

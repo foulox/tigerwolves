@@ -3,7 +3,7 @@ import { buildPost, buildVerificationLabel, formatMainContent, formatDateLong, P
 import type { ScheduleEntry, WorkoutVariantRow, RunConfig } from '../lib/data'
 
 const tigerWolvesConfig: RunConfig = {
-  id: 'tigerwolves',
+  id: 'tuesday-morning-tigerwolves',
   name: 'TigerWolves',
   emoji: '🐯🐺',
   dayOfWeek: 'Tuesday',

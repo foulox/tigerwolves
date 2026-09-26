@@ -13,7 +13,7 @@ import type { RunConfig, ScheduleEntry, WorkoutVariantRow } from '../lib/data'
 
 function makeRun(overrides: Partial<RunConfig> = {}): RunConfig {
   return {
-    id: 'tigerwolves',
+    id: 'tuesday-morning-tigerwolves',
     name: 'TigerWolves',
     emoji: '🐯🐺',
     dayOfWeek: 'Tuesday',
@@ -123,8 +123,8 @@ describe('groupByDay', () => {
   const today = '2026-09-15'
   test('groups items by date, ordered ascending, with day labels', () => {
     const items = [
-      makeItem({ date: '2026-09-16', run: makeRun({ id: 'mmer', name: 'MMER' }) }),
-      makeItem({ date: '2026-09-15', run: makeRun({ id: 'tigerwolves', name: 'TigerWolves' }) }),
+      makeItem({ date: '2026-09-16', run: makeRun({ id: 'monday-morning-easy-run', name: 'MMER' }) }),
+      makeItem({ date: '2026-09-15', run: makeRun({ id: 'tuesday-morning-tigerwolves', name: 'TigerWolves' }) }),
     ]
     const groups = groupByDay(items, today)
     expect(groups.map(g => g.date)).toEqual(['2026-09-15', '2026-09-16'])
@@ -133,8 +133,8 @@ describe('groupByDay', () => {
   })
   test('keeps multiple runs on the same day in one group, ordered by run name', () => {
     const items = [
-      makeItem({ date: '2026-09-15', run: makeRun({ id: 'mmer', name: 'MMER' }) }),
-      makeItem({ date: '2026-09-15', run: makeRun({ id: 'tigerwolves', name: 'TigerWolves' }) }),
+      makeItem({ date: '2026-09-15', run: makeRun({ id: 'monday-morning-easy-run', name: 'MMER' }) }),
+      makeItem({ date: '2026-09-15', run: makeRun({ id: 'tuesday-morning-tigerwolves', name: 'TigerWolves' }) }),
     ]
     const groups = groupByDay(items, today)
     expect(groups).toHaveLength(1)

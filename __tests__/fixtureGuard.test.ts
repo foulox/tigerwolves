@@ -16,7 +16,7 @@ const FIXTURES_DIR = join(SCRIPTS_DIR, 'fixtures')
 
 // The canonical real run ids the app knows about. A fixture may seed these and
 // only these; anything else is a shadow.
-const REAL_RUN_IDS = ['tigerwolves', 'mmer', 'wednesday-mourning-doves']
+const REAL_RUN_IDS = ['tuesday-morning-tigerwolves', 'monday-morning-easy-run', 'wednesday-mourning-doves']
 
 /** Standard Levenshtein edit distance. */
 function editDistance(a: string, b: string): number {

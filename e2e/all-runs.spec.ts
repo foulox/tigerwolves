@@ -154,7 +154,7 @@ test('signed-in: join MMER → appears in Following tier; leave → removed (AC:
   await page.goto('/all-runs')
   await page.waitForLoadState('load')
 
-  const rowToggle = page.locator('[data-testid="follow-toggle-mmer"]')
+  const rowToggle = page.locator('[data-testid="follow-toggle-monday-morning-easy-run"]')
   await expect(rowToggle).toBeVisible()
 
   // Known starting state (not following) — the test-leader account is shared across
@@ -168,12 +168,12 @@ test('signed-in: join MMER → appears in Following tier; leave → removed (AC:
 
   // Join
   await rowToggle.click()
-  await expect(page.locator('[data-testid="following-run-mmer"]')).toBeVisible()
+  await expect(page.locator('[data-testid="following-run-monday-morning-easy-run"]')).toBeVisible()
   await expect(rowToggle).toContainText('Joined')
 
   // Leave (from the row toggle) — Following tier entry disappears
   await rowToggle.click()
-  await expect(page.locator('[data-testid="following-run-mmer"]')).toHaveCount(0)
+  await expect(page.locator('[data-testid="following-run-monday-morning-easy-run"]')).toHaveCount(0)
   await expect(rowToggle).toContainText('+ Join')
 })
 
@@ -185,7 +185,7 @@ test('intro box: logged-out sees box, schedule link, signup link; no nudge (AC-i
   await page.goto('/all-runs')
   await page.waitForLoadState('load')
   await expect(page.locator('[data-testid="all-runs-intro"]')).toBeVisible()
-  await expect(page.locator('[data-testid="intro-schedule-link"]')).toHaveAttribute('href', /\/runs\/tigerwolves/)
+  await expect(page.locator('[data-testid="intro-schedule-link"]')).toHaveAttribute('href', /\/runs\/tuesday-morning-tigerwolves/)
   await expect(page.locator('[data-testid="intro-signup-link"]')).toBeVisible()
   await expect(page.locator('[data-testid="intro-nudge"]')).toHaveCount(0)
   await context.close()
@@ -211,15 +211,15 @@ test('intro box: follower ≥1 — box disappears; cleanup restores 0-follow sta
   await expect(page.locator('[data-testid="all-runs-intro"]')).toBeVisible()
 
   // Follow MMER — now follower count becomes 1
-  await page.locator('[data-testid="follow-toggle-mmer"]').click()
-  await expect(page.locator('[data-testid="follow-toggle-mmer"]')).toContainText('Joined')
+  await page.locator('[data-testid="follow-toggle-monday-morning-easy-run"]').click()
+  await expect(page.locator('[data-testid="follow-toggle-monday-morning-easy-run"]')).toContainText('Joined')
   await page.reload()
   await page.waitForLoadState('load')
   await expect(page.locator('[data-testid="all-runs-intro"]')).toHaveCount(0)
 
   // Cleanup: leave MMER so the fixture stays 0-follow for other tests
-  await page.locator('[data-testid="follow-toggle-mmer"]').click()
-  await expect(page.locator('[data-testid="follow-toggle-mmer"]')).toContainText('+ Join')
+  await page.locator('[data-testid="follow-toggle-monday-morning-easy-run"]').click()
+  await expect(page.locator('[data-testid="follow-toggle-monday-morning-easy-run"]')).toContainText('+ Join')
   await page.reload()
   await page.waitForLoadState('load')
 })

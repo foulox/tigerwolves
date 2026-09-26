@@ -24,7 +24,7 @@ describe('buildRelinkPlan', () => {
   test('returns one descriptor per leader with correct runId, email, and clerkUserId', () => {
     const plan = buildRelinkPlan(DEMO_LEADERS, fullIdMap)
     expect(plan).toHaveLength(DEMO_LEADERS.length)
-    expect(plan[0]).toEqual({ runId: 'tigerwolves', email: 'foulox@gmail.com', clerkUserId: 'user_A' })
+    expect(plan[0]).toEqual({ runId: 'tuesday-morning-tigerwolves', email: 'foulox@gmail.com', clerkUserId: 'user_A' })
     expect(plan[1]).toEqual({ runId: 'wednesday-mourning-doves', email: 'cicifox@gmail.com', clerkUserId: 'user_B' })
   })
 
@@ -33,7 +33,7 @@ describe('buildRelinkPlan', () => {
     const plan = buildRelinkPlan(reversed, fullIdMap)
     expect(plan[0].runId).toBe('wednesday-mourning-doves')
     expect(plan[0].clerkUserId).toBe('user_B')
-    expect(plan[1].runId).toBe('tigerwolves')
+    expect(plan[1].runId).toBe('tuesday-morning-tigerwolves')
     expect(plan[1].clerkUserId).toBe('user_A')
   })
 

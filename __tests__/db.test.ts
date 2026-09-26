@@ -110,56 +110,56 @@ describe.skipIf(!onTestData)('fetchRaces', () => {
 
 describe.skipIf(!onTestData)('dbSetScheduleWorkout', () => {
   it('saves workout_name and a single variation (standalone)', async () => {
-    const rows = await fetchSchedule('tigerwolves')
+    const rows = await fetchSchedule('tuesday-morning-tigerwolves')
     expect(rows.length).toBeGreaterThan(0)
     const target = rows[0]
     const originalName = target.workoutName
     const originalVariations = target.selectedVariations
 
     try {
-      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_plan__', [''])
-      const updated = await fetchSchedule('tigerwolves')
+      await dbSetScheduleWorkout(target.date, 'tuesday-morning-tigerwolves', '__test_plan__', [''])
+      const updated = await fetchSchedule('tuesday-morning-tigerwolves')
       const row = updated.find(e => e.date === target.date)
       expect(row?.workoutName).toBe('__test_plan__')
       expect(row?.selectedVariations).toEqual([''])
     } finally {
-      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tigerwolves'`
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tuesday-morning-tigerwolves'`
     }
   })
 
   it('saves two variations when Standard + Longer are both selected', async () => {
-    const rows = await fetchSchedule('tigerwolves')
+    const rows = await fetchSchedule('tuesday-morning-tigerwolves')
     expect(rows.length).toBeGreaterThan(0)
     const target = rows[0]
     const originalName = target.workoutName
     const originalVariations = target.selectedVariations
 
     try {
-      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_family__', ['', 'Longer — 6×4min @ LT'])
-      const updated = await fetchSchedule('tigerwolves')
+      await dbSetScheduleWorkout(target.date, 'tuesday-morning-tigerwolves', '__test_family__', ['', 'Longer — 6×4min @ LT'])
+      const updated = await fetchSchedule('tuesday-morning-tigerwolves')
       const row = updated.find(e => e.date === target.date)
       expect(row?.workoutName).toBe('__test_family__')
       expect(row?.selectedVariations).toEqual(['', 'Longer — 6×4min @ LT'])
     } finally {
-      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tigerwolves'`
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tuesday-morning-tigerwolves'`
     }
   })
 
   it('overwrites to a single variation after previously saving two', async () => {
-    const rows = await fetchSchedule('tigerwolves')
+    const rows = await fetchSchedule('tuesday-morning-tigerwolves')
     expect(rows.length).toBeGreaterThan(0)
     const target = rows[0]
     const originalName = target.workoutName
     const originalVariations = target.selectedVariations
 
     try {
-      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_family__', ['', 'Longer'])
-      await dbSetScheduleWorkout(target.date, 'tigerwolves', '__test_standalone__', [''])
-      const updated = await fetchSchedule('tigerwolves')
+      await dbSetScheduleWorkout(target.date, 'tuesday-morning-tigerwolves', '__test_family__', ['', 'Longer'])
+      await dbSetScheduleWorkout(target.date, 'tuesday-morning-tigerwolves', '__test_standalone__', [''])
+      const updated = await fetchSchedule('tuesday-morning-tigerwolves')
       const row = updated.find(e => e.date === target.date)
       expect(row?.selectedVariations).toEqual([''])
     } finally {
-      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tigerwolves'`
+      await sql`UPDATE schedule SET workout_name = ${originalName}, selected_variations = ${originalVariations} WHERE date = ${target.date}::date AND run_id = 'tuesday-morning-tigerwolves'`
     }
   })
 })
@@ -418,7 +418,7 @@ describe('workout_variants write path additions (#277)', () => {
 // .env.local's DATABASE_URL points at during a local run. CI uses test-data.
 
 describe.skipIf(!onTestData)('getLeaderRun', () => {
-  // A clerk id that only this test uses, linked to the real 'tigerwolves' run
+  // A clerk id that only this test uses, linked to the real 'tuesday-morning-tigerwolves' run
   // (its runs row is created by scripts/migrate.sql and always present on test-data).
   const TEST_CLERK_ID = 'user_dbtest310_getleaderrun'
   const TEST_NAME = 'DB Test — getLeaderRun 310'
@@ -428,20 +428,20 @@ describe.skipIf(!onTestData)('getLeaderRun', () => {
     // so this row can't rely on ON CONFLICT (run_id, name) for idempotence. It has
     // no email (identity is via clerk_user_id here), so the new email key doesn't
     // apply — clear by name first, then insert clean.
-    await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves' AND name = ${TEST_NAME}`
+    await sql`DELETE FROM run_leaders WHERE run_id = 'tuesday-morning-tigerwolves' AND name = ${TEST_NAME}`
     await sql`
       INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
-      VALUES ('tigerwolves', ${TEST_NAME}, ${TEST_CLERK_ID}, 999, true)
+      VALUES ('tuesday-morning-tigerwolves', ${TEST_NAME}, ${TEST_CLERK_ID}, 999, true)
     `
   })
   afterAll(async () => {
-    await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves' AND name = ${TEST_NAME}`
+    await sql`DELETE FROM run_leaders WHERE run_id = 'tuesday-morning-tigerwolves' AND name = ${TEST_NAME}`
   })
 
   test('returns the run a leader is linked to via clerk_user_id', async () => {
     const run = await getLeaderRun(TEST_CLERK_ID)
     expect(run).not.toBeNull()
-    expect(run?.id).toBe('tigerwolves')
+    expect(run?.id).toBe('tuesday-morning-tigerwolves')
     // leader_intro is a run-level, leader-editable field (the migration backfills
     // 'Run Leaders:' and getLeaderRun falls back to it when NULL, but a leader may
     // have since edited it — production reads "Your Favorite Run Leaders: (vote for
@@ -506,7 +506,7 @@ describe.skipIf(!onTestData)('#318 per-run profile + #401 per-run library scopin
 
   it('TigerWolves run resolves kind, workout_types, and run_group_id from the seed', async () => {
     const [tw] = await sql`
-      SELECT kind, workout_types, run_group_id FROM runs WHERE id = 'tigerwolves'
+      SELECT kind, workout_types, run_group_id FROM runs WHERE id = 'tuesday-morning-tigerwolves'
     `
     expect(tw.kind).toBe('Workout')
     expect((tw.workout_types as string[]).sort()).toEqual([...TW_TYPES].sort())
@@ -514,10 +514,10 @@ describe.skipIf(!onTestData)('#318 per-run profile + #401 per-run library scopin
     expect(tw.run_group_id).toBe(group.id)
   })
 
-  it("fetchWorkoutVariants('tigerwolves') is group-scoped — only TigerWolves-owned families, excludes other runs' (#401 AC1/AC3)", async () => {
+  it("fetchWorkoutVariants('tuesday-morning-tigerwolves') is group-scoped — only TigerWolves-owned families, excludes other runs' (#401 AC1/AC3)", async () => {
     const [group] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
     const tigerWolvesId = group.id as number
-    const variants = await fetchWorkoutVariants('tigerwolves')
+    const variants = await fetchWorkoutVariants('tuesday-morning-tigerwolves')
     expect(variants.length).toBeGreaterThan(0)
     // Every returned variant is owned by the TigerWolves group — nothing else leaks in.
     expect(variants.every(v => v.runGroupId === tigerWolvesId)).toBe(true)
@@ -534,7 +534,7 @@ describe.skipIf(!onTestData)('#318 per-run profile + #401 per-run library scopin
   })
 
   it('still returns the seeded TigerWolves Quality families under the scoped read (existing content preserved — #401 AC9)', async () => {
-    const variants = await fetchWorkoutVariants('tigerwolves')
+    const variants = await fetchWorkoutVariants('tuesday-morning-tigerwolves')
     expect(variants.some(v => v.category === 'Quality')).toBe(true)
     expect(variants.filter(v => v.category === 'Quality').length).toBeGreaterThan(0)
   })
@@ -588,14 +588,14 @@ describe.skipIf(!onTestData)('#401 getLeaderRunGroups (owner-picker authorizatio
   const TEST_NAME = 'DB Test — getLeaderRunGroups 401'
 
   beforeAll(async () => {
-    await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves' AND name = ${TEST_NAME}`
+    await sql`DELETE FROM run_leaders WHERE run_id = 'tuesday-morning-tigerwolves' AND name = ${TEST_NAME}`
     await sql`
       INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
-      VALUES ('tigerwolves', ${TEST_NAME}, ${TEST_CLERK_ID}, 998, true)
+      VALUES ('tuesday-morning-tigerwolves', ${TEST_NAME}, ${TEST_CLERK_ID}, 998, true)
     `
   })
   afterAll(async () => {
-    await sql`DELETE FROM run_leaders WHERE run_id = 'tigerwolves' AND name = ${TEST_NAME}`
+    await sql`DELETE FROM run_leaders WHERE run_id = 'tuesday-morning-tigerwolves' AND name = ${TEST_NAME}`
   })
 
   it("returns only the TigerWolves group for a TigerWolves-only leader — never MMER's group", async () => {
@@ -692,8 +692,8 @@ describe.skipIf(!onTestData)('#360 getDirectoryRuns', () => {
     const runs = await getDirectoryRuns()
     expect(Array.isArray(runs)).toBe(true)
     const ids = runs.map(r => r.id)
-    expect(ids).toContain('tigerwolves')
-    expect(ids).toContain('mmer')
+    expect(ids).toContain('tuesday-morning-tigerwolves')
+    expect(ids).toContain('monday-morning-easy-run')
   })
 
   it('each returned row has all DirectoryRun keys present', async () => {
@@ -708,14 +708,14 @@ describe.skipIf(!onTestData)('#360 getDirectoryRuns', () => {
 
   it('tigerwolves row has nbr_directory_id === "tue-tigerwolves"', async () => {
     const runs = await getDirectoryRuns()
-    const tw = runs.find(r => r.id === 'tigerwolves')
+    const tw = runs.find(r => r.id === 'tuesday-morning-tigerwolves')
     expect(tw).toBeDefined()
     expect(tw?.nbr_directory_id).toBe('tue-tigerwolves')
   })
 
   it('mmer row has nbr_directory_id === "mon-morning-easy"', async () => {
     const runs = await getDirectoryRuns()
-    const mmer = runs.find(r => r.id === 'mmer')
+    const mmer = runs.find(r => r.id === 'monday-morning-easy-run')
     expect(mmer).toBeDefined()
     expect(mmer?.nbr_directory_id).toBe('mon-morning-easy')
   })
@@ -743,7 +743,7 @@ describe.skipIf(!onTestData)('#319 per-run workout-type cycle engine', () => {
     expect(cols).toContain('cycle_mode')
     expect(cols).toContain('cycle')
 
-    const [tw] = await sql`SELECT cycle_mode, cycle FROM runs WHERE id = 'tigerwolves'`
+    const [tw] = await sql`SELECT cycle_mode, cycle FROM runs WHERE id = 'tuesday-morning-tigerwolves'`
     expect(tw.cycle_mode).toBe('week_of_month')
     expect(tw.cycle).toEqual(TW_CYCLE)
   })
@@ -756,16 +756,16 @@ describe.skipIf(!onTestData)('#319 per-run workout-type cycle engine', () => {
     // assertion below. This test runs before the e2e seed (test:unit precedes test:e2e
     // in CI), so it can't assume a clean schedule and must establish its own precondition.
     // Safe: onTestData-gated (never production), and the e2e seed wipes `schedule` wholesale.
-    await sql`DELETE FROM schedule WHERE run_id = 'tigerwolves' AND date > CURRENT_DATE`
+    await sql`DELETE FROM schedule WHERE run_id = 'tuesday-morning-tigerwolves' AND date > CURRENT_DATE`
 
     // Now generate out to the 24-week horizon: every future row is freshly created and
     // must carry resolveWorkoutType for its own date — non-empty and cadence-correct.
-    const roster = await getRunRoster('tigerwolves')
-    await generateScheduleHorizon('tigerwolves', 'Tuesday', roster)
+    const roster = await getRunRoster('tuesday-morning-tigerwolves')
+    await generateScheduleHorizon('tuesday-morning-tigerwolves', 'Tuesday', roster)
 
     const rows = await sql`
       SELECT to_char(date, 'YYYY-MM-DD') AS date, workout_type FROM schedule
-      WHERE run_id = 'tigerwolves' AND date > CURRENT_DATE
+      WHERE run_id = 'tuesday-morning-tigerwolves' AND date > CURRENT_DATE
       ORDER BY date ASC
     `
     expect(rows.length).toBeGreaterThan(0)

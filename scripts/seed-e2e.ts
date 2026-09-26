@@ -162,17 +162,6 @@ export async function seedE2E(): Promise<void> {
   // depend on this.
   await sql`DELETE FROM runner_follows WHERE run_id IN ('monday-morning-easy-run', 'tuesday-morning-tigerwolves', 'wednesday-mourning-doves')`
 
-  // #445: drop the legacy run ids this normalization supersedes so no stale,
-  // non-convention row survives (the id-convention test asserts id===slugify(name)
-  // across ALL rows). 'tigerwolves'→'tuesday-morning-tigerwolves' (renamed by
-  // migrate-445, so this is a no-op safety net), 'mmer'→'monday-morning-easy-run'
-  // (the seed reinserts under the new id below, so the old row must go), and 'doves'
-  // is pre-'wednesday-mourning-doves' cruft that only ever existed on test-data.
-  // schedule/run_workouts are fully wiped above and runner_follows for these ids is
-  // cleared, so no FK blocks the runs delete; run_leaders has no FK.
-  await sql`DELETE FROM run_leaders WHERE run_id IN ('tigerwolves', 'mmer', 'doves')`
-  await sql`DELETE FROM runs WHERE id IN ('tigerwolves', 'mmer', 'doves')`
-
   const [tigerWolves] = await sql`SELECT id FROM run_groups WHERE name = 'TigerWolves'`
   if (!tigerWolves) {
     throw new Error(

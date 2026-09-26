@@ -59,7 +59,7 @@ setup('authenticate as test leader', async ({ page }) => {
     await sql`
       UPDATE run_leaders
       SET clerk_user_id = ${clerkUserId}
-      WHERE run_id = 'tigerwolves' AND name = 'Dana Kim'
+      WHERE run_id = 'tuesday-morning-tigerwolves' AND name = 'Dana Kim'
     `
   } else if (!clerkUserId) {
     throw new Error('auth.setup: could not read window.Clerk.user.id after sign-in — cannot link the test leader, /run-config specs would redirect. Failing setup loudly rather than leaving an unlinked roster.')

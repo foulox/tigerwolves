@@ -24,8 +24,8 @@ async function setFollow(page: Page, runId: string, shouldFollow: boolean) {
 
 test.describe('entry routing (/) — signed-in leader', () => {
   test('0 follows → redirects to /all-runs', async ({ page }) => {
-    await setFollow(page, 'tigerwolves', false)
-    await setFollow(page, 'mmer', false)
+    await setFollow(page, 'tuesday-morning-tigerwolves', false)
+    await setFollow(page, 'monday-morning-easy-run', false)
 
     await page.goto('/')
     await page.waitForURL(/\/all-runs$/)
@@ -35,8 +35,8 @@ test.describe('entry routing (/) — signed-in leader', () => {
   test('≥1 follow → redirects to /my-plan', async ({ page }) => {
     // Clear the led run, follow only MMER — exactly one follow, so the branch is
     // driven by the follow count, not the leader auto-follow.
-    await setFollow(page, 'tigerwolves', false)
-    await setFollow(page, 'mmer', true)
+    await setFollow(page, 'tuesday-morning-tigerwolves', false)
+    await setFollow(page, 'monday-morning-easy-run', true)
 
     await page.goto('/')
     await page.waitForURL(/\/my-plan$/)
@@ -45,7 +45,7 @@ test.describe('entry routing (/) — signed-in leader', () => {
     // Cleanup: this suite shares the one test-leader account with other specs
     // (e.g. per-run's join-MMER test), so leave MMER un-followed rather than
     // leaking a follow downstream — the leak that made per-run.spec.ts flaky.
-    await setFollow(page, 'mmer', false)
+    await setFollow(page, 'monday-morning-easy-run', false)
   })
 })
 
