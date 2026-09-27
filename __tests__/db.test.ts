@@ -201,6 +201,9 @@ describe('workout_families / workout_variants write path (#274)', () => {
     turnaround: 'After the 3rd rep',
     label: null,
     sortOrder: null,
+    distanceMiles: null,
+    elevationGainFeet: null,
+    geometry: null,
   }
 
   afterAll(async () => {
@@ -284,6 +287,9 @@ describe('workout_variants write path additions (#277)', () => {
     turnaround: '',
     label: null,
     sortOrder: null,
+    distanceMiles: null,
+    elevationGainFeet: null,
+    geometry: null,
   }
 
   beforeEach(async () => {
@@ -550,6 +556,7 @@ describe.skipIf(!onTestData)('#401 workout ownership write path (AC4/AC5)', () =
     instructions: 'WU 10; 5x2min hill; CD 10', distTime: '', energySystem: '', hrZone: '',
     rpe: '', raceTypes: [], trainingPhases: [], hasTurnaround: false, turnaround: '',
     label: null, sortOrder: null, runGroupId: null as number | null,
+    distanceMiles: null, elevationGainFeet: null, geometry: null,
   }
   let familyId: number
   let variantId: number

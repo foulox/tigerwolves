@@ -91,7 +91,9 @@ describe('recency sort orders stalest-first for the Doves library (AC4)', () => 
   const base: WorkoutVariantRow = {
     id: 0, familyId: 0, name: '', label: null, sortOrder: null, category: 'Long',
     type: 'Long', reason: '', rawInput: '', distTime: '', energySystem: '',
-    hrZone: '', rpe: '', coachingNotes: null, mapLink: null, author: null, raceTypes: [],
+    hrZone: '', rpe: '', coachingNotes: null, mapLink: null,
+    distanceMiles: null, elevationGainFeet: null, geometry: null,
+    author: null, raceTypes: [],
     trainingPhases: [], hasTurnaround: false, turnaround: '', flagged: false, flagNote: '',
     runGroupId: null, lastRan: null,
   }
