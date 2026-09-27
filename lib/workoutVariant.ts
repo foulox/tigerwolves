@@ -59,8 +59,8 @@ export function buildWorkoutVariantInput(formData: FormData): WorkoutVariantInpu
     label: (formData.get('label') as string) || null,
     sortOrder: sortOrderRaw ? Number(sortOrderRaw) : null,
     // #457: route metrics
-    distanceMiles: (() => { const raw = formData.get('distanceMiles') as string; return raw && !Number.isNaN(Number(raw)) ? Number(raw) : null })(),
-    elevationGainFeet: (() => { const raw = formData.get('elevationGainFeet') as string; return raw && !Number.isNaN(Number(raw)) ? Number(raw) : null })(),
+    distanceMiles: (() => { const raw = (formData.get('distanceMiles') ?? '') as string; return raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : null })(),
+    elevationGainFeet: (() => { const raw = (formData.get('elevationGainFeet') ?? '') as string; return raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : null })(),
     geometry: (() => { const raw = formData.get('geometry') as string; return raw ? JSON.parse(raw) : null })(),
   })
 }

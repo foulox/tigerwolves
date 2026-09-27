@@ -32,4 +32,9 @@ describe('buildWorkoutVariantInput — route metrics (#457)', () => {
     const input = buildWorkoutVariantInput(fd({ ...base, distanceMiles: '' }))
     expect(input.distanceMiles).toBeNull()
   })
+  it('preserves an explicit 0 (a flat route), not null', () => {
+    const input = buildWorkoutVariantInput(fd({ ...base, distanceMiles: '0', elevationGainFeet: '0' }))
+    expect(input.distanceMiles).toBe(0)
+    expect(input.elevationGainFeet).toBe(0)
+  })
 })

@@ -52,6 +52,19 @@ workout_families:
       description: A short cue for the leader running this workout.
     map_link:
       description: Link to a map of the workout, if applicable.
+    distance_miles:
+      description: >
+        Authoritative route distance in miles, fetched from the map link's provider
+        (e.g. Strava) and confirmed/edited by the leader on the review step. NULL when
+        the route has no link or the fetch failed — the leader may still enter it manually.
+    elevation_gain_feet:
+      description: >
+        Authoritative route elevation gain in feet, from the same provider fetch as
+        distance_miles. NULL when unavailable; editable/manual on the review step.
+    geometry:
+      description: >
+        Provider-native route geometry (Strava stores { summaryPolyline }). Carried
+        silently for future map rendering; NULL when the route has no link or fetch failed.
     run_group_id:
       description: >
         NULL means global/inspirational — not owned by any one run group. One run
