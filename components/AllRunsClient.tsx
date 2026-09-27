@@ -496,7 +496,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                                     time: r.meeting_time ?? '',
                                     location: r.meeting_location ?? '',
                                     distance: r.distance ?? '',
-                                    category: KIND_TO_NBR_CATEGORY[r.kind ?? ''] as NBRCategory ?? 'Easy Runs',
+                                    category: KIND_TO_NBR_CATEGORY[r.kind ?? ''] ?? 'Easy Runs',
                                   },
                                 })
                               }}

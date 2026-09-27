@@ -7,7 +7,7 @@ vi.mock('next/cache', async importOriginal => {
 })
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }))
 import { currentUser } from '@clerk/nextjs/server'
-import { sql, getRunById } from '../lib/db'
+import { sql } from '../lib/db'
 import { addDirectoryRun } from '../app/admin/actions'
 
 const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'

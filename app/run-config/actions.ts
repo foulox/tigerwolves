@@ -7,7 +7,7 @@ import { sql, getLeaderRun, getRunRoster, toDateString } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity } from '@/lib/runIdentity'
-import { resolveClerkUserByEmail, leaderDisplayName, grantLeaderRole, revokeLeaderRoleIfOrphaned, assignLeaderByEmail } from '@/lib/runLeaders'
+import { revokeLeaderRoleIfOrphaned, assignLeaderByEmail } from '@/lib/runLeaders'
 
 /** True if the Clerk user carries the cross-run admin flag (mirrors setRunStatus). */
 function isAdminUser(user: User): boolean {
