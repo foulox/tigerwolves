@@ -126,3 +126,20 @@ describe('all-runs filter options (AC4)', () => {
     expect(allRunsTypes(allVariants, 'Quality')).toEqual(['Hills', 'Ladder'])
   })
 })
+
+describe('schedulePickerSuggestions — cleared type chip widens to all library types (#241)', () => {
+  const base = {
+    showAllRuns: false,
+    ownVariants,
+    allVariants,
+    isWorkout: true,
+    runCategory: 'Quality' as string | null,
+    browseCategory: null,
+    browseType: null,
+    plannedId: null,
+  }
+  test('empty weekTypes offers the whole "Your run" library, not an empty list', () => {
+    const out = schedulePickerSuggestions({ ...base, weekTypes: [] })
+    expect(out.map(w => w.id).sort()).toEqual([1, 2]) // both TigerWolves library workouts
+  })
+})

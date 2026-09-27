@@ -41,7 +41,9 @@ export function schedulePickerSuggestions(a: {
         .filter(w => !a.browseCategory || w.category === a.browseCategory)
         .filter(w => !a.browseType || w.type === a.browseType)
     : a.isWorkout
-      ? a.ownVariants.filter(w => a.weekTypes.includes(w.type))
+      ? a.weekTypes.length === 0
+        ? a.ownVariants
+        : a.ownVariants.filter(w => a.weekTypes.includes(w.type))
       : a.ownVariants.filter(w => !a.runCategory || w.category === a.runCategory)
 
   return pool
