@@ -102,3 +102,14 @@ describe('rankByRating', () => {
     expect(ratingScore({ avg: 4, count: 20 }, 3)).toBeCloseTo(3.8, 5)
   })
 })
+
+import { RATING_FILTER_OPTIONS } from '../components/RatingFilter'
+
+describe('RATING_FILTER_OPTIONS', () => {
+  test('exposes the four spec thresholds in order with the right labels', () => {
+    expect(RATING_FILTER_OPTIONS.map(o => o.value)).toEqual(['any', 'ok', 'good', 'love'])
+    expect(RATING_FILTER_OPTIONS.map(o => o.label)).toEqual([
+      'Any rating', '😐 & up', '😃 & up', '🥳 only',
+    ])
+  })
+})
