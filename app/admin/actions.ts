@@ -83,4 +83,25 @@ export async function addDirectoryRun(fields: {
   }
 }
 
+export async function removeDirectoryRun(runId: string): Promise<{ error?: string }> {
+  try {
+    const user = await currentUser()
+    if (!user || user.publicMetadata?.admin !== true) return { error: 'Unauthorized' }
+    // Guard: refuse if the run has any dependency (leader / follower / schedule).
+    const [leaders, followers, sched] = await Promise.all([
+      sql`SELECT 1 FROM run_leaders WHERE run_id = ${runId} LIMIT 1`,
+      sql`SELECT 1 FROM runner_follows WHERE run_id = ${runId} LIMIT 1`,
+      sql`SELECT 1 FROM schedule WHERE run_id = ${runId} LIMIT 1`,
+    ])
+    if (leaders.length || followers.length || sched.length) {
+      return { error: 'This run has a leader, followers, or schedule — remove those first.' }
+    }
+    await sql`DELETE FROM runs WHERE id = ${runId}`
+    updateTag('tigerwolves-data')
+    return {}
+  } catch (err) {
+    Sentry.captureException(err)
+    return { error: 'Failed to remove run' }
+  }
+}
 
