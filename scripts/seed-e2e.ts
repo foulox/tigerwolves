@@ -153,6 +153,14 @@ export async function seedE2E(): Promise<void> {
   // depend on this.
   await sql`DELETE FROM runner_follows WHERE run_id IN ('monday-morning-easy-run', 'tuesday-morning-tigerwolves', 'wednesday-mourning-doves', 'e2e-draft-thursday')`
 
+  // #413: self-heal the admin lifecycle fixture — the e2e/admin-directory.spec.ts
+  // creates a real 'sunday-e2e-testers' run (and on activate, a run_leaders row +
+  // run_group for it). Delete in FK-safe order: run_leaders before runs.
+  // run_groups is cleaned up by name. run_workouts is already fully wiped above.
+  await sql`DELETE FROM run_leaders WHERE run_id = 'sunday-e2e-testers'`
+  await sql`DELETE FROM runs WHERE id = 'sunday-e2e-testers'`
+  await sql`DELETE FROM run_groups WHERE name = 'Sunday E2E Testers'`
+
   // #445: self-heal against legacy run ids this normalization renames. The seed
   // upserts fixtures by id, so on a branch that still holds a pre-#445 'mmer' row
   // (its old id, now 'monday-morning-easy-run') that stale row would fail the

@@ -551,6 +551,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                                       className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300"
                                     />
                                     <button
+                                      data-testid={`admin-activate-submit-${card.id}`}
                                       onClick={() => handleActivate(card.id, actState.email)}
                                       disabled={!actState.email.trim() || actState.pending}
                                       className="text-[12px] font-bold text-white bg-blue-600 rounded-xl px-3 py-2 touch-manipulation disabled:opacity-40"
