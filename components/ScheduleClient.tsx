@@ -76,6 +76,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   const [showAllRuns, setShowAllRuns] = useState(false)
   const [browseCategory, setBrowseCategory] = useState<string | null>(null)
   const [browseType, setBrowseType] = useState<string | null>(null)
+  const [browseTypeCleared, setBrowseTypeCleared] = useState(false)
   const [planTab, setPlanTab] = useState<'post' | 'browse'>('post')
   const [leaderPickerOpen, setLeaderPickerOpen] = useState(false)
   const [localLeader, setLocalLeader] = useState<string | null>(null)
@@ -172,7 +173,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
   const allSuggestions = useMemo(() => {
     if (!entry) return []
-    const weekTypes = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
+    const weekTypes = showAllRuns
+      ? []
+      : browseTypeCleared
+        ? []
+        : activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
     return schedulePickerSuggestions({
       showAllRuns,
       ownVariants,
@@ -184,7 +189,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       browseType,
       plannedId: plannedWorkout?.id ?? null,
     })
-  }, [entry, ownVariants, variants, showAllRuns, activeType, plannedWorkout, isWorkout, runCategory, browseCategory, browseType])
+  }, [entry, ownVariants, variants, showAllRuns, activeType, browseTypeCleared, plannedWorkout, isWorkout, runCategory, browseCategory, browseType])
 
   const pickerSource = useMemo(() => {
     const q = pickerSearch.toLowerCase()
@@ -257,6 +262,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setShowAllRuns(false)
     setBrowseCategory(null)
     setBrowseType(null)
+    setBrowseTypeCleared(false)
     setPlanTab('post')
     setLeaderPickerOpen(false)
     setLocalLeader(null)
@@ -269,6 +275,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setShowAllRuns(all)
     setBrowseCategory(null)
     setBrowseType(null)
+    setBrowseTypeCleared(false)
     // #405 (review): reset the week-type chip too, like every other filter — else a
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
@@ -557,6 +564,31 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                       onClick={() => setScope(true)}
                       className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
                     >All runs</button>
+                  </div>
+                )}
+
+                {!showAllRuns && isWorkout && (
+                  <div className="flex items-center gap-2 px-1 mb-2 text-xs">
+                    {browseTypeCleared ? (
+                      <button
+                        type="button"
+                        onClick={() => setBrowseTypeCleared(false)}
+                        className="font-semibold px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-600 touch-manipulation"
+                      >Filter to {activeType ?? entry.workoutType} type</button>
+                    ) : (
+                      <>
+                        <span className="font-semibold px-3 py-1 rounded-full bg-orange-500 text-white inline-flex items-center gap-1">
+                          {activeType ?? entry.workoutType}
+                          <button
+                            type="button"
+                            aria-label="Clear type filter — show all types"
+                            onClick={() => setBrowseTypeCleared(true)}
+                            className="touch-manipulation leading-none"
+                          >✕</button>
+                        </span>
+                        <span className="text-gray-400">Clear — show all types</span>
+                      </>
+                    )}
                   </div>
                 )}
 
