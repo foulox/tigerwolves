@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Fragment } from 'react'
 import Link from 'next/link'
 import type { WorkoutVariantRow } from '@/lib/data'
 import { ABBREVIATIONS, RACE_TYPES } from '@/lib/data'
@@ -185,9 +185,19 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
     return (
       <div className="mt-2.5 space-y-2">
         <div className="flex gap-3 text-xs text-gray-400">
-          {w.distTime && <span>{w.distTime}</span>}
-          {w.distTime && w.lastRan && <span>·</span>}
-          <span>{w.lastRan ? `Last ran ${formatDate(w.lastRan)}` : 'Never used'}</span>
+          {(() => {
+            const parts: React.ReactNode[] = []
+            if (w.distanceMiles != null) parts.push(`${w.distanceMiles.toFixed(1)} mi`)
+            if (w.elevationGainFeet != null) parts.push(`${Math.round(w.elevationGainFeet)} ft ↑`)
+            if (w.distTime) parts.push(w.distTime)
+            parts.push(w.lastRan ? `Last ran ${formatDate(w.lastRan)}` : 'Never used')
+            return parts.map((p, i) => (
+              <Fragment key={i}>
+                {i > 0 && <span>·</span>}
+                <span>{p}</span>
+              </Fragment>
+            ))
+          })()}
         </div>
         {w.mapLink && (
           <a
