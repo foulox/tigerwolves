@@ -355,6 +355,10 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   // handled by setPostRef; this effect covers content changes while mounted.
   useEffect(() => { growToFit(postRef.current) }, [draftPost])
 
+  // #241: a change to the committed week type re-derives the browse chip — a
+  // previously-cleared chip must snap back to filtering by the new committed type.
+  useEffect(() => { setBrowseTypeCleared(false) }, [activeType])
+
   function handleCopy() {
     navigator.clipboard.writeText(draftPost).then(() => {
       setCopied(true)
@@ -567,7 +571,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                   </div>
                 )}
 
-                {!showAllRuns && isWorkout && (
+                {!showAllRuns && isWorkout && availableTypes.length > 1 && (
                   <div className="flex items-center gap-2 px-1 mb-2 text-xs">
                     {browseTypeCleared ? (
                       <button
