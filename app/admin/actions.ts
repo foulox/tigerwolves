@@ -5,7 +5,6 @@ import * as Sentry from '@sentry/nextjs'
 import { sql, resolveOrCreateRunGroup } from '@/lib/db'
 import { RUN_KINDS, NBR_CATEGORY_TO_KIND, NBRCategory } from '@/lib/runProfile'
 import { slugifyRunName } from '@/lib/runIdentity'
-import { assignLeaderByEmail } from '@/lib/runLeaders'
 
 // Private helper — no admin gate, no cache invalidation. Inserts a catalog row
 // with the given status; callers own auth + updateTag.
@@ -106,17 +105,16 @@ export async function removeDirectoryRun(runId: string): Promise<{ error?: strin
   }
 }
 
-export async function activateRun(runId: string, email: string): Promise<{ error?: string }> {
+// Stand up an unclaimed stub as a private draft: create its content-owning
+// run_group and flip unclaimed → draft. Assigns NO leader — leaders are added
+// later via the per-run Roster tab (#444).
+export async function setUpRun(runId: string): Promise<{ error?: string }> {
   try {
     const user = await currentUser()
     if (!user || user.publicMetadata?.admin !== true) return { error: 'Unauthorized' }
     const rows = await sql`SELECT status, name, meeting_location FROM runs WHERE id = ${runId}`
     if (!rows[0]) return { error: 'Run not found' }
     if (rows[0].status !== 'unclaimed') return { error: 'This run is not unclaimed.' }
-
-    // Assign the leader first; only flip status if that succeeded (atomic outcome).
-    const assigned = await assignLeaderByEmail(runId, email)
-    if (assigned.error) return assigned
 
     // Reconcile a run_group so the now-draft run owns its library (#401 invariant).
     const runGroupId = await resolveOrCreateRunGroup(rows[0].name as string, 'road', rows[0].meeting_location as string)
@@ -125,7 +123,7 @@ export async function activateRun(runId: string, email: string): Promise<{ error
     return {}
   } catch (err) {
     Sentry.captureException(err)
-    return { error: 'Failed to activate run' }
+    return { error: 'Failed to set up run' }
   }
 }
 

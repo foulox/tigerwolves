@@ -12,7 +12,7 @@ import type { DirectoryCard, ViewerContext } from '@/lib/allRuns'
 import { directoryRunToCard, cardAffordance, adminCardControls } from '@/lib/allRuns'
 import type { RunStatus } from '@/lib/allRuns'
 import { toggleRunFollow } from '@/app/actions'
-import { activateRun, removeDirectoryRun } from '@/app/admin/actions'
+import { setUpRun, removeDirectoryRun } from '@/app/admin/actions'
 import { KIND_TO_NBR_CATEGORY } from '@/lib/runProfile'
 import type { NBRCategory } from '@/lib/runProfile'
 import { formatDateShort } from '@/lib/dateUtils'
@@ -79,8 +79,8 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [editor, setEditor] = useState<{ mode: 'add' | 'edit'; initial?: EditorInitial } | null>(null)
 
-  // Per-card activate UI state: maps runId → { open, email, error, pending }
-  const [activateState, setActivateState] = useState<Record<string, { open: boolean; email: string; error: string | null; pending: boolean }>>({})
+  // Per-card set-up UI state: maps runId → { error, pending }
+  const [setUpState, setSetUpState] = useState<Record<string, { error: string | null; pending: boolean }>>({})
 
   // Follow state seeded from the server, then updated optimistically on toggle.
   const [followedSet, setFollowedSet] = useState<Set<string>>(
@@ -128,20 +128,20 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
     })
   }
 
-  function handleActivate(runId: string, email: string) {
-    setActivateState(prev => ({ ...prev, [runId]: { ...prev[runId], pending: true, error: null } }))
+  function handleSetUp(runId: string) {
+    setSetUpState(prev => ({ ...prev, [runId]: { pending: true, error: null } }))
     startTransition(async () => {
       try {
-        const res = await activateRun(runId, email)
+        const res = await setUpRun(runId)
         if (res.error) {
-          setActivateState(prev => ({ ...prev, [runId]: { ...prev[runId], pending: false, error: res.error ?? null } }))
+          setSetUpState(prev => ({ ...prev, [runId]: { pending: false, error: res.error ?? null } }))
         } else {
-          setActivateState(prev => ({ ...prev, [runId]: { open: false, email: '', error: null, pending: false } }))
+          setSetUpState(prev => ({ ...prev, [runId]: { pending: false, error: null } }))
           router.refresh()
         }
       } catch (err) {
         Sentry.captureException(err)
-        setActivateState(prev => ({ ...prev, [runId]: { ...prev[runId], pending: false, error: 'Failed to activate run' } }))
+        setSetUpState(prev => ({ ...prev, [runId]: { pending: false, error: 'Failed to set up run' } }))
       }
     })
   }
@@ -374,7 +374,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                   const a = cardAffordance(card, viewerCtx)
                   const admin = adminCardControls(card, viewerCtx)
                   const isFollowing = followedSet.has(card.id)
-                  const actState = activateState[card.id] ?? { open: false, email: '', error: null, pending: false }
+                  const setUp = setUpState[card.id] ?? { error: null, pending: false }
 
                   const cardBody = (
                     <>
@@ -517,52 +517,19 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                             </Link>
                           )}
 
-                          {/* 👤 Activate → */}
-                          {admin.canActivate && (
+                          {/* 👤 Set up → */}
+                          {admin.canSetUp && (
                             <>
                               <button
-                                data-testid={`admin-activate-${card.id}`}
-                                onClick={() => setActivateState(prev => ({
-                                  ...prev,
-                                  [card.id]: { open: !actState.open, email: actState.email, error: null, pending: false },
-                                }))}
-                                className="text-[12px] font-bold text-blue-700 bg-blue-50 rounded-lg px-2.5 py-1 touch-manipulation hover:bg-blue-100"
+                                data-testid={`admin-setup-${card.id}`}
+                                onClick={() => handleSetUp(card.id)}
+                                disabled={setUp.pending}
+                                className="text-[12px] font-bold text-blue-700 bg-blue-50 rounded-lg px-2.5 py-1 touch-manipulation hover:bg-blue-100 disabled:opacity-40"
                               >
-                                👤 Activate →
+                                {setUp.pending ? 'Setting up…' : '👤 Set up →'}
                               </button>
-                              {actState.open && (
-                                <div className="w-full flex flex-col gap-1.5 mt-1">
-                                  <label
-                                    htmlFor={`activate-email-${card.id}`}
-                                    className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400"
-                                  >
-                                    Leader email
-                                  </label>
-                                  <div className="flex gap-2">
-                                    <input
-                                      id={`activate-email-${card.id}`}
-                                      type="email"
-                                      placeholder="leader@example.com"
-                                      value={actState.email}
-                                      onChange={e => setActivateState(prev => ({
-                                        ...prev,
-                                        [card.id]: { ...prev[card.id], email: e.target.value },
-                                      }))}
-                                      className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                    />
-                                    <button
-                                      data-testid={`admin-activate-submit-${card.id}`}
-                                      onClick={() => handleActivate(card.id, actState.email)}
-                                      disabled={!actState.email.trim() || actState.pending}
-                                      className="text-[12px] font-bold text-white bg-blue-600 rounded-xl px-3 py-2 touch-manipulation disabled:opacity-40"
-                                    >
-                                      {actState.pending ? 'Activating…' : 'Activate'}
-                                    </button>
-                                  </div>
-                                  {actState.error && (
-                                    <p className="text-[12px] text-red-600">{actState.error}</p>
-                                  )}
-                                </div>
+                              {setUp.error && (
+                                <p className="text-[12px] text-red-600 w-full">{setUp.error}</p>
                               )}
                             </>
                           )}

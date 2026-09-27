@@ -127,22 +127,22 @@ describe('KIND_TO_NBR_CATEGORY and NBR_CATEGORY_TO_KIND maps', () => {
 describe('adminCardControls', () => {
   test('non-admin gets nothing', () => {
     expect(adminCardControls({ status: 'unclaimed' }, viewer({ isAdmin: false })))
-      .toMatchObject({ canEdit: false, canManage: false, canActivate: false, canRemove: false, showAddRun: false })
+      .toMatchObject({ canEdit: false, canManage: false, canSetUp: false, canRemove: false, showAddRun: false })
   })
   test('admin can edit any card and add runs', () => {
     const a = adminCardControls({ status: 'live' }, viewer({ isAdmin: true }))
     expect(a.canEdit).toBe(true)
     expect(a.showAddRun).toBe(true)
   })
-  test('unclaimed: activate + remove, no manage', () => {
+  test('unclaimed: set up + remove, no manage', () => {
     expect(adminCardControls({ status: 'unclaimed' }, viewer({ isAdmin: true })))
-      .toMatchObject({ canManage: false, canActivate: true, canRemove: true })
+      .toMatchObject({ canManage: false, canSetUp: true, canRemove: true })
   })
-  test('claimed (draft/live): manage, no activate/remove', () => {
+  test('claimed (draft/live): manage, no set up/remove', () => {
     expect(adminCardControls({ status: 'draft' }, viewer({ isAdmin: true })))
-      .toMatchObject({ canManage: true, canActivate: false, canRemove: false })
+      .toMatchObject({ canManage: true, canSetUp: false, canRemove: false })
     expect(adminCardControls({ status: 'live' }, viewer({ isAdmin: true })))
-      .toMatchObject({ canManage: true, canActivate: false, canRemove: false })
+      .toMatchObject({ canManage: true, canSetUp: false, canRemove: false })
   })
 })
 

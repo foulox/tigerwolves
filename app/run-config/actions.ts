@@ -65,6 +65,16 @@ export async function setRunStatus(
 
     if (status !== 'draft' && status !== 'live') return { error: 'Invalid status' }
 
+    // A run with no active leader must not go live — runners would see a run nobody leads (#444).
+    if (status === 'live') {
+      const leaders = await sql`
+        SELECT 1 FROM run_leaders WHERE run_id = ${runId} AND active = true LIMIT 1
+      `
+      if (leaders.length === 0) {
+        return { error: 'Add a leader before this run can go live.' }
+      }
+    }
+
     await sql`UPDATE runs SET status = ${status} WHERE id = ${runId}`
     updateTag('tigerwolves-data')
     return { status }

@@ -1,7 +1,7 @@
 // Shared helpers for Clerk-user resolution, run-leader display-name derivation,
 // and the Clerk role grant/revoke that addRunLeaderByEmail/removeRunLeader
 // must perform when a leader is provisioned or removed.
-// Used by: app/run-config/actions.ts and app/admin/actions.ts (#413 activateRun).
+// Used by: app/run-config/actions.ts (the per-run Roster path).
 
 import { clerkClient } from '@clerk/nextjs/server'
 import { sql, leadsAnyActiveRun } from './db'
@@ -87,7 +87,8 @@ export async function grantLeaderRole(
 /**
  * Core leader-assignment: resolve the Clerk user by email, upsert the run_leaders
  * row, grant the leader role. NO auth gate and NO updateTag — callers own those.
- * Shared by addRunLeaderByEmail (run-config) and activateRun (#413 admin activate).
+ * Called only by addRunLeaderByEmail (the run-config Roster path); setUpRun no
+ * longer assigns a leader (#444).
  */
 export async function assignLeaderByEmail(runId: string, email: string): Promise<{ error?: string }> {
   const normalizedEmail = email.trim().toLowerCase()
