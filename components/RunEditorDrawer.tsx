@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { X, Loader2 } from 'lucide-react'
+import * as Sentry from '@sentry/nextjs'
 import { addDirectoryRun, editDirectoryRun } from '@/app/admin/actions'
 import { DAYS_OF_WEEK } from '@/lib/runIdentity'
 import type { NBRCategory } from '@/lib/runProfile'
@@ -76,15 +77,22 @@ export default function RunEditorDrawer({ open, onClose, onSaved, mode, initial 
     setErrorMsg(undefined)
     const fields = { name, day, time, location, distance, category }
     startTransition(async () => {
-      const result =
-        mode === 'add'
-          ? await addDirectoryRun(fields)
-          : await editDirectoryRun(initial!.runId, fields)
-      if (result.error) {
-        setErrorMsg(result.error)
-      } else {
-        onSaved()
-        handleClose()
+      // Guard the Server Action await: an unguarded throw into the Server Action
+      // boundary would trip global-error.tsx for the user (CLAUDE.md guardrail, #209).
+      try {
+        const result =
+          mode === 'add'
+            ? await addDirectoryRun(fields)
+            : await editDirectoryRun(initial!.runId, fields)
+        if (result.error) {
+          setErrorMsg(result.error)
+        } else {
+          onSaved()
+          handleClose()
+        }
+      } catch (err) {
+        Sentry.captureException(err)
+        setErrorMsg('Something went wrong. Please try again.')
       }
     })
   }

@@ -1,7 +1,7 @@
 // Shared helpers for Clerk-user resolution, run-leader display-name derivation,
 // and the Clerk role grant/revoke that addRunLeaderByEmail/removeRunLeader
 // must perform when a leader is provisioned or removed.
-// Used by: app/run-config/actions.ts.
+// Used by: app/run-config/actions.ts and app/admin/actions.ts (#413 activateRun).
 
 import { clerkClient } from '@clerk/nextjs/server'
 import { sql, leadsAnyActiveRun } from './db'
