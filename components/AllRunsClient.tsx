@@ -2,14 +2,30 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
+import * as Sentry from '@sentry/nextjs'
 import FeedbackDrawer from './FeedbackDrawer'
+import RunEditorDrawer from './RunEditorDrawer'
 import type { DirectoryRun } from '@/lib/db'
 import type { DirectoryCard, ViewerContext } from '@/lib/allRuns'
-import { directoryRunToCard, cardAffordance } from '@/lib/allRuns'
+import { directoryRunToCard, cardAffordance, adminCardControls } from '@/lib/allRuns'
 import type { RunStatus } from '@/lib/allRuns'
 import { toggleRunFollow } from '@/app/actions'
+import { activateRun, removeDirectoryRun } from '@/app/admin/actions'
+import { KIND_TO_NBR_CATEGORY } from '@/lib/runProfile'
+import type { NBRCategory } from '@/lib/runProfile'
 import { formatDateShort } from '@/lib/dateUtils'
+
+type EditorInitial = {
+  runId: string
+  name: string
+  day: string
+  time: string
+  location: string
+  distance: string
+  category: NBRCategory
+}
 
 type Day = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 type TimeFilter = 'all' | 'am' | 'pm' | 'wknd'
@@ -57,9 +73,14 @@ type Props = {
 }
 
 export default function AllRunsClient({ runs, viewer, initialFollowedIds, serverDate, showIntro = false }: Props) {
+  const router = useRouter()
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const [catFilter, setCatFilter] = useState<Category>('All')
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [editor, setEditor] = useState<{ mode: 'add' | 'edit'; initial?: EditorInitial } | null>(null)
+
+  // Per-card activate UI state: maps runId → { open, email, error, pending }
+  const [activateState, setActivateState] = useState<Record<string, { open: boolean; email: string; error: string | null; pending: boolean }>>({})
 
   // Follow state seeded from the server, then updated optimistically on toggle.
   const [followedSet, setFollowedSet] = useState<Set<string>>(
@@ -67,6 +88,9 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
   )
   const [pendingRunId, setPendingRunId] = useState<string | null>(null)
   const [, startTransition] = useTransition()
+
+  // Lookup map: raw DirectoryRun by id (needed to seed the edit drawer from raw fields)
+  const runsById = new Map(runs.map(r => [r.id, r]))
 
   function toggleFollow(runId: string) {
     setPendingRunId(runId)
@@ -84,6 +108,41 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
         })
       }
       setPendingRunId(null)
+    })
+  }
+
+  function handleRemove(runId: string, runName: string) {
+    if (!confirm(`Remove "${runName}"? This cannot be undone.`)) return
+    startTransition(async () => {
+      try {
+        const res = await removeDirectoryRun(runId)
+        if (res.error) {
+          alert(res.error)
+        } else {
+          router.refresh()
+        }
+      } catch (err) {
+        Sentry.captureException(err)
+        alert('Failed to remove run')
+      }
+    })
+  }
+
+  function handleActivate(runId: string, email: string) {
+    setActivateState(prev => ({ ...prev, [runId]: { ...prev[runId], pending: true, error: null } }))
+    startTransition(async () => {
+      try {
+        const res = await activateRun(runId, email)
+        if (res.error) {
+          setActivateState(prev => ({ ...prev, [runId]: { ...prev[runId], pending: false, error: res.error ?? null } }))
+        } else {
+          setActivateState(prev => ({ ...prev, [runId]: { open: false, email: '', error: null, pending: false } }))
+          router.refresh()
+        }
+      } catch (err) {
+        Sentry.captureException(err)
+        setActivateState(prev => ({ ...prev, [runId]: { ...prev[runId], pending: false, error: 'Failed to activate run' } }))
+      }
     })
   }
 
@@ -215,6 +274,19 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
         </div>
       )}
 
+      {/* Admin: + Add run button */}
+      {viewer.isAdmin && (
+        <div className="px-4 pb-2.5 flex justify-end">
+          <button
+            data-testid="admin-add-run"
+            onClick={() => setEditor({ mode: 'add' })}
+            className="text-[13px] font-bold text-white bg-[#111827] rounded-xl px-4 py-2 touch-manipulation"
+          >
+            + Add run
+          </button>
+        </div>
+      )}
+
       {/* Standfirst */}
       <p className="px-4 pb-2.5 text-[13px] leading-[1.45] text-[#8b93a1]">
         Over 20 weekly runs, every pace welcome. All paces, all distances.
@@ -300,7 +372,9 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
               ) : (
                 dayCards.map(card => {
                   const a = cardAffordance(card, viewerCtx)
+                  const admin = adminCardControls(card, viewerCtx)
                   const isFollowing = followedSet.has(card.id)
+                  const actState = activateState[card.id] ?? { open: false, email: '', error: null, pending: false }
 
                   const cardBody = (
                     <>
@@ -312,14 +386,31 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                         {card.startTime}
                       </span>
                       <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
-                        <span
-                          className={`font-bold tracking-tight leading-snug ${
-                            isLead ? 'text-[17px]' : 'text-[15px]'
-                          }`}
-                          data-testid="run-name"
-                        >
-                          {card.name}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`font-bold tracking-tight leading-snug ${
+                              isLead ? 'text-[17px]' : 'text-[15px]'
+                            }`}
+                            data-testid="run-name"
+                          >
+                            {card.name}
+                          </span>
+                          {/* Admin status badge */}
+                          {viewer.isAdmin && (
+                            <span
+                              data-testid={`admin-status-${card.id}`}
+                              className={`text-[9.5px] font-extrabold tracking-wide uppercase rounded-full px-2 py-[2px] border ${
+                                card.status === 'live'
+                                  ? 'bg-green-100 text-green-800 border-green-200'
+                                  : card.status === 'draft'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                  : 'bg-gray-100 text-gray-500 border-gray-200'
+                              }`}
+                            >
+                              {card.status === 'live' ? 'Live' : card.status === 'draft' ? 'Draft' : 'Unclaimed'}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[12.5px] text-[#8b93a1]">
                           {card.location} · {card.distance}
                         </span>
@@ -353,34 +444,140 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                     <div
                       key={card.id}
                       data-testid="run-row"
-                      className={`relative rounded-2xl px-[14px] py-3 flex gap-3 items-center bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04)] ${
+                      className={`relative rounded-2xl px-[14px] py-3 flex flex-col gap-2 bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04)] ${
                         isLead ? 'border border-[#fdba74]' : 'border border-[#f1f2f5]'
                       }`}
                     >
-                      {a.showDraftBadge && (
+                      {a.showDraftBadge && !viewer.isAdmin && (
                         <span className="absolute -top-2 left-3 text-[9.5px] font-extrabold tracking-wide uppercase rounded-full px-2 py-[2px] bg-amber-100 text-amber-800 border border-amber-200">
                           Draft
                         </span>
                       )}
-                      {a.linkable ? (
-                        <>
-                          <Link
-                            href={`/runs/${card.id}`}
-                            className="flex-1 min-w-0 flex gap-3 items-center touch-manipulation"
-                          >
-                            {cardBody}
-                            <span className="flex-shrink-0 text-[20px] font-bold text-[#c7ccd6] ml-0.5">›</span>
-                          </Link>
-                          {joinButton}
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex-1 min-w-0 flex gap-3 items-center">
-                            {cardBody}
-                          </div>
-                          {/* Non-linkable rows: no chevron, no Join button for non-joinable */}
-                          {joinButton}
-                        </>
+                      {/* Main card row */}
+                      <div className="flex gap-3 items-center">
+                        {a.linkable ? (
+                          <>
+                            <Link
+                              href={`/runs/${card.id}`}
+                              className="flex-1 min-w-0 flex gap-3 items-center touch-manipulation"
+                            >
+                              {cardBody}
+                              <span className="flex-shrink-0 text-[20px] font-bold text-[#c7ccd6] ml-0.5">›</span>
+                            </Link>
+                            {joinButton}
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex-1 min-w-0 flex gap-3 items-center">
+                              {cardBody}
+                            </div>
+                            {/* Non-linkable rows: no chevron, no Join button for non-joinable */}
+                            {joinButton}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Admin controls row — only renders for admins */}
+                      {viewer.isAdmin && (
+                        <div className="flex flex-wrap gap-2 pt-1 border-t border-gray-100">
+                          {/* ✏️ Edit */}
+                          {admin.canEdit && (
+                            <button
+                              data-testid={`admin-edit-${card.id}`}
+                              aria-label={`Edit ${card.name}`}
+                              onClick={() => {
+                                const r = runsById.get(card.id)!
+                                setEditor({
+                                  mode: 'edit',
+                                  initial: {
+                                    runId: r.id,
+                                    name: r.name,
+                                    day: r.day_of_week ?? '',
+                                    time: r.meeting_time ?? '',
+                                    location: r.meeting_location ?? '',
+                                    distance: r.distance ?? '',
+                                    category: KIND_TO_NBR_CATEGORY[r.kind ?? ''] as NBRCategory ?? 'Easy Runs',
+                                  },
+                                })
+                              }}
+                              className="text-[12px] font-bold text-gray-600 bg-gray-100 rounded-lg px-2.5 py-1 touch-manipulation hover:bg-gray-200"
+                            >
+                              ✏️ Edit
+                            </button>
+                          )}
+
+                          {/* ⚙️ Manage → */}
+                          {admin.canManage && (
+                            <Link
+                              href={`/admin/runs/${card.id}`}
+                              data-testid={`admin-manage-${card.id}`}
+                              className="text-[12px] font-bold text-gray-600 bg-gray-100 rounded-lg px-2.5 py-1 touch-manipulation hover:bg-gray-200"
+                            >
+                              ⚙️ Manage →
+                            </Link>
+                          )}
+
+                          {/* 👤 Activate → */}
+                          {admin.canActivate && (
+                            <>
+                              <button
+                                data-testid={`admin-activate-${card.id}`}
+                                onClick={() => setActivateState(prev => ({
+                                  ...prev,
+                                  [card.id]: { open: !actState.open, email: actState.email, error: null, pending: false },
+                                }))}
+                                className="text-[12px] font-bold text-blue-700 bg-blue-50 rounded-lg px-2.5 py-1 touch-manipulation hover:bg-blue-100"
+                              >
+                                👤 Activate →
+                              </button>
+                              {actState.open && (
+                                <div className="w-full flex flex-col gap-1.5 mt-1">
+                                  <label
+                                    htmlFor={`activate-email-${card.id}`}
+                                    className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400"
+                                  >
+                                    Leader email
+                                  </label>
+                                  <div className="flex gap-2">
+                                    <input
+                                      id={`activate-email-${card.id}`}
+                                      type="email"
+                                      placeholder="leader@example.com"
+                                      value={actState.email}
+                                      onChange={e => setActivateState(prev => ({
+                                        ...prev,
+                                        [card.id]: { ...prev[card.id], email: e.target.value },
+                                      }))}
+                                      className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                    />
+                                    <button
+                                      onClick={() => handleActivate(card.id, actState.email)}
+                                      disabled={!actState.email.trim() || actState.pending}
+                                      className="text-[12px] font-bold text-white bg-blue-600 rounded-xl px-3 py-2 touch-manipulation disabled:opacity-40"
+                                    >
+                                      {actState.pending ? 'Activating…' : 'Activate'}
+                                    </button>
+                                  </div>
+                                  {actState.error && (
+                                    <p className="text-[12px] text-red-600">{actState.error}</p>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {/* 🗑 Remove */}
+                          {admin.canRemove && (
+                            <button
+                              data-testid={`admin-remove-${card.id}`}
+                              aria-label={`Remove ${card.name}`}
+                              onClick={() => handleRemove(card.id, card.name)}
+                              className="text-[12px] font-bold text-red-600 bg-red-50 rounded-lg px-2.5 py-1 touch-manipulation hover:bg-red-100"
+                            >
+                              🗑
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   )
@@ -408,6 +605,14 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
           </button>
         </div>
       </div>
+
+      <RunEditorDrawer
+        open={!!editor}
+        mode={editor?.mode ?? 'add'}
+        initial={editor?.initial}
+        onClose={() => setEditor(null)}
+        onSaved={() => { setEditor(null); router.refresh() }}
+      />
 
       <FeedbackDrawer
         open={feedbackOpen}

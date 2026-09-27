@@ -67,6 +67,23 @@ export type Affordance = {
   following: boolean
 }
 
+// #413: Compute admin action availability for a directory card given the viewer's context.
+// Gating is admin-only; status drives which specific controls apply.
+export function adminCardControls(
+  run: { status: RunStatus },
+  viewer: ViewerContext,
+): { canEdit: boolean; canManage: boolean; canActivate: boolean; canRemove: boolean; showAddRun: boolean } {
+  const admin = viewer.isAdmin
+  const unclaimed = run.status === 'unclaimed'
+  return {
+    canEdit: admin,                 // every card is quick-editable by admin (incl. unclaimed)
+    canManage: admin && !unclaimed, // claimed runs have a full-settings screen
+    canActivate: admin && unclaimed, // hand an unclaimed stub to a leader
+    canRemove: admin && unclaimed,  // deleting a live/draft run is #363
+    showAddRun: admin,
+  }
+}
+
 // #365: Compute display affordances for a directory card given the viewer's
 // context. Affordance rules are the single source of truth for what each
 // run status means for each viewer type.
