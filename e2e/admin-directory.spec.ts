@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test'
 // publicMetadata.admin === true so the admin controls render on /all-runs.
 // The fixture run 'sunday-e2e-testers' is created by this spec and cleaned
 // up by scripts/seed-e2e.ts on the next run (self-heal pattern).
-test('admin adds, edits, activates, and navigates to full settings', async ({ page }) => {
+test('admin adds, edits, sets up, and navigates to full settings', async ({ page }) => {
   test.setTimeout(90000)
   await page.goto('/all-runs')
   await page.waitForLoadState('load')

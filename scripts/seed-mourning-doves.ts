@@ -49,7 +49,7 @@ async function main(): Promise<void> {
     throw new Error(
       `seed-mourning-doves.ts will load the REAL Mourning Doves library ` +
         `(${MOURNING_DOVES_FAMILIES.length} families / ${variantCount} variants) into the ` +
-        `already-activated run '${DOVES_RUN_ID}' on host:\n  ${host}\n` +
+        `already-set-up run '${DOVES_RUN_ID}' on host:\n  ${host}\n` +
         `Set up "Wednesday Mourning Doves" in-app first if it doesn't exist here yet. ` +
         `Re-run with --yes (or SEED_MOURNING_DOVES_YES=1) to confirm this is the branch you intend.`,
     )

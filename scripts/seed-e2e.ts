@@ -153,10 +153,10 @@ export async function seedE2E(): Promise<void> {
   // depend on this.
   await sql`DELETE FROM runner_follows WHERE run_id IN ('monday-morning-easy-run', 'tuesday-morning-tigerwolves', 'wednesday-mourning-doves', 'e2e-draft-thursday')`
 
-  // #413: self-heal the admin lifecycle fixture — the e2e/admin-directory.spec.ts
-  // creates a real 'sunday-e2e-testers' run (and on activate, a run_leaders row +
-  // run_group for it). Delete in FK-safe order: run_leaders before runs.
-  // run_groups is cleaned up by name. run_workouts is already fully wiped above.
+  // #413/#444: self-heal the admin lifecycle fixture — the e2e/admin-directory.spec.ts
+  // creates a real 'sunday-e2e-testers' run and sets it up (run_group created, state → draft).
+  // Delete in FK-safe order: run_leaders before runs. run_groups is cleaned up by name.
+  // run_workouts is already fully wiped above.
   await sql`DELETE FROM run_leaders WHERE run_id = 'sunday-e2e-testers'`
   await sql`DELETE FROM runs WHERE id = 'sunday-e2e-testers'`
   await sql`DELETE FROM run_groups WHERE name = 'Sunday E2E Testers'`
@@ -355,7 +355,7 @@ export async function seedE2E(): Promise<void> {
   // 'Long') — no longer a separate shadow run. It owns a couple of curated
   // REAL Long routes (CURATED_DOVES_ROUTES) so #382's route-run preview and the
   // per-run route card have a genuine Long/route fixture to exercise. Its group is
-  // the same "Wednesday Mourning Doves" activation creates in production.
+  // the same "Wednesday Mourning Doves" set-up creates in production.
   // clerk_user_id on the leader is NULL — link an account to browse it as leader.
   const existingDovesGroup = await sql`SELECT id FROM run_groups WHERE name = 'Wednesday Mourning Doves'`
   const dovesGroupId = existingDovesGroup.length > 0
