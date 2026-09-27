@@ -597,3 +597,45 @@ describe.skipIf(!onTestData)('setRunStatus — DB-backed cases', () => {
     expect(sibling[0].status).toBe('draft')
   })
 })
+
+// Go-live guard (#444): a leaderless run must not be published. setUpRun (Task 1)
+// flips unclaimed → draft with no leader; this asserts draft → live is blocked until
+// an active leader exists.
+describe.skipIf(!onTestData)('setRunStatus — leaderless go-live guard (#444)', () => {
+  const NOLEADER_RUN = 'test-status-444-noleader'
+  const ADMIN_USER = 'user_statustest_admin_444' // admin, so auth/ownership always pass
+  const LEADER_NAME = 'StatusTest LeaderC 444'
+
+  beforeAll(async () => {
+    await sql`INSERT INTO runs (id, name, status) VALUES (${NOLEADER_RUN}, 'Status Test 444 No Leader', 'draft') ON CONFLICT (id) DO UPDATE SET status = 'draft'`
+    // Ensure the run starts with zero leaders.
+    await sql`DELETE FROM run_leaders WHERE run_id = ${NOLEADER_RUN}`
+  })
+
+  afterAll(async () => {
+    await sql`DELETE FROM run_leaders WHERE run_id = ${NOLEADER_RUN}`
+    await sql`DELETE FROM runs WHERE id = ${NOLEADER_RUN}`
+  })
+
+  test('leaderless draft → live is blocked', async () => {
+    vi.mocked(currentUser).mockResolvedValue({ id: ADMIN_USER, publicMetadata: { admin: true } } as never)
+    const res = await setRunStatus(NOLEADER_RUN, 'live')
+    expect(res.error).toBe('Add a leader before this run can go live.')
+    // The guard must not have flipped the row.
+    const row = await sql`SELECT status FROM runs WHERE id = ${NOLEADER_RUN}`
+    expect(row[0].status).toBe('draft')
+  })
+
+  test('once an active leader is attached, draft → live succeeds', async () => {
+    await sql`
+      INSERT INTO run_leaders (run_id, name, clerk_user_id, sort_order, active)
+      VALUES (${NOLEADER_RUN}, ${LEADER_NAME}, ${ADMIN_USER}, 1, true)
+    `
+    vi.mocked(currentUser).mockResolvedValue({ id: ADMIN_USER, publicMetadata: { admin: true } } as never)
+    const res = await setRunStatus(NOLEADER_RUN, 'live')
+    expect(res.error).toBeUndefined()
+    expect(res.status).toBe('live')
+    const row = await sql`SELECT status FROM runs WHERE id = ${NOLEADER_RUN}`
+    expect(row[0].status).toBe('live')
+  })
+})
