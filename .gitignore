@@ -66,5 +66,7 @@ scripts/backfill-review.json
 Playwright Report.zip
 *.zip
 
-# superpowers working files — canonical copy is the GitHub issue (PUBLISH), not git
-docs/superpowers/
+# superpowers working files — specs are ignored (canonical copy is the GitHub
+# issue at PUBLISH), but plans are tracked and committed per the CLAUDE.md workflow.
+docs/superpowers/*
+!docs/superpowers/plans/
