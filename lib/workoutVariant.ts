@@ -8,7 +8,9 @@ export const WorkoutVariantInputSchema = z.object({
   category: z.enum(FORM_CATEGORIES),
   type: z.enum(FORM_TYPES),
   reason: z.string(),
-  instructions: z.string().min(1),
+  // #469: required only for Quality workouts (enforced in the superRefine below);
+  // Easy/Long may be just a route + distance, so a blank is allowed there.
+  instructions: z.string(),
   distTime: z.string(),
   energySystem: z.string(),
   hrZone: z.string(),
@@ -31,6 +33,17 @@ export const WorkoutVariantInputSchema = z.object({
   distanceMiles: z.number().nullable(),
   elevationGainFeet: z.number().nullable(),
   geometry: z.unknown().nullable(),
+}).superRefine((val, ctx) => {
+  // #469: Instructions are required only for Quality workouts (where the workout
+  // structure is the whole point). Easy/Long runs are often just "run N miles on
+  // this route", so a blank is allowed for them.
+  if (val.category === 'Quality' && val.instructions.trim() === '') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['instructions'],
+      message: 'Instructions are required for Quality workouts.',
+    })
+  }
 })
 
 export type WorkoutVariantInput = z.infer<typeof WorkoutVariantInputSchema>
