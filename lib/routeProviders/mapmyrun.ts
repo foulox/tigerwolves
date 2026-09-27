@@ -11,8 +11,8 @@ const FEET_PER_METER = 3.28084
 // Only the canonical view URL carries a route id: mapmyrun.com/routes/view/{id}
 const ROUTE_RE = /mapmyrun\.com\/routes\/view\/(\d+)/i
 
-// A browser-like UA — MapMyRun returns the hydrated shell to bots but the embedded
-// state is present either way; a real UA avoids any UA-based gating.
+// A browser-like UA to avoid any UA-based gating or bot-blocking that could suppress
+// the embedded __STATE__ (spike confirmed a browser UA returns the full route state).
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
 
