@@ -52,7 +52,10 @@ export default function RunEditorDrawer({ open, onClose, onSaved, mode, initial 
     } else if (mode === 'add') {
       reset()
     }
-  }, [initial, open]) // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // `mode` intentionally omitted: callers always change `open`/`initial` when switching modes/cards,
+    // so this effect re-seeds correctly without it. `reset` omitted: stable function, no captured state.
+  }, [initial, open])
 
   function reset() {
     setName('')
