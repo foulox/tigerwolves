@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { stravaProvider, parseStravaRouteId } from '@/lib/routeProviders/strava'
+
+vi.mock('@/lib/strava/token', () => ({
+  getStravaAccessToken: vi.fn().mockResolvedValue('tok'),
+}))
 
 describe('stravaProvider.matches', () => {
   it('matches short and long strava route URLs, with/without scheme/www', () => {
@@ -36,5 +40,48 @@ describe('parseStravaRouteId', () => {
   it('returns null for a non-route or garbage input', () => {
     expect(parseStravaRouteId('https://strava.com/athletes/999')).toBeNull()
     expect(parseStravaRouteId('')).toBeNull()
+  })
+})
+
+describe('stravaProvider.fetch', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('maps distance (m→mi), elevation_gain (m→ft), and summary_polyline on 200', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        name: 'Doves loop',
+        distance: 16093.44, // 10.0 mi
+        elevation_gain: 100, // 328.084 ft
+        map: { summary_polyline: 'abc_polyline' },
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const r = await stravaProvider.fetch('https://www.strava.com/routes/6647021')
+    expect(r).not.toBeNull()
+    expect(r!.distanceMiles).toBeCloseTo(10.0, 2)
+    expect(r!.elevationFeet).toBeCloseTo(328.084, 1)
+    expect(r!.geometry).toEqual({ summaryPolyline: 'abc_polyline' })
+    expect(r!.name).toBe('Doves loop')
+    // called the routes endpoint with the parsed id and a Bearer token
+    const [reqUrl, opts] = fetchMock.mock.calls[0]
+    expect(reqUrl).toBe('https://www.strava.com/api/v3/routes/6647021')
+    expect((opts as RequestInit).headers).toMatchObject({ Authorization: 'Bearer tok' })
+  })
+
+  it('returns null when the id cannot be parsed', async () => {
+    expect(await stravaProvider.fetch('https://strava.com/athletes/1')).toBeNull()
+  })
+
+  it('returns null on a non-200 (private/404/401) response — no throw', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
+    expect(await stravaProvider.fetch('https://www.strava.com/routes/6647021')).toBeNull()
+  })
+
+  it('returns null when fetch itself throws (network error) — no throw', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')))
+    expect(await stravaProvider.fetch('https://www.strava.com/routes/6647021')).toBeNull()
   })
 })
