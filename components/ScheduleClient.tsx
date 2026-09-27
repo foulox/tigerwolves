@@ -17,6 +17,9 @@ import LeaderPicker from '@/components/LeaderPicker'
 import AdoptRouteControls from '@/components/AdoptRouteControls'
 import { formatDateShort } from '@/lib/dateUtils'
 import { schedulePickerScope, schedulePickerSuggestions, allRunsCategories, allRunsTypes } from '@/lib/schedulePicker'
+import RatingFilter from '@/components/RatingFilter'
+import { passesRatingThreshold, rankByRating } from '@/lib/rating'
+import type { RatingThreshold } from '@/lib/rating'
 
 
 type PlanStandaloneRow = { kind: 'standalone'; workout: WorkoutVariantRow }
@@ -74,8 +77,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   // whole catalog, with its own category/type browse pills (independent of the week's
   // type chips, which the widened mode ignores).
   const [showAllRuns, setShowAllRuns] = useState(false)
+  const [ratingThreshold, setRatingThreshold] = useState<RatingThreshold>('any')
+  const [sortBy, setSortBy] = useState<'recent' | 'rating'>('recent')
   const [browseCategory, setBrowseCategory] = useState<string | null>(null)
   const [browseType, setBrowseType] = useState<string | null>(null)
+  const [browseTypeCleared, setBrowseTypeCleared] = useState(false)
   const [planTab, setPlanTab] = useState<'post' | 'browse'>('post')
   const [leaderPickerOpen, setLeaderPickerOpen] = useState(false)
   const [localLeader, setLocalLeader] = useState<string | null>(null)
@@ -172,7 +178,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
   const allSuggestions = useMemo(() => {
     if (!entry) return []
-    const weekTypes = activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
+    const weekTypes = showAllRuns
+      ? []
+      : browseTypeCleared
+        ? []
+        : activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
     return schedulePickerSuggestions({
       showAllRuns,
       ownVariants,
@@ -184,7 +194,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       browseType,
       plannedId: plannedWorkout?.id ?? null,
     })
-  }, [entry, ownVariants, variants, showAllRuns, activeType, plannedWorkout, isWorkout, runCategory, browseCategory, browseType])
+  }, [entry, ownVariants, variants, showAllRuns, activeType, browseTypeCleared, plannedWorkout, isWorkout, runCategory, browseCategory, browseType])
 
   const pickerSource = useMemo(() => {
     const q = pickerSearch.toLowerCase()
@@ -206,22 +216,32 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
   }, [pickerSearch, allSuggestions, scopeVariants, plannedWorkout, showAllRuns, browseCategory, browseType])
 
+  // #241: apply the rating threshold, then optionally the confidence-weighted
+  // "Top rated" sort, on top of whatever pickerSource already filtered (scope,
+  // type chip / All-runs pills, search). Rating ANDs with those — never bypasses.
+  const rankedSource = useMemo(() => {
+    const filtered = pickerSource.filter(w =>
+      passesRatingThreshold(voteData[workoutVoteId(w.name, w.label ?? '')], ratingThreshold),
+    )
+    return sortBy === 'rating' ? rankByRating(filtered, voteData) : filtered
+  }, [pickerSource, ratingThreshold, sortBy, voteData])
+
   const displayRows = useMemo<PlanDisplayRow[]>(() => {
     const rows: PlanDisplayRow[] = []
     const seen = new Set<number>()
-    for (const w of pickerSource) {
+    for (const w of rankedSource) {
       if (!familyIds.has(w.familyId)) {
         rows.push({ kind: 'standalone', workout: w })
       } else if (!seen.has(w.familyId)) {
         seen.add(w.familyId)
-        const members = pickerSource
+        const members = rankedSource
           .filter(p => p.familyId === w.familyId)
           .sort((a, b) => (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity))
         rows.push({ kind: 'family', familyId: w.familyId, name: w.name, variants: members, total: members.length })
       }
     }
     return rows
-  }, [pickerSource, familyIds])
+  }, [rankedSource, familyIds])
 
   const visibleRows = pickerSearch ? displayRows : displayRows.slice(0, showCount)
   const remainingCount = pickerSearch ? 0 : displayRows.length - showCount
@@ -257,6 +277,12 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setShowAllRuns(false)
     setBrowseCategory(null)
     setBrowseType(null)
+    setBrowseTypeCleared(false)
+    // #241: rating threshold + sort are browse filters too — reset them on a week
+    // change like every other filter, so a "Top rated" / "🥳 only" view doesn't
+    // silently carry into the next week's list (mirrors the #405 stale-filter fix).
+    setRatingThreshold('any')
+    setSortBy('recent')
     setPlanTab('post')
     setLeaderPickerOpen(false)
     setLocalLeader(null)
@@ -269,9 +295,13 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setShowAllRuns(all)
     setBrowseCategory(null)
     setBrowseType(null)
+    setBrowseTypeCleared(false)
     // #405 (review): reset the week-type chip too, like every other filter — else a
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
+    // #241: same for the rating filter + sort — reset on a scope round-trip.
+    setRatingThreshold('any')
+    setSortBy('recent')
     setPickerSearch('')
     setShowCount(3)
   }
@@ -347,6 +377,10 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   // the mockup's fixed min-height in the design README. Mount-time sizing is
   // handled by setPostRef; this effect covers content changes while mounted.
   useEffect(() => { growToFit(postRef.current) }, [draftPost])
+
+  // #241: a change to the committed week type re-derives the browse chip — a
+  // previously-cleared chip must snap back to filtering by the new committed type.
+  useEffect(() => { setBrowseTypeCleared(false) }, [activeType])
 
   function handleCopy() {
     navigator.clipboard.writeText(draftPost).then(() => {
@@ -546,17 +580,46 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
             {(!plannedWorkout || planTab === 'browse') && (
               <>
                 {/* #405: Your run / All runs scope toggle — mirrors the Library's.
-                    "All runs" is the one-time cross-run borrow escape hatch. */}
-                {runConfig.runGroupId != null && (
-                  <div className="flex gap-2 mb-2">
-                    <button
-                      onClick={() => setScope(false)}
-                      className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
-                    >Your run</button>
-                    <button
-                      onClick={() => setScope(true)}
-                      className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
-                    >All runs</button>
+                    "All runs" is the one-time cross-run borrow escape hatch.
+                    #241: RatingFilter always visible, right-aligned on this same row. */}
+                <div className="flex items-center gap-2 mb-2">
+                  {runConfig.runGroupId != null && (
+                    <>
+                      <button
+                        onClick={() => setScope(false)}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+                      >Your run</button>
+                      <button
+                        onClick={() => setScope(true)}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+                      >All runs</button>
+                    </>
+                  )}
+                  <RatingFilter value={ratingThreshold} onChange={setRatingThreshold} className="ml-auto" />
+                </div>
+
+                {!showAllRuns && isWorkout && availableTypes.length > 1 && (
+                  <div className="flex items-center gap-2 px-1 mb-2 text-xs">
+                    {browseTypeCleared ? (
+                      <button
+                        type="button"
+                        onClick={() => setBrowseTypeCleared(false)}
+                        className="font-semibold px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-600 touch-manipulation"
+                      >Filter to {activeType ?? entry.workoutType} type</button>
+                    ) : (
+                      <>
+                        <span className="font-semibold px-3 py-1 rounded-full bg-orange-500 text-white inline-flex items-center gap-1">
+                          {activeType ?? entry.workoutType}
+                          <button
+                            type="button"
+                            aria-label="Clear type filter — show all types"
+                            onClick={() => setBrowseTypeCleared(true)}
+                            className="touch-manipulation leading-none"
+                          >✕</button>
+                        </span>
+                        <span className="text-gray-400">Clear — show all types</span>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -575,6 +638,18 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-orange-400"
                   />
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+                </div>
+
+                {/* #241: Least recent / Top rated sort toggle */}
+                <div className="flex items-center gap-2 mb-3">
+                  <button
+                    onClick={() => setSortBy('recent')}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'recent' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+                  >Least recent</button>
+                  <button
+                    onClick={() => setSortBy('rating')}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'rating' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+                  >Top rated</button>
                 </div>
 
                 {/* #405: "All runs" category + type pills — every category/type across
@@ -609,11 +684,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                             : 'No workouts in your library yet.')}
                   </p>
                 ) : displayRows.length === 0 ? (
-                  <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
+                  <p className="text-gray-400 italic text-sm">{pickerSearch ? 'No workouts match your search.' : ratingThreshold !== 'any' ? 'No workouts match this rating filter.' : 'No workouts match these filters.'}</p>
                 ) : (
                   <div className="mb-6">
                     <div className="text-sm font-bold text-gray-700 mb-2">
-                      {pickerSearch ? `All workouts matching "${pickerSearch}"` : 'Workouts — least recently used'}
+                      {pickerSearch ? `All workouts matching "${pickerSearch}"` : sortBy === 'rating' ? 'Workouts — top rated' : 'Workouts — least recently used'}
                     </div>
                     <div className="flex flex-col gap-2">
                       {visibleRows.map(row => {
