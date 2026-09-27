@@ -1,12 +1,9 @@
 'use server'
-import { currentUser } from '@clerk/nextjs/server'
-import { updateTag } from 'next/cache'
-import * as Sentry from '@sentry/nextjs'
 import { sql, resolveOrCreateRunGroup } from '@/lib/db'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity, slugifyRunName } from '@/lib/runIdentity'
 
-// Private helper — no admin gate, no cache invalidation. Called by createRun
+// Private helper — no admin gate, no cache invalidation. Called by activateRun (#413)
 // after it performs its own auth + pre-checks.
 async function insertRun(
   data: { identity: RunIdentityValues; kind: string; workoutTypes: string[] },
@@ -73,27 +70,4 @@ async function insertRun(
   return { runId }
 }
 
-export async function createRun(data: {
-  identity: RunIdentityValues
-  kind: string
-  workoutTypes: string[]
-}): Promise<{ error?: string; runId?: string }> {
-  try {
-    // 1. Admin gate — publicMetadata.admin === true (not role)
-    const user = await currentUser()
-    if (!user || user.publicMetadata?.admin !== true) return { error: 'Unauthorized' }
-
-    const result = await insertRun(data)
-    if (result.error) return result
-
-    // Invalidate cache
-    updateTag('tigerwolves-data')
-
-    // Return the new run's slug id
-    return { runId: result.runId }
-  } catch (err) {
-    Sentry.captureException(err)
-    return { error: 'Failed to create run' }
-  }
-}
 
