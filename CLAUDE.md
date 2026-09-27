@@ -7,6 +7,10 @@ Live at: https://tigerwolves.foulox.me (custom domain, since the 2026-07-03 Cler
 Staging: **retired (#429).** The standalone staging Vercel deployment, the `staging` git branch, and `ff-staging.yml` are gone. The demo now stands on its own Vercel project (below), so nothing rides on "staging" anymore — all that's left of the word is the automated-test Neon branch, renamed `test-data` (see the three-database split in Tooling Notes).
 Demo: https://demo.tigerwolves.foulox.me — the demo is its **own** Vercel project (`tigerwolves-demo`, deploys from `main`), with its **own** Clerk instance and PostHog project, reading the durable `demo-data` Neon branch directly via its own `DATABASE_URL` (no `DEMO_DATABASE_URL` override — that was retired in #429 once the demo became first-class; #427/#429). A distinct, curated, **persistent** environment — NOT the `test-data` E2E-wipe data (see the three-database split in Tooling Notes). Share this instead of the raw Vercel URL when showing the authenticated/leader view. Dedicated login: `foulox+demo@gmail.com`, a real **demo-instance** Clerk account distinct from the CI/Playwright test-leader one, so demo browsing doesn't pollute PostHog's leader/runner usage split.
 
+## How to talk to me
+
+**Don't narrate your reasoning.** Talk to Lou like a customer, not by thinking out loud. State the decision he needs to make, then only the background that helps him make it. Keep the options you weighed and the chain that got you there out of the message unless he asks. A message that walks through your whole thought process is confusing even when the thinking is sound.
+
 ## Diagnosing & claims — evidence before assertion
 
 **When something is broken, or you're explaining *why* something is the way it is, you may not state a cause you have not confirmed with a command run *this session*.** Show the command and its output. A plausible causal chain is not evidence — run the query, read the file, hit the endpoint. Work one hypothesis at a time and get the evidence that would *disprove* it before you act on it. "Don't tell me the cause — show me the query that proves it."
