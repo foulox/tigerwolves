@@ -72,7 +72,13 @@ export default function AddWorkoutForm({
             }
           })
           .catch(() => { /* graceful fallback — leave manual fields blank */ })
-      : Promise.resolve()
+      : Promise.resolve().then(() => {
+          // #463: route cleared → drop any stale enriched metrics so a linkless
+          // route can't persist a distance/elevation/geometry from a prior fetch.
+          setDistanceMiles('')
+          setElevationFeet('')
+          setGeometry(null)
+        })
     try {
       const res = await fetch('/api/workout/infer', {
         method: 'POST',

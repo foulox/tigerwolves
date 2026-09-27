@@ -67,7 +67,13 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
             }
           })
           .catch(() => { /* graceful fallback — leave manual fields blank */ })
-      : Promise.resolve()
+      : Promise.resolve().then(() => {
+          // #463: route cleared → drop the stale enriched metrics seeded from the
+          // existing variant so removing the link also clears distance/elevation/geometry.
+          setDistanceMiles('')
+          setElevationFeet('')
+          setGeometry(null)
+        })
     try {
       const res = await fetch('/api/workout/infer', {
         method: 'POST',

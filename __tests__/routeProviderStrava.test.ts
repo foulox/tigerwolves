@@ -71,6 +71,16 @@ describe('stravaProvider.fetch', () => {
     expect((opts as RequestInit).headers).toMatchObject({ Authorization: 'Bearer tok' })
   })
 
+  it('yields null geometry (not a shell object) when the route has no summary_polyline', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ name: 'No polyline', distance: 1609.344, elevation_gain: 0, map: {} }),
+    }))
+    const r = await stravaProvider.fetch('https://www.strava.com/routes/6647021')
+    expect(r).not.toBeNull()
+    expect(r!.geometry).toBeNull()
+  })
+
   it('returns null when the id cannot be parsed', async () => {
     expect(await stravaProvider.fetch('https://strava.com/athletes/1')).toBeNull()
   })

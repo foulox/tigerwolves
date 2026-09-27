@@ -42,7 +42,9 @@ export const stravaProvider: RouteProvider = {
       return {
         distanceMiles: distance / METERS_PER_MILE,
         elevationFeet: elevation * FEET_PER_METER,
-        geometry: { summaryPolyline: data.map?.summary_polyline ?? '' },
+        // #463: no polyline → null geometry, not a shell object, so a future
+        // `geometry != null` consumer isn't misled into thinking geometry exists.
+        geometry: data.map?.summary_polyline ? { summaryPolyline: data.map.summary_polyline } : null,
         name: data.name,
       }
     } catch {
