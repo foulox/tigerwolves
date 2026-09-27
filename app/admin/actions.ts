@@ -38,6 +38,30 @@ async function insertRun(
   return { runId: candidate }
 }
 
+export async function editDirectoryRun(runId: string, fields: {
+  name: string; day: string; time: string; location: string; distance: string; category: NBRCategory
+}): Promise<{ error?: string }> {
+  try {
+    const user = await currentUser()
+    if (!user || user.publicMetadata?.admin !== true) return { error: 'Unauthorized' }
+    const name = fields.name.trim()
+    if (!name) return { error: 'Name is required' }
+    const kind = NBR_CATEGORY_TO_KIND[fields.category]
+    if (!kind) return { error: 'Invalid category' }
+    await sql`
+      UPDATE runs SET
+        name = ${name}, day_of_week = ${fields.day}, meeting_time = ${fields.time},
+        meeting_location = ${fields.location}, distance = ${fields.distance}, kind = ${kind}
+      WHERE id = ${runId}
+    `
+    updateTag('tigerwolves-data')
+    return {}
+  } catch (err) {
+    Sentry.captureException(err)
+    return { error: 'Failed to save run' }
+  }
+}
+
 export async function addDirectoryRun(fields: {
   name: string; day: string; time: string; location: string; distance: string; category: NBRCategory
 }): Promise<{ error?: string; runId?: string }> {
