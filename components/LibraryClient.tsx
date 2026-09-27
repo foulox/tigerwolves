@@ -246,7 +246,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   return (
     <div className="pb-4">
       <div className="px-4 mb-4 flex justify-between items-start">
-        <p className="text-sm text-gray-500">{filtered.length} workouts · oldest first</p>
+        <p className="text-sm text-gray-500">{filtered.length} workouts · {sortBy === 'rating' ? 'top rated' : 'oldest first'}</p>
         <div className="flex items-center gap-2" data-tour="library-manage">
           <button
             onClick={() => setShowAbbrev(v => !v)}

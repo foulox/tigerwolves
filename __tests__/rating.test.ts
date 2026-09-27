@@ -109,7 +109,7 @@ describe('rankByRating', () => {
     const rows = [row(3, 'C'), row(1, 'A'), row(2, 'B')]
     const out = rankByRating(rows, {})
     expect(out.map(r => r.id)).toEqual([3, 1, 2])
-    for (const r of rows) expect(ratingScore(null, meanOfRatedAverages({}))).toBe(0)
+    expect(ratingScore(null, meanOfRatedAverages({}))).toBe(0)
   })
 
   test('ratingScore matches the formula for a rated row', () => {

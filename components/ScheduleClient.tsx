@@ -633,7 +633,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 </div>
 
                 {/* #241: Least recent / Top rated sort toggle */}
-                <div className="flex gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-3">
                   <button
                     onClick={() => setSortBy('recent')}
                     className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'recent' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
@@ -676,11 +676,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                             : 'No workouts in your library yet.')}
                   </p>
                 ) : displayRows.length === 0 ? (
-                  <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
+                  <p className="text-gray-400 italic text-sm">{pickerSearch ? 'No workouts match your search.' : 'No workouts match these filters.'}</p>
                 ) : (
                   <div className="mb-6">
                     <div className="text-sm font-bold text-gray-700 mb-2">
-                      {pickerSearch ? `All workouts matching "${pickerSearch}"` : 'Workouts — least recently used'}
+                      {pickerSearch ? `All workouts matching "${pickerSearch}"` : sortBy === 'rating' ? 'Workouts — top rated' : 'Workouts — least recently used'}
                     </div>
                     <div className="flex flex-col gap-2">
                       {visibleRows.map(row => {
