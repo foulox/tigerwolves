@@ -44,6 +44,7 @@ describe('POST /api/route/enrich', () => {
     currentUser.mockResolvedValue({ publicMetadata: { role: 'leader' } })
     providerFor.mockReturnValue({ id: 'strava', fetch: vi.fn().mockResolvedValue(null) })
     const res = await POST(req({ url: 'https://www.strava.com/routes/6647021' }))
+    expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ enriched: false })
   })
 

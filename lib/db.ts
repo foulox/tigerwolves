@@ -389,7 +389,7 @@ export async function dbInsertWorkoutVariant(
 ): Promise<{ familyId: number; variantId: number }> {
   const [family] = await sql`
     INSERT INTO workout_families (name, category, type, reason, author, coaching_notes, map_link, run_group_id, distance_miles, elevation_gain_feet, geometry)
-    VALUES (${w.name}, ${w.category}, ${w.type}, ${w.reason}, ${w.author}, ${w.coachingNotes}, ${w.mapLink}, ${w.runGroupId}, ${w.distanceMiles}, ${w.elevationGainFeet}, ${w.geometry == null ? null : JSON.stringify(w.geometry)})
+    VALUES (${w.name}, ${w.category}, ${w.type}, ${w.reason}, ${w.author}, ${w.coachingNotes}, ${w.mapLink}, ${w.runGroupId}, ${w.distanceMiles}, ${w.elevationGainFeet}, ${w.geometry == null ? null : JSON.stringify(w.geometry)}::jsonb)
     RETURNING id
   `
   const familyId = family.id as number
@@ -435,7 +435,7 @@ export async function dbUpdateWorkoutVariant(variantId: number, w: WorkoutVarian
       run_group_id = ${w.runGroupId},
       distance_miles = ${w.distanceMiles},
       elevation_gain_feet = ${w.elevationGainFeet},
-      geometry = ${w.geometry == null ? null : JSON.stringify(w.geometry)}
+      geometry = ${w.geometry == null ? null : JSON.stringify(w.geometry)}::jsonb
     WHERE id = ${familyId}
   `
   await sql`
@@ -591,7 +591,7 @@ export async function dbRegroupVariants(
     VALUES (
       ${newName}, ${sourceFamily.category}, ${sourceFamily.type}, ${sourceFamily.reason},
       ${sourceFamily.author}, ${sourceFamily.coaching_notes}, ${sourceFamily.map_link}, ${sourceFamily.run_group_id},
-      ${sourceFamily.distance_miles}, ${sourceFamily.elevation_gain_feet}, ${sourceFamily.geometry == null ? null : JSON.stringify(sourceFamily.geometry)}
+      ${sourceFamily.distance_miles}, ${sourceFamily.elevation_gain_feet}, ${sourceFamily.geometry == null ? null : JSON.stringify(sourceFamily.geometry)}::jsonb
     )
     RETURNING id
   `

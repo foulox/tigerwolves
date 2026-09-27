@@ -586,6 +586,54 @@ describe.skipIf(!onTestData)('#401 workout ownership write path (AC4/AC5)', () =
   })
 })
 
+// #457: geometry JSONB round-trip — verifies the ::jsonb cast on the INSERT path and
+// that the value survives the write→read cycle as a parsed object (not a raw string).
+// Only the non-null case is exercised here; the null case is covered by every existing
+// test that spreads BASE_INPUT (geometry: null). Test-data-gated for the same reason
+// as all other write-integration tests: writes to the database, never touches production.
+describe.skipIf(!onTestData)('#457 geometry JSONB round-trip (non-null insert + read)', () => {
+  const GEO_INPUT = {
+    name: '__test_geometry_457__',
+    category: 'Quality' as const,
+    type: 'Hills' as const,
+    reason: 'geometry fixture',
+    author: null,
+    coachingNotes: null,
+    mapLink: null,
+    runGroupId: null,
+    instructions: 'WU 10; 5x2min hill; CD 10',
+    distTime: '',
+    energySystem: '',
+    hrZone: '',
+    rpe: '',
+    raceTypes: [],
+    trainingPhases: [],
+    hasTurnaround: false,
+    turnaround: '',
+    label: null,
+    sortOrder: null,
+    distanceMiles: null,
+    elevationGainFeet: null,
+    geometry: { summaryPolyline: 'abc_test_polyline' },
+  }
+  let familyId: number
+  let variantId: number
+
+  afterEach(async () => {
+    if (variantId) await sql`DELETE FROM workout_variants WHERE id = ${variantId}`
+    if (familyId) await sql`DELETE FROM workout_families WHERE id = ${familyId}`
+  })
+
+  it('inserts a non-null geometry and reads it back as the same parsed object', async () => {
+    const result = await dbInsertWorkoutVariant(GEO_INPUT)
+    familyId = result.familyId
+    variantId = result.variantId
+
+    const [family] = await sql`SELECT geometry FROM workout_families WHERE id = ${familyId}`
+    expect(family.geometry).toEqual({ summaryPolyline: 'abc_test_polyline' })
+  })
+})
+
 // #401 (Story A): getLeaderRunGroups — the owner-picker authorization boundary. It
 // returns ONLY the run_groups of runs the leader actively leads, never the whole
 // run_groups table (the 96fcb3e regression guard). Test-data-gated: depends on the
