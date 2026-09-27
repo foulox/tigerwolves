@@ -278,6 +278,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setBrowseCategory(null)
     setBrowseType(null)
     setBrowseTypeCleared(false)
+    // #241: rating threshold + sort are browse filters too — reset them on a week
+    // change like every other filter, so a "Top rated" / "🥳 only" view doesn't
+    // silently carry into the next week's list (mirrors the #405 stale-filter fix).
+    setRatingThreshold('any')
+    setSortBy('recent')
     setPlanTab('post')
     setLeaderPickerOpen(false)
     setLocalLeader(null)
@@ -294,6 +299,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     // #405 (review): reset the week-type chip too, like every other filter — else a
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
+    // #241: same for the rating filter + sort — reset on a scope round-trip.
+    setRatingThreshold('any')
+    setSortBy('recent')
     setPickerSearch('')
     setShowCount(3)
   }
@@ -676,7 +684,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                             : 'No workouts in your library yet.')}
                   </p>
                 ) : displayRows.length === 0 ? (
-                  <p className="text-gray-400 italic text-sm">{pickerSearch ? 'No workouts match your search.' : 'No workouts match these filters.'}</p>
+                  <p className="text-gray-400 italic text-sm">{pickerSearch ? 'No workouts match your search.' : ratingThreshold !== 'any' ? 'No workouts match this rating filter.' : 'No workouts match these filters.'}</p>
                 ) : (
                   <div className="mb-6">
                     <div className="text-sm font-bold text-gray-700 mb-2">
