@@ -1,8 +1,9 @@
 import type { RouteProvider } from './types'
 import { stravaProvider } from './strava'
+import { mapMyRunProvider } from './mapmyrun'
 
-// The single place the provider set is enumerated. #458 adds mapMyRunProvider here.
-export const PROVIDERS: RouteProvider[] = [stravaProvider]
+// The single place the provider set is enumerated.
+export const PROVIDERS: RouteProvider[] = [stravaProvider, mapMyRunProvider]
 
 export function providerFor(url: string): RouteProvider | null {
   if (!url) return null
