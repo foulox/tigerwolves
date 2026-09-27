@@ -12,6 +12,9 @@ import AdoptRouteControls from '@/components/AdoptRouteControls'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import { resolveAllowedTypes } from '@/lib/runProfile'
+import RatingFilter from '@/components/RatingFilter'
+import { passesRatingThreshold, rankByRating } from '@/lib/rating'
+import type { RatingThreshold } from '@/lib/rating'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -53,6 +56,8 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const [showAbbrev, setShowAbbrev] = useState(false)
   const [flagSheetFor, setFlagSheetFor] = useState<number | null>(null)
   const [showAllRuns, setShowAllRuns] = useState(false)
+  const [ratingThreshold, setRatingThreshold] = useState<RatingThreshold>('any')
+  const [sortBy, setSortBy] = useState<'recent' | 'rating'>('recent')
 
   const flaggedWorkout = flagSheetFor ? variants.find(w => w.id === flagSheetFor) ?? null : null
 
@@ -113,12 +118,18 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
     ? resolveAllowedTypes(presentTypes, allowedTypes ?? [])
     : Array.from(new Set(presentTypes)).sort()
 
-  const filtered = visibleVariants
+  const filteredBase = visibleVariants
     .filter(w => !effectiveCategory || w.category === effectiveCategory)
     .filter(w => !typeFilter || w.type === typeFilter)
     .filter(w => !raceFilter || w.raceTypes.includes(raceFilter))
     .filter(matchesSearch)
-    .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
+    // #241: raw-average rating threshold (no minimum vote count); ANDs with the filters above.
+    .filter(w => passesRatingThreshold(voteData[workoutVoteId(w.name, w.label ?? '')], ratingThreshold))
+  // #241: "Top rated" ranks the flat variant list by the confidence-weighted score;
+  // the existing first-seen family grouping below preserves this order.
+  const filtered = sortBy === 'rating'
+    ? rankByRating(filteredBase, voteData)
+    : [...filteredBase].sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
 
   // A family is "multi-version" (expandable Standard/Variation N group) only
   // when its familyId has more than one variant row — same rule ScheduleClient
@@ -266,19 +277,22 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
         </div>
       )}
 
-      {/* Your run / All runs toggle */}
-      {runId && (
-        <div className="flex gap-2 px-4 pb-2">
-          <button
-            onClick={() => setScope(false)}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
-          >Your run</button>
-          <button
-            onClick={() => setScope(true)}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
-          >All runs</button>
-        </div>
-      )}
+      {/* Your run / All runs toggle + #241 rating filter */}
+      <div className="flex items-center gap-2 px-4 pb-2">
+        {runId && (
+          <>
+            <button
+              onClick={() => setScope(false)}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+            >Your run</button>
+            <button
+              onClick={() => setScope(true)}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+            >All runs</button>
+          </>
+        )}
+        <RatingFilter value={ratingThreshold} onChange={setRatingThreshold} className="ml-auto" />
+      </div>
 
       {/* Search */}
       <div className="px-4 mb-3">
@@ -319,6 +333,18 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           ))}
         </div>
       )}
+
+      {/* #241 sort toggle */}
+      <div className="flex items-center gap-2 px-4 pb-2">
+        <button
+          onClick={() => setSortBy('recent')}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'recent' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+        >Least recent</button>
+        <button
+          onClick={() => setSortBy('rating')}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'rating' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+        >Top rated</button>
+      </div>
 
       <div className="px-4 flex flex-col gap-3">
         {visibleVariants.length === 0 && (
