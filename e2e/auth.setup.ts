@@ -76,12 +76,15 @@ setup('authenticate as test leader', async ({ page }) => {
   // MERGES public_metadata, so it won't clobber other keys. Runner setup below is
   // deliberately left without a role. clerkUserId is guaranteed non-null past the
   // throw above.
+  // #413: also stamp admin: true so the All Runs admin controls render for the
+  // test leader. viewer.isAdmin === (publicMetadata.admin === true). PATCH merges,
+  // so this never clobbers the role key.
   const clerkSecret = process.env.CLERK_SECRET_KEY
   if (!clerkSecret) throw new Error('auth.setup: CLERK_SECRET_KEY must be set to grant the test leader its role')
   const res = await fetch(`https://api.clerk.com/v1/users/${clerkUserId}/metadata`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${clerkSecret}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ public_metadata: { role: 'leader' } }),
+    body: JSON.stringify({ public_metadata: { role: 'leader', admin: true } }),
   })
   if (!res.ok) {
     throw new Error(`auth.setup: failed to set leader role via Clerk Backend API (${res.status} ${await res.text()}). Leader e2e specs would redirect home; failing setup loudly.`)

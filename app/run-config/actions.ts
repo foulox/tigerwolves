@@ -7,7 +7,7 @@ import { sql, getLeaderRun, getRunRoster, toDateString } from '@/lib/db'
 import { getNextLeader } from '@/lib/rotation'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity } from '@/lib/runIdentity'
-import { resolveClerkUserByEmail, leaderDisplayName, grantLeaderRole, revokeLeaderRoleIfOrphaned } from '@/lib/runLeaders'
+import { revokeLeaderRoleIfOrphaned, assignLeaderByEmail } from '@/lib/runLeaders'
 
 /** True if the Clerk user carries the cross-run admin flag (mirrors setRunStatus). */
 function isAdminUser(user: User): boolean {
@@ -363,39 +363,8 @@ export async function addRunLeaderByEmail(
       return { error: 'Forbidden' }
     }
 
-    const normalizedEmail = email.trim().toLowerCase()
-    if (!normalizedEmail) return { error: 'Enter an email address' }
-
-    // A leader can only be added if the email already belongs to a Clerk account.
-    // We store their clerk_user_id at add-time so getLeaderRun() recognizes them at
-    // login — a run_leaders row with no clerk_user_id is invisible to the leader
-    // surfaces, which is the linkage gap this rework closes. Reject unknown emails.
-    const clerkUser = await resolveClerkUserByEmail(normalizedEmail)
-    if (!clerkUser) {
-      return { error: 'No account found for that email — they need to sign in once before they can be added.' }
-    }
-
-    const name = leaderDisplayName(clerkUser, normalizedEmail)
-
-    const maxOrder = await sql`SELECT MAX(sort_order) AS m FROM run_leaders WHERE run_id = ${runId}`
-    const nextOrder = ((maxOrder[0].m as number | null) ?? 0) + 1
-    // ON CONFLICT is keyed on (run_id, email) — email is the stable identity across
-    // Clerk instances (#385). This doubles as the re-add/reactivate path: adding
-    // someone already a leader of this run (same email, possibly a different display
-    // name) updates the existing row instead of inserting a second. `name` is set
-    // only on insert (not clobbered on conflict) so the existing display name is kept.
-    await sql`
-      INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
-      VALUES (${runId}, ${name}, ${normalizedEmail}, ${clerkUser.id}, ${nextOrder}, true)
-      ON CONFLICT (run_id, email) WHERE email IS NOT NULL DO UPDATE SET
-        clerk_user_id = ${clerkUser.id},
-        active = true
-    `
-
-    // Grant the Clerk 'leader' role — merges with existing publicMetadata so
-    // any existing admin: true (or other flags) are never clobbered.
-    await grantLeaderRole(clerkUser)
-
+    const result = await assignLeaderByEmail(runId, email)
+    if (result.error) return result
     updateTag('tigerwolves-data')
     return {}
   } catch (err) {

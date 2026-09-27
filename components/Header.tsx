@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { UserButton, useUser } from '@clerk/nextjs'
-import { ChevronLeft, Settings, Wrench, Plus, List } from 'lucide-react'
+import { ChevronLeft, Settings, Wrench } from 'lucide-react'
 import FeedbackButton from './FeedbackButton'
 import { PersonIcon } from './icons'
 
@@ -20,8 +20,7 @@ export default function Header({
 }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, isLoaded, isSignedIn } = useUser()
-  const isAdmin = user?.publicMetadata?.admin === true
+  const { isLoaded, isSignedIn } = useUser()
 
   return (
     <header className="sticky top-0 z-30 bg-gray-50 px-4 pt-10 pb-4 flex items-start justify-between">
@@ -58,12 +57,6 @@ export default function Header({
                 )}
                 {isLeader && (
                   <UserButton.Link label="Edit Workouts" labelIcon={<Wrench size={16} />} href="/admin" />
-                )}
-                {isAdmin && (
-                  <UserButton.Link label="Create a Run" labelIcon={<Plus size={16} />} href="/admin/create-run" />
-                )}
-                {isAdmin && (
-                  <UserButton.Link label="Manage Runs" labelIcon={<List size={16} />} href="/admin/runs" />
                 )}
               </UserButton.MenuItems>
             </UserButton>

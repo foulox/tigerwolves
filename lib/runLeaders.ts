@@ -1,10 +1,10 @@
 // Shared helpers for Clerk-user resolution, run-leader display-name derivation,
 // and the Clerk role grant/revoke that addRunLeaderByEmail/removeRunLeader
 // must perform when a leader is provisioned or removed.
-// Used by: app/run-config/actions.ts.
+// Used by: app/run-config/actions.ts and app/admin/actions.ts (#413 activateRun).
 
 import { clerkClient } from '@clerk/nextjs/server'
-import { leadsAnyActiveRun } from './db'
+import { sql, leadsAnyActiveRun } from './db'
 
 /** Minimal shape of a Clerk user — only fields we actually use. */
 export interface ClerkUserLike {
@@ -84,6 +84,29 @@ export async function grantLeaderRole(
  * Must be called AFTER the target run_leaders row has been deactivated (active =
  * false) so leadsAnyActiveRun returns false for the deactivated run.
  */
+/**
+ * Core leader-assignment: resolve the Clerk user by email, upsert the run_leaders
+ * row, grant the leader role. NO auth gate and NO updateTag — callers own those.
+ * Shared by addRunLeaderByEmail (run-config) and activateRun (#413 admin activate).
+ */
+export async function assignLeaderByEmail(runId: string, email: string): Promise<{ error?: string }> {
+  const normalizedEmail = email.trim().toLowerCase()
+  if (!normalizedEmail) return { error: 'Enter an email address' }
+  const clerkUser = await resolveClerkUserByEmail(normalizedEmail)
+  if (!clerkUser) return { error: 'No account found for that email — they need to sign in once before they can be added.' }
+  const name = leaderDisplayName(clerkUser, normalizedEmail)
+  const maxOrder = await sql`SELECT MAX(sort_order) AS m FROM run_leaders WHERE run_id = ${runId}`
+  const nextOrder = ((maxOrder[0].m as number | null) ?? 0) + 1
+  await sql`
+    INSERT INTO run_leaders (run_id, name, email, clerk_user_id, sort_order, active)
+    VALUES (${runId}, ${name}, ${normalizedEmail}, ${clerkUser.id}, ${nextOrder}, true)
+    ON CONFLICT (run_id, email) WHERE email IS NOT NULL DO UPDATE SET
+      clerk_user_id = ${clerkUser.id}, active = true
+  `
+  await grantLeaderRole(clerkUser)
+  return {}
+}
+
 export async function revokeLeaderRoleIfOrphaned(clerkUserId: string): Promise<void> {
   if (await leadsAnyActiveRun(clerkUserId)) return
 
