@@ -58,7 +58,9 @@ export default function WorkoutDetails({ w, exclude = [] }: {
     (showPhases && w.trainingPhases.length > 0) ||
     (showRaceTypes && w.raceTypes.length > 0) ||
     (showAuthor && w.author) ||
-    (showMap && w.mapLink)
+    (showMap && w.mapLink) ||
+    w.distanceMiles != null ||
+    w.elevationGainFeet != null
   )
 
   if (!hasContent) return null
@@ -66,6 +68,8 @@ export default function WorkoutDetails({ w, exclude = [] }: {
   return (
     <div className="space-y-2 text-sm">
       {w.reason && <DetailRow label="Reason" value={w.reason} />}
+      {w.distanceMiles != null && <DetailRow label="Distance" value={`${w.distanceMiles.toFixed(2)} mi`} />}
+      {w.elevationGainFeet != null && <DetailRow label="Elevation gain" value={`${Math.round(w.elevationGainFeet)} ft`} />}
       {w.energySystem && <DetailRow label="Energy System" value={w.energySystem} />}
       {(w.hrZone || w.rpe) && (
         <div className="flex gap-4">

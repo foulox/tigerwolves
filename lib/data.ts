@@ -24,6 +24,9 @@ export type WorkoutVariantRow = {
   rpe: string
   coachingNotes: string | null
   mapLink: string | null
+  distanceMiles: number | null
+  elevationGainFeet: number | null
+  geometry: unknown | null
   author: string | null
   raceTypes: string[]
   trainingPhases: string[]

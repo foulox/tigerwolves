@@ -81,6 +81,9 @@ CREATE TABLE IF NOT EXISTS workout_families (
   author         TEXT,
   coaching_notes TEXT,
   map_link       TEXT,
+  distance_miles      NUMERIC,          -- #457: authoritative distance (miles) from the map-link provider
+  elevation_gain_feet NUMERIC,          -- #457: authoritative elevation gain (feet)
+  geometry            JSONB,            -- #457: provider-native route geometry (Strava: { summaryPolyline })
   run_group_id   INT REFERENCES run_groups(id)  -- #401: the owning run_group; scopes each run's "Your run" library (backfilled by migrate-401.sql)
 );
 -- #401: index the ownership FK — the scoped read (fetchWorkoutVariants WHERE

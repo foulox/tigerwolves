@@ -27,6 +27,10 @@ export const WorkoutVariantInputSchema = z.object({
   // ordering no longer silently drops the change.
   label: z.string().nullable(),
   sortOrder: z.number().nullable(),
+  // #457: route metric fields — persisted on workout_families, nullable
+  distanceMiles: z.number().nullable(),
+  elevationGainFeet: z.number().nullable(),
+  geometry: z.unknown().nullable(),
 })
 
 export type WorkoutVariantInput = z.infer<typeof WorkoutVariantInputSchema>
@@ -54,5 +58,9 @@ export function buildWorkoutVariantInput(formData: FormData): WorkoutVariantInpu
     turnaround: (formData.get('turnaround') as string) || '',
     label: (formData.get('label') as string) || null,
     sortOrder: sortOrderRaw ? Number(sortOrderRaw) : null,
+    // #457: route metrics
+    distanceMiles: (() => { const raw = (formData.get('distanceMiles') ?? '') as string; return raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : null })(),
+    elevationGainFeet: (() => { const raw = (formData.get('elevationGainFeet') ?? '') as string; return raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : null })(),
+    geometry: (() => { const raw = formData.get('geometry') as string; return raw ? JSON.parse(raw) : null })(),
   })
 }
