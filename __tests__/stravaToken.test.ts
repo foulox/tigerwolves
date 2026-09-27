@@ -25,9 +25,10 @@ describe('getStravaAccessToken', () => {
 
   it('refreshes when the cached token is expired (or within the skew window)', async () => {
     kvGet.mockResolvedValue({ accessToken: 'old-tok', expiresAt: Date.now() + 10_000 }) // within 60s skew
+    const expiresAtSeconds = Math.floor(Date.now() / 1000) + 21600
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ access_token: 'new-tok', expires_at: Math.floor(Date.now() / 1000) + 21600 }),
+      json: async () => ({ access_token: 'new-tok', expires_at: expiresAtSeconds }),
     })
     vi.stubGlobal('fetch', fetchMock)
     const tok = await getStravaAccessToken()
@@ -38,7 +39,9 @@ describe('getStravaAccessToken', () => {
     const body = JSON.parse((opts as RequestInit).body as string)
     expect(body).toMatchObject({ client_id: 'cid', client_secret: 'secret', grant_type: 'refresh_token', refresh_token: 'refresh' })
     // caches the refreshed token with a ms-epoch expiry derived from expires_at (seconds)
-    expect(kvSet).toHaveBeenCalledWith(STRAVA_TOKEN_KEY, expect.objectContaining({ accessToken: 'new-tok' }))
+    expect(kvSet).toHaveBeenCalledWith(STRAVA_TOKEN_KEY, expect.objectContaining({ accessToken: 'new-tok', expiresAt: expect.any(Number) }))
+    const stored = kvSet.mock.calls[0][1] as { expiresAt: number }
+    expect(stored.expiresAt).toBeGreaterThan(Date.now() + 21_500_000) // ~6h in ms; would fail if seconds were stored
   })
 
   it('refreshes when there is no cached token at all (cache miss)', async () => {
@@ -50,6 +53,7 @@ describe('getStravaAccessToken', () => {
     vi.stubGlobal('fetch', fetchMock)
     expect(await getStravaAccessToken()).toBe('fresh-tok')
     expect(fetchMock).toHaveBeenCalledOnce()
+    expect(kvSet).toHaveBeenCalledWith(STRAVA_TOKEN_KEY, expect.objectContaining({ accessToken: 'fresh-tok' }))
   })
 
   it('throws when the refresh call fails (non-ok)', async () => {
