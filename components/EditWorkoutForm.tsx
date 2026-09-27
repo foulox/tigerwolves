@@ -40,6 +40,9 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
     sortOrder: variant.sortOrder != null ? String(variant.sortOrder) : '',
   })
   const [review, setReview] = useState<InferredFields | null>(null)
+  const [distanceMiles, setDistanceMiles] = useState<string>(variant.distanceMiles != null ? variant.distanceMiles.toFixed(2) : '')
+  const [elevationFeet, setElevationFeet] = useState<string>(variant.elevationGainFeet != null ? String(Math.round(variant.elevationGainFeet)) : '')
+  const [geometry, setGeometry] = useState<unknown | null>(variant.geometry ?? null)
   const [hasTurnaround, setHasTurnaround] = useState(variant.hasTurnaround)
   const [turnaround, setTurnaround] = useState(variant.turnaround)
   const [error, setError] = useState('')
@@ -49,6 +52,22 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
     e.preventDefault()
     setError('')
     setStep('loading')
+    // #457: kick off route enrichment concurrently with inference; failure is silent.
+    const enrichPromise: Promise<void> = entry.route.trim()
+      ? fetch('/api/route/enrich', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: entry.route }),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (data?.enriched) {
+              setDistanceMiles(data.distanceMiles.toFixed(2))
+              setElevationFeet(String(Math.round(data.elevationFeet)))
+              setGeometry(data.geometry ?? null)
+            }
+          })
+          .catch(() => { /* graceful fallback — leave manual fields blank */ })
+      : Promise.resolve()
     try {
       const res = await fetch('/api/workout/infer', {
         method: 'POST',
@@ -60,6 +79,7 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
       setReview(inferred)
       setHasTurnaround(inferred.hasTurnaround)
       setTurnaround(inferred.turnaround)
+      await enrichPromise
       setStep('review')
     } catch (err) {
       setError(`Could not infer fields: ${err instanceof Error ? err.message : String(err)}`)
@@ -88,6 +108,9 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
     formData.set('coachingNotes', review!.coachingNotes)
     formData.set('hasTurnaround', String(hasTurnaround))
     formData.set('turnaround', turnaround)
+    formData.set('distanceMiles', distanceMiles)
+    formData.set('elevationGainFeet', elevationFeet)
+    formData.set('geometry', geometry != null ? JSON.stringify(geometry) : '')
     return formData
   }
 
@@ -134,6 +157,20 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
         <Field label="Distance / Time">
           <input value={review.distTime} onChange={e => setReview(r => r && ({ ...r, distTime: e.target.value }))}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
+        </Field>
+
+        <Field label="Distance (mi)">
+          <input value={distanceMiles} onChange={e => setDistanceMiles(e.target.value)}
+            inputMode="decimal"
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
+            placeholder="Auto-filled from the route link, or enter manually" />
+        </Field>
+
+        <Field label="Elevation gain (ft)">
+          <input value={elevationFeet} onChange={e => setElevationFeet(e.target.value)}
+            inputMode="numeric"
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
+            placeholder="Auto-filled from the route link, or enter manually" />
         </Field>
 
         <Field label="Energy System">
