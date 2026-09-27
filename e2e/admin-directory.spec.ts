@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-// #413: admin directory lifecycle (add → edit → activate → manage-nav).
+// #413/#444: admin directory lifecycle (add → edit → set up → manage-nav).
 // Runs as the test-leader storageState, which auth.setup.ts stamps with
 // publicMetadata.admin === true so the admin controls render on /all-runs.
 // The fixture run 'sunday-e2e-testers' is created by this spec and cleaned
@@ -24,14 +24,9 @@ test('admin adds, edits, activates, and navigates to full settings', async ({ pa
   await page.getByRole('button', { name: /save/i }).click()
   await expect(page.getByText('Prospect Park')).toBeVisible()
 
-  // Step 3: Activate — toggle open the email form, fill the leader email,
-  // then click the submit button (disambiguated from the toggle via testid —
-  // both buttons have text matching /activate/i, which would be a strict-mode
-  // conflict without the testid on the submit).
-  await page.getByTestId('admin-activate-sunday-e2e-testers').click()
-  await page.getByLabel(/email/i).fill(process.env.PLAYWRIGHT_TEST_EMAIL!)
-  await page.getByTestId('admin-activate-submit-sunday-e2e-testers').click()
-  // After activation the run becomes 'draft' → canManage is true → Manage link appears.
+  // Step 3: Set up — one click flips the unclaimed run to draft (no leader, no email).
+  await page.getByTestId('admin-setup-sunday-e2e-testers').click()
+  // After set-up the run becomes 'draft' → canManage is true → Manage link appears.
   await expect(page.getByTestId('admin-manage-sunday-e2e-testers')).toBeVisible()
 
   // Step 4: Manage — navigate to the full run-settings screen.

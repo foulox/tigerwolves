@@ -612,7 +612,7 @@ describe.skipIf(!onTestData)('#401 getLeaderRunGroups (owner-picker authorizatio
   })
 })
 
-// #401 (Story A): resolveOrCreateRunGroup — reused by activateRun (#413) to reconcile a run to
+// #401 (Story A): resolveOrCreateRunGroup — reused by setUpRun (#444) to reconcile a run to
 // a group (AC7). Reuses an existing same-named group; creates one when absent.
 describe.skipIf(!onTestData)('#401 resolveOrCreateRunGroup', () => {
   const NEW_GROUP = '__test_group_401__'

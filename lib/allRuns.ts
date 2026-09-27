@@ -72,13 +72,13 @@ export type Affordance = {
 export function adminCardControls(
   run: { status: RunStatus },
   viewer: ViewerContext,
-): { canEdit: boolean; canManage: boolean; canActivate: boolean; canRemove: boolean; showAddRun: boolean } {
+): { canEdit: boolean; canManage: boolean; canSetUp: boolean; canRemove: boolean; showAddRun: boolean } {
   const admin = viewer.isAdmin
   const unclaimed = run.status === 'unclaimed'
   return {
     canEdit: admin,                 // every card is quick-editable by admin (incl. unclaimed)
     canManage: admin && !unclaimed, // claimed runs have a full-settings screen
-    canActivate: admin && unclaimed, // hand an unclaimed stub to a leader
+    canSetUp: admin && unclaimed,   // stand up an unclaimed stub as a private draft (no leader yet)
     canRemove: admin && unclaimed,  // deleting a live/draft run is #363
     showAddRun: admin,
   }
