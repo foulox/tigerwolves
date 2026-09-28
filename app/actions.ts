@@ -29,7 +29,8 @@ import {
   getWorkoutFamilyMeta,
 } from '@/lib/db'
 import { isRouteAdoptable } from '@/lib/runProfile'
-import { buildWorkoutVariantInput } from '@/lib/workoutVariant'
+import { z } from 'zod'
+import { buildWorkoutVariantInput, type WorkoutVariantInput } from '@/lib/workoutVariant'
 import { captureServerEvent } from '@/lib/analytics'
 import { feedbackLabel, feedbackTitle, feedbackBody, type FeedbackType } from '@/lib/feedbackUtils'
 
@@ -212,9 +213,24 @@ export async function regroupFamily(
   redirect('/library')
 }
 
-export async function addWorkout(formData: FormData) {
+// #472: a schema-validation failure must surface as a friendly inline message, not a
+// raw "Server Components render" crash from an uncaught ZodError in the action boundary.
+function parseWorkoutInput(formData: FormData): { input: WorkoutVariantInput } | { error: string } {
+  try {
+    return { input: buildWorkoutVariantInput(formData) }
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return { error: err.issues[0]?.message ?? 'Some fields are invalid — please review and try again.' }
+    }
+    throw err
+  }
+}
+
+export async function addWorkout(formData: FormData): Promise<void | { error: string }> {
   const userId = await requireAuth()
-  const { familyId } = await dbInsertWorkoutVariant(buildWorkoutVariantInput(formData))
+  const parsed = parseWorkoutInput(formData)
+  if ('error' in parsed) return { error: parsed.error }
+  const { familyId } = await dbInsertWorkoutVariant(parsed.input)
   // #404: the creating run auto-joins its own library — a brand-new route must appear
   // in "Your run," not only "All runs." Membership is the single visibility source now,
   // so without this the workout would be invisible to the run that just created it.
@@ -232,9 +248,11 @@ export async function deleteWorkout(variantId: number) {
   await captureServerEvent('workout_deleted', userId, { isLeader: true })
 }
 
-export async function updateWorkout(variantId: number, formData: FormData) {
+export async function updateWorkout(variantId: number, formData: FormData): Promise<void | { error: string }> {
   const userId = await requireAuth()
-  await dbUpdateWorkoutVariant(variantId, buildWorkoutVariantInput(formData))
+  const parsed = parseWorkoutInput(formData)
+  if ('error' in parsed) return { error: parsed.error }
+  await dbUpdateWorkoutVariant(variantId, parsed.input)
   revalidateAll()
   await captureServerEvent('workout_edited', userId, { isLeader: true })
   redirect('/library')

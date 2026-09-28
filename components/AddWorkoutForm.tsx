@@ -128,7 +128,8 @@ export default function AddWorkoutForm({
     setError('')
     startTransition(async () => {
       try {
-        await addWorkout(buildFormData())
+        const result = await addWorkout(buildFormData())
+        if (result?.error) { setError(result.error); return }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Something went wrong')
       }

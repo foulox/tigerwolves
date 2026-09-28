@@ -1,12 +1,16 @@
 import { z } from 'zod'
-import { FORM_CATEGORIES, FORM_TYPES } from './workoutForm'
+import { FORM_CATEGORIES, TYPES_BY_CATEGORY } from './workoutForm'
 
 // #271 decision: workout_families.type stays TEXT in the DB (no Postgres enum,
 // so new types don't need a migration) with enforcement pushed to the write path.
 export const WorkoutVariantInputSchema = z.object({
   name: z.string().min(1),
   category: z.enum(FORM_CATEGORIES),
-  type: z.enum(FORM_TYPES),
+  // #473: the valid type vocabulary depends on the category (TYPES_BY_CATEGORY, #347):
+  // Quality has the rich structure set; Easy/Long use 'Easy'/'Long'. A plain enum of
+  // the Quality types rejected every Easy/Long save, so validate against the category
+  // in the superRefine below instead.
+  type: z.string(),
   reason: z.string(),
   // #469: required only for Quality workouts (enforced in the superRefine below);
   // Easy/Long may be just a route + distance, so a blank is allowed there.
@@ -34,6 +38,14 @@ export const WorkoutVariantInputSchema = z.object({
   elevationGainFeet: z.number().nullable(),
   geometry: z.unknown().nullable(),
 }).superRefine((val, ctx) => {
+  // #473: the type must be valid for the selected category (TYPES_BY_CATEGORY, #347).
+  if (!TYPES_BY_CATEGORY[val.category]?.includes(val.type)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['type'],
+      message: `"${val.type}" is not a valid type for a ${val.category} workout.`,
+    })
+  }
   // #469: Instructions are required only for Quality workouts (where the workout
   // structure is the whole point). Easy/Long runs are often just "run N miles on
   // this route", so a blank is allowed for them.

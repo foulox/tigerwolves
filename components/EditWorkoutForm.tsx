@@ -125,7 +125,8 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
     setError('')
     startTransition(async () => {
       try {
-        await updateWorkout(variant.id, buildFormData())
+        const result = await updateWorkout(variant.id, buildFormData())
+        if (result?.error) { setError(result.error); return }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Something went wrong')
       }
