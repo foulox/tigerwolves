@@ -37,6 +37,8 @@ export const WorkoutVariantInputSchema = z.object({
   distanceMiles: z.number().nullable(),
   elevationGainFeet: z.number().nullable(),
   geometry: z.unknown().nullable(),
+  // #459: Strava static map image URL — persisted on workout_families, nullable
+  mapImageUrl: z.string().nullable(),
 }).superRefine((val, ctx) => {
   // #473: the type must be valid for the selected category (TYPES_BY_CATEGORY, #347).
   if (!TYPES_BY_CATEGORY[val.category]?.includes(val.type)) {
@@ -87,5 +89,7 @@ export function buildWorkoutVariantInput(formData: FormData): WorkoutVariantInpu
     distanceMiles: (() => { const raw = (formData.get('distanceMiles') ?? '') as string; return raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : null })(),
     elevationGainFeet: (() => { const raw = (formData.get('elevationGainFeet') ?? '') as string; return raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : null })(),
     geometry: (() => { const raw = formData.get('geometry') as string; return raw ? JSON.parse(raw) : null })(),
+    // #459: Strava static map image URL
+    mapImageUrl: (formData.get('mapImageUrl') as string) || null,
   })
 }

@@ -48,6 +48,7 @@ describe('buildWorkoutVariantInput', () => {
       distanceMiles: null,
       elevationGainFeet: null,
       geometry: null,
+      mapImageUrl: null,
       runGroupId: 3,
       hasTurnaround: true,
       turnaround: 'After the 2nd rep',

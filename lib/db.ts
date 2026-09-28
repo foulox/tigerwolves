@@ -85,7 +85,7 @@ export async function fetchWorkoutVariants(
           wf.category, wf.type, wf.reason, wv.raw_input, wv.dist_time,
           wv.energy_system, wv.hr_zone, wv.rpe, wf.coaching_notes,
           COALESCE(wv.map_link, wf.map_link) AS map_link,
-          wf.distance_miles, wf.elevation_gain_feet, wf.geometry,
+          wf.distance_miles, wf.elevation_gain_feet, wf.geometry, wf.map_image_url,
           wf.author, wv.race_types, wv.training_phases, wv.has_turnaround,
           wv.turnaround, wv.flagged, wv.flag_note, wf.run_group_id, rw.last_ran
         FROM workout_variants wv
@@ -100,7 +100,7 @@ export async function fetchWorkoutVariants(
           wf.category, wf.type, wf.reason, wv.raw_input, wv.dist_time,
           wv.energy_system, wv.hr_zone, wv.rpe, wf.coaching_notes,
           COALESCE(wv.map_link, wf.map_link) AS map_link,
-          wf.distance_miles, wf.elevation_gain_feet, wf.geometry,
+          wf.distance_miles, wf.elevation_gain_feet, wf.geometry, wf.map_image_url,
           wf.author, wv.race_types, wv.training_phases, wv.has_turnaround,
           wv.turnaround, wv.flagged, wv.flag_note, wf.run_group_id, rw.last_ran
         FROM workout_variants wv
@@ -127,6 +127,7 @@ export async function fetchWorkoutVariants(
     distanceMiles: r.distance_miles != null ? Number(r.distance_miles) : null,
     elevationGainFeet: r.elevation_gain_feet != null ? Number(r.elevation_gain_feet) : null,
     geometry: (r.geometry as unknown) ?? null,
+    mapImageUrl: (r.map_image_url as string | null) ?? null,
     author: (r.author as string | null) ?? null,
     raceTypes: (r.race_types as string[]) ?? [],
     trainingPhases: (r.training_phases as string[]) ?? [],
@@ -388,8 +389,8 @@ export async function dbInsertWorkoutVariant(
   w: WorkoutVariantInput,
 ): Promise<{ familyId: number; variantId: number }> {
   const [family] = await sql`
-    INSERT INTO workout_families (name, category, type, reason, author, coaching_notes, map_link, run_group_id, distance_miles, elevation_gain_feet, geometry)
-    VALUES (${w.name}, ${w.category}, ${w.type}, ${w.reason}, ${w.author}, ${w.coachingNotes}, ${w.mapLink}, ${w.runGroupId}, ${w.distanceMiles}, ${w.elevationGainFeet}, ${w.geometry == null ? null : JSON.stringify(w.geometry)}::jsonb)
+    INSERT INTO workout_families (name, category, type, reason, author, coaching_notes, map_link, run_group_id, distance_miles, elevation_gain_feet, geometry, map_image_url)
+    VALUES (${w.name}, ${w.category}, ${w.type}, ${w.reason}, ${w.author}, ${w.coachingNotes}, ${w.mapLink}, ${w.runGroupId}, ${w.distanceMiles}, ${w.elevationGainFeet}, ${w.geometry == null ? null : JSON.stringify(w.geometry)}::jsonb, ${w.mapImageUrl})
     RETURNING id
   `
   const familyId = family.id as number
@@ -435,7 +436,8 @@ export async function dbUpdateWorkoutVariant(variantId: number, w: WorkoutVarian
       run_group_id = ${w.runGroupId},
       distance_miles = ${w.distanceMiles},
       elevation_gain_feet = ${w.elevationGainFeet},
-      geometry = ${w.geometry == null ? null : JSON.stringify(w.geometry)}::jsonb
+      geometry = ${w.geometry == null ? null : JSON.stringify(w.geometry)}::jsonb,
+      map_image_url = ${w.mapImageUrl}
     WHERE id = ${familyId}
   `
   await sql`
