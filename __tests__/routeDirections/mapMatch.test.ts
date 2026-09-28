@@ -35,9 +35,17 @@ describe('mapMatch', () => {
       }) as unknown as typeof fetch
     const streets = await mapMatch(pts, 'pk.test', fetchImpl)
     expect(fetchImpl).toHaveBeenCalledTimes(2) // 96 pts, size 95, overlap 1 -> 2 chunks
-    const url = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
-    expect(url).toContain('/matching/v5/mapbox/walking/')
-    expect(url).toContain('access_token=pk.test')
+
+    const url1 = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(url1).toContain('/matching/v5/mapbox/walking/')
+    expect(url1).toContain('access_token=pk.test')
+
+    const url2 = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[1][0] as string
+    expect(url2).toContain('/matching/v5/mapbox/walking/')
+    expect(url2).toContain('access_token=pk.test')
+    // Verify chunk 2's coordinate string differs from chunk 1 (confirming distinct slice)
+    expect(url2).not.toBe(url1)
+
     expect(streets).toEqual(['Kent Avenue', 'Flushing Avenue'])
   })
 
