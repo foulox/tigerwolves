@@ -22,6 +22,7 @@ export async function POST(req: Request) {
       elevationFeet: result.elevationFeet,
       geometry: result.geometry,
       name: result.name,
+      imageUrl: result.imageUrl,
     })
   } catch (err) {
     Sentry.captureException(err)

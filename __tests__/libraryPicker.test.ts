@@ -18,6 +18,7 @@ function makeVariant(
     distanceMiles: null,
     elevationGainFeet: null,
     geometry: null,
+    mapImageUrl: null,
     author: null,
     raceTypes: [],
     trainingPhases: [],

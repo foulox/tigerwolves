@@ -45,7 +45,7 @@ const VALID_LONG = {
   name: 'Doves long run', category: 'Long', type: 'Long', reason: '', instructions: '',
   distTime: '', energySystem: '', hrZone: '', rpe: '', raceTypes: '', trainingPhases: '',
   author: '', coachingNotes: '', mapLink: '', runGroupId: '', hasTurnaround: 'false', turnaround: '',
-  label: '', sortOrder: '', distanceMiles: '', elevationGainFeet: '', geometry: '',
+  label: '', sortOrder: '', distanceMiles: '', elevationGainFeet: '', geometry: '', mapImageUrl: '',
 }
 // invalid: a Quality type on a Long run (the exact #473 crash trigger)
 const INVALID_LONG = { ...VALID_LONG, type: 'Threshold' }

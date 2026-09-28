@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { stravaProvider, parseStravaRouteId } from '@/lib/routeProviders/strava'
+import { stravaProvider, parseStravaRouteId, parseOgImage } from '@/lib/routeProviders/strava'
 
 vi.mock('@/lib/strava/token', () => ({
   getStravaAccessToken: vi.fn().mockResolvedValue('tok'),
@@ -93,5 +93,61 @@ describe('stravaProvider.fetch', () => {
   it('returns null when fetch itself throws (network error) — no throw', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')))
     expect(await stravaProvider.fetch('https://www.strava.com/routes/6647021')).toBeNull()
+  })
+
+  it('sets imageUrl from the public page og:image (second fetch)', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({
+        name: 'Doves loop', distance: 16093.44, elevation_gain: 100,
+        map: { summary_polyline: 'abc' },
+      }) })
+      .mockResolvedValueOnce({ ok: true, text: async () =>
+        `<meta property="og:image" content="https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC">` })
+    vi.stubGlobal('fetch', fetchMock)
+    const r = await stravaProvider.fetch('https://www.strava.com/routes/6647021')
+    expect(r!.imageUrl).toBe('https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC')
+    expect(r!.distanceMiles).toBeCloseTo(10.0, 2)
+  })
+
+  it('omits imageUrl (but still returns metrics) when the page fetch is not ok', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({
+        distance: 16093.44, elevation_gain: 100, map: { summary_polyline: 'abc' },
+      }) })
+      .mockResolvedValueOnce({ ok: false })
+    vi.stubGlobal('fetch', fetchMock)
+    const r = await stravaProvider.fetch('https://www.strava.com/routes/6647021')
+    expect(r!.imageUrl).toBeUndefined()
+    expect(r!.distanceMiles).toBeCloseTo(10.0, 2)
+  })
+
+  it('omits imageUrl when the page fetch throws', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({
+        distance: 16093.44, elevation_gain: 100, map: { summary_polyline: 'abc' },
+      }) })
+      .mockRejectedValueOnce(new Error('network'))
+    vi.stubGlobal('fetch', fetchMock)
+    const r = await stravaProvider.fetch('https://www.strava.com/routes/6647021')
+    expect(r!.imageUrl).toBeUndefined()
+    expect(r!.distanceMiles).toBeCloseTo(10.0, 2)
+  })
+})
+
+describe('parseOgImage', () => {
+  it('extracts an absolute og:image URL (property before content)', () => {
+    const html = `<meta property="og:image" content="https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC">`
+    expect(parseOgImage(html)).toBe('https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC')
+  })
+  it('extracts when content comes before property (reversed attr order)', () => {
+    const html = `<meta content="https://d3o5xota0a1fcr.cloudfront.net/v6/maps/XYZ" property="og:image">`
+    expect(parseOgImage(html)).toBe('https://d3o5xota0a1fcr.cloudfront.net/v6/maps/XYZ')
+  })
+  it('returns null when there is no og:image tag', () => {
+    expect(parseOgImage('<meta property="og:title" content="Doves loop">')).toBeNull()
+  })
+  it('rejects a non-absolute (protocol-relative) og:image value', () => {
+    const html = `<meta property="og:image" content="//drzetlglcbfx.cloudfront.net/thumb/1?size=200x200">`
+    expect(parseOgImage(html)).toBeNull()
   })
 })

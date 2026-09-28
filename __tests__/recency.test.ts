@@ -16,7 +16,7 @@ describe('recency sort orders stalest-first, "Never" (null) on top (AC5)', () =>
     id: 0, familyId: 0, name: '', label: null, sortOrder: null, category: 'Tempo',
     type: 'Straight Tempo', reason: '', rawInput: '', distTime: '', energySystem: '',
     hrZone: '', rpe: '', coachingNotes: null, mapLink: null,
-    distanceMiles: null, elevationGainFeet: null, geometry: null,
+    distanceMiles: null, elevationGainFeet: null, geometry: null, mapImageUrl: null,
     author: null, raceTypes: [],
     trainingPhases: [], hasTurnaround: false, turnaround: '', flagged: false, flagNote: '',
     runGroupId: null, lastRan: null,

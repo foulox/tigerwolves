@@ -44,6 +44,7 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
   const [distanceMiles, setDistanceMiles] = useState<string>(variant.distanceMiles != null ? variant.distanceMiles.toFixed(2) : '')
   const [elevationFeet, setElevationFeet] = useState<string>(variant.elevationGainFeet != null ? String(Math.round(variant.elevationGainFeet)) : '')
   const [geometry, setGeometry] = useState<unknown | null>(variant.geometry ?? null)
+  const [mapImageUrl, setMapImageUrl] = useState<string | null>(variant.mapImageUrl ?? null)
   const [hasTurnaround, setHasTurnaround] = useState(variant.hasTurnaround)
   const [turnaround, setTurnaround] = useState(variant.turnaround)
   const [error, setError] = useState('')
@@ -65,6 +66,7 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
               setDistanceMiles(data.distanceMiles.toFixed(2))
               setElevationFeet(String(Math.round(data.elevationFeet)))
               setGeometry(data.geometry ?? null)
+              setMapImageUrl(data.imageUrl ?? null)
             }
           })
           .catch(() => { /* graceful fallback — leave manual fields blank */ })
@@ -74,6 +76,7 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
           setDistanceMiles('')
           setElevationFeet('')
           setGeometry(null)
+          setMapImageUrl(null)
         })
     try {
       const res = await fetch('/api/workout/infer', {
@@ -118,6 +121,7 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
     formData.set('distanceMiles', distanceMiles)
     formData.set('elevationGainFeet', elevationFeet)
     formData.set('geometry', geometry != null ? JSON.stringify(geometry) : '')
+    formData.set('mapImageUrl', mapImageUrl ?? '')
     return formData
   }
 

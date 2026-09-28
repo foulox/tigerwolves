@@ -37,4 +37,10 @@ describe('buildWorkoutVariantInput — route metrics (#457)', () => {
     expect(input.distanceMiles).toBe(0)
     expect(input.elevationGainFeet).toBe(0)
   })
+  it('maps mapImageUrl from form data (null when blank)', () => {
+    const withUrl = buildWorkoutVariantInput(fd({ ...base, mapImageUrl: 'https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC' }))
+    expect(withUrl.mapImageUrl).toBe('https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC')
+    const blank = buildWorkoutVariantInput(fd({ ...base }))
+    expect(blank.mapImageUrl).toBeNull()
+  })
 })

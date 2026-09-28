@@ -27,6 +27,7 @@ export type WorkoutVariantRow = {
   distanceMiles: number | null
   elevationGainFeet: number | null
   geometry: unknown | null
+  mapImageUrl: string | null
   author: string | null
   raceTypes: string[]
   trainingPhases: string[]
