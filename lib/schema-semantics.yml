@@ -65,6 +65,11 @@ workout_families:
       description: >
         Provider-native route geometry (Strava stores { summaryPolyline }). Carried
         silently for future map rendering; NULL when the route has no link or fetch failed.
+    map_image_url:
+      description: >
+        URL of the route's own static map image (Strava's public-page og:image).
+        Displayed as a whole-route preview on the run surfaces. NULL when the route
+        has no link, isn't Strava, or the page yielded no og:image.
     run_group_id:
       description: >
         NULL means global/inspirational — not owned by any one run group. One run
