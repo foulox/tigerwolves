@@ -29,8 +29,7 @@ describe('POST /api/route/enrich', () => {
     providerFor.mockReturnValue({ id: 'strava', fetch: vi.fn().mockResolvedValue({ distanceMiles: 10, elevationFeet: 328, geometry: { summaryPolyline: 'p' }, name: 'Loop', imageUrl: 'https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC' }) })
     const res = await POST(req({ url: 'https://www.strava.com/routes/6647021' }))
     expect(res.status).toBe(200)
-    const json = await res.json()
-    expect(json.imageUrl).toBe('https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC')
+    expect(await res.json()).toEqual({ enriched: true, provider: 'strava', distanceMiles: 10, elevationFeet: 328, geometry: { summaryPolyline: 'p' }, name: 'Loop', imageUrl: 'https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC' })
   })
 
   it('returns { enriched: false } (200) when no provider matches', async () => {
