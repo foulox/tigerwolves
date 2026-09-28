@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>#459 — Route map image · clickable mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { background:#f1f5f9; }
+  .phone { width: 390px; }
+  .tab.active { background:#111827; color:#fff; }
+  .subtab.active { background:#2563eb; color:#fff; }
+  /* one consistent treatment: whole route visible, full width, no crop */
+  .map-img { width:100%; object-fit: contain; max-height: 220px; background:#eef2f7; }
+  .tap { cursor: pointer; }
+  .note b { color:#0f172a; }
+</style>
+</head>
+<body class="min-h-screen text-gray-800">
+
+<div class="max-w-5xl mx-auto p-4">
+  <h1 class="text-xl font-bold text-gray-900">#459 — Route map image</h1>
+  <p class="text-sm text-gray-500 mb-4">Clickable mockup · one consistent compact map (whole route, no crop) wherever the route shows. Strava → image; MapMyRun/other → link only. Per-surface configuration is deferred to #423. Images are real: the Strava map is the actual og:image.</p>
+
+  <!-- Controls -->
+  <div class="bg-white rounded-xl shadow-sm p-3 mb-4 space-y-3 sticky top-2 z-10">
+    <div>
+      <div class="text-xs font-semibold text-gray-400 uppercase mb-1">Surface</div>
+      <div class="flex flex-wrap gap-1.5">
+        <button class="tab active px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100" data-surface="schedule">Schedule</button>
+        <button class="tab px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100" data-surface="myplan">My Plan</button>
+        <button class="tab px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100" data-surface="runpage">Run page</button>
+        <button class="tab px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100" data-surface="library">Library</button>
+        <button class="tab px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100" data-surface="heylo">Heylo post</button>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-4">
+      <div>
+        <div class="text-xs font-semibold text-gray-400 uppercase mb-1">Route provider</div>
+        <div class="flex gap-1.5">
+          <button class="subtab active px-3 py-1 rounded-lg text-sm font-medium bg-gray-100" data-provider="strava">Strava (image)</button>
+          <button class="subtab px-3 py-1 rounded-lg text-sm font-medium bg-gray-100" data-provider="mapmyrun">MapMyRun (link only)</button>
+        </div>
+      </div>
+      <div id="library-control" class="hidden">
+        <div class="text-xs font-semibold text-gray-400 uppercase mb-1">Library (decided: route-free)</div>
+        <div class="flex gap-1.5">
+          <button class="subtab active px-3 py-1 rounded-lg text-sm font-medium bg-gray-100" data-lib="none">Route-free (today ✓)</button>
+          <button class="subtab px-3 py-1 rounded-lg text-sm font-medium bg-gray-100" data-lib="show">Show map (→ #423)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex flex-col lg:flex-row gap-4">
+    <!-- Phone -->
+    <div class="phone mx-auto bg-white rounded-[2rem] shadow-xl border-4 border-gray-900 overflow-hidden">
+      <div class="bg-gray-900 text-white text-center text-xs py-1">tigerwolves</div>
+      <div id="screen" class="bg-gray-50 p-3 space-y-3" style="min-height:640px"></div>
+    </div>
+
+    <!-- Notes -->
+    <div class="flex-1">
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm note" id="notes"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = { surface:'schedule', provider:'strava', lib:'none' };
+
+const STRAVA = 'strava-map.png';
+const SOURCE_URL = 'https://www.strava.com/routes/3506443192297552740';
+
+// Strava: whole-route image, tap = source. MapMyRun/other: link only (today's look).
+function mapBlock() {
+  if (state.provider === 'strava') {
+    return `
+      <a href="${SOURCE_URL}" target="_blank" class="tap block group">
+        <img src="${STRAVA}" class="map-img rounded-lg border border-gray-200" alt="Route map" loading="lazy" />
+        <span class="text-[11px] text-gray-400 group-hover:text-blue-500">tap map → opens Strava ↗</span>
+      </a>`;
+  }
+  return `<a href="#" class="text-xs font-semibold text-blue-500 block">Map ↗</a>`;
+}
+function metrics() {
+  return `
+    <div><span class="font-semibold text-gray-700">Distance: </span><span class="text-gray-600">11.44 mi</span></div>
+    <div><span class="font-semibold text-gray-700">Elevation gain: </span><span class="text-gray-600">479 ft</span></div>`;
+}
+
+function scheduleView() {
+  const runCard = (name, day) => `
+    <div class="bg-white rounded-xl shadow-sm p-3">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="font-bold text-gray-900">${name}</div>
+          <div class="text-xs text-gray-400">${day} · Long Island City</div>
+        </div>
+        <span class="text-[11px] bg-blue-100 text-blue-700 rounded-full px-2 py-0.5">Routed run</span>
+      </div>
+      <div class="mt-2 space-y-1.5 text-sm">${metrics()}${mapBlock()}</div>
+    </div>`;
+  return runCard('Mourning Doves', 'Wed') + runCard('MMER', 'Mon');
+}
+function myPlanView() {
+  return `
+    <div class="bg-white rounded-xl shadow-sm p-3">
+      <div class="font-bold text-gray-900">This week</div>
+      <div class="text-xs text-gray-400 mb-2">Your plan</div>
+      <div class="border-t pt-2 space-y-1.5 text-sm">
+        <div class="font-semibold text-gray-800">Doves 1776 run</div>
+        ${metrics()}${mapBlock()}
+      </div>
+    </div>`;
+}
+function runPageView() {
+  return `
+    <div class="bg-white rounded-xl shadow-sm p-3 space-y-2">
+      <div class="font-bold text-lg text-gray-900">Mourning Doves</div>
+      <div class="text-xs text-gray-400">Wednesday · Long Island City</div>
+      <div class="text-sm space-y-1.5">${metrics()}</div>
+      ${mapBlock()}
+      <div class="text-sm text-gray-600 pt-1">Landmark directions <span class="text-[11px] bg-purple-100 text-purple-700 rounded-full px-2 py-0.5">#460 · reads this image</span></div>
+    </div>`;
+}
+function libraryView() {
+  const show = state.lib === 'show';
+  return `
+    <div class="bg-white rounded-xl shadow-sm p-3">
+      <div class="font-bold text-gray-900">6×800m @ 5k</div>
+      <div class="text-xs text-gray-400 mb-2">Workout template · VO2max</div>
+      <div class="border-t pt-2 space-y-1.5 text-sm">
+        <div><span class="font-semibold text-gray-700">Reason: </span><span class="text-gray-600">Top-end speed</span></div>
+        ${show ? metrics() + mapBlock() : `<div class="text-[12px] text-gray-400 italic">Route/map hidden in Library (decided) — templates, not runs. Configurable later via #423.</div>`}
+      </div>
+    </div>`;
+}
+function heyloView() {
+  const line = state.provider === 'strava'
+    ? `🗺️ ${SOURCE_URL}`
+    : `🗺️ https://www.mapmyrun.com/routes/view/6123522511`;
+  return `
+    <div class="bg-white rounded-xl shadow-sm p-3">
+      <div class="text-xs text-gray-400 mb-2">Heylo post (text a leader pastes)</div>
+      <pre class="whitespace-pre-wrap text-sm text-gray-700 font-sans leading-relaxed">🏃🏻‍♂️‍➡️ Mourning Doves
+📍 Long Island City
+🏃 11.44 mi
+${line}</pre>
+      <div class="mt-2 text-[12px] text-amber-700 bg-amber-50 rounded p-2">Heylo is plain text — no embedded image possible. The <b>link</b> is all that travels. (Open Q: does Heylo auto-preview an image URL?)</div>
+    </div>`;
+}
+
+const NOTES = {
+  schedule: `<b>Schedule</b> — a list of runs. Each routed run shows the <b>whole route</b> (no crop) at full width, ~200px tall. Tap → Strava.<br><br>⚠️ <b>Weight:</b> ~635 KB per Strava image, fixed size. Lazy-loading keeps off-screen cards from downloading until scrolled to. One uniform treatment — no separate big version.`,
+  myplan: `<b>My Plan</b> — the runner's own upcoming runs. Same uniform map treatment as everywhere else.`,
+  runpage: `<b>Run page</b> — a single run's detail. Same image, and the one <b>#460</b> reads for landmark directions.`,
+  library: `<b>Library stays route-free</b> (decided). It's the workout-<i>template</i> browser. Whether leaders can turn the map on here is a <b>#423</b> question (configurable card layout).`,
+  heylo: `<b>Heylo post</b> carries the <b>link</b> only — text post, no embedded image. Unchanged unless Heylo unfurls image URLs (worth a quick check).`,
+};
+
+function render() {
+  document.getElementById('library-control').classList.toggle('hidden', state.surface!=='library');
+  const screen = document.getElementById('screen');
+  const map = { schedule:scheduleView, myplan:myPlanView, runpage:runPageView, library:libraryView, heylo:heyloView };
+  screen.innerHTML = map[state.surface]();
+  document.getElementById('notes').innerHTML = NOTES[state.surface];
+}
+document.querySelectorAll('[data-surface]').forEach(b=>b.onclick=()=>{
+  state.surface=b.dataset.surface;
+  document.querySelectorAll('[data-surface]').forEach(x=>x.classList.toggle('active',x===b));
+  render();
+});
+function group(attr, key){
+  document.querySelectorAll(`[data-${attr}]`).forEach(b=>b.onclick=()=>{
+    state[key]=b.dataset[attr];
+    document.querySelectorAll(`[data-${attr}]`).forEach(x=>x.classList.toggle('active',x===b));
+    render();
+  });
+}
+group('provider','provider'); group('lib','lib');
+render();
+</script>
+</body>
+</html>
