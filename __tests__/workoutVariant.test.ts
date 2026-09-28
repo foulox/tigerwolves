@@ -84,18 +84,37 @@ describe('buildWorkoutVariantInput', () => {
     expect(() => buildWorkoutVariantInput(formData({ ...VALID_FIELDS, type: 'Made Up Type' }))).toThrow()
   })
 
+  it('parses a Long workout whose type is "Long" (#473)', () => {
+    const input = buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Long', type: 'Long', instructions: '' }))
+    expect(input.category).toBe('Long')
+    expect(input.type).toBe('Long')
+  })
+
+  it('parses an Easy workout whose type is "Easy" (#473)', () => {
+    const input = buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Easy', type: 'Easy', instructions: '' }))
+    expect(input.category).toBe('Easy')
+    expect(input.type).toBe('Easy')
+  })
+
+  it('throws when the type is not valid for the selected category (#473)', () => {
+    // "Threshold" is a Quality type — invalid on a Long run
+    expect(() => buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Long', type: 'Threshold' }))).toThrow()
+    // "Long" is not a Quality type
+    expect(() => buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Quality', type: 'Long' }))).toThrow()
+  })
+
   it('throws when instructions is blank for a Quality workout', () => {
     expect(() => buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Quality', instructions: '' }))).toThrow()
   })
 
   it('allows blank instructions for a Long workout (#469)', () => {
-    const input = buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Long', instructions: '' }))
+    const input = buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Long', type: 'Long', instructions: '' }))
     expect(input.instructions).toBe('')
     expect(input.category).toBe('Long')
   })
 
   it('allows blank instructions for an Easy workout (#469)', () => {
-    const input = buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Easy', instructions: '' }))
+    const input = buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Easy', type: 'Easy', instructions: '' }))
     expect(input.instructions).toBe('')
   })
 

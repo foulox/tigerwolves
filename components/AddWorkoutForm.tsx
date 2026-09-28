@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import Link from 'next/link'
 import { addWorkout } from '@/app/actions'
 import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
@@ -128,8 +129,10 @@ export default function AddWorkoutForm({
     setError('')
     startTransition(async () => {
       try {
-        await addWorkout(buildFormData())
+        const result = await addWorkout(buildFormData())
+        if (result?.error) { setError(result.error); return }
       } catch (err) {
+        if (isRedirectError(err)) throw err // successful save redirects — let Next navigate, don't flash it as an error
         setError(err instanceof Error ? err.message : 'Something went wrong')
       }
     })
