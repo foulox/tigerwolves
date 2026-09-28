@@ -82,6 +82,7 @@ export const POST_FIELDS: {
   { key: 'workout_details', label: 'Workout block', source: 'record',   affix: '' },
   { key: 'distance',        label: 'Distance',      source: 'record',   affix: '🏃' },
   { key: 'route_link',      label: 'Route link',    source: 'record',   affix: '🗺️' },
+  { key: 'route_narrative', label: 'Route directions', source: 'record', affix: '' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -175,6 +176,9 @@ function resolveField(key: string, ctx: RenderCtx): string {
 
     case 'route_link':
       return primary?.mapLink ? `🗺️ ${primary.mapLink}` : ''
+
+    case 'route_narrative':
+      return primary?.routeNarrative ?? ''
 
     default:
       return ''

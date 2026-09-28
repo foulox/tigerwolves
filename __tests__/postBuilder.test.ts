@@ -414,6 +414,20 @@ describe('merge-field engine', () => {
   })
 })
 
+describe('route_narrative merge field', () => {
+  test('renders the stored narrative for {{route_narrative}}', () => {
+    const selection: WorkoutVariantRow = { ...baseWorkout, routeNarrative: 'Out of McCarren down Kent to the waterfront.' }
+    const out = renderPostTemplate('{{route_narrative}}', entry, [selection], tigerWolvesConfig, [])
+    expect(out).toContain('Out of McCarren down Kent to the waterfront.')
+  })
+
+  test('renders empty when no narrative is set', () => {
+    const selection: WorkoutVariantRow = { ...baseWorkout, routeNarrative: null }
+    const out = renderPostTemplate('{{route_narrative}}', entry, [selection], tigerWolvesConfig, [])
+    expect(out.trim()).toBe('')
+  })
+})
+
 describe('buildVerificationLabel', () => {
   test('quality workout returns intervals-focused label', () => {
     const label = buildVerificationLabel({ ...baseWorkout, type: 'Ladder', rawInput: 'WU: 15min. Main: 3×1K @ 3K pace, 90s rest. CD: 10min.', distTime: '~5mi' })
