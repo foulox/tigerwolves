@@ -7,6 +7,18 @@ const FEET_PER_METER = 3.28084
 
 const ROUTE_RE = /strava\.com\/routes\/(\d+)/i
 
+// #459: pull the og:image URL out of a route page's HTML, tolerant of attribute
+// order, accepting only absolute http(s) URLs (a relative value would render broken).
+export function parseOgImage(html: string): string | null {
+  const metas = html.match(/<meta[^>]*>/gi) ?? []
+  for (const tag of metas) {
+    if (!/property=["']og:image["']/i.test(tag)) continue
+    const m = tag.match(/content=["']([^"']+)["']/i)
+    if (m && /^https?:\/\//i.test(m[1])) return m[1]
+  }
+  return null
+}
+
 export function parseStravaRouteId(raw: string): string | null {
   const url = takeFirstUrl(raw)
   const m = url.match(ROUTE_RE)
