@@ -1,4 +1,5 @@
 import type { RouteProvider, RouteEnrichment } from './types'
+import type { LatLng } from '@/lib/routeDirections/types'
 import { getStravaAccessToken } from '@/lib/strava/token'
 import { takeFirstUrl } from './url'
 
@@ -37,6 +38,23 @@ async function fetchStravaOgImage(id: string): Promise<string | null> {
     return parseOgImage(await res.text())
   } catch {
     return null
+  }
+}
+
+// #460: the full GPS trace for map-matching. The stored summary_polyline is too
+// coarse (~30 pts); the streams endpoint returns the full latlng series.
+export async function fetchStravaLatLng(id: string, fetchImpl: typeof fetch = fetch): Promise<LatLng[]> {
+  try {
+    const token = await getStravaAccessToken()
+    const res = await fetchImpl(`https://www.strava.com/api/v3/routes/${id}/streams`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return []
+    const streams = (await res.json()) as { type?: string; data?: [number, number][] }[]
+    const latlng = Array.isArray(streams) ? streams.find(s => s.type === 'latlng')?.data : undefined
+    return Array.isArray(latlng) ? latlng.map(([lat, lng]) => [lat, lng] as LatLng) : []
+  } catch {
+    return []
   }
 }
 
