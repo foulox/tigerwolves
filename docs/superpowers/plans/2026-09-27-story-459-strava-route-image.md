@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Capture Strava's own static route map (the public route page's `og:image`) at import and display it as one consistent, whole-route image on the run-facing surfaces, falling back to today's "Map ↗" link for MapMyRun / unsupported / imageless routes.
+**Goal:** Capture Strava's own static route map (the public route page's `og:image`) at import and display it as one consistent, whole-route image in the expanded run detail (the shared `WorkoutDetails`), falling back to today's "Map ↗" link for MapMyRun / unsupported / imageless routes.
 
-**Architecture:** Extends the exact provider→enrich→forms→db→display seam #457 built for distance/elevation/geometry. The Strava provider gains a second, best-effort fetch of the public route page to scrape `og:image`; that URL rides through `/api/route/enrich`, the create/edit forms, and `workout_families.map_image_url`, and renders in `WorkoutDetails` (the single component all four route surfaces share). MapMyRun and every other provider set no image and keep the link.
+**Architecture:** Extends the exact provider→enrich→forms→db→display seam #457 built for distance/elevation/geometry. The Strava provider gains a second, best-effort fetch of the public route page to scrape `og:image`; that URL rides through `/api/route/enrich`, the create/edit forms, and `workout_families.map_image_url`, and renders in `WorkoutDetails` — the shared **expanded** run-detail component (the Run page, and the expanded card on Schedule / My Plan). The **collapsed** Schedule/My Plan listing cards keep their compact summary + "View route" link and do **not** show the map; putting the map in the collapsed listing card is out of scope here — it is the per-surface / collapsed-vs-expanded question deferred to **#423**. MapMyRun and every other provider set no image and keep the link.
 
 **Tech Stack:** Next.js (App Router) Server Actions + Route Handlers, TypeScript, Neon Postgres via `@neondatabase/serverless` (`sql` tagged template in `lib/db.ts`), Zod input schema, Vitest (node env — no jsdom/testing-library, so no component render tests).
 
@@ -616,7 +616,7 @@ git push -u origin 459-strava-route-image
 gh pr create --repo foulox/tigerwolves --title "#459: Strava route map image" --body-file <pr-body>
 ```
 
-PR body carries: **Test plan (Claude)** — tsc, `vitest run`, provider/enrich/db tests, migration applied+verified on Preview & test-data (check these off immediately); **Manual steps (Lou)** — on the Preview URL, sign in as a leader, create/edit a run with a Strava route link and confirm: the whole-route image renders on Schedule / My Plan / Run page (not cropped), tapping it opens Strava, Library shows no image, a MapMyRun link shows the "Map ↗" link only, and a route with no link shows neither; plus the full AC list from #459.
+PR body carries: **Test plan (Claude)** — tsc, `vitest run`, provider/enrich/db tests, migration applied+verified on Preview & test-data (check these off immediately); **Manual steps (Lou)** — on the Preview URL, sign in as a leader, create/edit a run with a Strava route link and confirm: the whole-route image renders in the expanded run detail — the Run page, and the expanded card on Schedule / My Plan (not cropped) — while the collapsed listing card keeps its compact summary + "View route" link (no map); tapping the image opens Strava, Library shows no image, a MapMyRun link shows the "Map ↗" link only, and a route with no link shows neither; plus the full AC list from #459.
 
 Because this PR touches more than one file, end the "ready" message to Lou with: *"This PR touches many files. Run `/review` before merging."*
 
@@ -630,7 +630,7 @@ Because this PR touches more than one file, end the "ready" message to Lou with:
 
 ## Self-Review
 
-- **Spec coverage:** og:image capture → Tasks 1–2; enrich passthrough → Task 3; column/migration/4-branch → Task 4 + Rollout; persist/read → Task 5; forms carry it → Task 6; whole-route `object-contain` display on Schedule/My Plan/Run page + Library-excluded + link fallback → Task 7; MapMyRun link-only → inherent (provider sets no imageUrl); Heylo unchanged → untouched. All AC lines map to a task.
+- **Spec coverage:** og:image capture → Tasks 1–2; enrich passthrough → Task 3; column/migration/4-branch → Task 4 + Rollout; persist/read → Task 5; forms carry it → Task 6; whole-route `object-contain` display in the expanded `WorkoutDetails` (Run page + expanded Schedule/My Plan cards; collapsed listing cards keep the compact summary, map-in-collapsed-card → #423) + Library-excluded + link fallback → Task 7; MapMyRun link-only → inherent (provider sets no imageUrl); Heylo unchanged → untouched. All AC lines map to a task.
 - **Placeholder scan:** none — every step has concrete code or an exact command.
 - **Type consistency:** `imageUrl?: string` (provider/enrich, undefined-when-absent) vs `mapImageUrl: string | null` (row/input/db, null-when-absent). The boundary is deliberate: enrich JSON omits undefined; the form maps missing/blank → `null`; db stores/reads `null`. `parseOgImage` returns `string | null`; `fetchStravaOgImage` returns `string | null`; provider coerces `null → undefined` for `imageUrl`.
 - **Review Focus:** all five lines have owning tests (Tasks 1–2) or are exercised by the clear-on-remove wiring (Task 6) and verified on Preview (Task 7). The empty area is display-only, which the harness can't render-test — hence the explicit Preview manual step.
