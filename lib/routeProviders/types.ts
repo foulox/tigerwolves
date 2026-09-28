@@ -1,7 +1,7 @@
 export type RouteEnrichment = {
   distanceMiles: number
   elevationFeet: number
-  geometry: unknown            // provider-native geometry payload (Strava: { summaryPolyline: string })
+  geometry: unknown            // provider-native geometry payload (Strava: { summaryPolyline: string }; MapMyRun: { points: [...] })
   name?: string
 }
 

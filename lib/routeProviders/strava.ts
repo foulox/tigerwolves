@@ -1,10 +1,6 @@
 import type { RouteProvider, RouteEnrichment } from './types'
 import { getStravaAccessToken } from '@/lib/strava/token'
-
-// A link cell may hold "URL_A OR URL_B" — take URL_A.
-export function takeFirstUrl(raw: string): string {
-  return raw.split(/\s+OR\s+/i)[0]?.trim() ?? ''
-}
+import { takeFirstUrl } from './url'
 
 const METERS_PER_MILE = 1609.344
 const FEET_PER_METER = 3.28084
