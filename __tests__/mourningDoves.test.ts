@@ -92,7 +92,7 @@ describe('recency sort orders stalest-first for the Doves library (AC4)', () => 
     id: 0, familyId: 0, name: '', label: null, sortOrder: null, category: 'Long',
     type: 'Long', reason: '', rawInput: '', distTime: '', energySystem: '',
     hrZone: '', rpe: '', coachingNotes: null, mapLink: null,
-    distanceMiles: null, elevationGainFeet: null, geometry: null, mapImageUrl: null,
+    distanceMiles: null, elevationGainFeet: null, geometry: null, mapImageUrl: null, routeNarrative: null,
     author: null, raceTypes: [],
     trainingPhases: [], hasTurnaround: false, turnaround: '', flagged: false, flagNote: '',
     runGroupId: null, lastRan: null,

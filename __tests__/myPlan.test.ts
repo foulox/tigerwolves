@@ -49,7 +49,7 @@ function makeWorkout(overrides: Partial<WorkoutVariantRow> = {}): WorkoutVariant
     id: 1, familyId: 1, name: 'Yasso 800s', label: null, sortOrder: null,
     category: 'Quality', type: 'Interval', reason: '', rawInput: '10x800m @ 5K effort, 400m jog recovery.',
     distTime: '', energySystem: '', hrZone: '', rpe: '', coachingNotes: null, mapLink: null,
-    distanceMiles: null, elevationGainFeet: null, geometry: null, mapImageUrl: null,
+    distanceMiles: null, elevationGainFeet: null, geometry: null, mapImageUrl: null, routeNarrative: null,
     author: null, raceTypes: [], trainingPhases: [], hasTurnaround: false, turnaround: '',
     flagged: false, flagNote: '', runGroupId: 1, lastRan: null,
     ...overrides,

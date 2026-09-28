@@ -70,6 +70,8 @@ workout_families:
         URL of the route's own static map image (Strava's public-page og:image).
         Displayed as a whole-route preview on the run surfaces. NULL when the route
         has no link, isn't Strava, or the page yielded no og:image.
+    route_narrative:
+      description: Leader-confirmed landmark route narrative (#460), generated from the route trace. NULL when none.
     run_group_id:
       description: >
         NULL means global/inspirational — not owned by any one run group. One run

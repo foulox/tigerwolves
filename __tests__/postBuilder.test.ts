@@ -91,6 +91,7 @@ const baseWorkout: WorkoutVariantRow = {
   elevationGainFeet: null,
   geometry: null,
   mapImageUrl: null,
+  routeNarrative: null,
   author: null,
   raceTypes: [],
   trainingPhases: [],

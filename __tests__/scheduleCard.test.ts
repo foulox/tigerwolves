@@ -23,6 +23,7 @@ function makeVariant(overrides: Partial<WorkoutVariantRow> = {}): WorkoutVariant
     elevationGainFeet: null,
     geometry: null,
     mapImageUrl: null,
+    routeNarrative: null,
     author: 'Lou',
     raceTypes: ['Half', 'Full'],
     trainingPhases: ['Build', 'Peak'],

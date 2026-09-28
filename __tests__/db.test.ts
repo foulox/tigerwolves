@@ -205,6 +205,7 @@ describe('workout_families / workout_variants write path (#274)', () => {
     elevationGainFeet: null,
     geometry: null,
     mapImageUrl: null,
+    routeNarrative: null,
   }
 
   afterAll(async () => {
@@ -292,6 +293,7 @@ describe('workout_variants write path additions (#277)', () => {
     elevationGainFeet: null,
     geometry: null,
     mapImageUrl: null,
+    routeNarrative: null,
   }
 
   beforeEach(async () => {
@@ -558,7 +560,7 @@ describe.skipIf(!onTestData)('#401 workout ownership write path (AC4/AC5)', () =
     instructions: 'WU 10; 5x2min hill; CD 10', distTime: '', energySystem: '', hrZone: '',
     rpe: '', raceTypes: [], trainingPhases: [], hasTurnaround: false, turnaround: '',
     label: null, sortOrder: null, runGroupId: null as number | null,
-    distanceMiles: null, elevationGainFeet: null, geometry: null, mapImageUrl: null,
+    distanceMiles: null, elevationGainFeet: null, geometry: null, mapImageUrl: null, routeNarrative: null,
   }
   let familyId: number
   let variantId: number
@@ -618,6 +620,7 @@ describe.skipIf(!onTestData)('#457 geometry JSONB round-trip (non-null insert + 
     elevationGainFeet: null,
     geometry: { summaryPolyline: 'abc_test_polyline' },
     mapImageUrl: null,
+    routeNarrative: null,
   }
   let familyId: number
   let variantId: number
@@ -664,6 +667,7 @@ describe.skipIf(!onTestData)('#459 mapImageUrl round-trip (non-null insert + rea
     elevationGainFeet: null,
     geometry: null,
     mapImageUrl: 'https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC',
+    routeNarrative: null,
   }
   let familyId: number
   let variantId: number
@@ -682,6 +686,75 @@ describe.skipIf(!onTestData)('#459 mapImageUrl round-trip (non-null insert + rea
     const row = variants.find(v => v.familyId === familyId)
     expect(row).toBeDefined()
     expect(row!.mapImageUrl).toBe('https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC')
+  })
+})
+
+// #460: route_narrative TEXT round-trip — verifies the column is persisted on INSERT
+// (non-null), defaults to null when omitted, and is read back via fetchWorkoutVariants.
+// Test-data-gated (write path).
+describe.skipIf(!onTestData)('#460 routeNarrative round-trip (non-null + null insert/read via fetchWorkoutVariants)', () => {
+  const BASE_INPUT = {
+    name: '__test_routeNarrative_460__',
+    category: 'Quality' as const,
+    type: 'Hills' as const,
+    reason: 'routeNarrative fixture',
+    author: null,
+    coachingNotes: null,
+    mapLink: null,
+    runGroupId: null,
+    instructions: 'WU 10; 5x2min hill; CD 10',
+    distTime: '',
+    energySystem: '',
+    hrZone: '',
+    rpe: '',
+    raceTypes: [],
+    trainingPhases: [],
+    hasTurnaround: false,
+    turnaround: '',
+    label: null,
+    sortOrder: null,
+    distanceMiles: null,
+    elevationGainFeet: null,
+    geometry: null,
+    mapImageUrl: null,
+  }
+  let familyId: number
+  let variantId: number
+
+  afterEach(async () => {
+    if (variantId) await sql`DELETE FROM workout_variants WHERE id = ${variantId}`
+    if (familyId) await sql`DELETE FROM workout_families WHERE id = ${familyId}`
+    familyId = 0
+    variantId = 0
+  })
+
+  it('round-trips route_narrative on a workout family', async () => {
+    const result = await dbInsertWorkoutVariant({
+      ...BASE_INPUT,
+      routeNarrative: 'Out of McCarren down Kent to the waterfront.',
+    })
+    familyId = result.familyId
+    variantId = result.variantId
+
+    const variants = await fetchWorkoutVariants()
+    const row = variants.find(v => v.familyId === familyId)
+    expect(row).toBeDefined()
+    expect(row!.routeNarrative).toBe('Out of McCarren down Kent to the waterfront.')
+  })
+
+  it('defaults route_narrative to null when unset', async () => {
+    const result = await dbInsertWorkoutVariant({
+      ...BASE_INPUT,
+      name: '__test_routeNarrative_460_null__',
+      routeNarrative: null,
+    })
+    familyId = result.familyId
+    variantId = result.variantId
+
+    const variants = await fetchWorkoutVariants()
+    const row = variants.find(v => v.familyId === familyId)
+    expect(row).toBeDefined()
+    expect(row!.routeNarrative).toBeNull()
   })
 })
 
