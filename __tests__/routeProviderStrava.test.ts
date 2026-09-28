@@ -94,6 +94,44 @@ describe('stravaProvider.fetch', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')))
     expect(await stravaProvider.fetch('https://www.strava.com/routes/6647021')).toBeNull()
   })
+
+  it('sets imageUrl from the public page og:image (second fetch)', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({
+        name: 'Doves loop', distance: 16093.44, elevation_gain: 100,
+        map: { summary_polyline: 'abc' },
+      }) })
+      .mockResolvedValueOnce({ ok: true, text: async () =>
+        `<meta property="og:image" content="https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC">` })
+    vi.stubGlobal('fetch', fetchMock)
+    const r = await stravaProvider.fetch('https://www.strava.com/routes/6647021')
+    expect(r!.imageUrl).toBe('https://d3o5xota0a1fcr.cloudfront.net/v6/maps/ABC')
+    expect(r!.distanceMiles).toBeCloseTo(10.0, 2)
+  })
+
+  it('omits imageUrl (but still returns metrics) when the page fetch is not ok', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({
+        distance: 16093.44, elevation_gain: 100, map: { summary_polyline: 'abc' },
+      }) })
+      .mockResolvedValueOnce({ ok: false })
+    vi.stubGlobal('fetch', fetchMock)
+    const r = await stravaProvider.fetch('https://www.strava.com/routes/6647021')
+    expect(r!.imageUrl).toBeUndefined()
+    expect(r!.distanceMiles).toBeCloseTo(10.0, 2)
+  })
+
+  it('omits imageUrl when the page fetch throws', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({
+        distance: 16093.44, elevation_gain: 100, map: { summary_polyline: 'abc' },
+      }) })
+      .mockRejectedValueOnce(new Error('network'))
+    vi.stubGlobal('fetch', fetchMock)
+    const r = await stravaProvider.fetch('https://www.strava.com/routes/6647021')
+    expect(r!.imageUrl).toBeUndefined()
+    expect(r!.distanceMiles).toBeCloseTo(10.0, 2)
+  })
 })
 
 describe('parseOgImage', () => {

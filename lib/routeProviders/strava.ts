@@ -7,6 +7,10 @@ const FEET_PER_METER = 3.28084
 
 const ROUTE_RE = /strava\.com\/routes\/(\d+)/i
 
+// #459: browser-like UA so Strava serves the full public route page (og:image present).
+const UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
+
 // #459: pull the og:image URL out of a route page's HTML, tolerant of attribute
 // order, accepting only absolute http(s) URLs (a relative value would render broken).
 export function parseOgImage(html: string): string | null {
@@ -23,6 +27,17 @@ export function parseStravaRouteId(raw: string): string | null {
   const url = takeFirstUrl(raw)
   const m = url.match(ROUTE_RE)
   return m ? m[1] : null // capture group is the digit string — never Number()'d
+}
+
+// #459: best-effort — any failure yields null so enrichment (distance/elevation) survives.
+async function fetchStravaOgImage(id: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://www.strava.com/routes/${id}`, { headers: { 'User-Agent': UA } })
+    if (!res.ok) return null
+    return parseOgImage(await res.text())
+  } catch {
+    return null
+  }
 }
 
 export const stravaProvider: RouteProvider = {
@@ -47,6 +62,7 @@ export const stravaProvider: RouteProvider = {
       }
       const distance = data.distance ?? 0
       const elevation = data.elevation_gain ?? 0
+      const imageUrl = await fetchStravaOgImage(id)
       return {
         distanceMiles: distance / METERS_PER_MILE,
         elevationFeet: elevation * FEET_PER_METER,
@@ -54,6 +70,7 @@ export const stravaProvider: RouteProvider = {
         // `geometry != null` consumer isn't misled into thinking geometry exists.
         geometry: data.map?.summary_polyline ? { summaryPolyline: data.map.summary_polyline } : null,
         name: data.name,
+        imageUrl: imageUrl ?? undefined,
       }
     } catch {
       return null // network / parse failure → graceful fallback
