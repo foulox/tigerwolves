@@ -60,6 +60,7 @@ export default function WorkoutDetails({ w, exclude = [] }: {
     (showAuthor && w.author) ||
     (showMap && w.mapLink) ||
     (showMap && w.mapImageUrl) ||
+    (showMap && w.routeNarrative) ||
     w.distanceMiles != null ||
     w.elevationGainFeet != null
   )
@@ -90,6 +91,12 @@ export default function WorkoutDetails({ w, exclude = [] }: {
         <ChipRow label="Race Types" chips={w.raceTypes} />
       )}
       {showAuthor && w.author && <DetailRow label="Author" value={w.author} />}
+      {showMap && w.routeNarrative && (
+        <div>
+          <div className="font-semibold text-gray-700 mb-1">Route directions</div>
+          <p className="text-gray-600 whitespace-pre-line">{w.routeNarrative}</p>
+        </div>
+      )}
       {showMap && w.mapImageUrl && (
         <a
           href={w.mapLink ?? w.mapImageUrl}
