@@ -355,8 +355,8 @@ export default function AddWorkoutForm({
         </Field>
       )}
 
-      <Field label="Instructions">
-        <textarea required value={entry.instructions} onChange={e => setEntry(v => ({ ...v, instructions: e.target.value }))}
+      <Field label={entry.category === 'Quality' ? 'Instructions' : 'Instructions (optional)'}>
+        <textarea required={entry.category === 'Quality'} value={entry.instructions} onChange={e => setEntry(v => ({ ...v, instructions: e.target.value }))}
           rows={4}
           className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
           placeholder="WU: 15 min easy. Main: 10×60s@5K, r=jog down. CD: 10 min easy." />

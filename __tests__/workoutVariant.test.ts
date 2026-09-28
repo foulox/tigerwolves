@@ -84,8 +84,23 @@ describe('buildWorkoutVariantInput', () => {
     expect(() => buildWorkoutVariantInput(formData({ ...VALID_FIELDS, type: 'Made Up Type' }))).toThrow()
   })
 
-  it('throws when instructions is blank', () => {
-    expect(() => buildWorkoutVariantInput(formData({ ...VALID_FIELDS, instructions: '' }))).toThrow()
+  it('throws when instructions is blank for a Quality workout', () => {
+    expect(() => buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Quality', instructions: '' }))).toThrow()
+  })
+
+  it('allows blank instructions for a Long workout (#469)', () => {
+    const input = buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Long', instructions: '' }))
+    expect(input.instructions).toBe('')
+    expect(input.category).toBe('Long')
+  })
+
+  it('allows blank instructions for an Easy workout (#469)', () => {
+    const input = buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Easy', instructions: '' }))
+    expect(input.instructions).toBe('')
+  })
+
+  it('still throws for a Quality workout with whitespace-only instructions (#469)', () => {
+    expect(() => buildWorkoutVariantInput(formData({ ...VALID_FIELDS, category: 'Quality', instructions: '   ' }))).toThrow()
   })
 
   it('hasTurnaround is false for any value other than the string "true"', () => {
