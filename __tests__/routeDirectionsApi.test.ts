@@ -23,6 +23,11 @@ describe('POST /api/route/directions', () => {
     expect((await POST(req({ url: 'https://www.strava.com/routes/1' }))).status).toBe(401)
   })
 
+  it('401s when unauthenticated', async () => {
+    currentUser.mockResolvedValue(null)
+    expect((await POST(req({ url: 'https://www.strava.com/routes/1' }))).status).toBe(401)
+  })
+
   it('returns the generated narrative for a leader', async () => {
     currentUser.mockResolvedValue({ publicMetadata: { role: 'leader' } })
     generateNarrative.mockResolvedValue('Out of McCarren down Kent...')
