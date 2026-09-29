@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { it, expect } from 'vitest'
 import { shouldGenerateDirections } from '@/lib/routeDirections/shouldGenerate'
 
 it('generates when creating (no stored narrative, url present)', () => {

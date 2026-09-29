@@ -332,8 +332,11 @@ export default function AddWorkoutForm({
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url: entry.route, name: entry.name, distanceMiles: null }),
                   })
-                  const d = r.ok ? await r.json() : null
-                  setRouteNarrative(d?.narrative ?? null)
+                  if (r.ok) {
+                    const d = await r.json()
+                    if (d?.narrative) setRouteNarrative(d.narrative)
+                  }
+                  // non-ok or empty narrative → leave current text unchanged
                 } catch { /* leave current text */ } finally { setDirectionsPending(false) }
               }}
             >
