@@ -7,6 +7,7 @@ import { RACE_TYPES, TRAINING_PHASES } from '@/lib/data'
 import type { WorkoutVariantRow, RunGroup } from '@/lib/data'
 import { FORM_CATEGORIES, typesForCategory, chipBase, chipDark, chipOrange, chipOff, toggleItem } from '@/lib/workoutForm'
 import type { InferredFields } from '@/lib/workoutInference'
+import { shouldGenerateDirections } from '@/lib/routeDirections/shouldGenerate'
 
 type Step = 'entry' | 'loading' | 'review'
 
@@ -45,6 +46,8 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
   const [elevationFeet, setElevationFeet] = useState<string>(variant.elevationGainFeet != null ? String(Math.round(variant.elevationGainFeet)) : '')
   const [geometry, setGeometry] = useState<unknown | null>(variant.geometry ?? null)
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(variant.mapImageUrl ?? null)
+  const [routeNarrative, setRouteNarrative] = useState<string | null>(variant.routeNarrative ?? null)
+  const [directionsPending, setDirectionsPending] = useState(false)
   const [hasTurnaround, setHasTurnaround] = useState(variant.hasTurnaround)
   const [turnaround, setTurnaround] = useState(variant.turnaround)
   const [error, setError] = useState('')
@@ -78,6 +81,20 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
           setGeometry(null)
           setMapImageUrl(null)
         })
+    // #460: kick off route directions concurrently; gate on shouldGenerateDirections
+    // so an unchanged url keeps the seeded variant.routeNarrative already in state.
+    const directionsPromise: Promise<void> =
+      shouldGenerateDirections({ routeUrl: entry.route, storedUrl: variant.mapLink, hasStoredNarrative: !!variant.routeNarrative })
+        ? fetch('/api/route/directions', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: entry.route, name: entry.name, distanceMiles: null }),
+          })
+            .then(r => (r.ok ? r.json() : null))
+            .then(d => setRouteNarrative(d?.narrative ?? null))
+            .catch(() => { /* keep the seeded narrative on failure */ })
+        : entry.route.trim()
+          ? Promise.resolve() // url unchanged → keep variant.routeNarrative already in state
+          : Promise.resolve().then(() => setRouteNarrative(null)) // route cleared → clear
     try {
       const res = await fetch('/api/workout/infer', {
         method: 'POST',
@@ -90,6 +107,7 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
       setHasTurnaround(inferred.hasTurnaround)
       setTurnaround(inferred.turnaround)
       await enrichPromise
+      await directionsPromise
       setStep('review')
     } catch (err) {
       setError(`Could not infer fields: ${err instanceof Error ? err.message : String(err)}`)
@@ -122,6 +140,7 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
     formData.set('elevationGainFeet', elevationFeet)
     formData.set('geometry', geometry != null ? JSON.stringify(geometry) : '')
     formData.set('mapImageUrl', mapImageUrl ?? '')
+    formData.set('routeNarrative', routeNarrative ?? '')
     return formData
   }
 
@@ -256,6 +275,38 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
               placeholder="e.g. After the 3rd rep of 4×5min" />
           </Field>
+        )}
+
+        {entry.route.trim() && (
+          <div className="space-y-1 mb-5">
+            <label className="text-sm font-bold text-gray-700 block mb-1.5">Route directions</label>
+            <textarea
+              className="w-full rounded-lg border border-gray-300 p-2 text-sm touch-manipulation"
+              rows={4}
+              value={routeNarrative ?? ''}
+              onChange={e => setRouteNarrative(e.target.value || null)}
+              placeholder="No route directions generated."
+            />
+            <button
+              type="button"
+              aria-label="Regenerate route directions"
+              className="text-xs font-semibold text-blue-500 touch-manipulation"
+              disabled={directionsPending}
+              onClick={async () => {
+                setDirectionsPending(true)
+                try {
+                  const r = await fetch('/api/route/directions', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: entry.route, name: entry.name, distanceMiles: null }),
+                  })
+                  const d = r.ok ? await r.json() : null
+                  setRouteNarrative(d?.narrative ?? null)
+                } catch { /* leave current text */ } finally { setDirectionsPending(false) }
+              }}
+            >
+              {directionsPending ? 'Regenerating…' : 'Regenerate'}
+            </button>
+          </div>
         )}
 
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
