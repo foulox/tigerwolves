@@ -91,6 +91,7 @@ const baseWorkout: WorkoutVariantRow = {
   elevationGainFeet: null,
   geometry: null,
   mapImageUrl: null,
+  routeNarrative: null,
   author: null,
   raceTypes: [],
   trainingPhases: [],
@@ -410,6 +411,20 @@ describe('merge-field engine', () => {
     expect(tmpl).toContain('{{reason}}')
     expect(tmpl).toContain('{{distance}}')
     expect(tmpl).toContain('{{route_link}}')
+  })
+})
+
+describe('route_narrative merge field', () => {
+  test('renders the stored narrative for {{route_narrative}}', () => {
+    const selection: WorkoutVariantRow = { ...baseWorkout, routeNarrative: 'Out of McCarren down Kent to the waterfront.' }
+    const out = renderPostTemplate('{{route_narrative}}', entry, [selection], tigerWolvesConfig, [])
+    expect(out).toContain('Out of McCarren down Kent to the waterfront.')
+  })
+
+  test('renders empty when no narrative is set', () => {
+    const selection: WorkoutVariantRow = { ...baseWorkout, routeNarrative: null }
+    const out = renderPostTemplate('{{route_narrative}}', entry, [selection], tigerWolvesConfig, [])
+    expect(out.trim()).toBe('')
   })
 })
 

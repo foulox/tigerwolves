@@ -1,4 +1,5 @@
 import type { RouteProvider, RouteEnrichment } from './types'
+import type { LatLng } from '@/lib/routeDirections/types'
 import { takeFirstUrl } from './url'
 
 // MapMyRun serves no public route API, but its route page server-renders the full
@@ -57,6 +58,22 @@ export function extractState(html: string): unknown | null {
     }
   }
   return null // unbalanced — never closed
+}
+
+// #460: full trace already lives in the embedded route state (no extra API).
+export async function fetchMapMyRunLatLng(id: string, fetchImpl: typeof fetch = fetch): Promise<LatLng[]> {
+  try {
+    const res = await fetchImpl(`https://www.mapmyrun.com/routes/view/${id}/`, { headers: { 'User-Agent': UA } })
+    if (!res.ok) return []
+    const state = extractState(await res.text()) as { routes?: { route?: { points?: { lat?: number; lng?: number }[] } } } | null
+    const points = state?.routes?.route?.points
+    if (!Array.isArray(points)) return []
+    return points
+      .filter(p => typeof p.lat === 'number' && typeof p.lng === 'number')
+      .map(p => [p.lat as number, p.lng as number] as LatLng)
+  } catch {
+    return []
+  }
 }
 
 type MapMyRunRoute = {
