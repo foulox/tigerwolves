@@ -20,6 +20,13 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'TigerWolves',
   },
+  // Next 16's `appleWebApp.capable` emits only the modern `mobile-web-app-capable`
+  // tag; add the legacy apple-prefixed one too so iOS versions that predate web-
+  // manifest `display` support still launch standalone (issue #478 flags iOS as
+  // mandatory). Harmless alongside the modern tag.
+  other: {
+    'apple-mobile-web-app-capable': 'yes',
+  },
 }
 
 export const viewport: Viewport = {
