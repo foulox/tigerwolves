@@ -11,12 +11,22 @@ const geist = Geist({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'TigerWolves',
   description: 'Run club workout planner',
+  // #478 (Story A): PWA install + iOS standalone.
+  manifest: '/manifest.webmanifest',
+  // iOS Safari ignores the manifest — these meta tags are what launch the
+  // home-screen app full-screen with no address bar on iOS.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'TigerWolves',
+  },
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  themeColor: '#f97316', // brand orange — tints the status/title bar
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
