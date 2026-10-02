@@ -10,11 +10,24 @@ async function main() {
   const env = (process.argv.find(a => a.startsWith('--env='))?.split('=')[1]) ?? ''
   if (!EXPECTED[env]) throw new Error('pass --env=demo|prod')
   if (!new URL(process.env.DATABASE_URL ?? '').host.includes(EXPECTED[env])) throw new Error('HOST GUARD: DATABASE_URL does not match --env')
-  // Route-based = any workout with a map_link whose run is not a Workout run.
+  // Route-based = any workout with an effective map_link whose run is not a Workout run.
+  // Uses the app's effective link: COALESCE(family.map_link, variant.map_link) — so families
+  // whose link lives only on workout_variants (e.g. Mourning Doves, migrate-411) are included.
+  // KNOWN LIMITATION: route_narrative is family-level (migrate-460), so families whose two
+  // variants have genuinely different routes (#411) get a single narrative generated from the
+  // preferred link. Fully distinct per-variant narratives would need a schema change (out of
+  // scope for #480).
   const rows = await sql`
-    SELECT f.id, f.name, f.map_link, f.distance_miles
+    SELECT f.id, f.name,
+           COALESCE(f.map_link, v.map_link) AS map_link,
+           f.distance_miles
     FROM workout_families f
-    WHERE f.map_link IS NOT NULL
+    LEFT JOIN LATERAL (
+      SELECT map_link FROM workout_variants
+      WHERE family_id = f.id AND map_link IS NOT NULL
+      ORDER BY id LIMIT 1
+    ) v ON true
+    WHERE COALESCE(f.map_link, v.map_link) IS NOT NULL
       AND f.run_group_id IN (SELECT run_group_id FROM runs WHERE kind <> 'Workout' AND run_group_id IS NOT NULL)
   ` as any[]
   let ok = 0, none = 0

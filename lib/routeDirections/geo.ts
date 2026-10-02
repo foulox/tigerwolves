@@ -23,7 +23,7 @@ export function classifyTurn(incoming: LatLng[], outgoing: LatLng[]): TurnKind {
   if (incoming.length < 2 || outgoing.length < 2) return 'none'
   const inB = bearing(incoming[incoming.length - 2], incoming[incoming.length - 1])
   const outB = bearing(outgoing[0], outgoing[1])
-  let delta = ((outB - inB + 540) % 360) - 180 // signed, [-180, 180]; +right, -left
+  const delta = ((outB - inB + 540) % 360) - 180 // signed, [-180, 180]; +right, -left
   const mag = Math.abs(delta)
   if (mag > 150) return 'turnaround'
   if (mag < 30) return 'none'
