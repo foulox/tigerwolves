@@ -11,3 +11,7 @@ export type DirectionsInput = {
   shape: RouteShape
   landmarks: LandmarkCandidate[]
 }
+
+export type TurnKind =
+  | 'none' | 'slight left' | 'left' | 'sharp left'
+  | 'slight right' | 'right' | 'sharp right' | 'turnaround'
