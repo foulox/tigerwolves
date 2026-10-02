@@ -95,6 +95,7 @@ type RenderCtx = {
   runConfig: RunConfig
   roster: string[]
   activeType?: string | null
+  isDefaultTemplate?: boolean
 }
 
 function resolveField(key: string, ctx: RenderCtx): string {
@@ -180,9 +181,13 @@ function resolveField(key: string, ctx: RenderCtx): string {
     case 'route_narrative': {
       const narrative = primary?.routeNarrative ?? ''
       if (!narrative) return ''
-      // Gate: only emit for Easy or Long workouts; Quality posts are unaffected
-      const cat = primary?.category
-      if (cat !== 'Easy' && cat !== 'Long') return ''
+      // Gate: when rendering the DEFAULT template, only emit for Easy or Long —
+      // Quality workouts don't auto-include directions. Explicit {{route_narrative}}
+      // placement in a custom template resolves for ANY category.
+      if (ctx.isDefaultTemplate) {
+        const cat = primary?.category
+        if (cat !== 'Easy' && cat !== 'Long') return ''
+      }
       return `Route: ${narrative}`
     }
 
@@ -202,8 +207,9 @@ export function renderPostTemplate(
   runConfig: RunConfig,
   roster: string[],
   activeType?: string | null,
+  isDefaultTemplate?: boolean,
 ): string {
-  const ctx: RenderCtx = { entry, selections, runConfig, roster, activeType }
+  const ctx: RenderCtx = { entry, selections, runConfig, roster, activeType, isDefaultTemplate }
 
   // Substitute {{key}} tokens (optional whitespace inside braces)
   let result = template.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_match, key: string) =>
@@ -266,13 +272,15 @@ export function buildPost(
   roster: string[],
   activeType: string | null = null,
 ): string {
+  const usingDefault = runConfig.postTemplate == null
   return renderPostTemplate(
-    runConfig.postTemplate ?? defaultTemplate(runConfig),
+    usingDefault ? defaultTemplate(runConfig) : runConfig.postTemplate!,
     entry,
     selections,
     runConfig,
     roster,
     activeType,
+    usingDefault,
   )
 }
 

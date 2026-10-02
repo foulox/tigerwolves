@@ -411,6 +411,7 @@ describe('merge-field engine', () => {
     expect(tmpl).toContain('{{reason}}')
     expect(tmpl).toContain('{{distance}}')
     expect(tmpl).toContain('{{route_link}}')
+    expect(tmpl).toContain('{{route_narrative}}')
   })
 })
 
@@ -419,6 +420,14 @@ describe('route_narrative merge field', () => {
     const selection: WorkoutVariantRow = { ...baseWorkout, category: 'Easy', routeNarrative: 'Out of McCarren down Kent to the waterfront.' }
     const out = renderPostTemplate('{{route_narrative}}', entry, [selection], tigerWolvesConfig, [])
     expect(out).toContain('Out of McCarren down Kent to the waterfront.')
+  })
+
+  test('renders the stored narrative for {{route_narrative}} even for a Quality category (explicit placement contract)', () => {
+    // Explicit {{route_narrative}} in a custom template must resolve for ANY category —
+    // the Quality exclusion only applies to the default template auto-include.
+    const selection: WorkoutVariantRow = { ...baseWorkout, category: 'Quality', routeNarrative: 'Head up Bedford to the park entrance.' }
+    const out = renderPostTemplate('{{route_narrative}}', entry, [selection], tigerWolvesConfig, [])
+    expect(out).toContain('Head up Bedford to the park entrance.')
   })
 
   test('renders empty when no narrative is set', () => {
