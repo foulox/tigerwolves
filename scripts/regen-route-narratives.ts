@@ -29,7 +29,7 @@ async function main() {
     ) v ON true
     WHERE COALESCE(f.map_link, v.map_link) IS NOT NULL
       AND f.run_group_id IN (SELECT run_group_id FROM runs WHERE kind <> 'Workout' AND run_group_id IS NOT NULL)
-  ` as any[]
+  ` as { id: number; name: string; map_link: string; distance_miles: number | null }[]
   let ok = 0, none = 0
   for (const r of rows) {
     const n = await generateNarrative({ url: r.map_link, routeName: r.name, distanceMiles: r.distance_miles })
