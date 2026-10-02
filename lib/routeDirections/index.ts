@@ -1,13 +1,14 @@
-import type { LatLng, DirectionsInput } from './types'
+import type { LatLng, DirectionsInput, MatchedStep } from './types'
 import { fetchFullTrace as realFetchFullTrace } from './trace'
 import { mapMatch as realMapMatch } from './mapMatch'
 import { landmarks as realLandmarks } from './landmarks'
 import { analyzeShape } from './shape'
 import { composeNarrative as realCompose } from './narrative'
+import { buildLegs } from './legs'
 
 export type GenerateDeps = {
   fetchFullTrace: (url: string) => Promise<LatLng[]>
-  mapMatch: (points: LatLng[], token: string) => Promise<string[]>
+  mapMatch: (points: LatLng[], token: string) => Promise<MatchedStep[]>
   landmarks: (points: LatLng[], token: string) => Promise<DirectionsInput['landmarks']>
   composeNarrative: (input: DirectionsInput) => Promise<string>
 }
@@ -25,13 +26,14 @@ export async function generateNarrative(
   const trace = await fetchFullTrace(args.url)
   if (trace.length < 2) return null
 
-  const [streets, marks] = await Promise.all([mapMatch(trace, token), landmarks(trace, token)])
-  if (streets.length === 0) return null
+  const [steps, marks] = await Promise.all([mapMatch(trace, token), landmarks(trace, token)])
+  const legs = buildLegs(steps, 0.1, marks)
+  if (legs.length === 0 && marks.length === 0) return null
 
   const input: DirectionsInput = {
     routeName: args.routeName ?? null,
     distanceMiles: args.distanceMiles ?? null,
-    streets,
+    legs,
     shape: analyzeShape(trace),
     landmarks: marks,
   }

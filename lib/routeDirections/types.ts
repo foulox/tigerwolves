@@ -7,7 +7,7 @@ export type LandmarkCandidate = { name: string; anchor: 'start' | 'turnaround' |
 export type DirectionsInput = {
   routeName: string | null
   distanceMiles: number | null
-  streets: string[]
+  legs: RouteLeg[]
   shape: RouteShape
   landmarks: LandmarkCandidate[]
 }
