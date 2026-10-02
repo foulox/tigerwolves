@@ -181,13 +181,13 @@ function resolveField(key: string, ctx: RenderCtx): string {
     case 'route_narrative': {
       const narrative = primary?.routeNarrative ?? ''
       if (!narrative) return ''
-      // Gate: when rendering the DEFAULT template, only emit for Easy or Long —
-      // Quality workouts don't auto-include directions. Explicit {{route_narrative}}
-      // placement in a custom template resolves for ANY category.
-      if (ctx.isDefaultTemplate) {
-        const cat = primary?.category
-        if (cat !== 'Easy' && cat !== 'Long') return ''
-      }
+      // Explicit {{route_narrative}} in a custom template resolves to the BARE
+      // value for ANY category (the #460 merge-field contract).
+      if (!ctx.isDefaultTemplate) return narrative
+      // Default template: auto-include directions only for Easy/Long route runs,
+      // and prefix the "Route:" label here (Quality workouts get nothing).
+      const cat = primary?.category
+      if (cat !== 'Easy' && cat !== 'Long') return ''
       return `Route: ${narrative}`
     }
 

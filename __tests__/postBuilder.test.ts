@@ -435,6 +435,15 @@ describe('route_narrative merge field', () => {
     const out = renderPostTemplate('{{route_narrative}}', entry, [selection], tigerWolvesConfig, [])
     expect(out.trim()).toBe('')
   })
+
+  test('explicit custom template: {{route_narrative}} resolves to BARE narrative — no "Route:" prefix — for Quality category', () => {
+    // isDefaultTemplate=false simulates a leader's custom template using {{route_narrative}}.
+    // The #460 merge-field contract: bare value, any category, no auto-label injected.
+    const selection: WorkoutVariantRow = { ...baseWorkout, category: 'Quality', routeNarrative: 'Left on Driggs, right at the bridge, loop back on Kent.' }
+    const out = renderPostTemplate('Directions: {{route_narrative}}', entry, [selection], tigerWolvesConfig, [], undefined, false)
+    expect(out).toBe('Directions: Left on Driggs, right at the bridge, loop back on Kent.')
+    expect(out).not.toContain('Route:')
+  })
 })
 
 describe('route narrative in default-template post', () => {
