@@ -17,3 +17,6 @@ export type TurnKind =
   | 'slight right' | 'right' | 'sharp right' | 'turnaround'
 
 export type MatchedStep = { name: string; meters: number; coords: LatLng[] }
+
+export type FeatureKind = 'bridge' | 'park' | 'street'
+export type RouteLeg = { street: string; miles: number; turn: TurnKind; feature: FeatureKind }
