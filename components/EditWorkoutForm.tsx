@@ -181,6 +181,43 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
           <p className="text-xs text-gray-500 mt-0.5">{entry.category} · {entry.type}</p>
         </div>
 
+        {entry.route.trim() && (
+          <div className="space-y-1 mb-5">
+            <p className="text-sm font-medium text-gray-900">Route directions — read this aloud to check it</p>
+            <p className="text-xs text-gray-500 mb-1">You&apos;re the editor. Fix any wrong turn or missing street before saving.</p>
+            <label className="text-sm font-bold text-gray-700 block mb-1.5">Route directions</label>
+            <textarea
+              className="w-full rounded-lg border border-gray-300 p-2 text-sm touch-manipulation"
+              rows={4}
+              value={routeNarrative ?? ''}
+              onChange={e => setRouteNarrative(e.target.value || null)}
+              placeholder="No route directions generated."
+            />
+            <button
+              type="button"
+              aria-label="Regenerate route directions"
+              className="text-xs font-semibold text-blue-500 touch-manipulation"
+              disabled={directionsPending}
+              onClick={async () => {
+                setDirectionsPending(true)
+                try {
+                  const r = await fetch('/api/route/directions', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: entry.route, name: entry.name, distanceMiles: null }),
+                  })
+                  if (r.ok) {
+                    const d = await r.json()
+                    if (d?.narrative) setRouteNarrative(d.narrative)
+                  }
+                  // non-ok or empty narrative → leave current text unchanged
+                } catch { /* leave current text */ } finally { setDirectionsPending(false) }
+              }}
+            >
+              {directionsPending ? 'Regenerating…' : 'Regenerate'}
+            </button>
+          </div>
+        )}
+
         <Field label="Author / Source">
           <input value={review.author} onChange={e => setReview(r => r && ({ ...r, author: e.target.value }))}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400" />
@@ -275,41 +312,6 @@ export default function EditWorkoutForm({ variant, groupOptions = [] }: { varian
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:border-orange-400"
               placeholder="e.g. After the 3rd rep of 4×5min" />
           </Field>
-        )}
-
-        {entry.route.trim() && (
-          <div className="space-y-1 mb-5">
-            <label className="text-sm font-bold text-gray-700 block mb-1.5">Route directions</label>
-            <textarea
-              className="w-full rounded-lg border border-gray-300 p-2 text-sm touch-manipulation"
-              rows={4}
-              value={routeNarrative ?? ''}
-              onChange={e => setRouteNarrative(e.target.value || null)}
-              placeholder="No route directions generated."
-            />
-            <button
-              type="button"
-              aria-label="Regenerate route directions"
-              className="text-xs font-semibold text-blue-500 touch-manipulation"
-              disabled={directionsPending}
-              onClick={async () => {
-                setDirectionsPending(true)
-                try {
-                  const r = await fetch('/api/route/directions', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: entry.route, name: entry.name, distanceMiles: null }),
-                  })
-                  if (r.ok) {
-                    const d = await r.json()
-                    if (d?.narrative) setRouteNarrative(d.narrative)
-                  }
-                  // non-ok or empty narrative → leave current text unchanged
-                } catch { /* leave current text */ } finally { setDirectionsPending(false) }
-              }}
-            >
-              {directionsPending ? 'Regenerating…' : 'Regenerate'}
-            </button>
-          </div>
         )}
 
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
