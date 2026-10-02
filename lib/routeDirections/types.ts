@@ -15,3 +15,5 @@ export type DirectionsInput = {
 export type TurnKind =
   | 'none' | 'slight left' | 'left' | 'sharp left'
   | 'slight right' | 'right' | 'sharp right' | 'turnaround'
+
+export type MatchedStep = { name: string; meters: number; coords: LatLng[] }
