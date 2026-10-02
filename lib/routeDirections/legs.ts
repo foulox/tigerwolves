@@ -1,14 +1,13 @@
-import type { LatLng, MatchedStep, RouteLeg, TurnKind, FeatureKind, LandmarkCandidate } from './types'
+import type { LatLng, MatchedStep, RouteLeg, TurnKind, FeatureKind } from './types'
 import { classifyTurn } from './geo'
 
 const MILE = 1609.344
 
 type Agg = { name: string; meters: number; coords: LatLng[] }
 
-export function classifyFeature(street: string, landmarks: LandmarkCandidate[]): FeatureKind {
+export function classifyFeature(street: string): FeatureKind {
   if (/bridge/i.test(street)) return 'bridge'
   if (/\bpark\b/i.test(street)) return 'park'
-  if (landmarks.some(l => /\bpark\b/i.test(l.name))) return 'park'
   return 'street'
 }
 
@@ -22,7 +21,7 @@ function aggregate(steps: MatchedStep[]): Agg[] {
   return legs
 }
 
-export function buildLegs(steps: MatchedStep[], minMiles = 0.1, landmarks: LandmarkCandidate[] = []): RouteLeg[] {
+export function buildLegs(steps: MatchedStep[], minMiles = 0.1): RouteLeg[] {
   const aggs = aggregate(steps)
   const out: RouteLeg[] = []
   for (let i = 0; i < aggs.length; i++) {
@@ -30,7 +29,7 @@ export function buildLegs(steps: MatchedStep[], minMiles = 0.1, landmarks: Landm
     if (!a.name || a.meters / MILE < minMiles) continue
     const prev = aggs[i - 1]
     const turn: TurnKind = prev ? classifyTurn(prev.coords, a.coords) : 'none'
-    out.push({ street: a.name, miles: a.meters / MILE, turn, feature: classifyFeature(a.name, landmarks) })
+    out.push({ street: a.name, miles: a.meters / MILE, turn, feature: classifyFeature(a.name) })
   }
   return out
 }

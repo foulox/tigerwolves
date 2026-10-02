@@ -27,7 +27,7 @@ export async function generateNarrative(
   if (trace.length < 2) return null
 
   const [steps, marks] = await Promise.all([mapMatch(trace, token), landmarks(trace, token)])
-  const legs = buildLegs(steps, 0.1, marks)
+  const legs = buildLegs(steps, 0.1)
   if (legs.length === 0 && marks.length === 0) return null
 
   const input: DirectionsInput = {

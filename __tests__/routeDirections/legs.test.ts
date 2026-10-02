@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { buildLegs, classifyFeature } from '@/lib/routeDirections/legs'
-import type { MatchedStep, LandmarkCandidate } from '@/lib/routeDirections/types'
+import type { MatchedStep } from '@/lib/routeDirections/types'
 
 const M = 1609.344
 const step = (name: string, miles: number, coords: [number, number][]): MatchedStep => ({ name, meters: miles * M, coords })
-const lm = (name: string): LandmarkCandidate => ({ name, anchor: 'turnaround', distanceMeters: 10 })
 
 it('merges consecutive same-street steps and sums distance', () => {
   const legs = buildLegs([step('Driggs Avenue', 0.3, [[0, 0], [0, 1]]), step('Driggs Avenue', 0.3, [[0, 1], [0, 2]])])
@@ -31,19 +30,21 @@ it('marks the out-and-back reversal as turnaround', () => {
 })
 
 it('classifies bridges by name', () => {
-  expect(classifyFeature('Kosciuszko Bridge', [])).toBe('bridge')
+  expect(classifyFeature('Kosciuszko Bridge')).toBe('bridge')
 })
 
-it('classifies parks by name or nearby landmark', () => {
-  expect(classifyFeature('McCarren Park Drive', [])).toBe('park')
-  expect(classifyFeature('North 12th Street', [lm('McGolrick Park')])).toBe('park')
+it('classifies parks by street name', () => {
+  expect(classifyFeature('McCarren Park Drive')).toBe('park')
+  // Route-global landmarks no longer force park classification — a plain street
+  // that happens to be near a park landmark is still 'street'.
+  expect(classifyFeature('North 12th Street')).toBe('street')
 })
 
 it('defaults to street', () => {
-  expect(classifyFeature('Meeker Avenue', [lm('Sparta Deli')])).toBe('street')
+  expect(classifyFeature('Meeker Avenue')).toBe('street')
 })
 
-it('buildLegs sets feature from landmarks', () => {
-  const legs = buildLegs([{ name: 'Kosciuszko Bridge', meters: 1400, coords: [[0, 0], [0, 1]] }], 0.1, [])
+it('buildLegs sets feature from street name', () => {
+  const legs = buildLegs([{ name: 'Kosciuszko Bridge', meters: 1400, coords: [[0, 0], [0, 1]] }], 0.1)
   expect(legs[0].feature).toBe('bridge')
 })
