@@ -7,7 +7,16 @@ export type LandmarkCandidate = { name: string; anchor: 'start' | 'turnaround' |
 export type DirectionsInput = {
   routeName: string | null
   distanceMiles: number | null
-  streets: string[]
+  legs: RouteLeg[]
   shape: RouteShape
   landmarks: LandmarkCandidate[]
 }
+
+export type TurnKind =
+  | 'none' | 'slight left' | 'left' | 'sharp left'
+  | 'slight right' | 'right' | 'sharp right' | 'turnaround'
+
+export type MatchedStep = { name: string; meters: number; coords: LatLng[] }
+
+export type FeatureKind = 'bridge' | 'park' | 'street'
+export type RouteLeg = { street: string; miles: number; turn: TurnKind; feature: FeatureKind }

@@ -2,27 +2,20 @@ import { describe, it, expect } from 'vitest'
 import { buildDirectionsPrompt } from '@/lib/routeDirections/prompt'
 import type { DirectionsInput } from '@/lib/routeDirections/types'
 
-const input: DirectionsInput = {
-  routeName: 'DOVES Carousel',
-  distanceMiles: 8.56,
-  streets: ['North 12th Street', 'Kent Avenue', 'Flushing Avenue', 'Plymouth Street'],
-  shape: { returnsToStart: true, startToEndMeters: 20 },
-  landmarks: [
-    { name: 'McCarren Park', anchor: 'start', distanceMeters: 30 },
-    { name: 'Jane\'s Carousel', anchor: 'turnaround', distanceMeters: 26 },
+const base: DirectionsInput = {
+  routeName: 'K Bridge', distanceMiles: 3.7, shape: { returnsToStart: true, startToEndMeters: 10 },
+  legs: [
+    { street: 'Driggs Avenue', miles: 0.5, turn: 'none', feature: 'street' },
+    { street: 'Kosciuszko Bridge', miles: 0.85, turn: 'right', feature: 'bridge' },
   ],
+  landmarks: [{ name: 'Uro Cafe', anchor: 'start', distanceMeters: 20 }],
 }
 
-describe('buildDirectionsPrompt', () => {
-  it('includes the streets, landmarks, and shape', () => {
-    const p = buildDirectionsPrompt(input)
-    expect(p).toContain('Kent Avenue')
-    expect(p).toContain('McCarren Park')
-    expect(p).toContain('turnaround')
-    expect(p).toContain('DOVES Carousel')
-  })
-  it('instructs the model not to invent street or landmark names', () => {
-    const p = buildDirectionsPrompt(input).toLowerCase()
-    expect(p).toMatch(/only.*(streets|landmarks|names).*(provided|listed|given)|do not (invent|make up|add)/)
-  })
+it('lists legs with turn + distance and states the phrasing rules', () => {
+  const p = buildDirectionsPrompt(base)
+  expect(p).toContain('Driggs Avenue')
+  expect(p).toContain('0.5')
+  expect(p).toMatch(/bridge/i)
+  expect(p).toMatch(/never.*(invent|fabricate)/i)
+  expect(p).toMatch(/turn around|turnaround/i)
 })

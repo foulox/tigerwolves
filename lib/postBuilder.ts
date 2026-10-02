@@ -95,6 +95,7 @@ type RenderCtx = {
   runConfig: RunConfig
   roster: string[]
   activeType?: string | null
+  isDefaultTemplate?: boolean
 }
 
 function resolveField(key: string, ctx: RenderCtx): string {
@@ -177,8 +178,18 @@ function resolveField(key: string, ctx: RenderCtx): string {
     case 'route_link':
       return primary?.mapLink ? `🗺️ ${primary.mapLink}` : ''
 
-    case 'route_narrative':
-      return primary?.routeNarrative ?? ''
+    case 'route_narrative': {
+      const narrative = primary?.routeNarrative ?? ''
+      if (!narrative) return ''
+      // Explicit {{route_narrative}} in a custom template resolves to the BARE
+      // value for ANY category (the #460 merge-field contract).
+      if (!ctx.isDefaultTemplate) return narrative
+      // Default template: auto-include directions only for Easy/Long route runs,
+      // and prefix the "Route:" label here (Quality workouts get nothing).
+      const cat = primary?.category
+      if (cat !== 'Easy' && cat !== 'Long') return ''
+      return `Route: ${narrative}`
+    }
 
     default:
       return ''
@@ -196,8 +207,9 @@ export function renderPostTemplate(
   runConfig: RunConfig,
   roster: string[],
   activeType?: string | null,
+  isDefaultTemplate?: boolean,
 ): string {
-  const ctx: RenderCtx = { entry, selections, runConfig, roster, activeType }
+  const ctx: RenderCtx = { entry, selections, runConfig, roster, activeType, isDefaultTemplate }
 
   // Substitute {{key}} tokens (optional whitespace inside braces)
   let result = template.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_match, key: string) =>
@@ -238,6 +250,7 @@ export function defaultTemplate(runConfig: RunConfig): string {
     '{{description}}',
     '{{distance}}',
     '{{route_link}}',
+    '{{route_narrative}}',
     '',
     '{{workout_details}}',
     '',
@@ -259,13 +272,15 @@ export function buildPost(
   roster: string[],
   activeType: string | null = null,
 ): string {
+  const usingDefault = runConfig.postTemplate == null
   return renderPostTemplate(
-    runConfig.postTemplate ?? defaultTemplate(runConfig),
+    usingDefault ? defaultTemplate(runConfig) : runConfig.postTemplate!,
     entry,
     selections,
     runConfig,
     roster,
     activeType,
+    usingDefault,
   )
 }
 
