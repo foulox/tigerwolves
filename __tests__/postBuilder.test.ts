@@ -415,8 +415,8 @@ describe('merge-field engine', () => {
 })
 
 describe('route_narrative merge field', () => {
-  test('renders the stored narrative for {{route_narrative}}', () => {
-    const selection: WorkoutVariantRow = { ...baseWorkout, routeNarrative: 'Out of McCarren down Kent to the waterfront.' }
+  test('renders the stored narrative for {{route_narrative}} (Easy category)', () => {
+    const selection: WorkoutVariantRow = { ...baseWorkout, category: 'Easy', routeNarrative: 'Out of McCarren down Kent to the waterfront.' }
     const out = renderPostTemplate('{{route_narrative}}', entry, [selection], tigerWolvesConfig, [])
     expect(out).toContain('Out of McCarren down Kent to the waterfront.')
   })
@@ -425,6 +425,29 @@ describe('route_narrative merge field', () => {
     const selection: WorkoutVariantRow = { ...baseWorkout, routeNarrative: null }
     const out = renderPostTemplate('{{route_narrative}}', entry, [selection], tigerWolvesConfig, [])
     expect(out.trim()).toBe('')
+  })
+})
+
+describe('route narrative in default-template post', () => {
+  test('includes the route narrative in the post for a route-based (Easy) run', () => {
+    const easyWorkoutWithNarrative: WorkoutVariantRow = {
+      ...baseWorkout,
+      category: 'Easy',
+      type: 'Easy',
+      routeNarrative: 'Head out on Driggs for half a mile, then turn right onto the Kosciuszko Bridge.',
+    }
+    const post = buildPost(entry, [easyWorkoutWithNarrative], mourningDovesConfig, mourningDovesRoster)
+    expect(post).toContain('turn right onto the Kosciuszko Bridge')
+  })
+
+  test('does NOT include a route narrative for a Quality run', () => {
+    const qualityWorkoutWithNarrative: WorkoutVariantRow = {
+      ...baseWorkout,
+      category: 'Quality',
+      routeNarrative: 'should not appear',
+    }
+    const post = buildPost(entry, [qualityWorkoutWithNarrative], tigerWolvesConfig, tigerWolvesRoster)
+    expect(post).not.toContain('should not appear')
   })
 })
 

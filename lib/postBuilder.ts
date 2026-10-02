@@ -177,8 +177,14 @@ function resolveField(key: string, ctx: RenderCtx): string {
     case 'route_link':
       return primary?.mapLink ? `🗺️ ${primary.mapLink}` : ''
 
-    case 'route_narrative':
-      return primary?.routeNarrative ?? ''
+    case 'route_narrative': {
+      const narrative = primary?.routeNarrative ?? ''
+      if (!narrative) return ''
+      // Gate: only emit for Easy or Long workouts; Quality posts are unaffected
+      const cat = primary?.category
+      if (cat !== 'Easy' && cat !== 'Long') return ''
+      return `Route: ${narrative}`
+    }
 
     default:
       return ''
@@ -238,6 +244,7 @@ export function defaultTemplate(runConfig: RunConfig): string {
     '{{description}}',
     '{{distance}}',
     '{{route_link}}',
+    '{{route_narrative}}',
     '',
     '{{workout_details}}',
     '',
