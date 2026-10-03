@@ -1,0 +1,49 @@
+name: Strip lifecycle labels on close
+
+# Closes the one gap the native GitHub Project automation can't cover. That
+# automation already moves an issue's board Status to Done when it closes (or
+# when its linked PR merges) — but it cannot touch LABELS. So a closed issue
+# keeps whatever lifecycle label it had (backlog / up-next / ready-to-build),
+# which is exactly the manual "strip lifecycle labels on close" step called out
+# in CLAUDE.md's Board Status sync section. This workflow is that backstop.
+#
+# Lifecycle labels (backlog → up-next → ready-to-build) describe where an issue
+# sits in the pipeline, so they're meaningless once it's closed; classification
+# labels (story / bug / epic / bounded / run-ux / library / …) stay untouched.
+#
+# `issues: closed` fires for every close path — a manual close AND a merged PR
+# whose body says "Closes #N" — so both are covered by this single trigger.
+
+on:
+  issues:
+    types: [closed]
+
+# Serialize per-issue so a rapid close/reopen/close can't race two runs editing
+# the same issue's labels at once.
+concurrency:
+  group: strip-lifecycle-labels-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+# Least privilege: the only write is editing this issue's labels.
+permissions:
+  issues: write
+
+jobs:
+  strip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove any lifecycle labels the closed issue still carries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Remove only the lifecycle labels actually present, so this is a
+          # clean no-op (never an error) on issues that never carried one.
+          labels=$(gh issue view "$ISSUE" --repo "$REPO" --json labels --jq '.labels[].name')
+          for l in backlog up-next ready-to-build; do
+            if printf '%s\n' "$labels" | grep -qx "$l"; then
+              echo "Removing '$l' from #$ISSUE"
+              gh issue edit "$ISSUE" --repo "$REPO" --remove-label "$l"
+            fi
+          done
