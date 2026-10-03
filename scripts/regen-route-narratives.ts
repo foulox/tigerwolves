@@ -29,10 +29,14 @@ async function main() {
     ) v ON true
     WHERE COALESCE(f.map_link, v.map_link) IS NOT NULL
       AND f.run_group_id IN (SELECT run_group_id FROM runs WHERE kind <> 'Workout' AND run_group_id IS NOT NULL)
-  ` as { id: number; name: string; map_link: string; distance_miles: number | null }[]
+  ` as { id: number; name: string; map_link: string; distance_miles: string | null }[]
+  // NOTE: Neon returns `numeric` columns as strings, so distance_miles arrives as a
+  // string (or null) — coerce to a real number before handing it to generateNarrative,
+  // whose prompt calls .toFixed() on it.
   let ok = 0, none = 0
   for (const r of rows) {
-    const n = await generateNarrative({ url: r.map_link, routeName: r.name, distanceMiles: r.distance_miles })
+    const distanceMiles = r.distance_miles == null ? null : Number(r.distance_miles)
+    const n = await generateNarrative({ url: r.map_link, routeName: r.name, distanceMiles })
     await sql`UPDATE workout_families SET route_narrative = ${n} WHERE id = ${r.id}`
     if (n) ok++; else none++
     console.log(`${n ? '✓' : '∅'} ${r.name}${n ? ` (${n.length}ch)` : ' — no narrative'}`)

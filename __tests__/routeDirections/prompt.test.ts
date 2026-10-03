@@ -19,3 +19,16 @@ it('lists legs with turn + distance and states the phrasing rules', () => {
   expect(p).toMatch(/never.*(invent|fabricate)/i)
   expect(p).toMatch(/turn around|turnaround/i)
 })
+
+it('renders total distance only when it is a number', () => {
+  expect(buildDirectionsPrompt(base)).toContain('Total distance: 3.7 miles')
+  expect(buildDirectionsPrompt({ ...base, distanceMiles: null })).toContain('Total distance: unknown')
+})
+
+it('treats a non-number distance as unknown instead of crashing', () => {
+  // A SQL `numeric` column arrives as a string via the Neon driver; the guard must
+  // not call .toFixed on it (regression: #480 backfill crashed on exactly this).
+  const bad = { ...base, distanceMiles: '3.7' as unknown as number }
+  expect(() => buildDirectionsPrompt(bad)).not.toThrow()
+  expect(buildDirectionsPrompt(bad)).toContain('Total distance: unknown')
+})

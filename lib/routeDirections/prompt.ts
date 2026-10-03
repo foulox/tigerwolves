@@ -21,7 +21,7 @@ export function buildDirectionsPrompt(input: DirectionsInput): string {
     '- Mention start/turnaround landmarks where natural. No compass bearings.',
     '',
     `Route: ${input.routeName ?? '(unnamed)'}`,
-    input.distanceMiles != null ? `Total distance: ${input.distanceMiles.toFixed(1)} miles` : 'Total distance: unknown',
+    typeof input.distanceMiles === 'number' ? `Total distance: ${input.distanceMiles.toFixed(1)} miles` : 'Total distance: unknown',
     `Shape: ${shape}`,
     '',
     'Legs in order (instruction | street | distance):',
