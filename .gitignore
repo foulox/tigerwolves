@@ -70,3 +70,7 @@ Playwright Report.zip
 # issue at PUBLISH), but plans are tracked and committed per the CLAUDE.md workflow.
 docs/superpowers/*
 !docs/superpowers/plans/
+
+# Serwist-generated service worker (#465)
+/public/sw.js
+/public/swe-worker-*.js
