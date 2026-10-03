@@ -33,14 +33,22 @@ async function main() {
   // NOTE: Neon returns `numeric` columns as strings, so distance_miles arrives as a
   // string (or null) — coerce to a real number before handing it to generateNarrative,
   // whose prompt calls .toFixed() on it.
-  let ok = 0, none = 0
+  let ok = 0, none = 0, failed = 0
   for (const r of rows) {
-    const distanceMiles = r.distance_miles == null ? null : Number(r.distance_miles)
-    const n = await generateNarrative({ url: r.map_link, routeName: r.name, distanceMiles })
-    await sql`UPDATE workout_families SET route_narrative = ${n} WHERE id = ${r.id}`
-    if (n) ok++; else none++
-    console.log(`${n ? '✓' : '∅'} ${r.name}${n ? ` (${n.length}ch)` : ' — no narrative'}`)
+    // Per-route isolation: a transient Mapbox/Claude timeout on one route must not
+    // abort the whole backfill (and leave it half-applied). Log and continue; the
+    // route keeps its existing narrative and can be picked up on a re-run (idempotent).
+    try {
+      const distanceMiles = r.distance_miles == null ? null : Number(r.distance_miles)
+      const n = await generateNarrative({ url: r.map_link, routeName: r.name, distanceMiles })
+      await sql`UPDATE workout_families SET route_narrative = ${n} WHERE id = ${r.id}`
+      if (n) ok++; else none++
+      console.log(`${n ? '✓' : '∅'} ${r.name}${n ? ` (${n.length}ch)` : ' — no narrative'}`)
+    } catch (e) {
+      failed++
+      console.log(`✗ ${r.name} — ${(e as Error).message} (left unchanged; re-run to retry)`)
+    }
   }
-  console.log(`Done: ${rows.length} routes (${ok} narrated, ${none} unmatched).`)
+  console.log(`Done: ${rows.length} routes (${ok} narrated, ${none} unmatched, ${failed} failed).`)
 }
 main().catch(e => { console.error('ERR', e.message); process.exit(1) })
