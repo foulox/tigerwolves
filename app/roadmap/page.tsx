@@ -55,7 +55,7 @@ export default async function RoadmapPage() {
 
   return (
     <div>
-      <Header title="Roadmap" subtitle="Where TigerWolves is going" isLeader={isLeader} />
+      <Header title="Roadmap" subtitle="Where NBR is going" isLeader={isLeader} />
 
       <div className="px-4 pb-24 flex flex-col gap-3">
         {cards.length === 0 ? (

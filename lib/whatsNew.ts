@@ -11,7 +11,7 @@ export const WHATS_NEW: { version: number; title: string; description: string }[
   { version: 2, title: 'Workout variations in the Library', description: 'Some workouts have multiple versions. Tap a family card in the Library to browse all progressions.' },
   { version: 2, title: 'Feedback button', description: 'Tap the feedback button anytime to report a workout issue or request a feature.' },
   { version: 2, title: 'Library management', description: 'As a leader: use the edit button to fix a workout, delete to remove it, or the regroup tool in Settings to build workout families.' },
-  { version: 2, title: 'Roadmap', description: 'See where TigerWolves is headed — what\'s live now, what\'s coming next, and what\'s on the horizon.' },
+  { version: 2, title: 'Roadmap', description: 'See where NBR is headed — what\'s live now, what\'s coming next, and what\'s on the horizon.' },
   { version: 2, title: 'Tour updated', description: 'New tour steps for reactions, workout details, variations, roadmap, feedback, and leader library tools. Relaunch anytime with "How to use this".' },
   { version: 3, title: 'Flag a workout issue', description: 'Expand any Schedule card and tap "Flag an issue with this workout" to report bad data, unclear instructions, or anything off. We read every one.' },
 ]
