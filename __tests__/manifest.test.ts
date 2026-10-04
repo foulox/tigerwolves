@@ -1,15 +1,15 @@
 import { describe, test, expect } from 'vitest'
 import manifest from '../app/manifest'
 
-// #478 (Story A): the PWA web manifest must declare standalone display, brand
+// #466 (NBR reskin): the PWA web manifest must declare standalone display, NBR
 // identity, and the three Android icon sizes (192, 512, 512-maskable) so that
 // "Add to Home Screen" installs a full-screen, no-address-bar app.
-describe('web manifest (#478)', () => {
+describe('web manifest (#466)', () => {
   const m = manifest()
 
   test('identity + scope', () => {
-    expect(m.name).toBe('TigerWolves')
-    expect(m.short_name).toBe('TigerWolves')
+    expect(m.name).toBe('North Brooklyn Runners')
+    expect(m.short_name).toBe('NBR')
     expect(m.description).toBeTruthy()
     expect(m.start_url).toBe('/')
     expect(m.scope).toBe('/')
@@ -20,9 +20,9 @@ describe('web manifest (#478)', () => {
   })
 
   test('brand theme + background colors', () => {
-    // brand orange (orange-500) + white — see issue #478
-    expect(m.theme_color).toBe('#f97316')
-    expect(m.background_color).toBe('#ffffff')
+    // chrome dark (#0e0e0e) — NBR brand, see issue #466
+    expect(m.theme_color).toBe('#0e0e0e')
+    expect(m.background_color).toBe('#0e0e0e')
   })
 
   test('icons: 192, 512, and a 512 maskable', () => {
