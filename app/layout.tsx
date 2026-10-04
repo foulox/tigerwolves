@@ -43,7 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <ClerkProvider>
       <html lang="en" className="h-full">
-        <body className={`${geist.className} bg-gray-50 h-full antialiased`}>
+        <body className={`${geist.className} bg-surface h-full antialiased`}>
           <PostHogInit isLeader={isLeader} />
           <main className="max-w-lg mx-auto pb-20 min-h-full">
             {children}
