@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+/* #466 NBR reskin — semantic color tokens. Chrome = dark app bars/nav;
+   content = light surfaces/cards; accent = NBR's sampled red, used sparingly.
+   Values hardcoded to NBR (tenant config is backlogged, #486). */
+@theme {
+  --color-chrome: #0e0e0e;
+  --color-chrome-text: #ffffff;
+  --color-chrome-muted: #9aa0a6;
+  --color-surface: #f6f6f6;
+  --color-card: #ffffff;
+  --color-line: #e7e7e7;   /* borders (→ border-line) */
+  --color-ink: #0e0e0e;    /* body text (→ text-ink) */
+  --color-muted: #4a5464;
+  --color-accent: #f0523d;
+}
+
 :root {
   --font-sans: var(--font-geist-sans);
 }
