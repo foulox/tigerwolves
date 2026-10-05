@@ -115,7 +115,7 @@ test('Add variation: a new variation shows up immediately in Library AND on Plan
 
   // "Kostas Fartlek" (a single-variant curated Broken Tempo family) — its name
   // never collides with a type pill, so the card locator is unambiguous.
-  const card = page.locator('.bg-white.rounded-2xl', { hasText: 'Kostas Fartlek' })
+  const card = page.locator('[data-testid="workout-card"]', { hasText: 'Kostas Fartlek' })
   await card.getByText('+ Add variation').click()
 
   await page.waitForLoadState('load')
@@ -125,7 +125,7 @@ test('Add variation: a new variation shows up immediately in Library AND on Plan
 
   await page.waitForURL(/\/library/)
   await page.waitForLoadState('load')
-  const familyCard = page.locator('.bg-white.rounded-2xl', { hasText: 'Kostas Fartlek' })
+  const familyCard = page.locator('[data-testid="workout-card"]', { hasText: 'Kostas Fartlek' })
   await expect(familyCard.getByText('2 versions')).toBeVisible()
 
   // Schedule's browse picker searches this run's own library regardless of the
@@ -178,7 +178,7 @@ test('Adopt: a route from "All runs" appears in "Your run", marked adopted, and 
 
   // Find it under "All runs" and adopt it into our run.
   await page.getByRole('button', { name: 'All runs', exact: true }).click()
-  const allRunsCard = page.locator('.bg-white.rounded-2xl', { hasText: 'MMER Threshold Session' })
+  const allRunsCard = page.locator('[data-testid="workout-card"]', { hasText: 'MMER Threshold Session' })
   await expect(allRunsCard).toBeVisible()
   await allRunsCard.getByRole('button', { name: '+ Add to my run' }).click()
   // After adopting, the add affordance is gone for that card (it's now in the library).
@@ -186,7 +186,7 @@ test('Adopt: a route from "All runs" appears in "Your run", marked adopted, and 
 
   // Switch to "Your run": the adopted route now shows, marked with its creator.
   await page.getByRole('button', { name: 'Your run', exact: true }).click()
-  const yourRunCard = page.locator('.bg-white.rounded-2xl', { hasText: 'MMER Threshold Session' })
+  const yourRunCard = page.locator('[data-testid="workout-card"]', { hasText: 'MMER Threshold Session' })
   await expect(yourRunCard).toBeVisible()
   await expect(yourRunCard.getByText(/adopted from MMER/)).toBeVisible()
 

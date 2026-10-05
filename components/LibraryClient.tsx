@@ -195,7 +195,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
     const hasDetails = !!(w.reason || w.energySystem || w.hrZone || w.rpe || (w.hasTurnaround && w.turnaround))
     return (
       <div className="mt-2.5 space-y-2">
-        <div className="flex gap-3 text-xs text-gray-400">
+        <div className="flex gap-3 text-xs text-muted">
           {(() => {
             const parts: React.ReactNode[] = []
             if (w.distanceMiles != null) parts.push(`${w.distanceMiles.toFixed(1)} mi`)
@@ -224,21 +224,21 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
         {(w.raceTypes.length > 0 || w.trainingPhases.length > 0) && (
           <div className="flex flex-wrap gap-1.5">
             {w.raceTypes.map(r => (
-              <span key={r} className="text-xs font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{r}</span>
+              <span key={r} className="text-xs font-medium bg-surface text-muted border border-line px-2 py-0.5 rounded-full">{r}</span>
             ))}
             {w.trainingPhases.map(p => (
-              <span key={p} className={`text-xs font-medium px-2 py-0.5 rounded-full ${PHASE_COLORS[p] ?? 'bg-gray-100 text-gray-500'}`}>{p}</span>
+              <span key={p} className={`text-xs font-medium px-2 py-0.5 rounded-full ${PHASE_COLORS[p] ?? 'bg-surface text-muted border border-line'}`}>{p}</span>
             ))}
           </div>
         )}
         {w.author && (
-          <p className="text-xs text-gray-400 italic">— {w.author}</p>
+          <p className="text-xs text-muted italic">— {w.author}</p>
         )}
         {hasDetails && (
           <div>
             <button
               onClick={e => { e.stopPropagation(); setExpandedNotes(showDetails ? null : w.id) }}
-              className="text-xs font-semibold text-orange-500 touch-manipulation"
+              className="text-xs font-semibold text-accent touch-manipulation"
             >
               {showDetails ? 'Hide details' : 'Show details'}
             </button>
@@ -256,17 +256,17 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   return (
     <div className="pb-4">
       <div className="px-4 mb-4 flex justify-between items-start">
-        <p className="text-sm text-gray-500">{filtered.length} workouts · {sortBy === 'rating' ? 'top rated' : 'oldest first'}</p>
+        <p className="text-sm text-muted">{filtered.length} workouts · {sortBy === 'rating' ? 'top rated' : 'oldest first'}</p>
         <div className="flex items-center gap-2" data-tour="library-manage">
           <button
             onClick={() => setShowAbbrev(v => !v)}
-            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs font-bold touch-manipulation"
+            className="w-8 h-8 flex items-center justify-center rounded-full border border-line text-muted text-xs font-bold touch-manipulation"
             title="Abbreviation key"
           >
             ?
           </button>
           {isLeader && (
-            <Link href="/library/add" className="w-9 h-9 flex items-center justify-center rounded-full bg-orange-500 text-white text-xl font-bold shadow-sm touch-manipulation">
+            <Link href="/library/add" className="w-9 h-9 flex items-center justify-center rounded-full bg-accent text-white text-xl font-bold shadow-sm touch-manipulation">
               +
             </Link>
           )}
@@ -274,13 +274,13 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
       </div>
 
       {showAbbrev && (
-        <div className="mx-4 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
-          <p className="text-xs font-bold text-gray-700 mb-2">Abbreviation Key</p>
+        <div className="mx-4 mb-4 p-3 bg-surface rounded-xl border border-line">
+          <p className="text-xs font-bold text-ink mb-2">Abbreviation Key</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
             {ABBREVIATIONS.map(({ abbr, meaning }) => (
               <div key={abbr} className="flex gap-1.5 text-xs">
-                <span className="font-bold text-gray-800 shrink-0">{abbr}</span>
-                <span className="text-gray-500">{meaning}</span>
+                <span className="font-bold text-ink shrink-0">{abbr}</span>
+                <span className="text-muted">{meaning}</span>
               </div>
             ))}
           </div>
@@ -293,11 +293,11 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           <>
             <button
               onClick={() => setScope(false)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
             >Your run</button>
             <button
               onClick={() => setScope(true)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
             >All runs</button>
           </>
         )}
@@ -312,34 +312,34 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search by name, type, race distance…"
-            className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-orange-400"
+            className="w-full rounded-xl border border-line bg-card pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-accent"
           />
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">🔍</span>
         </div>
       </div>
 
       {/* Category filter — available in both "Your run" and "All runs" modes (#401) */}
       <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-        <button onClick={() => setcat(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!category ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All</button>
+        <button onClick={() => setcat(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!category ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>All</button>
         {CATEGORIES.map(c => (
-          <button key={c} onClick={() => setcat(category === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${category === c ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{c}</button>
+          <button key={c} onClick={() => setcat(category === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${category === c ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{c}</button>
         ))}
       </div>
 
       {/* Race type filter */}
       <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-        <button onClick={() => setRaceFilter(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!raceFilter ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>Any race</button>
+        <button onClick={() => setRaceFilter(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!raceFilter ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>Any race</button>
         {RACE_TYPES.map(r => (
-          <button key={r} onClick={() => setRaceFilter(raceFilter === r ? null : r)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${raceFilter === r ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{r}</button>
+          <button key={r} onClick={() => setRaceFilter(raceFilter === r ? null : r)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${raceFilter === r ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{r}</button>
         ))}
       </div>
 
       {/* Type filter (only when category selected or effective in "Your run" mode) */}
       {effectiveCategory && types.length > 1 && (
         <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: 'none' }}>
-          <button onClick={() => setTypeFilter(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!typeFilter ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All types</button>
+          <button onClick={() => setTypeFilter(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!typeFilter ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>All types</button>
           {types.map(t => (
-            <button key={t} onClick={() => setTypeFilter(typeFilter === t ? null : t)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${typeFilter === t ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{t}</button>
+            <button key={t} onClick={() => setTypeFilter(typeFilter === t ? null : t)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${typeFilter === t ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{t}</button>
           ))}
         </div>
       )}
@@ -348,28 +348,28 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
       <div className="flex items-center gap-2 px-4 pb-2">
         <button
           onClick={() => setSortBy('recent')}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'recent' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'recent' ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
         >Least recent</button>
         <button
           onClick={() => setSortBy('rating')}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'rating' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'rating' ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
         >Top rated</button>
       </div>
 
       <div className="px-4 flex flex-col gap-3">
         {visibleVariants.length === 0 && (
-          <p className="text-gray-400 italic text-sm">No workouts in the library yet.</p>
+          <p className="text-muted italic text-sm">No workouts in the library yet.</p>
         )}
         {visibleVariants.length > 0 && displayRows.length === 0 && (
-          <p className="text-gray-400 italic text-sm">No workouts match your search.</p>
+          <p className="text-muted italic text-sm">No workouts match your search.</p>
         )}
         {displayRows.map(row => {
           if (row.kind === 'standalone') {
             const w = row.workout
             return (
-              <div key={`s-${w.id}`} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+              <div key={`s-${w.id}`} data-testid="workout-card" className="bg-card rounded-2xl p-4 border border-line shadow-sm">
                 <div className="flex justify-between items-start gap-2">
-                  <div className="font-semibold text-gray-900">{w.name}</div>
+                  <div className="font-semibold text-ink">{w.name}</div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {w.flagged && (
                       <FlagBadge onClick={() => setFlagSheetFor(w.id)} />
@@ -378,16 +378,16 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                     {isLeader && (
                       <Link
                         href={`/library/edit?variantId=${w.id}`}
-                        className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                        className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted text-xs touch-manipulation"
                         title="Edit workout"
                       >✎</Link>
                     )}
-                    <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{w.type}</span>
+                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-1 rounded-full">{w.type}</span>
                   </div>
                 </div>
-                {w.label && <p className="text-xs text-gray-400 mt-0.5">{w.label}</p>}
-                {w.rawInput && <p className="text-sm text-gray-700 mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</p>}
-                {w.coachingNotes && <p className="text-sm text-gray-500 mt-1.5 italic leading-snug">{w.coachingNotes}</p>}
+                {w.label && <p className="text-xs text-muted mt-0.5">{w.label}</p>}
+                {w.rawInput && <p className="text-sm text-ink mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</p>}
+                {w.coachingNotes && <p className="text-sm text-muted mt-1.5 italic leading-snug">{w.coachingNotes}</p>}
                 <WorkoutMeta w={w} />
                 <div className="flex justify-end mt-2">
                   <ReactionPicker
@@ -397,10 +397,10 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                   />
                 </div>
                 {isLeader && (
-                  <div className="mt-3 pt-3 border-t border-gray-50">
+                  <div className="mt-3 pt-3 border-t border-line">
                     <Link
                       href={`/library/add?parent=${w.familyId}`}
-                      className="text-xs font-semibold text-orange-500 touch-manipulation"
+                      className="text-xs font-semibold text-accent touch-manipulation"
                     >
                       + Add variation
                     </Link>
@@ -417,11 +417,12 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           return (
             <div key={`f-${row.familyId}`} data-tour="library-variations">
               <button
+                data-testid="workout-card"
                 onClick={() => setExpandedFamily(isExpanded ? null : row.familyId)}
-                className="w-full text-left bg-white rounded-2xl p-4 border border-gray-100 shadow-sm touch-manipulation"
+                className="w-full text-left bg-card rounded-2xl p-4 border border-line shadow-sm touch-manipulation"
               >
                 <div className="flex justify-between items-start gap-2">
-                  <div className="font-semibold text-gray-900">{row.name}</div>
+                  <div className="font-semibold text-ink">{row.name}</div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {familyFlagged && (
                       <FlagBadge
@@ -432,14 +433,14 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                         }}
                       />
                     )}
-                    <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-0.5 rounded-full">
                       {row.total} versions
                     </span>
-                    <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{row.type}</span>
+                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-1 rounded-full">{row.type}</span>
                   </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-1.5 leading-snug">{row.reason}</p>
-                <div className="text-xs text-gray-400 mt-2">
+                <p className="text-sm text-muted mt-1.5 leading-snug">{row.reason}</p>
+                <div className="text-xs text-muted mt-2">
                   {row.lastRan ? `Last ran ${formatDate(row.lastRan)}` : 'Never used'} · tap to {isExpanded ? 'collapse' : 'expand'}
                 </div>
               </button>
@@ -448,9 +449,9 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
               {isExpanded && (
                 <div className="mt-1 ml-2 flex flex-col gap-1">
                   {row.base && (
-                    <div className="bg-white rounded-xl px-4 py-3 border border-gray-100">
+                    <div className="bg-card rounded-xl px-4 py-3 border border-line">
                       <div className="flex justify-between items-start">
-                        <div className="text-xs font-bold text-gray-500 mb-0.5">Standard</div>
+                        <div className="text-xs font-bold text-muted mb-0.5">Standard</div>
                         <div className="flex items-center gap-1.5">
                           {row.base.flagged && (
                             <FlagBadge onClick={() => setFlagSheetFor(row.base!.id)} />
@@ -459,14 +460,14 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                           {isLeader && (
                             <Link
                               href={`/library/edit?variantId=${row.base.id}`}
-                              className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                              className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted text-xs touch-manipulation"
                               title="Edit"
                             >✎</Link>
                           )}
                         </div>
                       </div>
-                      {row.base.rawInput && <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap leading-snug">{row.base.rawInput}</p>}
-                      {row.base.coachingNotes && <p className="text-sm text-gray-500 mt-1 italic leading-snug">{row.base.coachingNotes}</p>}
+                      {row.base.rawInput && <p className="text-sm text-ink mt-1 whitespace-pre-wrap leading-snug">{row.base.rawInput}</p>}
+                      {row.base.coachingNotes && <p className="text-sm text-muted mt-1 italic leading-snug">{row.base.coachingNotes}</p>}
                       <WorkoutMeta w={row.base} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
@@ -478,9 +479,9 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                     </div>
                   )}
                   {row.variants.map(p => (
-                    <div key={p.id} className="bg-white rounded-xl px-4 py-3 border border-gray-100">
+                    <div key={p.id} className="bg-card rounded-xl px-4 py-3 border border-line">
                       <div className="flex justify-between items-start">
-                        <div className="text-xs font-bold text-orange-500 mb-0.5">Variation {p.sortOrder} of {row.total}</div>
+                        <div className="text-xs font-bold text-accent mb-0.5">Variation {p.sortOrder} of {row.total}</div>
                         <div className="flex items-center gap-1.5">
                           {p.flagged && (
                             <FlagBadge onClick={() => setFlagSheetFor(p.id)} />
@@ -489,15 +490,15 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                           {isLeader && (
                             <Link
                               href={`/library/edit?variantId=${p.id}`}
-                              className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+                              className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted text-xs touch-manipulation"
                               title="Edit"
                             >✎</Link>
                           )}
                         </div>
                       </div>
-                      <div className="text-sm font-semibold text-gray-800">{p.label}</div>
-                      {p.rawInput && <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap leading-snug">{p.rawInput}</p>}
-                      {p.coachingNotes && <p className="text-sm text-gray-500 mt-1 italic leading-snug">{p.coachingNotes}</p>}
+                      <div className="text-sm font-semibold text-ink">{p.label}</div>
+                      {p.rawInput && <p className="text-sm text-ink mt-1 whitespace-pre-wrap leading-snug">{p.rawInput}</p>}
+                      {p.coachingNotes && <p className="text-sm text-muted mt-1 italic leading-snug">{p.coachingNotes}</p>}
                       <WorkoutMeta w={p} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
@@ -511,7 +512,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                   {isLeader && (
                     <Link
                       href={`/library/add?parent=${row.familyId}`}
-                      className="bg-white rounded-xl px-4 py-3 border border-dashed border-orange-200 text-xs font-semibold text-orange-500 touch-manipulation text-center"
+                      className="bg-card rounded-xl px-4 py-3 border border-dashed border-accent text-xs font-semibold text-accent touch-manipulation text-center"
                     >
                       + Add variation
                     </Link>
