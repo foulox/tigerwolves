@@ -17,7 +17,7 @@ describe('All Runs reskin — chrome/surface/neutral/active (#488)', () => {
     expect(src).toContain('text-accent')
   })
   test('the recolored neutral/chrome literals are gone', () => {
-    for (const dead of ['#fff7ed', '#fdba74', '#ffedd5', '#c2410c', '#111827', '#8b93a1', '#4b5568', '#a7adb8', '#c7ccd6', '#f1f2f5', '#e8eaef', '#d7dbe3', 'bg-orange-500']) {
+    for (const dead of ['#fff7ed', '#fdba74', '#ffedd5', '#c2410c', '#111827', '#8b93a1', '#4b5568', '#a7adb8', '#c7ccd6', '#f1f2f5', '#e8eaef', '#d7dbe3', 'bg-orange-500', 'text-gray-400']) {
       expect(src).not.toContain(dead)
     }
   })

@@ -249,7 +249,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
       {/* Following tier (signed-in, when the user follows at least one run) */}
       {viewer.isLoggedIn && followingCards.length > 0 && (
         <div className="px-4 pb-3 flex flex-col gap-2" data-testid="following-tier">
-          <div className="text-[11px] font-bold tracking-widest uppercase text-gray-400">Following</div>
+          <div className="text-[11px] font-bold tracking-widest uppercase text-muted">Following</div>
           {followingCards.map(card => (
             <div
               key={card.id}
