@@ -30,7 +30,7 @@ export function FlagGhostButton({ workoutName, onClick, dataTour }: { workoutNam
       aria-label={`Flag an issue with ${workoutName}`}
       title="Flag an issue"
       data-tour={dataTour}
-      className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted hover:text-ink hover:border-line shrink-0 touch-manipulation transition-colors"
+      className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted hover:text-ink hover:border-ink shrink-0 touch-manipulation transition-colors"
     >
       <Flag size={13} />
     </button>
