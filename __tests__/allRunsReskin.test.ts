@@ -28,3 +28,16 @@ describe('All Runs reskin — chrome/surface/neutral/active (#488)', () => {
     expect(src).toContain('bg-blue-50')   // pending Setup
   })
 })
+
+describe('All Runs reskin — color-coding collapsed (#488)', () => {
+  test('AM/PM start-time colors are gone (uniform time color)', () => {
+    expect(src).not.toContain('#f97316') // AM orange
+    expect(src).not.toContain('#6366f1') // PM indigo
+  })
+  test('per-category pill colors collapsed to one neutral style', () => {
+    // the CATEGORY_PILL map no longer carries per-category Tailwind color pairs
+    for (const dead of ['bg-sky-100', 'text-sky-800', 'bg-purple-100', 'text-purple-800', 'bg-blue-100 text-blue-800']) {
+      expect(src).not.toContain(dead)
+    }
+  })
+})

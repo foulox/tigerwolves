@@ -43,11 +43,11 @@ const CATEGORIES: Category[] = ['All', 'Beginner-Friendly', 'Easy Runs', 'Long R
 const TIME_FILTER_LABELS: Record<TimeFilter, string> = { all: 'All week', am: 'Morning', pm: 'Evening', wknd: 'Weekend' }
 
 const CATEGORY_PILL: Record<string, string> = {
-  'Beginner-Friendly': 'bg-green-100 text-green-800',
-  'Easy Runs':         'bg-sky-100 text-sky-800',
-  'Long Runs':         'bg-purple-100 text-purple-800',
-  'Food Runs':         'bg-amber-100 text-amber-800',
-  'Workouts':          'bg-blue-100 text-blue-800',
+  'Beginner-Friendly': 'bg-surface text-muted border border-line',
+  'Easy Runs':         'bg-surface text-muted border border-line',
+  'Long Runs':         'bg-surface text-muted border border-line',
+  'Food Runs':         'bg-surface text-muted border border-line',
+  'Workouts':          'bg-surface text-muted border border-line',
 }
 
 function offsetDate(base: Date, days: number): Date {
@@ -379,9 +379,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                   const cardBody = (
                     <>
                       <span
-                        className={`w-[62px] flex-shrink-0 text-[13.5px] font-extrabold tracking-tight ${
-                          card.startHour < 12 ? 'text-[#f97316]' : 'text-[#6366f1]'
-                        }`}
+                        className="w-[62px] flex-shrink-0 text-[13.5px] font-extrabold tracking-tight text-ink"
                       >
                         {card.startTime}
                       </span>
