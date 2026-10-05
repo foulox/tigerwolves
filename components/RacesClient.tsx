@@ -339,7 +339,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pb-3">
-              <div className="w-9 h-1 rounded-full bg-gray-200" />
+              <div className="w-9 h-1 rounded-full bg-surface" />
             </div>
 
             {sheet.type === 'add' && (

@@ -216,7 +216,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="text-xs font-semibold text-blue-500 touch-manipulation block"
+            className="text-xs font-semibold text-accent touch-manipulation block"
           >
             Map ↗
           </a>
