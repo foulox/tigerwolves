@@ -22,7 +22,7 @@ describe('All Runs reskin — chrome/surface/neutral/active (#488)', () => {
     }
   })
   test('semantic STATE colors are preserved', () => {
-    expect(src).toContain('bg-green-100') // Live / following-section affordance
+    expect(src).toContain('bg-green-100') // admin Live status badge
     expect(src).toContain('bg-amber-100') // Draft
     expect(src).toContain('bg-red-50')    // destructive Remove
     expect(src).toContain('bg-blue-50')   // pending Setup

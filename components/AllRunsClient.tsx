@@ -42,13 +42,7 @@ const CATEGORIES: Category[] = ['All', 'Beginner-Friendly', 'Easy Runs', 'Long R
 
 const TIME_FILTER_LABELS: Record<TimeFilter, string> = { all: 'All week', am: 'Morning', pm: 'Evening', wknd: 'Weekend' }
 
-const CATEGORY_PILL: Record<string, string> = {
-  'Beginner-Friendly': 'bg-surface text-muted border border-line',
-  'Easy Runs':         'bg-surface text-muted border border-line',
-  'Long Runs':         'bg-surface text-muted border border-line',
-  'Food Runs':         'bg-surface text-muted border border-line',
-  'Workouts':          'bg-surface text-muted border border-line',
-}
+const CATEGORY_PILL_CLASS = 'bg-surface text-muted border border-line'
 
 function offsetDate(base: Date, days: number): Date {
   const d = new Date(base)
@@ -413,7 +407,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                           {card.location} · {card.distance}
                         </span>
                         <span
-                          className={`self-start text-[11px] font-bold rounded-full px-2 py-[3px] mt-px ${CATEGORY_PILL[card.category]}`}
+                          className={`self-start text-[11px] font-bold rounded-full px-2 py-[3px] mt-px ${CATEGORY_PILL_CLASS}`}
                           data-testid="run-category-pill"
                         >
                           {card.category}
