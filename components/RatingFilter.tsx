@@ -27,7 +27,7 @@ export default function RatingFilter({
       aria-label="Filter by rating"
       value={value}
       onChange={e => onChange(e.target.value as RatingThreshold)}
-      className={`text-xs font-semibold rounded-full border border-gray-200 bg-white px-3 py-1.5 touch-manipulation ${className}`}
+      className={`text-xs font-semibold rounded-full border border-line bg-card px-3 py-1.5 touch-manipulation ${className}`}
     >
       {RATING_FILTER_OPTIONS.map(o => (
         <option key={o.value} value={o.value}>{o.label}</option>
