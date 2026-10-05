@@ -13,15 +13,7 @@ import { captureClientEvent } from '@/lib/analyticsClient'
 import WorkoutDetails, { DetailRow, ChipRow } from '@/components/WorkoutDetails'
 import { compactCardFields } from '@/lib/myPlan'
 
-const TYPE_COLORS: Record<string, string> = {
-  Hills: 'bg-green-100 text-green-800',
-  'Broken Tempo': 'bg-blue-100 text-blue-800',
-  Progression: 'bg-purple-100 text-purple-800',
-  Ladder: 'bg-orange-100 text-orange-800',
-  Superset: 'bg-red-100 text-red-800',
-  'Straight Tempo': 'bg-yellow-100 text-yellow-800',
-  Threshold: 'bg-pink-100 text-pink-800',
-}
+const TYPE_PILL = 'bg-surface text-muted border border-line'
 
 interface Props {
   entry: ScheduleEntry
@@ -64,7 +56,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
   return (
     <div
       className={`rounded-2xl shadow-sm border touch-manipulation ${
-        isPast ? 'bg-[#f8f8f9] border-[#e2e4e7]' : isNext ? 'bg-white border-orange-300' : 'bg-white border-gray-100'
+        isPast ? 'bg-surface border-line' : isNext ? 'bg-card border-accent' : 'bg-card border-line'
       }`}
     >
       {/* Card header — interactive when workout exists */}
@@ -72,27 +64,27 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
         role={hasWorkout ? 'button' : undefined}
         tabIndex={hasWorkout ? 0 : undefined}
         aria-expanded={hasWorkout ? expanded : undefined}
-        className={`p-4 ${hasWorkout ? 'cursor-pointer active:bg-gray-50' : ''}`}
+        className={`p-4 ${hasWorkout ? 'cursor-pointer active:bg-surface' : ''}`}
         onClick={toggleExpand}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand() } }}
         data-testid={cardTestId}
         data-tour={isNext ? 'schedule-detail' : undefined}
       >
-        {isNext && <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">NEXT UP</div>}
+        {isNext && <div className="text-xs font-bold text-accent tracking-wide mb-1">NEXT UP</div>}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className={`text-sm font-semibold ${isPast ? 'text-gray-400' : 'text-gray-500'}`}>{formatDateMedium(entry.date)}</div>
-            <div className={`mt-0.5 truncate ${isPast ? 'text-sm font-semibold text-[#8b8f97]' : 'text-base font-bold text-gray-900'}`}>
-              {entry.workoutName ?? <span className="text-gray-400 font-normal italic">Not planned yet</span>}
+            <div className="text-sm font-semibold text-muted">{formatDateMedium(entry.date)}</div>
+            <div className={`mt-0.5 truncate ${isPast ? 'text-sm font-semibold text-muted' : 'text-base font-bold text-ink'}`}>
+              {entry.workoutName ?? <span className="text-muted font-normal italic">Not planned yet</span>}
             </div>
             {/* #331: kind-aware compact body (only when a kind is supplied). */}
             {compact?.shape === 'workout' && compact.setLine && (
-              <div className="mt-0.5 truncate text-sm text-gray-600" data-testid={`schedule-set-${index}`}>
+              <div className="mt-0.5 truncate text-sm text-muted" data-testid={`schedule-set-${index}`}>
                 {compact.setLine}
               </div>
             )}
             {compact?.shape === 'route' && (
-              <div className="mt-0.5 flex items-center gap-2 text-sm text-gray-600">
+              <div className="mt-0.5 flex items-center gap-2 text-sm text-muted">
                 {compact.distance && <span data-testid={`schedule-distance-${index}`}>{compact.distance}</span>}
                 {compact.routeLink && (
                   <a
@@ -101,7 +93,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     data-testid={`schedule-route-${index}`}
-                    className="font-semibold text-orange-600 touch-manipulation"
+                    className="font-semibold text-accent touch-manipulation"
                   >
                     View route ↗
                   </a>
@@ -116,9 +108,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
               )}
               {compact?.shape !== 'route' && (
                 <span
-                  className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
-                    isPast ? 'bg-[#e9eaec] text-[#9ca3af]' : (TYPE_COLORS[entry.workoutType] ?? 'bg-gray-100 text-gray-600')
-                  }`}
+                  className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${TYPE_PILL}`}
                 >
                   {entry.workoutType}
                 </span>
@@ -127,7 +117,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
             {isLeader && isPast && hasWorkout && (
               <Link
                 href={`/library/edit?variantId=${workout.id}`}
-                className="text-xs font-semibold text-gray-500 border border-gray-300 rounded-full px-3 py-1 bg-white active:bg-gray-50 touch-manipulation whitespace-nowrap"
+                className="text-xs font-semibold text-muted border border-line rounded-full px-3 py-1 bg-card active:bg-surface touch-manipulation whitespace-nowrap"
                 onClick={(e) => e.stopPropagation()}
                 data-testid={`edit-in-library-${index}`}
               >
@@ -137,7 +127,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
             {isLeader && !isPast && (
               <Link
                 href={`/schedule?week=${index}`}
-                className="text-xs font-semibold text-orange-600 border border-orange-300 rounded-full px-3 py-1 active:bg-orange-50 touch-manipulation whitespace-nowrap"
+                className="text-xs font-semibold text-accent border border-accent rounded-full px-3 py-1 active:bg-surface touch-manipulation whitespace-nowrap"
                 onClick={(e) => e.stopPropagation()}
                 data-testid={`schedule-week-${index}`}
               >
@@ -147,7 +137,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
           </div>
         </div>
         <div className="flex items-center justify-between gap-2 mt-2">
-          <div className={`text-sm min-w-0 truncate ${isPast ? 'text-[#a3a7ad]' : 'text-gray-500'}`}>Led by {entry.leader}</div>
+          <div className="text-sm min-w-0 truncate text-muted">Led by {entry.leader}</div>
           {workout && (
             <div className="shrink-0" onClick={(e) => e.stopPropagation()} data-tour={isNext ? 'schedule-reactions' : undefined}>
               <ReactionPicker
@@ -163,7 +153,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
 
       {/* Detail panel */}
       {hasWorkout && expanded && (
-        <div className="border-t border-gray-100 px-4 py-3 space-y-2 text-sm" data-testid={detailTestId}>
+        <div className="border-t border-line px-4 py-3 space-y-2 text-sm" data-testid={detailTestId}>
           {/* #288: instructions, then coach's notes (Lou prefers this over "why" as the
               second thing shown), then everything else that has a value — reason included
               further down rather than dropped */}

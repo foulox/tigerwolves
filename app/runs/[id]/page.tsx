@@ -21,7 +21,7 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
     return (
       <div>
         <Header title="Run not found" isLeader={false} />
-        <p className="px-4 text-gray-500">We couldn&apos;t find that run.</p>
+        <p className="px-4 text-muted">We couldn&apos;t find that run.</p>
       </div>
     )
   }
@@ -47,7 +47,7 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
     return (
       <div>
         <Header title="Run not found" isLeader={false} />
-        <p className="px-4 text-gray-500">We couldn&apos;t find that run.</p>
+        <p className="px-4 text-muted">We couldn&apos;t find that run.</p>
       </div>
     )
   }
@@ -103,7 +103,7 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
       )}
 
       {runConfig.description && (
-        <p className="px-4 -mt-2 mb-3 text-sm text-gray-500">{runConfig.description}</p>
+        <p className="px-4 -mt-2 mb-3 text-sm text-muted">{runConfig.description}</p>
       )}
 
       <GroupRunClient
