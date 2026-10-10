@@ -25,7 +25,7 @@ describe('hasValue', () => {
   })
   test('empty/absent values report false', () => {
     expect(hasValue({ ...full, mapImageUrl: null }, 'mapImage')).toBe(false)
-    expect(hasValue({ ...full, lastRan: null }, 'lastRan')).toBe(false)
+    expect(hasValue({ ...full, lastRan: null }, 'lastRan')).toBe(true)
     expect(hasValue({ ...full, author: null }, 'author')).toBe(false)
     expect(hasValue({ ...full, raceTypes: [] }, 'raceTypes')).toBe(false)
     expect(hasValue({ ...full, distanceMiles: null }, 'distance')).toBe(false)

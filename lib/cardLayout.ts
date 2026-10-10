@@ -7,7 +7,7 @@ const PRESENCE: Record<CardFieldKey, (w: WorkoutVariantRow) => boolean> = {
   description:    w => !!w.rawInput?.trim(),
   coachingNotes:  w => !!w.coachingNotes?.trim(),
   distance:       w => w.distanceMiles != null,
-  lastRan:        w => w.lastRan != null,
+  lastRan:        () => true,  // always rendered: "Last ran …" or "Never used"
   mapLink:        w => !!w.mapLink,
   mapImage:       w => !!w.mapImageUrl,
   routeNarrative: w => !!w.routeNarrative?.trim(),
