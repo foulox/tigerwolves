@@ -23,9 +23,9 @@ export default function Header({
   const { isLoaded, isSignedIn } = useUser()
 
   return (
-    <header className="sticky top-0 z-30 bg-chrome px-4 pt-6 pb-4">
+    <header className="sticky top-0 z-30 bg-chrome px-4 pt-4 pb-3 mb-3">
       {/* Top brand row: logo left, controls right */}
-      <div className="flex items-center justify-between mb-2.5">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           {showBack && (
             <button
