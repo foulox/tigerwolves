@@ -34,6 +34,11 @@ describe('describeField', () => {
       .toEqual({ kind: 'inline', parts: ['4.0 mi', '520 ft ↑', '800m'] })
   })
 
+  test('distance → distTime alone (parity for distTime-only data)', () => {
+    expect(describeField({ ...full, distanceMiles: null, elevationGainFeet: null }, 'distance'))
+      .toEqual({ kind: 'inline', parts: ['800m'] })
+  })
+
   test('lastRan present → "Last ran …"; null → "Never used"', () => {
     expect(describeField(full, 'lastRan')).toEqual({ kind: 'text-inline', text: 'Last ran Sep 30' })
     expect(describeField({ ...full, lastRan: null }, 'lastRan')).toEqual({ kind: 'text-inline', text: 'Never used' })

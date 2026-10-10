@@ -28,10 +28,15 @@ describe('hasValue', () => {
     expect(hasValue({ ...full, lastRan: null }, 'lastRan')).toBe(true)
     expect(hasValue({ ...full, author: null }, 'author')).toBe(false)
     expect(hasValue({ ...full, raceTypes: [] }, 'raceTypes')).toBe(false)
-    expect(hasValue({ ...full, distanceMiles: null }, 'distance')).toBe(false)
+    expect(hasValue({ ...full, distanceMiles: null, elevationGainFeet: null, distTime: '' }, 'distance')).toBe(false)
     expect(hasValue({ ...full, coachingNotes: null }, 'coachingNotes')).toBe(false)
     expect(hasValue({ ...full, rawInput: '' }, 'description')).toBe(false)
     expect(hasValue({ ...full, hasTurnaround: false }, 'turnaround')).toBe(false)
+  })
+
+  test('distance field present when only distTime/elevation set (distTime-only parity)', () => {
+    expect(hasValue({ ...full, distanceMiles: null, elevationGainFeet: null }, 'distance')).toBe(true)   // distTime alone
+    expect(hasValue({ ...full, distanceMiles: null, distTime: '' }, 'distance')).toBe(true)   // elevation alone
   })
 })
 
