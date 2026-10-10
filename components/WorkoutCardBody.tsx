@@ -102,6 +102,14 @@ function renderFieldContent(
         <DetailRow key={key} label={content.label} value={content.value} />
       )
 
+    case 'route':
+      return (
+        <div key={key}>
+          <div className="font-semibold text-ink mb-1">Route directions</div>
+          <p className="text-muted whitespace-pre-line">{content.text}</p>
+        </div>
+      )
+
     // inline and text-inline are handled in bulk by renderInlineGroup; this
     // branch is a fallback and should not be reached in normal usage.
     case 'inline':
@@ -117,7 +125,7 @@ function renderFieldContent(
 // Render one side of a row (left or right group of resolved fields).
 // - All inline/text-inline fields are merged into one ·-joined stats line.
 // - All pills fields (race + phase) sharing the same side are merged into one
-//   flex wrapper, matching LibraryClient.tsx:224-233.
+//   flex wrapper, matching the former WorkoutMeta pills row (removed in #506).
 // - All other fields are stacked individually.
 function renderGroupSide(
   workout: WorkoutVariantRow,
@@ -149,7 +157,8 @@ function renderGroupSide(
     )
   }
 
-  // Merged pills wrapper (race + phase in one flex row)
+  // Merged pills wrapper (race + phase in one flex row),
+  // matching the former WorkoutMeta pills row (removed in #506).
   if (pillsItems.length > 0) {
     const pillNodes: React.ReactNode[] = []
     for (const { field, content } of pillsItems) {

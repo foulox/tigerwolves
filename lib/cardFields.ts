@@ -15,6 +15,7 @@ export type FieldContent =
   | { kind: 'image'; src: string }
   | { kind: 'pills'; variant: 'race' | 'phase'; items: string[] }
   | { kind: 'detail'; label: string; value: string }
+  | { kind: 'route'; text: string }
 
 /**
  * Returns the renderable content for a single card field, or null when the
@@ -22,7 +23,8 @@ export type FieldContent =
  * hasValue(), so null here is a defensive backstop only.
  *
  * Label literals match components/WorkoutDetails.tsx verbatim for visual parity.
- * Distance inline parts follow components/LibraryClient.tsx:198-212 exactly.
+ * Distance inline parts mirror the former LibraryClient WorkoutMeta stats row (removed in #506):
+ * `${miles.toFixed(1)} mi` · `${Math.round(elev)} ft ↑` · distTime.
  */
 export function describeField(w: WorkoutVariantRow, key: CardFieldKey): FieldContent | null {
   switch (key) {
@@ -39,7 +41,7 @@ export function describeField(w: WorkoutVariantRow, key: CardFieldKey): FieldCon
       if (w.distanceMiles != null) parts.push(`${w.distanceMiles.toFixed(1)} mi`)
       if (w.elevationGainFeet != null) parts.push(`${Math.round(w.elevationGainFeet)} ft ↑`)
       if (w.distTime) parts.push(w.distTime)
-      return { kind: 'inline', parts }
+      return parts.length > 0 ? { kind: 'inline', parts } : null
     }
 
     case 'lastRan':
@@ -77,12 +79,12 @@ export function describeField(w: WorkoutVariantRow, key: CardFieldKey): FieldCon
       return { kind: 'detail', label: 'RPE', value: w.rpe }
 
     case 'turnaround':
-      if (!w.turnaround) return null
+      if (!w.hasTurnaround || !w.turnaround) return null
       return { kind: 'detail', label: 'Turnaround', value: w.turnaround }
 
     case 'routeNarrative':
       if (!w.routeNarrative) return null
-      return { kind: 'detail', label: 'Route directions', value: w.routeNarrative }
+      return { kind: 'route', text: w.routeNarrative }
 
     case 'author':
       if (!w.author) return null

@@ -60,7 +60,18 @@ describe('describeField', () => {
     expect(describeField(full, 'hrZone')).toEqual({ kind: 'detail', label: 'HR Zone', value: 'Z4' })
     expect(describeField(full, 'rpe')).toEqual({ kind: 'detail', label: 'RPE', value: '8' })
     expect(describeField(full, 'turnaround')).toEqual({ kind: 'detail', label: 'Turnaround', value: 'after rep 2' })
-    expect(describeField(full, 'routeNarrative')).toEqual({ kind: 'detail', label: 'Route directions', value: 'turn left' })
+  })
+
+  test('routeNarrative → route block kind', () => {
+    expect(describeField(full, 'routeNarrative')).toEqual({ kind: 'route', text: 'turn left' })
+  })
+
+  test('distance → null when all distance fields absent', () => {
+    expect(describeField({ ...full, distanceMiles: null, elevationGainFeet: null, distTime: '' }, 'distance')).toBeNull()
+  })
+
+  test('turnaround → null when hasTurnaround is false', () => {
+    expect(describeField({ ...full, hasTurnaround: false }, 'turnaround')).toBeNull()
   })
 
   test('author → author kind', () => {
