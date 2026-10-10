@@ -25,6 +25,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     cycle: {},
     status: 'live',
     postTemplate: null,
+    cardTemplate: null,
   }
   const leaderRun = await getLeaderRun(user.id)
   const runConfig = leaderRun ?? tigerWolvesConfig

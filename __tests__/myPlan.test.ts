@@ -28,6 +28,7 @@ function makeRun(overrides: Partial<RunConfig> = {}): RunConfig {
     cycle: {},
     status: 'live',
     postTemplate: null,
+    cardTemplate: null,
     ...overrides,
   }
 }
