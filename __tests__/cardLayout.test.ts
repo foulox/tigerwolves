@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { hasValue, resolveCardLayout } from '../lib/cardLayout'
+import { hasValue, resolveCardLayout, parseCardTemplate } from '../lib/cardLayout'
 import type { WorkoutVariantRow, CardTemplate } from '../lib/data'
 
 // Minimal fixture with every placeable value PRESENT; override per test.
@@ -25,13 +25,18 @@ describe('hasValue', () => {
   })
   test('empty/absent values report false', () => {
     expect(hasValue({ ...full, mapImageUrl: null }, 'mapImage')).toBe(false)
-    expect(hasValue({ ...full, lastRan: null }, 'lastRan')).toBe(false)
+    expect(hasValue({ ...full, lastRan: null }, 'lastRan')).toBe(true)
     expect(hasValue({ ...full, author: null }, 'author')).toBe(false)
     expect(hasValue({ ...full, raceTypes: [] }, 'raceTypes')).toBe(false)
-    expect(hasValue({ ...full, distanceMiles: null }, 'distance')).toBe(false)
+    expect(hasValue({ ...full, distanceMiles: null, elevationGainFeet: null, distTime: '' }, 'distance')).toBe(false)
     expect(hasValue({ ...full, coachingNotes: null }, 'coachingNotes')).toBe(false)
     expect(hasValue({ ...full, rawInput: '' }, 'description')).toBe(false)
     expect(hasValue({ ...full, hasTurnaround: false }, 'turnaround')).toBe(false)
+  })
+
+  test('distance field present when only distTime/elevation set (distTime-only parity)', () => {
+    expect(hasValue({ ...full, distanceMiles: null, elevationGainFeet: null }, 'distance')).toBe(true)   // distTime alone
+    expect(hasValue({ ...full, distanceMiles: null, distTime: '' }, 'distance')).toBe(true)   // elevation alone
   })
 })
 
@@ -99,5 +104,24 @@ describe('resolveCardLayout', () => {
     const r = resolveCardLayout(full, layout)
     const keys = flatKeys(r.upfront)
     expect(keys.filter(k => k === 'distance')).toHaveLength(1)
+  })
+})
+
+describe('parseCardTemplate', () => {
+  test('null / undefined → null', () => {
+    expect(parseCardTemplate(null)).toBeNull()
+    expect(parseCardTemplate(undefined)).toBeNull()
+  })
+  test('valid template round-trips', () => {
+    const t = { version: 1, upfront: [{ fields: [{ key: 'distance', align: 'left' }] }], expanded: [], hidden: [] }
+    expect(parseCardTemplate(t)).toEqual(t)
+  })
+  test('wrong/old version → null (fall back to default)', () => {
+    expect(parseCardTemplate({ version: 2, upfront: [], expanded: [], hidden: [] })).toBeNull()
+  })
+  test('malformed shape → null, never throws', () => {
+    expect(parseCardTemplate('{}')).toBeNull()
+    expect(parseCardTemplate({ version: 1 })).toBeNull()               // missing arrays
+    expect(parseCardTemplate({ version: 1, upfront: 'x', expanded: [], hidden: [] })).toBeNull()
   })
 })

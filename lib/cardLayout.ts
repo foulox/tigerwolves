@@ -6,8 +6,8 @@ import type { WorkoutVariantRow, CardTemplate, CardFieldKey } from './data'
 const PRESENCE: Record<CardFieldKey, (w: WorkoutVariantRow) => boolean> = {
   description:    w => !!w.rawInput?.trim(),
   coachingNotes:  w => !!w.coachingNotes?.trim(),
-  distance:       w => w.distanceMiles != null,
-  lastRan:        w => w.lastRan != null,
+  distance:       w => w.distanceMiles != null || w.elevationGainFeet != null || !!w.distTime,
+  lastRan:        () => true,  // always rendered: "Last ran …" or "Never used"
   mapLink:        w => !!w.mapLink,
   mapImage:       w => !!w.mapImageUrl,
   routeNarrative: w => !!w.routeNarrative?.trim(),
@@ -75,4 +75,14 @@ export function resolveCardLayout(
 ): ResolvedCard {
   const t = layout ?? DEFAULT_CARD_TEMPLATE
   return { upfront: resolveSection(w, t.upfront), expanded: resolveSection(w, t.expanded) }
+}
+
+export function parseCardTemplate(raw: unknown): CardTemplate | null {
+  if (!raw || typeof raw !== 'object') return null
+  const t = raw as Record<string, unknown>
+  if (t.version !== 1) return null
+  if (!Array.isArray(t.upfront) || !Array.isArray(t.expanded) || !Array.isArray(t.hidden)) return null
+  // Shape is trusted enough for the resolver, which already ignores unknown keys
+  // and skips valueless fields; deeper validation would duplicate resolver guards.
+  return { version: 1, upfront: t.upfront, expanded: t.expanded, hidden: t.hidden } as CardTemplate
 }

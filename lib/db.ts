@@ -7,6 +7,7 @@ import type { WorkoutVariantInput } from './workoutVariant'
 import { getNextLeader } from './rotation'
 import { resolveWorkoutVariant } from './scheduleUtils'
 import type { MyPlanItem } from './myPlan'
+import { parseCardTemplate } from './cardLayout'
 
 // Every environment reads DATABASE_URL directly. Production and per-PR previews
 // get it from the Neon–Vercel integration (prod / per-PR isolated branch); the
@@ -239,7 +240,7 @@ export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | nul
     SELECT r.id, r.name, r.emoji, r.day_of_week, r.meeting_location,
            r.post_header, r.leader_intro, r.closing_notes,
            r.kind, r.workout_types, r.run_group_id, r.cycle_mode, r.cycle,
-           r.description, r.meeting_time, r.status, r.post_template
+           r.description, r.meeting_time, r.status, r.post_template, r.card_template
     FROM run_leaders rl
     JOIN runs r ON r.id = rl.run_id
     WHERE rl.clerk_user_id = ${clerkUserId}
@@ -265,7 +266,7 @@ export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | nul
     meetingTime: (r.meeting_time as string | null) ?? null,
     status: (r.status as string | null) ?? 'live',
     postTemplate: (r.post_template as string | null) ?? null,
-    cardTemplate: null,
+    cardTemplate: parseCardTemplate(r.card_template),
   }
 }
 
@@ -755,7 +756,7 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
   const rows = await sql`
     SELECT id, name, emoji, description, day_of_week, meeting_time, meeting_location,
            post_header, leader_intro, closing_notes,
-           kind, workout_types, run_group_id, cycle_mode, cycle, status, post_template
+           kind, workout_types, run_group_id, cycle_mode, cycle, status, post_template, card_template
     FROM runs
     WHERE id = ${runId}
     LIMIT 1
@@ -781,7 +782,7 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
     cycle: (r.cycle as Record<string, string> | null) ?? {},
     status: (r.status as string | null) ?? 'live',
     postTemplate: (r.post_template as string | null) ?? null,
-    cardTemplate: null,
+    cardTemplate: parseCardTemplate(r.card_template),
   }
 }
 
