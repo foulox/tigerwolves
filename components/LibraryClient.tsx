@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo, Fragment } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import type { WorkoutVariantRow } from '@/lib/data'
+import type { WorkoutVariantRow, CardTemplate } from '@/lib/data'
 import { ABBREVIATIONS, RACE_TYPES } from '@/lib/data'
-import WorkoutDetails, { PHASE_COLORS } from '@/components/WorkoutDetails'
+import WorkoutCardBody from '@/components/WorkoutCardBody'
 import DeleteWorkoutButton from '@/components/DeleteWorkoutButton'
 import ReactionPicker from '@/components/ReactionPicker'
 import WorkoutFlagSheet, { FlagBadge } from '@/components/WorkoutFlagSheet'
@@ -46,7 +46,7 @@ type DisplayRow = StandaloneRow | FamilyRow
 // ledRuns/runGroupNames drive the adopt affordances (AC5/AC6) and the "adopted from
 // <creator>" label; run_group_id is kept only as creator credit.
 type LedRun = { id: string; name: string; kind: string; workoutTypes: string[] }
-export default function LibraryClient({ variants, isLeader, isAdmin = false, voteData = {}, runId, allowedTypes, runGroupId, libraryFamilyIds = [], ledRuns = [], runGroupNames = {} }: { variants: WorkoutVariantRow[]; isLeader: boolean; isAdmin?: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runGroupId?: number | null; libraryFamilyIds?: number[]; ledRuns?: LedRun[]; runGroupNames?: Record<number, string> }) {
+export default function LibraryClient({ variants, isLeader, isAdmin = false, voteData = {}, runId, allowedTypes, runGroupId, libraryFamilyIds = [], ledRuns = [], runGroupNames = {}, cardTemplate = null }: { variants: WorkoutVariantRow[]; isLeader: boolean; isAdmin?: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runGroupId?: number | null; libraryFamilyIds?: number[]; ledRuns?: LedRun[]; runGroupNames?: Record<number, string>; cardTemplate?: CardTemplate | null }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [raceFilter, setRaceFilter] = useState<string | null>(null)
@@ -183,76 +183,6 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
     setCategory(null)
   }
 
-  // #288: instructions + coaching notes are always visible in the card body.
-  // Race types/training phases/author stay always visible as pills above the
-  // toggle (#290); the expandable section uses WorkoutDetails with those fields
-  // excluded so they don't duplicate.
-  function WorkoutMeta({ w }: { w: WorkoutVariantRow }) {
-    const showDetails = expandedNotes === w.id
-    // #411: the map link (route) is shown inline below — always visible, no
-    // "Show details" click needed — so it's dropped from hasDetails and excluded
-    // from the collapsed WorkoutDetails to avoid duplicating it.
-    const hasDetails = !!(w.reason || w.energySystem || w.hrZone || w.rpe || (w.hasTurnaround && w.turnaround))
-    return (
-      <div className="mt-2.5 space-y-2">
-        <div className="flex gap-3 text-xs text-muted">
-          {(() => {
-            const parts: React.ReactNode[] = []
-            if (w.distanceMiles != null) parts.push(`${w.distanceMiles.toFixed(1)} mi`)
-            if (w.elevationGainFeet != null) parts.push(`${Math.round(w.elevationGainFeet)} ft ↑`)
-            if (w.distTime) parts.push(w.distTime)
-            parts.push(w.lastRan ? `Last ran ${formatDate(w.lastRan)}` : 'Never used')
-            return parts.map((p, i) => (
-              <Fragment key={i}>
-                {i > 0 && <span>·</span>}
-                <span>{p}</span>
-              </Fragment>
-            ))
-          })()}
-        </div>
-        {w.mapLink && (
-          <a
-            href={w.mapLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            className="text-xs font-semibold text-accent touch-manipulation block"
-          >
-            Map ↗
-          </a>
-        )}
-        {(w.raceTypes.length > 0 || w.trainingPhases.length > 0) && (
-          <div className="flex flex-wrap gap-1.5">
-            {w.raceTypes.map(r => (
-              <span key={r} className="text-xs font-medium bg-surface text-muted border border-line px-2 py-0.5 rounded-full">{r}</span>
-            ))}
-            {w.trainingPhases.map(p => (
-              <span key={p} className={`text-xs font-medium px-2 py-0.5 rounded-full ${PHASE_COLORS[p] ?? 'bg-surface text-muted border border-line'}`}>{p}</span>
-            ))}
-          </div>
-        )}
-        {w.author && (
-          <p className="text-xs text-muted italic">— {w.author}</p>
-        )}
-        {hasDetails && (
-          <div>
-            <button
-              onClick={e => { e.stopPropagation(); setExpandedNotes(showDetails ? null : w.id) }}
-              className="text-xs font-semibold text-accent touch-manipulation"
-            >
-              {showDetails ? 'Hide details' : 'Show details'}
-            </button>
-            {showDetails && (
-              <div className="mt-1">
-                <WorkoutDetails w={w} exclude={['raceTypes', 'trainingPhases', 'author', 'mapLink']} />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   return (
     <div className="pb-4">
       <div className="px-4 mb-4 flex justify-between items-start">
@@ -386,9 +316,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                   </div>
                 </div>
                 {w.label && <p className="text-xs text-muted mt-0.5">{w.label}</p>}
-                {w.rawInput && <p className="text-sm text-ink mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</p>}
-                {w.coachingNotes && <p className="text-sm text-muted mt-1.5 italic leading-snug">{w.coachingNotes}</p>}
-                <WorkoutMeta w={w} />
+                <WorkoutCardBody workout={w} layout={cardTemplate} expanded={expandedNotes === w.id} onToggle={() => setExpandedNotes(expandedNotes === w.id ? null : w.id)} />
                 <div className="flex justify-end mt-2">
                   <ReactionPicker
                     workoutId={workoutVoteId(w.name, w.label ?? '')}
@@ -466,9 +394,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                           )}
                         </div>
                       </div>
-                      {row.base.rawInput && <p className="text-sm text-ink mt-1 whitespace-pre-wrap leading-snug">{row.base.rawInput}</p>}
-                      {row.base.coachingNotes && <p className="text-sm text-muted mt-1 italic leading-snug">{row.base.coachingNotes}</p>}
-                      <WorkoutMeta w={row.base} />
+                      <WorkoutCardBody workout={row.base} layout={cardTemplate} expanded={expandedNotes === row.base.id} onToggle={() => setExpandedNotes(expandedNotes === row.base!.id ? null : row.base!.id)} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
                           workoutId={workoutVoteId(row.base.name, row.base.label ?? '')}
@@ -497,9 +423,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                         </div>
                       </div>
                       <div className="text-sm font-semibold text-ink">{p.label}</div>
-                      {p.rawInput && <p className="text-sm text-ink mt-1 whitespace-pre-wrap leading-snug">{p.rawInput}</p>}
-                      {p.coachingNotes && <p className="text-sm text-muted mt-1 italic leading-snug">{p.coachingNotes}</p>}
-                      <WorkoutMeta w={p} />
+                      <WorkoutCardBody workout={p} layout={cardTemplate} expanded={expandedNotes === p.id} onToggle={() => setExpandedNotes(expandedNotes === p.id ? null : p.id)} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
                           workoutId={workoutVoteId(p.name, p.label ?? '')}

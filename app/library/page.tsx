@@ -78,6 +78,7 @@ export default async function LibraryPage() {
         libraryFamilyIds={libraryFamilyIds}
         ledRuns={ledRuns}
         runGroupNames={runGroupNames}
+        cardTemplate={runConfig.cardTemplate}
       />
     </div>
   )
