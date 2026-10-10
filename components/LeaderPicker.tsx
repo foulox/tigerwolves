@@ -35,8 +35,8 @@ export default function LeaderPicker({ date, currentLeader, runLeaders, onClose,
 
   return (
     <div className="flex flex-col gap-2 px-4 pb-4">
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide px-1">Who leads?</p>
-      <div className="bg-white rounded-xl overflow-hidden shadow border border-gray-100">
+      <p className="text-[10px] font-bold text-muted uppercase tracking-wide px-1">Who leads?</p>
+      <div className="bg-card rounded-xl overflow-hidden shadow border border-line">
         {sorted.map(l => {
           const away = isCurrentlyAway(l, date)
           const isSelected = l.name === currentLeader
@@ -46,17 +46,17 @@ export default function LeaderPicker({ date, currentLeader, runLeaders, onClose,
               onClick={() => handleSelect(l.name)}
               disabled={isPending}
               aria-label={`Select ${l.name} as leader`}
-              className={`w-full flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 touch-manipulation text-left ${isSelected ? 'bg-orange-50' : 'bg-white'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 touch-manipulation text-left ${isSelected ? 'bg-surface' : 'bg-card'}`}
             >
-              <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">{l.name[0]}</div>
-              <span className="flex-1 text-sm font-medium text-gray-900">{l.name}</span>
+              <div className="w-7 h-7 rounded-full bg-surface flex items-center justify-center text-xs font-bold text-muted shrink-0">{l.name[0]}</div>
+              <span className="flex-1 text-sm font-medium text-ink">{l.name}</span>
               {away && <span className="text-[9px] bg-yellow-50 text-yellow-700 font-bold px-1.5 py-0.5 rounded">Away</span>}
-              {isSelected && <span className="text-orange-600 font-bold text-base">✓</span>}
+              {isSelected && <span className="text-accent font-bold text-base">✓</span>}
             </button>
           )
         })}
       </div>
-      <button onClick={onClose} className="text-sm text-gray-400 font-medium py-1 touch-manipulation">Cancel</button>
+      <button onClick={onClose} className="text-sm text-muted font-medium py-1 touch-manipulation">Cancel</button>
     </div>
   )
 }

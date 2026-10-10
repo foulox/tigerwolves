@@ -37,9 +37,9 @@ function growToFit(el: HTMLTextAreaElement | null) {
 
 function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined }) {
   if (v && v.count > 0) {
-    return <span className="text-xs text-gray-400 tabular-nums">{ratingToEmoji(v.avg)} {v.count}</span>
+    return <span className="text-xs text-muted tabular-nums">{ratingToEmoji(v.avg)} {v.count}</span>
   }
-  return <span className="text-xs text-gray-300">🙂</span>
+  return <span className="text-xs text-muted">🙂</span>
 }
 
 type LedRun = { id: string; name: string; kind: string; workoutTypes: string[] }
@@ -411,7 +411,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       <>
         <Header title="Schedule" isLeader={isLeader} />
         <div className="px-4" data-tour="heylo-area">
-          <p className="text-gray-500 mt-4">No upcoming weeks on the schedule.</p>
+          <p className="text-muted mt-4">No upcoming weeks on the schedule.</p>
         </div>
       </>
     )
@@ -423,12 +423,12 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       <div className="px-4 pb-4" data-tour="heylo-area">
 
         {/* Week nav */}
-        <div className={`flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-2 py-2 ${leaderPickerOpen ? 'mb-2' : 'mb-5'}`}>
+        <div className={`flex items-center justify-between bg-card rounded-2xl border border-line shadow-sm px-2 py-2 ${leaderPickerOpen ? 'mb-2' : 'mb-5'}`}>
           <button
             onClick={() => changeWeek(weekIndex - 1)}
             disabled={weekIndex === 0}
             aria-label="Previous week"
-            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-gray-500 active:bg-gray-100"
+            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-muted active:bg-surface"
           >
             <ChevronLeft size={20} />
           </button>
@@ -439,29 +439,29 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 className="text-left touch-manipulation"
                 aria-label="Change leader for this week"
               >
-                <div className="text-sm font-semibold text-gray-900 flex items-center gap-1">
+                <div className="text-sm font-semibold text-ink flex items-center gap-1">
                   {localLeader ?? entry.leader}
                   {entry.needsLeader && <span className="text-[9px] bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded">Needs leader</span>}
-                  <span className="text-xs text-orange-600">tap to change</span>
+                  <span className="text-xs text-accent">tap to change</span>
                 </div>
               </button>
             ) : (
-              <div className="text-sm font-semibold text-gray-900">{entry ? (localLeader ?? entry.leader) : '—'}</div>
+              <div className="text-sm font-semibold text-ink">{entry ? (localLeader ?? entry.leader) : '—'}</div>
             )}
-            <div className="text-xs text-gray-400">{entry ? formatDateShort(new Date(entry.date + 'T00:00:00')) : ''}</div>
+            <div className="text-xs text-muted">{entry ? formatDateShort(new Date(entry.date + 'T00:00:00')) : ''}</div>
           </div>
           <button
             onClick={() => changeWeek(weekIndex + 1)}
             disabled={weekIndex >= upcoming.length - 1}
             aria-label="Next week"
-            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-gray-500 active:bg-gray-100"
+            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-muted active:bg-surface"
           >
             <ChevronRight size={20} />
           </button>
         </div>
 
         {isLeader && leaderPickerOpen && entry && (
-          <div className="mb-3 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="mb-3 bg-card rounded-2xl border border-line shadow-sm overflow-hidden">
             <LeaderPicker
               date={entry.date}
               currentLeader={localLeader ?? entry.leader}
@@ -475,13 +475,13 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
         {entry && (
           <>
             {isWorkout && (
-            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6">
-              <div className="text-xs font-bold text-orange-500 tracking-wide mb-1">WORKOUT TYPE</div>
-              <div className="text-2xl font-bold text-gray-900">{activeType ?? entry.workoutType}</div>
+            <div className="bg-surface border border-line rounded-2xl p-4 mb-6">
+              <div className="text-xs font-bold text-accent tracking-wide mb-1">WORKOUT TYPE</div>
+              <div className="text-2xl font-bold text-ink">{activeType ?? entry.workoutType}</div>
               {activeType && (
-                <div className="text-xs text-gray-500 mt-0.5">Scheduled: {entry.workoutType}</div>
+                <div className="text-xs text-muted mt-0.5">Scheduled: {entry.workoutType}</div>
               )}
-              <div className="text-xs text-gray-400 mt-1">{formatDateLong(entry.date)}</div>
+              <div className="text-xs text-muted mt-1">{formatDateLong(entry.date)}</div>
               {/* Only offer the type picker when there's a real choice — a lone
                   chip is just noise (mirrors the Library's types.length > 1 gate).
                   #405: hidden in "All runs" mode, which browses by its own category/
@@ -494,7 +494,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                       <button key={t} type="button"
                         onClick={() => setActiveType(scheduledTypes.includes(t) ? null : t)}
                         className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
-                          isActive ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border border-gray-200'
+                          isActive ? 'bg-accent text-white' : 'bg-card border border-line text-muted'
                         }`}
                       >
                         {t}
@@ -519,35 +519,35 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
               const expanded = expandedId === eid
               return (
                 <div className="mb-4">
-                  <div className="text-sm font-bold text-gray-700 mb-2">Currently planned</div>
+                  <div className="text-sm font-bold text-ink mb-2">Currently planned</div>
                   <div
-                    className={`bg-white rounded-2xl border shadow-sm transition-colors ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
+                    className={`bg-card rounded-2xl border shadow-sm transition-colors ${sel ? 'border-accent ring-1 ring-accent' : 'border-line'}`}
                   >
                     <button
                       onClick={() => handleSelect(w)}
                       className="w-full text-left p-4 touch-manipulation cursor-pointer"
                     >
                       <div className="flex justify-between items-start gap-2">
-                        <div className="font-semibold text-gray-900">{w.name}</div>
+                        <div className="font-semibold text-ink">{w.name}</div>
                         <div className="flex items-center gap-2 shrink-0">
                           <VoteBadge v={voteData[workoutVoteId(w.name, w.label ?? '')]} />
-                          <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}</span>
+                          <span className="text-xs text-muted">{w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}</span>
                         </div>
                       </div>
-                      {w.label && <div className="text-xs text-gray-400 mt-0.5">{w.label}</div>}
-                      {w.rawInput && <div className="text-sm text-gray-700 mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</div>}
-                      {w.coachingNotes && <div className="text-sm text-gray-500 mt-1.5 italic leading-snug">{w.coachingNotes}</div>}
-                      <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
+                      {w.label && <div className="text-xs text-muted mt-0.5">{w.label}</div>}
+                      {w.rawInput && <div className="text-sm text-ink mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</div>}
+                      {w.coachingNotes && <div className="text-sm text-muted mt-1.5 italic leading-snug">{w.coachingNotes}</div>}
+                      <div className="text-xs text-muted mt-2">{w.distTime}</div>
                     </button>
                     <button
                       onClick={() => toggleExpand(eid)}
-                      className="w-full px-4 pb-3 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1"
+                      className="w-full px-4 pb-3 text-left text-xs text-muted touch-manipulation flex items-center gap-1"
                     >
                       <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
                       {expanded ? 'Hide details' : 'Show details'}
                     </button>
                     {expanded && (
-                      <div className="px-4 pb-4 mt-3 pt-3 border-t border-gray-100">
+                      <div className="px-4 pb-4 mt-3 pt-3 border-t border-line">
                         <WorkoutDetails w={w} />
                       </div>
                     )}
@@ -557,11 +557,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
             })()}
 
             {plannedWorkout && (
-              <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4">
+              <div className="flex bg-surface rounded-xl p-1 gap-1 mb-4">
                 <button
                   onClick={() => setPlanTab('post')}
                   className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
-                    planTab === 'post' ? 'bg-white text-gray-900 shadow-sm' : 'bg-transparent text-gray-500'
+                    planTab === 'post' ? 'bg-card text-ink shadow-sm' : 'bg-transparent text-muted'
                   }`}
                 >
                   Post draft
@@ -569,7 +569,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 <button
                   onClick={() => setPlanTab('browse')}
                   className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
-                    planTab === 'browse' ? 'bg-white text-gray-900 shadow-sm' : 'bg-transparent text-gray-500'
+                    planTab === 'browse' ? 'bg-card text-ink shadow-sm' : 'bg-transparent text-muted'
                   }`}
                 >
                   Change workout
@@ -587,11 +587,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     <>
                       <button
                         onClick={() => setScope(false)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
                       >Your run</button>
                       <button
                         onClick={() => setScope(true)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
                       >All runs</button>
                     </>
                   )}
@@ -604,11 +604,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                       <button
                         type="button"
                         onClick={() => setBrowseTypeCleared(false)}
-                        className="font-semibold px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-600 touch-manipulation"
+                        className="font-semibold px-3 py-1 rounded-full bg-card border border-line text-muted touch-manipulation"
                       >Filter to {activeType ?? entry.workoutType} type</button>
                     ) : (
                       <>
-                        <span className="font-semibold px-3 py-1 rounded-full bg-orange-500 text-white inline-flex items-center gap-1">
+                        <span className="font-semibold px-3 py-1 rounded-full bg-accent text-white inline-flex items-center gap-1">
                           {activeType ?? entry.workoutType}
                           <button
                             type="button"
@@ -617,15 +617,15 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                             className="touch-manipulation leading-none"
                           >✕</button>
                         </span>
-                        <span className="text-gray-400">Clear — show all types</span>
+                        <span className="text-muted">Clear — show all types</span>
                       </>
                     )}
                   </div>
                 )}
 
                 {showAllRuns && (
-                  <p className="text-xs text-gray-400 mb-3 leading-snug">
-                    Browsing every run&rsquo;s workouts. <span className="font-semibold text-gray-500">Schedule for this week</span> borrows one for this week only — it won&rsquo;t join your library or rotation. <span className="font-semibold text-orange-600">+ Add to my run</span> adopts it permanently. You can only <span className="font-semibold text-orange-600">+ Add</span> a route whose type fits one of your runs — borrow works for any type.
+                  <p className="text-xs text-muted mb-3 leading-snug">
+                    Browsing every run&rsquo;s workouts. <span className="font-semibold text-ink">Schedule for this week</span> borrows one for this week only — it won&rsquo;t join your library or rotation. <span className="font-semibold text-accent">+ Add to my run</span> adopts it permanently. You can only <span className="font-semibold text-accent">+ Add</span> a route whose type fits one of your runs — borrow works for any type.
                   </p>
                 )}
 
@@ -635,20 +635,20 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     value={pickerSearch}
                     onChange={e => setPickerSearch(e.target.value)}
                     placeholder={showAllRuns ? "Search every run's workouts by name, type, race…" : "Search your run's workouts by name, type, race…"}
-                    className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-orange-400"
+                    className="w-full rounded-xl border border-line bg-card pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-accent"
                   />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">🔍</span>
                 </div>
 
                 {/* #241: Least recent / Top rated sort toggle */}
                 <div className="flex items-center gap-2 mb-3">
                   <button
                     onClick={() => setSortBy('recent')}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'recent' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'recent' ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
                   >Least recent</button>
                   <button
                     onClick={() => setSortBy('rating')}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'rating' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'rating' ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
                   >Top rated</button>
                 </div>
 
@@ -656,23 +656,23 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     all runs, no run-scope and no week-type restriction (AC4). */}
                 {showAllRuns && browseCategories.length > 0 && (
                   <div className="flex gap-2 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-                    <button onClick={() => selectBrowseCategory(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${!browseCategory ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All</button>
+                    <button onClick={() => selectBrowseCategory(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${!browseCategory ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>All</button>
                     {browseCategories.map(c => (
-                      <button key={c} onClick={() => selectBrowseCategory(browseCategory === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${browseCategory === c ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{c}</button>
+                      <button key={c} onClick={() => selectBrowseCategory(browseCategory === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${browseCategory === c ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{c}</button>
                     ))}
                   </div>
                 )}
                 {showAllRuns && browseTypes.length > 1 && (
                   <div className="flex gap-2 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: 'none' }}>
-                    <button onClick={() => setBrowseType(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${!browseType ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>All types</button>
+                    <button onClick={() => setBrowseType(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${!browseType ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>All types</button>
                     {browseTypes.map(t => (
-                      <button key={t} onClick={() => setBrowseType(browseType === t ? null : t)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${browseType === t ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>{t}</button>
+                      <button key={t} onClick={() => setBrowseType(browseType === t ? null : t)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${browseType === t ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{t}</button>
                     ))}
                   </div>
                 )}
 
                 {allSuggestions.length === 0 && !pickerSearch ? (
-                  <p className="text-gray-400 italic text-sm">
+                  <p className="text-muted italic text-sm">
                     {showAllRuns
                       ? 'No workouts match these filters.'
                       : isWorkout
@@ -684,10 +684,10 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                             : 'No workouts in your library yet.')}
                   </p>
                 ) : displayRows.length === 0 ? (
-                  <p className="text-gray-400 italic text-sm">{pickerSearch ? 'No workouts match your search.' : ratingThreshold !== 'any' ? 'No workouts match this rating filter.' : 'No workouts match these filters.'}</p>
+                  <p className="text-muted italic text-sm">{pickerSearch ? 'No workouts match your search.' : ratingThreshold !== 'any' ? 'No workouts match this rating filter.' : 'No workouts match these filters.'}</p>
                 ) : (
                   <div className="mb-6">
-                    <div className="text-sm font-bold text-gray-700 mb-2">
+                    <div className="text-sm font-bold text-ink mb-2">
                       {pickerSearch ? `All workouts matching "${pickerSearch}"` : sortBy === 'rating' ? 'Workouts — top rated' : 'Workouts — least recently used'}
                     </div>
                     <div className="flex flex-col gap-2">
@@ -700,33 +700,33 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                           return (
                             <div
                               key={`s-${w.id}`}
-                              className={`bg-white rounded-2xl border shadow-sm transition-colors ${sel ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-100'}`}
+                              className={`bg-card rounded-2xl border shadow-sm transition-colors ${sel ? 'border-accent ring-1 ring-accent' : 'border-line'}`}
                             >
                               <button
                                 onClick={() => handleSelect(w)}
                                 className="w-full text-left p-4 touch-manipulation cursor-pointer"
                               >
                                 <div className="flex justify-between items-start gap-2">
-                                  <div className="font-semibold text-gray-900">{w.name}</div>
+                                  <div className="font-semibold text-ink">{w.name}</div>
                                   <div className="flex items-center gap-2 shrink-0">
                                     <VoteBadge v={voteData[workoutVoteId(w.name, w.label ?? '')]} />
-                                    <span className="text-xs text-gray-400">{w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}</span>
+                                    <span className="text-xs text-muted">{w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}</span>
                                   </div>
                                 </div>
-                                {w.label && <div className="text-xs text-gray-400 mt-0.5">{w.label}</div>}
-                                {w.rawInput && <div className="text-sm text-gray-700 mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</div>}
-                                {w.coachingNotes && <div className="text-sm text-gray-500 mt-1.5 italic leading-snug">{w.coachingNotes}</div>}
-                                <div className="text-xs text-gray-400 mt-2">{w.distTime}</div>
+                                {w.label && <div className="text-xs text-muted mt-0.5">{w.label}</div>}
+                                {w.rawInput && <div className="text-sm text-ink mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</div>}
+                                {w.coachingNotes && <div className="text-sm text-muted mt-1.5 italic leading-snug">{w.coachingNotes}</div>}
+                                <div className="text-xs text-muted mt-2">{w.distTime}</div>
                               </button>
                               <button
                                 onClick={() => toggleExpand(eid)}
-                                className="w-full px-4 pb-3 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1"
+                                className="w-full px-4 pb-3 text-left text-xs text-muted touch-manipulation flex items-center gap-1"
                               >
                                 <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
                                 {expanded ? 'Hide details' : 'Show details'}
                               </button>
                               {expanded && (
-                                <div className="px-4 pb-4 mt-3 pt-3 border-t border-gray-100">
+                                <div className="px-4 pb-4 mt-3 pt-3 border-t border-line">
                                   <WorkoutDetails w={w} />
                                 </div>
                               )}
@@ -740,11 +740,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                         // Total"), not driven by label — label is a short leader-authored
                         // tag ("Shorter"/"Longer"), shown as the subtitle beneath it.
                         return (
-                          <div key={`f-${row.familyId}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 border-b border-gray-100">
+                          <div key={`f-${row.familyId}`} className="bg-card rounded-2xl border border-line shadow-sm overflow-hidden">
+                            <div className="px-4 py-3 border-b border-line">
                               <div className="flex justify-between items-start gap-2">
-                                <div className="font-semibold text-gray-900">{row.name}</div>
-                                <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full shrink-0">
+                                <div className="font-semibold text-ink">{row.name}</div>
+                                <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-0.5 rounded-full shrink-0">
                                   {row.total} versions
                                 </span>
                               </div>
@@ -756,31 +756,31 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                               const expanded = expandedId === eid
                               const label = i === 0 ? 'Standard' : `Variation ${i + 1} of ${row.total}`
                               return (
-                                <div key={v.id} className={`${!isLast ? 'border-b border-gray-50' : ''} ${sel ? 'bg-orange-50' : 'bg-white'}`}>
+                                <div key={v.id} className={`${!isLast ? 'border-b border-line' : ''} ${sel ? 'bg-surface' : 'bg-card'}`}>
                                   <button
                                     onClick={() => handleSelect(v)}
                                     className="w-full text-left px-4 pt-3 pb-1 touch-manipulation"
                                   >
                                     <div className="flex justify-between items-start gap-2">
                                       <div className="flex items-center gap-2">
-                                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`} />
-                                        <span className={`text-xs font-bold ${i === 0 ? 'text-gray-600' : 'text-orange-500'}`}>{label}</span>
+                                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-accent bg-accent' : 'border-line'}`} />
+                                        <span className={`text-xs font-bold ${i === 0 ? 'text-muted' : 'text-accent'}`}>{label}</span>
                                       </div>
                                       <div className="flex items-center gap-2 shrink-0">
                                         <VoteBadge v={voteData[workoutVoteId(v.name, v.label ?? '')]} />
-                                        <span className="text-xs text-gray-400">{v.lastRan ? formatDateShort(new Date(v.lastRan + 'T00:00:00')) : 'Never'}</span>
+                                        <span className="text-xs text-muted">{v.lastRan ? formatDateShort(new Date(v.lastRan + 'T00:00:00')) : 'Never'}</span>
                                       </div>
                                     </div>
-                                    {v.label && <div className="text-sm text-gray-700 mt-1 ml-6 leading-snug">{v.label}</div>}
-                                    {v.rawInput && <div className="text-sm text-gray-700 mt-1.5 ml-6 whitespace-pre-wrap leading-snug">{v.rawInput}</div>}
-                                    {v.coachingNotes && <div className="text-sm text-gray-500 mt-1.5 ml-6 italic leading-snug">{v.coachingNotes}</div>}
-                                    {v.distTime && <div className="text-xs text-gray-400 mt-0.5 ml-6">{v.distTime}</div>}
+                                    {v.label && <div className="text-sm text-ink mt-1 ml-6 leading-snug">{v.label}</div>}
+                                    {v.rawInput && <div className="text-sm text-ink mt-1.5 ml-6 whitespace-pre-wrap leading-snug">{v.rawInput}</div>}
+                                    {v.coachingNotes && <div className="text-sm text-muted mt-1.5 ml-6 italic leading-snug">{v.coachingNotes}</div>}
+                                    {v.distTime && <div className="text-xs text-muted mt-0.5 ml-6">{v.distTime}</div>}
                                   </button>
-                                  <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-gray-400 touch-manipulation flex items-center gap-1 ml-6">
+                                  <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-muted touch-manipulation flex items-center gap-1 ml-6">
                                     <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
                                     {expanded ? 'Hide' : 'Details'}
                                   </button>
-                                  {expanded && <div className="px-4 pb-3 mt-3 pt-3 border-t border-gray-100"><WorkoutDetails w={v} /></div>}
+                                  {expanded && <div className="px-4 pb-3 mt-3 pt-3 border-t border-line"><WorkoutDetails w={v} /></div>}
                                 </div>
                               )
                             })}
@@ -792,7 +792,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     {remainingCount > 0 && (
                       <button
                         onClick={() => setShowCount(showCount + 3)}
-                        className="mt-3 w-full py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-500 bg-white active:bg-gray-50 touch-manipulation"
+                        className="mt-3 w-full py-2.5 rounded-xl border border-line text-sm font-medium text-muted bg-card active:bg-surface touch-manipulation"
                       >
                         Show {Math.min(remainingCount, 3)} more
                       </button>
@@ -807,7 +807,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm mb-6 touch-manipulation transition-colors ${
                       saved
                         ? 'bg-green-500 text-white'
-                        : 'bg-orange-500 text-white active:bg-orange-600 disabled:opacity-60'
+                        : 'bg-accent text-white active:bg-accent disabled:opacity-60'
                     }`}
                   >
                     {saved ? <><Check size={16} /> Saved to plan</> : saving ? 'Saving…' : showAllRuns ? 'Schedule for this week' : 'Set as plan'}
@@ -820,10 +820,10 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
               <div className="flex flex-col gap-3 p-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <div className="text-[10px] font-bold text-gray-400 tracking-wide uppercase">
+                    <div className="text-[10px] font-bold text-muted tracking-wide uppercase">
                       This week&rsquo;s post · {formatDateShort(new Date(entry.date + 'T00:00:00'))}
                     </div>
-                    <div className="text-xs text-orange-600 flex items-center gap-1">✎ editable</div>
+                    <div className="text-xs text-accent flex items-center gap-1">✎ editable</div>
                   </div>
                   <textarea
                     ref={setPostRef}
@@ -831,21 +831,21 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     onChange={e => setEditedPost(e.target.value)}
                     aria-label="Editable weekly post"
                     spellCheck={false}
-                    className="w-full min-h-[210px] resize-none rounded-xl border border-gray-200 bg-[#fffdf9] px-3 py-3 text-sm text-gray-800 leading-relaxed font-sans touch-manipulation focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                    className="w-full min-h-[210px] resize-none rounded-xl border border-line bg-card px-3 py-3 text-sm text-ink leading-relaxed font-sans touch-manipulation focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent"
                   />
-                  <div className="text-xs text-gray-400 mt-1.5 px-0.5">
+                  <div className="text-xs text-muted mt-1.5 px-0.5">
                     Changes here affect only this week&rsquo;s post — your template stays as saved.
                   </div>
                 </div>
-                <div className="flex items-start gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                <div className="flex items-start gap-3 bg-surface rounded-xl px-4 py-3">
                   <input
                     type="checkbox"
                     id="verify-checkbox"
                     checked={verified}
                     onChange={e => setVerified(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 shrink-0 accent-orange-600 touch-manipulation"
+                    className="mt-0.5 w-4 h-4 shrink-0 accent-accent touch-manipulation"
                   />
-                  <label htmlFor="verify-checkbox" className="text-sm text-gray-600 leading-snug cursor-pointer">
+                  <label htmlFor="verify-checkbox" className="text-sm text-muted leading-snug cursor-pointer">
                     {effectiveSelections.length > 0 ? buildVerificationLabel(effectiveSelections[0]) : 'I\'ve verified the key workout details'}
                   </label>
                 </div>
@@ -853,7 +853,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                   onClick={handleCopy}
                   disabled={!verified}
                   data-tour="heylo-copy"
-                  className={`flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-sm touch-manipulation transition-opacity ${verified ? 'bg-orange-600 text-white' : 'bg-orange-600 text-white opacity-35 cursor-not-allowed'}`}
+                  className={`flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-sm touch-manipulation transition-opacity ${verified ? 'bg-accent text-white' : 'bg-accent text-white opacity-35 cursor-not-allowed'}`}
                 >
                   {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
                 </button>
