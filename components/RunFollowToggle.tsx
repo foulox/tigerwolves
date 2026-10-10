@@ -40,7 +40,7 @@ export default function RunFollowToggle({
         disabled
         data-testid="run-follow-toggle"
         aria-label={`${runName} isn't open to join yet`}
-        className="text-[12.5px] font-bold rounded-full px-3.5 py-1.5 touch-manipulation whitespace-nowrap inline-flex items-center gap-1 bg-gray-100 text-gray-400 cursor-not-allowed"
+        className="text-[12.5px] font-bold rounded-full px-3.5 py-1.5 touch-manipulation whitespace-nowrap inline-flex items-center gap-1 bg-surface text-muted cursor-not-allowed"
       >
         + Join
       </button>
@@ -55,8 +55,8 @@ export default function RunFollowToggle({
       disabled={pending}
       className={`text-[12.5px] font-bold rounded-full px-3.5 py-1.5 touch-manipulation disabled:opacity-50 whitespace-nowrap inline-flex items-center gap-1 ${
         following
-          ? 'bg-green-100 text-green-800'
-          : 'bg-orange-500 text-white shadow-sm'
+          ? 'bg-surface text-muted border border-line'
+          : 'bg-accent text-white shadow-sm'
       }`}
     >
       {following ? <><Check size={12} strokeWidth={3} /> Joined</> : '+ Join'}

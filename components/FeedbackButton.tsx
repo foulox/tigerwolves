@@ -10,7 +10,7 @@ export default function FeedbackButton() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="w-9 h-9 flex-none flex items-center justify-center rounded-full border border-[#e8eaef] bg-white text-[#8b93a1] touch-manipulation"
+        className="w-9 h-9 flex-none flex items-center justify-center rounded-full border border-white/10 bg-white/10 text-chrome-muted touch-manipulation"
         title="Feedback"
         aria-label="Feedback"
         data-tour="feedback"

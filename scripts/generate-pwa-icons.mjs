@@ -1,7 +1,7 @@
-// #478 (Story A): generate the PWA / home-screen icons from the 🐯🐺 emoji on a
-// brand-orange background. Rendered with Playwright's Chromium (Apple Color Emoji
-// on macOS) so the glyphs stay crisp at any size — favicon.ico is too low-res to
-// scale up. Re-run after any branding change:  node scripts/generate-pwa-icons.mjs
+// #466 (NBR reskin): generate the PWA / home-screen icons with "NBR" text in bold
+// white on the chrome-dark background #0e0e0e. Rendered with Playwright's Chromium
+// so the text stays crisp at any size. Re-run after any branding change:
+//   node scripts/generate-pwa-icons.mjs
 //
 // Outputs (paths relative to repo root):
 //   public/icon-192.png          192  "any"      — manifest
@@ -14,35 +14,41 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const BG = '#f97316' // brand orange (orange-500)
-const EMOJI = '🐯🐺'
+const BG = '#0e0e0e' // chrome dark (NBR brand)
+const TEXT = 'NBR'
 
-// emojiRatio = emoji block width as a fraction of the canvas side. Smaller for the
-// maskable variant so the two glyphs sit inside Android's ~80% safe zone.
+// textRatio = text block width as a fraction of the canvas side. Smaller for the
+// maskable variant so the text sits inside Android's ~80% safe zone.
 const ICONS = [
-  { out: 'public/icon-192.png', size: 192, emojiRatio: 0.82 },
-  { out: 'public/icon-512.png', size: 512, emojiRatio: 0.82 },
-  { out: 'public/icon-512-maskable.png', size: 512, emojiRatio: 0.6 },
-  { out: 'app/icon.png', size: 512, emojiRatio: 0.82 },
-  { out: 'app/apple-icon.png', size: 180, emojiRatio: 0.82 },
+  { out: 'public/icon-192.png', size: 192, textRatio: 0.72 },
+  { out: 'public/icon-512.png', size: 512, textRatio: 0.72 },
+  { out: 'public/icon-512-maskable.png', size: 512, textRatio: 0.52 },
+  { out: 'app/icon.png', size: 512, textRatio: 0.72 },
+  { out: 'app/apple-icon.png', size: 180, textRatio: 0.72 },
 ]
 
-const html = (size, emojiRatio) => `<!doctype html><html><head><meta charset="utf-8">
+const html = (size, textRatio) => `<!doctype html><html><head><meta charset="utf-8">
 <style>
   html,body{margin:0;padding:0}
   .icon{
     width:${size}px;height:${size}px;background:${BG};
     display:flex;align-items:center;justify-content:center;overflow:hidden;
-    /* two emoji ≈ 2× font-size wide; target block width = emojiRatio * side */
-    font-size:${(size * emojiRatio) / 2}px;line-height:1;letter-spacing:-0.08em;
   }
-</style></head><body><div class="icon">${EMOJI}</div></body></html>`
+  .label{
+    color:#ffffff;
+    font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+    font-weight:800;
+    font-size:${Math.round(size * textRatio / 2.4)}px;
+    line-height:1;
+    letter-spacing:-0.02em;
+  }
+</style></head><body><div class="icon"><span class="label">${TEXT}</span></div></body></html>`
 
 const browser = await chromium.launch()
 try {
-  for (const { out, size, emojiRatio } of ICONS) {
+  for (const { out, size, textRatio } of ICONS) {
     const page = await browser.newPage({ viewport: { width: size, height: size }, deviceScaleFactor: 1 })
-    await page.setContent(html(size, emojiRatio), { waitUntil: 'load' })
+    await page.setContent(html(size, textRatio), { waitUntil: 'load' })
     const el = await page.locator('.icon')
     await el.screenshot({ path: path.join(ROOT, out), omitBackground: false })
     await page.close()

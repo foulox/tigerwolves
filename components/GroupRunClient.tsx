@@ -114,7 +114,7 @@ export default function GroupRunClient({ past, pastWorkouts, upcoming, upcomingW
         <button
           ref={pillRef}
           onClick={aboveNextUp ? scrollToNextUp : scrollToTop}
-          className="fixed left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-900/70 text-white text-xs font-semibold touch-manipulation"
+          className="fixed left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-chrome/80 text-chrome-text text-xs font-semibold touch-manipulation"
         >
           {aboveNextUp ? (
             <><span>↓</span><span>Next up</span></>
@@ -141,7 +141,7 @@ export default function GroupRunClient({ past, pastWorkouts, upcoming, upcomingW
       })}
 
       {upcoming.length === 0 && (
-        <p className="text-gray-400 italic text-sm">No upcoming workouts scheduled yet.</p>
+        <p className="text-muted italic text-sm">No upcoming workouts scheduled yet.</p>
       )}
       {upcoming.map((entry, i) => {
         const workout = upcomingWorkouts[i]

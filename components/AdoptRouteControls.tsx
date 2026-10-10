@@ -88,7 +88,7 @@ export default function AdoptRouteControls({
     if (!isAdopted) return null
     return (
       <div className="mt-1.5 px-1 flex items-center justify-between gap-2">
-        <span className="text-xs text-gray-400 italic">
+        <span className="text-xs text-muted italic">
           adopted{creatorName ? ` from ${creatorName}` : ''}
         </span>
         <div className="flex flex-col items-end gap-0.5">
@@ -96,7 +96,7 @@ export default function AdoptRouteControls({
             type="button"
             onClick={doRemove}
             disabled={isPending}
-            className="text-xs font-semibold text-gray-500 border border-gray-200 rounded-full px-3 py-1 disabled:opacity-40 touch-manipulation"
+            className="text-xs font-semibold text-muted border border-line rounded-full px-3 py-1 disabled:opacity-40 touch-manipulation"
           >
             {isPending ? 'Removing…' : 'Remove from my run'}
           </button>
@@ -117,7 +117,7 @@ export default function AdoptRouteControls({
     <div className="mt-1.5 px-1 flex flex-col items-end gap-1">
       {pickingRun ? (
         <div className="flex flex-col items-end gap-1">
-          <span className="text-xs text-gray-500 font-semibold">Add to which run?</span>
+          <span className="text-xs text-muted font-semibold">Add to which run?</span>
           <div className="flex flex-wrap gap-1.5 justify-end">
             {adoptableRuns.map(r => (
               <button
@@ -125,7 +125,7 @@ export default function AdoptRouteControls({
                 type="button"
                 onClick={() => doAdopt(r.id)}
                 disabled={isPending}
-                className="text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-full px-3 py-1 disabled:opacity-40 touch-manipulation"
+                className="text-xs font-semibold bg-accent text-white border border-accent rounded-full px-3 py-1 disabled:opacity-40 touch-manipulation"
               >
                 {r.name}
               </button>
@@ -133,7 +133,7 @@ export default function AdoptRouteControls({
             <button
               type="button"
               onClick={() => setPickingRun(false)}
-              className="text-xs font-semibold text-gray-500 border border-gray-200 rounded-full px-3 py-1 touch-manipulation"
+              className="text-xs font-semibold text-muted border border-line rounded-full px-3 py-1 touch-manipulation"
             >
               Cancel
             </button>
@@ -144,7 +144,7 @@ export default function AdoptRouteControls({
           type="button"
           onClick={() => (adoptableRuns.length > 1 ? setPickingRun(true) : doAdopt(adoptableRuns[0].id))}
           disabled={isPending}
-          className="text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-full px-3 py-1 disabled:opacity-40 touch-manipulation"
+          className="text-xs font-semibold bg-accent text-white border border-accent rounded-full px-3 py-1 disabled:opacity-40 touch-manipulation"
         >
           {isPending ? 'Adding…' : '+ Add to my run'}
         </button>

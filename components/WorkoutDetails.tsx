@@ -1,17 +1,17 @@
 import type { WorkoutVariantRow } from '@/lib/data'
 
 export const PHASE_COLORS: Record<string, string> = {
-  Base: 'bg-blue-100 text-blue-700',
-  Build: 'bg-orange-100 text-orange-700',
-  Peak: 'bg-red-100 text-red-700',
-  Taper: 'bg-green-100 text-green-700',
+  Base: 'bg-surface text-muted border border-line',
+  Build: 'bg-surface text-muted border border-line',
+  Peak: 'bg-surface text-muted border border-line',
+  Taper: 'bg-surface text-muted border border-line',
 }
 
 export function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="font-semibold text-gray-700">{label}: </span>
-      <span className="text-gray-600">{value}</span>
+      <span className="font-semibold text-ink">{label}: </span>
+      <span className="text-muted">{value}</span>
     </div>
   )
 }
@@ -23,12 +23,12 @@ export function ChipRow({ label, chips, getChipClass }: {
 }) {
   return (
     <div>
-      <div className="font-semibold text-gray-700 mb-1">{label}</div>
+      <div className="font-semibold text-ink mb-1">{label}</div>
       <div className="flex flex-wrap gap-1.5">
         {chips.map(chip => (
           <span
             key={chip}
-            className={`text-xs rounded-full px-2.5 py-0.5 ${getChipClass ? getChipClass(chip) : 'bg-gray-100 text-gray-700'}`}
+            className={`text-xs rounded-full px-2.5 py-0.5 ${getChipClass ? getChipClass(chip) : 'bg-surface text-muted border border-line'}`}
           >
             {chip}
           </span>
@@ -84,7 +84,7 @@ export default function WorkoutDetails({ w, exclude = [] }: {
         <ChipRow
           label="Training Phases"
           chips={w.trainingPhases}
-          getChipClass={p => PHASE_COLORS[p] ?? 'bg-gray-100 text-gray-500'}
+          getChipClass={p => PHASE_COLORS[p] ?? 'bg-surface text-muted border border-line'}
         />
       )}
       {showRaceTypes && w.raceTypes.length > 0 && (
@@ -93,8 +93,8 @@ export default function WorkoutDetails({ w, exclude = [] }: {
       {showAuthor && w.author && <DetailRow label="Author" value={w.author} />}
       {showMap && w.routeNarrative && (
         <div>
-          <div className="font-semibold text-gray-700 mb-1">Route directions</div>
-          <p className="text-gray-600 whitespace-pre-line">{w.routeNarrative}</p>
+          <div className="font-semibold text-ink mb-1">Route directions</div>
+          <p className="text-muted whitespace-pre-line">{w.routeNarrative}</p>
         </div>
       )}
       {showMap && w.mapImageUrl && (
@@ -108,7 +108,7 @@ export default function WorkoutDetails({ w, exclude = [] }: {
             src={w.mapImageUrl}
             alt="Route map"
             loading="lazy"
-            className="w-full max-h-56 object-contain rounded-lg border border-gray-200 bg-gray-50"
+            className="w-full max-h-56 object-contain rounded-lg border border-line bg-surface"
           />
         </a>
       )}
@@ -117,7 +117,7 @@ export default function WorkoutDetails({ w, exclude = [] }: {
           href={w.mapLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs font-semibold text-blue-500 touch-manipulation block"
+          className="text-xs font-semibold text-accent touch-manipulation block"
         >
           Map ↗
         </a>

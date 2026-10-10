@@ -4,7 +4,7 @@ import AllRunsClient from '@/components/AllRunsClient'
 import { getDirectoryRuns, getFollowedRunIds, getLeaderRun } from '@/lib/db'
 import { shouldShowIntro } from '@/lib/allRunsIntro'
 
-export const metadata = { title: 'All Runs — TigerWolves' }
+export const metadata = { title: 'All Runs — NBR' }
 
 export default async function AllRunsPage() {
   const user = await currentUser()

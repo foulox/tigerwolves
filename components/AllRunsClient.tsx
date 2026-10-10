@@ -42,13 +42,7 @@ const CATEGORIES: Category[] = ['All', 'Beginner-Friendly', 'Easy Runs', 'Long R
 
 const TIME_FILTER_LABELS: Record<TimeFilter, string> = { all: 'All week', am: 'Morning', pm: 'Evening', wknd: 'Weekend' }
 
-const CATEGORY_PILL: Record<string, string> = {
-  'Beginner-Friendly': 'bg-green-100 text-green-800',
-  'Easy Runs':         'bg-sky-100 text-sky-800',
-  'Long Runs':         'bg-purple-100 text-purple-800',
-  'Food Runs':         'bg-amber-100 text-amber-800',
-  'Workouts':          'bg-blue-100 text-blue-800',
-}
+const CATEGORY_PILL_CLASS = 'bg-surface text-muted border border-line'
 
 function offsetDate(base: Date, days: number): Date {
   const d = new Date(base)
@@ -208,36 +202,36 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
       {showIntro && (
         <div
           data-testid="all-runs-intro"
-          className="mx-4 mb-4 border border-[#fdba74] bg-[#fff7ed] rounded-[18px] px-4 py-[18px] flex flex-col gap-[11px] items-center text-center shadow-[0_1px_3px_rgba(249,115,22,0.08)]"
+          className="mx-4 mb-4 border border-line bg-card rounded-[18px] px-4 py-[18px] flex flex-col gap-[11px] items-center text-center shadow-sm"
         >
           <Link
             href="/runs/tuesday-morning-tigerwolves"
             data-testid="intro-schedule-link"
-            className="inline-flex items-center text-[14px] font-bold text-white bg-orange-500 rounded-xl px-[18px] py-[11px] shadow-sm touch-manipulation"
+            className="inline-flex items-center text-[14px] font-bold text-white bg-accent rounded-xl px-[18px] py-[11px] shadow-sm touch-manipulation"
           >
             See the TigerWolves schedule →
           </Link>
           {viewer.isLoggedIn ? (
             <>
-              <p className="text-[13px] leading-[1.45] text-[#4b5568] max-w-[270px]">
-                Tap <strong className="text-[#c2410c]">Join</strong> on any run below and it lands in <strong className="text-[#c2410c]">My Plan</strong>.
+              <p className="text-[13px] leading-[1.45] text-muted max-w-[270px]">
+                Tap <strong className="text-accent">Join</strong> on any run below and it lands in <strong className="text-accent">My Plan</strong>.
               </p>
               <p
                 data-testid="intro-nudge"
-                className="text-[12.5px] leading-[1.45] text-[#8b93a1] max-w-[270px]"
+                className="text-[12.5px] leading-[1.45] text-muted max-w-[270px]"
               >
                 Don&apos;t see your run? Ask its leader to add it to the app.
               </p>
             </>
           ) : (
             <>
-              <p className="text-[13px] leading-[1.45] text-[#4b5568] max-w-[270px]">
+              <p className="text-[13px] leading-[1.45] text-muted max-w-[270px]">
                 Sign up to follow your favorite NBR runs and build your plan — all your runs in one place.
               </p>
               <Link
                 href="/sign-in"
                 data-testid="intro-signup-link"
-                className="text-[13.5px] font-bold text-[#c2410c] touch-manipulation"
+                className="text-[13.5px] font-bold text-accent touch-manipulation"
               >
                 Sign up →
               </Link>
@@ -249,23 +243,23 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
       {/* Following tier (signed-in, when the user follows at least one run) */}
       {viewer.isLoggedIn && followingCards.length > 0 && (
         <div className="px-4 pb-3 flex flex-col gap-2" data-testid="following-tier">
-          <div className="text-[11px] font-bold tracking-widest uppercase text-gray-400">Following</div>
+          <div className="text-[11px] font-bold tracking-widest uppercase text-muted">Following</div>
           {followingCards.map(card => (
             <div
               key={card.id}
               data-testid={`following-run-${card.id}`}
-              className="bg-white border border-green-200 rounded-2xl px-4 py-3 flex gap-3 items-center"
+              className="bg-card border border-green-200 rounded-2xl px-4 py-3 flex gap-3 items-center"
             >
               <Link href={`/runs/${card.id}`} className="flex-1 min-w-0 touch-manipulation">
-                <div className="text-[15px] font-bold text-gray-900 truncate">{card.name}</div>
-                <div className="text-[12.5px] text-gray-400">{DAY_NAMES[card.day]}s · {card.startTime}</div>
+                <div className="text-[15px] font-bold text-ink truncate">{card.name}</div>
+                <div className="text-[12.5px] text-muted">{DAY_NAMES[card.day]}s · {card.startTime}</div>
               </Link>
               <button
                 data-testid={`following-toggle-${card.id}`}
                 aria-label={`Leave ${card.name}`}
                 onClick={() => toggleFollow(card.id)}
                 disabled={pendingRunId === card.id}
-                className="flex-shrink-0 text-[12.5px] font-bold rounded-full px-3.5 py-1.5 bg-green-100 text-green-800 touch-manipulation disabled:opacity-50 flex items-center gap-1"
+                className="flex-shrink-0 text-[12.5px] font-bold rounded-full px-3.5 py-1.5 bg-surface text-muted border border-line touch-manipulation disabled:opacity-50 flex items-center gap-1"
               >
                 <Check size={12} strokeWidth={3} /> Joined
               </button>
@@ -280,7 +274,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
           <button
             data-testid="admin-add-run"
             onClick={() => setEditor({ mode: 'add' })}
-            className="text-[13px] font-bold text-white bg-[#111827] rounded-xl px-4 py-2 touch-manipulation"
+            className="text-[13px] font-bold text-white bg-accent rounded-xl px-4 py-2 touch-manipulation"
           >
             + Add run
           </button>
@@ -288,7 +282,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
       )}
 
       {/* Standfirst */}
-      <p className="px-4 pb-2.5 text-[13px] leading-[1.45] text-[#8b93a1]">
+      <p className="px-4 pb-2.5 text-[13px] leading-[1.45] text-muted">
         Over 20 weekly runs, every pace welcome. All paces, all distances.
       </p>
 
@@ -303,8 +297,8 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
               onClick={() => setTimeFilter(t)}
               className={`flex-1 py-2 rounded-full text-[12.5px] font-bold border touch-manipulation transition-colors whitespace-nowrap ${
                 active
-                  ? 'bg-[#ffedd5] text-[#c2410c] border-[#fdba74]'
-                  : 'bg-white text-[#8b93a1] border-[#e8eaef]'
+                  ? 'bg-accent text-white border-accent'
+                  : 'bg-card text-muted border-line'
               }`}
             >
               {TIME_FILTER_LABELS[t]}
@@ -324,8 +318,8 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
               onClick={() => setCatFilter(cat)}
               className={`flex-shrink-0 px-[13px] py-[7px] rounded-full text-[12.5px] font-bold border touch-manipulation transition-colors whitespace-nowrap ${
                 active
-                  ? 'bg-[#111827] text-white border-[#111827]'
-                  : 'bg-white text-[#4b5568] border-[#e8eaef]'
+                  ? 'bg-accent text-white border-accent'
+                  : 'bg-card text-muted border-line'
               }`}
             >
               {cat}
@@ -352,19 +346,19 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
               <div className="flex items-baseline gap-2">
                 <span
                   className={`font-extrabold tracking-[.06em] uppercase ${
-                    isLead ? 'text-[13px] text-[#f97316]' : 'text-[11px] text-[#8b93a1]'
+                    isLead ? 'text-[13px] text-accent' : 'text-[11px] text-muted'
                   }`}
                 >
                   {label}
                 </span>
-                <span className="text-[12.5px] font-semibold text-[#a7adb8]">{formatDateShort(date)}</span>
-                <span className="flex-1 h-px bg-[#e8eaef]" />
+                <span className="text-[12.5px] font-semibold text-muted">{formatDateShort(date)}</span>
+                <span className="flex-1 h-px bg-line" />
               </div>
 
               {/* Run rows or lead-day empty state */}
               {dayCards.length === 0 ? (
                 <div
-                  className="border-[1.5px] border-dashed border-[#d7dbe3] rounded-2xl px-4 py-4 text-[13.5px] text-[#a7adb8] text-center"
+                  className="border-[1.5px] border-dashed border-line rounded-2xl px-4 py-4 text-[13.5px] text-muted text-center"
                   data-testid="empty-day-state"
                 >
                   Nothing matching this filter
@@ -379,9 +373,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                   const cardBody = (
                     <>
                       <span
-                        className={`w-[62px] flex-shrink-0 text-[13.5px] font-extrabold tracking-tight ${
-                          card.startHour < 12 ? 'text-[#f97316]' : 'text-[#6366f1]'
-                        }`}
+                        className="w-[62px] flex-shrink-0 text-[13.5px] font-extrabold tracking-tight text-ink"
                       >
                         {card.startTime}
                       </span>
@@ -411,11 +403,11 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                             </span>
                           )}
                         </div>
-                        <span className="text-[12.5px] text-[#8b93a1]">
+                        <span className="text-[12.5px] text-muted">
                           {card.location} · {card.distance}
                         </span>
                         <span
-                          className={`self-start text-[11px] font-bold rounded-full px-2 py-[3px] mt-px ${CATEGORY_PILL[card.category]}`}
+                          className={`self-start text-[11px] font-bold rounded-full px-2 py-[3px] mt-px ${CATEGORY_PILL_CLASS}`}
                           data-testid="run-category-pill"
                         >
                           {card.category}
@@ -432,8 +424,8 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                       disabled={pendingRunId === card.id}
                       className={`flex-shrink-0 text-[12.5px] font-bold rounded-full px-3.5 py-1.5 touch-manipulation disabled:opacity-50 whitespace-nowrap flex items-center gap-1 ${
                         isFollowing
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-orange-500 text-white shadow-sm'
+                          ? 'bg-surface text-muted border border-line'
+                          : 'bg-accent text-white shadow-sm'
                       }`}
                     >
                       {isFollowing ? <><Check size={12} strokeWidth={3} /> Joined</> : '+ Join'}
@@ -444,8 +436,8 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                     <div
                       key={card.id}
                       data-testid="run-row"
-                      className={`relative rounded-2xl px-[14px] py-3 flex flex-col gap-2 bg-white shadow-[0_1px_3px_rgba(17,24,39,0.04)] ${
-                        isLead ? 'border border-[#fdba74]' : 'border border-[#f1f2f5]'
+                      className={`relative rounded-2xl px-[14px] py-3 flex flex-col gap-2 bg-card shadow-sm ${
+                        isLead ? 'border border-accent' : 'border border-line'
                       }`}
                     >
                       {a.showDraftBadge && !viewer.isAdmin && (
@@ -462,7 +454,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                               className="flex-1 min-w-0 flex gap-3 items-center touch-manipulation"
                             >
                               {cardBody}
-                              <span className="flex-shrink-0 text-[20px] font-bold text-[#c7ccd6] ml-0.5">›</span>
+                              <span className="flex-shrink-0 text-[20px] font-bold text-muted ml-0.5">›</span>
                             </Link>
                             {joinButton}
                           </>
@@ -479,7 +471,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
 
                       {/* Admin controls row — only renders for admins */}
                       {viewer.isAdmin && (
-                        <div className="flex flex-wrap gap-2 pt-1 border-t border-gray-100">
+                        <div className="flex flex-wrap gap-2 pt-1 border-t border-line">
                           {/* ✏️ Edit */}
                           {admin.canEdit && (
                             <button
@@ -500,7 +492,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                                   },
                                 })
                               }}
-                              className="text-[12px] font-bold text-gray-600 bg-gray-100 rounded-lg px-2.5 py-1 touch-manipulation hover:bg-gray-200"
+                              className="text-[12px] font-bold text-muted bg-surface rounded-lg px-2.5 py-1 touch-manipulation hover:bg-line"
                             >
                               ✏️ Edit
                             </button>
@@ -511,7 +503,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                             <Link
                               href={`/admin/runs/${card.id}`}
                               data-testid={`admin-manage-${card.id}`}
-                              className="text-[12px] font-bold text-gray-600 bg-gray-100 rounded-lg px-2.5 py-1 touch-manipulation hover:bg-gray-200"
+                              className="text-[12px] font-bold text-muted bg-surface rounded-lg px-2.5 py-1 touch-manipulation hover:bg-line"
                             >
                               ⚙️ Manage →
                             </Link>
@@ -557,16 +549,16 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
 
         {/* Leader CTA */}
         <div
-          className="border-[1.5px] border-dashed border-[#d7dbe3] rounded-[18px] px-4 py-[18px] flex flex-col gap-[9px] items-center text-center"
+          className="border-[1.5px] border-dashed border-line rounded-[18px] px-4 py-[18px] flex flex-col gap-[9px] items-center text-center"
           data-testid="leader-cta"
         >
-          <p className="text-[15px] font-bold text-[#111827]">Lead a run that isn&apos;t here?</p>
-          <p className="text-[13px] leading-[1.45] text-[#8b93a1] max-w-[270px]">
+          <p className="text-[15px] font-bold text-ink">Lead a run that isn&apos;t here?</p>
+          <p className="text-[13px] leading-[1.45] text-muted max-w-[270px]">
             Tell us about your run and we&apos;ll get it added.
           </p>
           <button
             onClick={() => setFeedbackOpen(true)}
-            className="text-[13.5px] font-bold text-white bg-[#111827] border-none rounded-xl px-[18px] py-[11px] touch-manipulation mt-1"
+            className="text-[13.5px] font-bold text-white bg-accent border-none rounded-xl px-[18px] py-[11px] touch-manipulation mt-1"
             data-testid="add-your-run-btn"
           >
             Add your run

@@ -29,7 +29,7 @@ export default function DeleteWorkoutButton({ variantId }: { variantId: number }
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="text-xs px-3 py-1 rounded-full border border-gray-200 text-gray-600 touch-manipulation"
+            className="text-xs px-3 py-1 rounded-full border border-line text-muted touch-manipulation"
           >
             Cancel
           </button>
@@ -50,7 +50,7 @@ export default function DeleteWorkoutButton({ variantId }: { variantId: number }
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 text-xs touch-manipulation"
+      className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted text-xs touch-manipulation"
       title="Delete workout"
     >
       🗑
