@@ -88,6 +88,23 @@ export type RunGroup = {
   defaultLocation: string | null
 }
 
+// #423: per-run card layout. Field keys are the placeable workout fields
+// only — workout name/type/category and screen chrome are app-controlled, not keys.
+export type CardFieldKey =
+  | 'description' | 'coachingNotes' | 'distance' | 'lastRan' | 'mapLink'
+  | 'mapImage' | 'routeNarrative' | 'reason' | 'energySystem' | 'hrZone'
+  | 'rpe' | 'turnaround' | 'raceTypes' | 'trainingPhases' | 'author'
+
+export type FieldAlign = 'left' | 'right'
+export type CardFieldPlacement = { key: CardFieldKey; align: FieldAlign }
+export type CardRow = { fields: CardFieldPlacement[] }
+export type CardTemplate = {
+  version: 1
+  upfront: CardRow[]   // ordered rows shown on the collapsed card
+  expanded: CardRow[]  // ordered rows shown under "Show details"
+  hidden: CardFieldKey[]
+}
+
 export type RunConfig = {
   id: string
   name: string
@@ -120,6 +137,9 @@ export type RunConfig = {
   // (literal prose + {{field}} tokens) that buildPost renders. NULL = use the
   // computed default template (no backfill; existing runs keep working).
   postTemplate: string | null
+  // #423: per-run card layout. NULL = default layout (lib/cardLayout.ts),
+  // no backfill — existing runs render as today until a leader saves one.
+  cardTemplate: CardTemplate | null
 }
 
 export type AwayPeriod = { from: string; to: string }

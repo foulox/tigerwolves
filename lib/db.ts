@@ -265,6 +265,7 @@ export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | nul
     meetingTime: (r.meeting_time as string | null) ?? null,
     status: (r.status as string | null) ?? 'live',
     postTemplate: (r.post_template as string | null) ?? null,
+    cardTemplate: null,
   }
 }
 
@@ -780,6 +781,7 @@ export async function getRunById(runId: string): Promise<RunConfig | null> {
     cycle: (r.cycle as Record<string, string> | null) ?? {},
     status: (r.status as string | null) ?? 'live',
     postTemplate: (r.post_template as string | null) ?? null,
+    cardTemplate: null,
   }
 }
 

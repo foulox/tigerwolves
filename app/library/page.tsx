@@ -29,6 +29,7 @@ export default async function LibraryPage() {
     cycle: {},
     status: 'live',
     postTemplate: null,
+    cardTemplate: null,
   }
   // The run this leader actually leads (null for anonymous/non-leader/unlinked).
   const leaderRun = user && isLeader ? await getLeaderRun(user.id) : null

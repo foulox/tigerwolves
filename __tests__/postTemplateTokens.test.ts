@@ -34,6 +34,7 @@ const tigerWolvesConfig: RunConfig = {
   cycle: {},
   status: 'live',
   postTemplate: null,
+  cardTemplate: null,
 }
 
 describe('postTemplateTokens', () => {

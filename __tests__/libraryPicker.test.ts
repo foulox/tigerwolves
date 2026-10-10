@@ -49,6 +49,7 @@ const workoutConfig: RunConfig = {
   cycle: {},
   status: 'live',
   postTemplate: null,
+  cardTemplate: null,
 }
 
 // A config with no reconciled group (legacy) — exercises the category fallback.

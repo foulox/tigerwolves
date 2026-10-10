@@ -32,6 +32,7 @@ const tigerWolvesConfig: RunConfig = {
   cycle: {},
   status: 'live',
   postTemplate: null,
+  cardTemplate: null,
 }
 
 const tigerWolvesRoster = ['Luis', 'Lou', 'Kostas', 'Joelle', 'Kelsey', 'Obi', 'Jared']
@@ -58,6 +59,7 @@ const mourningDovesConfig: RunConfig = {
   cycle: {},
   status: 'live',
   postTemplate: null,
+  cardTemplate: null,
 }
 
 const mourningDovesRoster = ['Priya', 'Sam']
