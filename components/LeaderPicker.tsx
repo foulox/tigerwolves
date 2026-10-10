@@ -50,7 +50,7 @@ export default function LeaderPicker({ date, currentLeader, runLeaders, onClose,
             >
               <div className="w-7 h-7 rounded-full bg-surface flex items-center justify-center text-xs font-bold text-muted shrink-0">{l.name[0]}</div>
               <span className="flex-1 text-sm font-medium text-ink">{l.name}</span>
-              {away && <span className="text-[9px] bg-yellow-50 text-yellow-700 font-bold px-1.5 py-0.5 rounded">Away</span>}
+              {away && <span className="text-[9px] bg-surface text-muted border border-line font-bold px-1.5 py-0.5 rounded">Away</span>}
               {isSelected && <span className="text-accent font-bold text-base">✓</span>}
             </button>
           )

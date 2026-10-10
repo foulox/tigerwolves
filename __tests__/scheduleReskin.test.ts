@@ -14,6 +14,9 @@ describe('Schedule reskin (#489)', () => {
     expect(lp).not.toMatch(/orange-\d/)
     expect(sc).not.toContain('bg-gray-900')
   })
+  test('no stray yellow — the "Away" badge is on neutral tokens', () => {
+    expect(lp).not.toMatch(/yellow-\d/)
+  })
   test('state colors kept: red error + green save-success', () => {
     expect(sc).toContain('bg-red-50'); expect(sc).toContain('bg-green-500')
   })
