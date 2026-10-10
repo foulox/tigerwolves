@@ -1,5 +1,5 @@
 // __tests__/cardLayoutOps.test.ts
-import { describe, test, expect } from 'vitest'
+import { test, expect } from 'vitest'
 import { normalizeTemplate, moveToField, setAlign, moveRow, mergeRowUp, splitToNewRow } from '../lib/cardLayoutOps'
 import type { CardTemplate } from '../lib/data'
 
@@ -46,6 +46,14 @@ test('mergeRowUp merges into the row above; index 0 is a no-op', () => {
 test('splitToNewRow pulls a field into its own row just after', () => {
   const t = splitToNewRow(base, 'mapLink')
   expect(keysOf(t.upfront)).toEqual([['distance'], ['mapLink'], ['raceTypes']])
+})
+test('moveRow clamps at bottom edge (no-op)', () => {
+  // base.upfront has 2 rows; last index is 1
+  expect(moveRow(base, 'upfront', 1, 'down')).toEqual(base)
+})
+test('splitToNewRow on already-isolated field is a no-op', () => {
+  // raceTypes occupies its own row in base.upfront — splitting it must not shift it
+  expect(splitToNewRow(base, 'raceTypes')).toEqual(base)
 })
 test('ops never mutate the input', () => {
   const snapshot = JSON.parse(JSON.stringify(base))

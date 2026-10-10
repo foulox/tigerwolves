@@ -81,7 +81,7 @@ export function moveRow(
 ): CardTemplate {
   const rows = t[section]
   const swapIdx = dir === 'up' ? rowIndex - 1 : rowIndex + 1
-  if (swapIdx < 0 || swapIdx >= rows.length) return t  // clamp — no-op
+  if (swapIdx < 0 || swapIdx >= rows.length) return structuredClone(t)  // clamp — no-op
   const next = [...rows]
   ;[next[rowIndex], next[swapIdx]] = [next[swapIdx], next[rowIndex]]
   return { ...t, [section]: next }
@@ -92,7 +92,7 @@ export function mergeRowUp(
   section: RowSection,
   rowIndex: number,
 ): CardTemplate {
-  if (rowIndex === 0) return t  // no-op
+  if (rowIndex === 0) return structuredClone(t)  // no-op
   const rows = t[section]
   const next = rows.map((row, i) => {
     if (i === rowIndex - 1) {
@@ -112,10 +112,8 @@ export function splitToNewRow(t: CardTemplate, key: CardFieldKey): CardTemplate 
       const remainingFields = rows[i].fields.filter(f => f.key !== key)
       const next = [...rows]
       if (remainingFields.length === 0) {
-        // Row becomes just the split field — already a single-field row, insert after
-        next.splice(i + 1, 0, { fields: [{ key: field.key, align: field.align }] })
-        next[i] = { fields: [] }  // will be filtered
-        return next.filter(r => r.fields.length > 0)
+        // Field is already alone in its row — no-op
+        return null
       } else {
         next[i] = { fields: remainingFields }
         next.splice(i + 1, 0, { fields: [{ key: field.key, align: field.align }] })
@@ -131,5 +129,5 @@ export function splitToNewRow(t: CardTemplate, key: CardFieldKey): CardTemplate 
   const expandedResult = splitSection(t.expanded)
   if (expandedResult !== null) return { ...t, expanded: expandedResult }
 
-  return t  // key not found in any row — return unchanged
+  return structuredClone(t)  // key not found in any row — return unchanged
 }
