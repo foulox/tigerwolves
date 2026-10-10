@@ -43,7 +43,7 @@ export default function MyPlanClient({
           onClick={() => setOffset(o => o - 1)}
           aria-label="Previous week"
           data-testid="week-prev"
-          className="shrink-0 rounded-full p-1.5 text-gray-500 active:bg-gray-100 touch-manipulation"
+          className="shrink-0 rounded-full p-1.5 text-muted active:bg-surface touch-manipulation"
         >
           <ChevronLeft size={20} />
         </button>
@@ -52,13 +52,13 @@ export default function MyPlanClient({
             <div
               key={c.date}
               data-testid={`week-cell-${c.date}`}
-              className={`flex flex-1 flex-col items-center rounded-xl py-1.5 ${c.isToday ? 'bg-orange-500 text-white' : 'text-gray-600'}`}
+              className={`flex flex-1 flex-col items-center rounded-xl py-1.5 ${c.isToday ? 'bg-accent text-white' : 'text-muted'}`}
             >
               <span className="text-[10px] font-semibold uppercase tracking-wide">{c.weekdayShort}</span>
               <span className="text-sm font-bold">{c.dayNum}</span>
               <span
                 className={`mt-0.5 h-1 w-1 rounded-full ${
-                  datesWithItems.has(c.date) ? (c.isToday ? 'bg-white' : 'bg-orange-400') : 'bg-transparent'
+                  datesWithItems.has(c.date) ? (c.isToday ? 'bg-white' : 'bg-accent') : 'bg-transparent'
                 }`}
               />
             </div>
@@ -68,23 +68,23 @@ export default function MyPlanClient({
           onClick={() => setOffset(o => o + 1)}
           aria-label="Next week"
           data-testid="week-next"
-          className="shrink-0 rounded-full p-1.5 text-gray-500 active:bg-gray-100 touch-manipulation"
+          className="shrink-0 rounded-full p-1.5 text-muted active:bg-surface touch-manipulation"
         >
           <ChevronRight size={20} />
         </button>
       </div>
-      <div className="-mt-1 text-center text-xs font-semibold text-gray-400" data-testid="week-range-label">
+      <div className="-mt-1 text-center text-xs font-semibold text-muted" data-testid="week-range-label">
         {rangeLabel}
       </div>
 
       {groups.length === 0 ? (
-        <p className="py-6 text-center text-sm italic text-gray-400" data-testid="my-plan-empty-week">
+        <p className="py-6 text-center text-sm italic text-muted" data-testid="my-plan-empty-week">
           Nothing scheduled across your runs this week.
         </p>
       ) : (
         groups.map(group => (
           <section key={group.date} data-testid={`day-group-${group.date}`} className="flex flex-col gap-2">
-            <div className="px-1 pt-1 text-xs font-bold uppercase tracking-wide text-gray-400">
+            <div className="px-1 pt-1 text-xs font-bold uppercase tracking-wide text-muted">
               {group.label} · {cellDate(group.date)}
             </div>
             {group.items.map(item => (
