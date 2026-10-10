@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { hasValue, resolveCardLayout, DEFAULT_CARD_TEMPLATE } from '../lib/cardLayout'
+import { hasValue, resolveCardLayout } from '../lib/cardLayout'
 import type { WorkoutVariantRow, CardTemplate } from '../lib/data'
 
 // Minimal fixture with every placeable value PRESENT; override per test.
