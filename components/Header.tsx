@@ -23,9 +23,9 @@ export default function Header({
   const { isLoaded, isSignedIn } = useUser()
 
   return (
-    <header className="sticky top-0 z-30 bg-chrome px-4 pt-10 pb-4">
+    <header className="sticky top-0 z-30 bg-chrome px-4 pt-6 pb-4">
       {/* Top brand row: logo left, controls right */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-2">
           {showBack && (
             <button
@@ -39,7 +39,7 @@ export default function Header({
           <img
             src="/nbr-logo.png"
             alt="North Brooklyn Runners"
-            className="h-5 w-auto"
+            className="h-8 w-auto"
           />
         </div>
         <div className="flex items-center gap-2.5">
