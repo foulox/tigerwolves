@@ -2,7 +2,8 @@
 import { useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { saveCardTemplate } from '@/app/run-config/actions'
-import type { RunConfig, CardTemplate, CardFieldKey } from '@/lib/data'
+import type { RunConfig, CardTemplate, CardFieldKey, WorkoutVariantRow, ScheduleEntry } from '@/lib/data'
+import CardLayoutPreview from './CardLayoutPreview'
 import {
   normalizeTemplate,
   moveToField,
@@ -16,9 +17,11 @@ import {
 
 type Props = {
   runConfig: RunConfig
+  variants: WorkoutVariantRow[]
+  nextEntry: ScheduleEntry | null
 }
 
-export default function CardTemplateTab({ runConfig }: Props) {
+export default function CardTemplateTab({ runConfig, variants, nextEntry }: Props) {
   const [template, setTemplate] = useState<CardTemplate>(() =>
     normalizeTemplate(runConfig.cardTemplate),
   )
@@ -102,6 +105,8 @@ export default function CardTemplateTab({ runConfig }: Props) {
       >
         {saved ? 'Saved!' : isPending ? 'Saving…' : 'Save card layout'}
       </button>
+
+      <CardLayoutPreview template={template} variants={variants} runConfig={runConfig} nextEntry={nextEntry} />
     </div>
   )
 }
