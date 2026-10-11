@@ -37,9 +37,9 @@ function growToFit(el: HTMLTextAreaElement | null) {
 
 function VoteBadge({ v }: { v: { avg: number; count: number } | null | undefined }) {
   if (v && v.count > 0) {
-    return <span className="text-xs text-muted tabular-nums">{ratingToEmoji(v.avg)} {v.count}</span>
+    return <span className="text-base text-muted tabular-nums">{ratingToEmoji(v.avg)} {v.count}</span>
   }
-  return <span className="text-xs text-muted">🙂</span>
+  return <span className="text-base text-muted">🙂</span>
 }
 
 type LedRun = { id: string; name: string; kind: string; workoutTypes: string[] }
