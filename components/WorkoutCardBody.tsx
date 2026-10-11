@@ -7,6 +7,7 @@ import { describeField } from '@/lib/cardFields'
 import type { FieldContent } from '@/lib/cardFields'
 import { PHASE_COLORS, DetailRow } from '@/components/WorkoutDetails'
 import type { WorkoutVariantRow, CardTemplate } from '@/lib/data'
+import { CARD_LINK, SQUARE_LABEL } from '@/lib/cardStyles'
 
 type Props = {
   workout: WorkoutVariantRow
@@ -68,7 +69,7 @@ function renderFieldContent(
           target="_blank"
           rel="noopener noreferrer"
           onClick={e => e.stopPropagation()}
-          className="text-xs font-semibold text-accent touch-manipulation block"
+          className={`${CARD_LINK} block`}
         >
           {content.label}
         </a>
@@ -87,7 +88,7 @@ function renderFieldContent(
             src={content.src}
             alt="Route map"
             loading="lazy"
-            className="w-full max-h-56 object-contain rounded-lg border border-line bg-surface"
+            className="w-full max-h-56 object-contain border border-line bg-surface"
           />
         </a>
       )
@@ -168,7 +169,7 @@ function renderGroupSide(
           pillNodes.push(
             <span
               key={`race-${r}`}
-              className="text-xs font-medium bg-surface text-muted border border-line px-2 py-0.5 rounded-full"
+              className={SQUARE_LABEL}
             >
               {r}
             </span>,
@@ -180,7 +181,7 @@ function renderGroupSide(
           pillNodes.push(
             <span
               key={`phase-${p}`}
-              className={`text-xs font-medium px-2 py-0.5 rounded-full ${PHASE_COLORS[p] ?? 'bg-surface text-muted border border-line'}`}
+              className={`font-display uppercase tracking-[0.1em] text-[10px] font-medium px-2 py-1 ${PHASE_COLORS[p] ?? 'text-muted border border-line'}`}
             >
               {p}
             </span>,
@@ -236,7 +237,7 @@ export default function WorkoutCardBody({ workout, layout, expanded, onToggle }:
               onToggle()
             }}
             aria-expanded={expanded}
-            className="text-xs font-semibold text-accent touch-manipulation"
+            className={CARD_LINK}
           >
             {expanded ? 'Hide details' : 'Show details'}
           </button>
