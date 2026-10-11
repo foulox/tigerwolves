@@ -81,6 +81,26 @@ export default function MyPlanCard({
 
         <div className="mt-2 flex items-center justify-between gap-2">
           <div className="min-w-0 truncate text-sm text-muted">Led by {entry.leader}</div>
+          {workout && (
+            <div className="flex shrink-0 items-center gap-2">
+              <ReactionPicker
+                workoutId={workoutVoteId(workout.name, workout.label ?? '')}
+                workoutName={workout.name}
+                initialVoteData={voteData}
+              />
+              {workout.flagged ? (
+                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-red-100 px-3 py-1.5 text-xs font-bold text-red-800">
+                  <Flag size={12} />
+                  Issue reported
+                </span>
+              ) : (
+                <FlagGhostButton
+                  workoutName={workout.name}
+                  onClick={() => setFlagDrawerOpen(true)}
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {workout && (
@@ -90,27 +110,6 @@ export default function MyPlanCard({
             expanded={expanded}
             onToggle={toggleExpand}
           />
-        )}
-
-        {workout && (
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <ReactionPicker
-              workoutId={workoutVoteId(workout.name, workout.label ?? '')}
-              workoutName={workout.name}
-              initialVoteData={voteData}
-            />
-            {workout.flagged ? (
-              <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-red-100 px-3 py-1.5 text-xs font-bold text-red-800">
-                <Flag size={12} />
-                Issue reported
-              </span>
-            ) : (
-              <FlagGhostButton
-                workoutName={workout.name}
-                onClick={() => setFlagDrawerOpen(true)}
-              />
-            )}
-          </div>
         )}
       </div>
 
