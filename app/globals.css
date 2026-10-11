@@ -1,22 +1,23 @@
 @import "tailwindcss";
 
-/* #466 NBR reskin — semantic color tokens. Chrome = dark app bars/nav;
-   content = light surfaces/cards; accent = NBR's sampled red, used sparingly.
+/* #510 NBR brand-true reskin (v2) — real NBR palette. Chrome = black app bars/nav;
+   content = white surfaces/cards; cyan = LINKS ONLY, never decoration.
    Values hardcoded to NBR (tenant config is backlogged, #486). */
 @theme {
-  --color-chrome: #0e0e0e;
+  --color-chrome: #000000;
   --color-chrome-text: #ffffff;
-  --color-chrome-muted: #9aa0a6;
-  --color-surface: #f6f6f6;
+  --color-chrome-muted: #9aa0a6;   /* AA on black (≥4.5:1) */
+  --color-warm: #201a16;           /* photo scrims / warm panels */
+  --color-surface: #ffffff;
   --color-card: #ffffff;
-  --color-line: #e7e7e7;   /* borders (→ border-line) */
-  --color-ink: #0e0e0e;    /* body text (→ text-ink) */
-  --color-muted: #4a5464;
-  --color-accent: #f0523d;
-}
-
-:root {
-  --font-sans: var(--font-geist-sans);
+  --color-line: #e6e5e5;
+  --color-ink: #1f1f1f;
+  --color-muted: #747474;          /* muted text on white */
+  --color-link: #00c3eb;           /* cyan — LINKS ONLY */
+  --color-accent: #1f1f1f;         /* DEPRECATED: red→ink so un-migrated
+                                      components stay monochrome; removed in final story */
+  --font-display: var(--font-jost);    /* next/font var, named distinctly to avoid self-reference */
+  --font-sans: var(--font-mulish);
 }
 
 @keyframes slideUp {
