@@ -5,6 +5,7 @@ import WorkoutCardBody from './WorkoutCardBody'
 import { pickerRecordsForRun, type PickerRecord } from '@/lib/libraryPicker'
 import type { CardTemplate, WorkoutVariantRow, ScheduleEntry, RunConfig } from '@/lib/data'
 import { formatDateMedium } from '@/lib/postBuilder'
+import { formatDateShort } from '@/lib/dateUtils'
 
 type Surface = 'myplan' | 'schedule' | 'library'
 
@@ -135,7 +136,7 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
               <div className="flex justify-between items-start gap-2">
                 <div className="font-semibold text-ink">{w.name}</div>
                 <span className="text-xs text-muted shrink-0">
-                  {w.lastRan ? formatDateMedium(w.lastRan) : 'Never'}
+                  {w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}
                 </span>
               </div>
               {w.label && <div className="text-xs text-muted mt-0.5">{w.label}</div>}
