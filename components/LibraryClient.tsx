@@ -15,6 +15,7 @@ import { resolveAllowedTypes } from '@/lib/runProfile'
 import RatingFilter from '@/components/RatingFilter'
 import { passesRatingThreshold, rankByRating } from '@/lib/rating'
 import type { RatingThreshold } from '@/lib/rating'
+import { CARD_LINK, TYPE_LABEL, CARD_NAME } from '@/lib/cardStyles'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -297,9 +298,9 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           if (row.kind === 'standalone') {
             const w = row.workout
             return (
-              <div key={`s-${w.id}`} data-testid="workout-card" className="bg-card rounded-2xl p-4 border border-line shadow-sm">
+              <div key={`s-${w.id}`} data-testid="workout-card" className="bg-card p-4 border border-line">
                 <div className="flex justify-between items-start gap-2">
-                  <div className="font-semibold text-ink">{w.name}</div>
+                  <div className={CARD_NAME}>{w.name}</div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {w.flagged && (
                       <FlagBadge onClick={() => setFlagSheetFor(w.id)} />
@@ -308,11 +309,11 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                     {isLeader && (
                       <Link
                         href={`/library/edit?variantId=${w.id}`}
-                        className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted text-xs touch-manipulation"
+                        className="w-7 h-7 flex items-center justify-center border border-line text-muted text-xs touch-manipulation"
                         title="Edit workout"
                       >✎</Link>
                     )}
-                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-1 rounded-full">{w.type}</span>
+                    <span className={TYPE_LABEL}>{w.type}</span>
                   </div>
                 </div>
                 {w.label && <p className="text-xs text-muted mt-0.5">{w.label}</p>}
@@ -328,7 +329,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                   <div className="mt-3 pt-3 border-t border-line">
                     <Link
                       href={`/library/add?parent=${w.familyId}`}
-                      className="text-xs font-semibold text-accent touch-manipulation"
+                      className={CARD_LINK}
                     >
                       + Add variation
                     </Link>
@@ -347,10 +348,10 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
               <button
                 data-testid="workout-card"
                 onClick={() => setExpandedFamily(isExpanded ? null : row.familyId)}
-                className="w-full text-left bg-card rounded-2xl p-4 border border-line shadow-sm touch-manipulation"
+                className="w-full text-left bg-card p-4 border border-line touch-manipulation"
               >
                 <div className="flex justify-between items-start gap-2">
-                  <div className="font-semibold text-ink">{row.name}</div>
+                  <div className={CARD_NAME}>{row.name}</div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {familyFlagged && (
                       <FlagBadge
@@ -364,7 +365,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                     <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-0.5 rounded-full">
                       {row.total} versions
                     </span>
-                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-1 rounded-full">{row.type}</span>
+                    <span className={TYPE_LABEL}>{row.type}</span>
                   </div>
                 </div>
                 <p className="text-sm text-muted mt-1.5 leading-snug">{row.reason}</p>
