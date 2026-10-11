@@ -756,7 +756,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                     </div>
                                     {v.label && <div className="text-sm text-ink mt-1 ml-6 leading-snug">{v.label}</div>}
                                   </button>
-                                  <div className="px-4 pb-3">
+                                  <div className="px-4 pb-3 ml-6">
                                     <WorkoutCardBody
                                       workout={v}
                                       layout={runConfig.cardTemplate}
