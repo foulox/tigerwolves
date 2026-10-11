@@ -12,7 +12,7 @@ describe('NBR dark header (#466)', () => {
   test('header renders the NBR logo', () => {
     expect(src).toContain('/nbr-logo.png')
   })
-  test('the signed-in flash guard (isLoaded) is retained', () => {
-    expect(src).toContain('isLoaded')
+  test('delegates the control cluster to HeaderControls', () => {
+    expect(src).toContain('HeaderControls')
   })
 })
