@@ -10,9 +10,12 @@ export const CARD_LINK =
 export const TYPE_LABEL =
   'font-display uppercase tracking-[0.14em] text-[10px] font-medium text-muted whitespace-nowrap'
 
+/** Typography base shared by phase-chip overrides and the full square label. */
+export const SQUARE_LABEL_BASE =
+  'font-display uppercase tracking-[0.1em] text-[10px] font-medium px-2 py-1'
+
 /** Phase / race / variation chip: square bordered label. */
-export const SQUARE_LABEL =
-  'font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted border border-line px-2 py-1'
+export const SQUARE_LABEL = `${SQUARE_LABEL_BASE} text-muted border border-line`
 
 /** "NEXT UP" eyebrow: wide-tracked ink label. */
 export const NEXT_UP_LABEL =

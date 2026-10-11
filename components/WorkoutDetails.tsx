@@ -1,5 +1,5 @@
 import type { WorkoutVariantRow } from '@/lib/data'
-import { CARD_LINK, SQUARE_LABEL } from '@/lib/cardStyles'
+import { CARD_LINK, SQUARE_LABEL, SQUARE_LABEL_BASE } from '@/lib/cardStyles'
 
 export const PHASE_COLORS: Record<string, string> = {
   Base: 'bg-surface text-muted border border-line',
@@ -30,7 +30,7 @@ export function ChipRow({ label, chips, getChipClass }: {
           <span
             key={chip}
             className={getChipClass
-              ? `font-display uppercase tracking-[0.1em] text-[10px] font-medium px-2 py-1 ${getChipClass(chip)}`
+              ? `${SQUARE_LABEL_BASE} ${getChipClass(chip)}`
               : SQUARE_LABEL}
           >
             {chip}

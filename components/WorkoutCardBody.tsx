@@ -7,7 +7,7 @@ import { describeField } from '@/lib/cardFields'
 import type { FieldContent } from '@/lib/cardFields'
 import { PHASE_COLORS, DetailRow } from '@/components/WorkoutDetails'
 import type { WorkoutVariantRow, CardTemplate } from '@/lib/data'
-import { CARD_LINK, SQUARE_LABEL } from '@/lib/cardStyles'
+import { CARD_LINK, SQUARE_LABEL, SQUARE_LABEL_BASE } from '@/lib/cardStyles'
 
 type Props = {
   workout: WorkoutVariantRow
@@ -181,7 +181,7 @@ function renderGroupSide(
           pillNodes.push(
             <span
               key={`phase-${p}`}
-              className={`font-display uppercase tracking-[0.1em] text-[10px] font-medium px-2 py-1 ${PHASE_COLORS[p] ?? 'text-muted border border-line'}`}
+              className={`${SQUARE_LABEL_BASE} ${PHASE_COLORS[p] ?? 'text-muted border border-line'}`}
             >
               {p}
             </span>,
