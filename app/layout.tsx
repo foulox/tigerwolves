@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist } from 'next/font/google'
+import { Jost, Mulish } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import { currentUser } from '@clerk/nextjs/server'
 import './globals.css'
 import ConditionalBottomNav from '@/components/ConditionalBottomNav'
 import PostHogInit from '@/components/PostHogInit'
 
-const geist = Geist({ subsets: ['latin'] })
+const display = Jost({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-jost', display: 'swap' })
+const sans = Mulish({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'], variable: '--font-mulish', display: 'swap' })
 
 export const metadata: Metadata = {
   title: 'North Brooklyn Runners',
@@ -33,7 +34,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#0e0e0e', // chrome dark (NBR brand) — tints the status/title bar
+  themeColor: '#000000', // chrome black (NBR brand) — tints the status/title bar
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -43,7 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <ClerkProvider>
       <html lang="en" className="h-full">
-        <body className={`${geist.className} bg-surface h-full antialiased`}>
+        <body className={`${display.variable} ${sans.variable} font-sans bg-surface h-full antialiased`}>
           <PostHogInit isLeader={isLeader} />
           <main className="max-w-lg mx-auto pb-20 min-h-full">
             {children}
