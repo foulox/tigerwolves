@@ -31,7 +31,7 @@ export default function Header({
             <button
               onClick={() => router.back()}
               aria-label="Go back"
-              className="text-accent touch-manipulation"
+              className="text-chrome-text touch-manipulation"
             >
               <ChevronLeft size={24} strokeWidth={2.5} />
             </button>
@@ -39,7 +39,7 @@ export default function Header({
           <img
             src="/nbr-logo.png"
             alt="North Brooklyn Runners"
-            className="h-8 w-auto"
+            className="h-7 w-auto"
           />
         </div>
         <div className="flex items-center gap-2.5">
@@ -78,8 +78,8 @@ export default function Header({
       </div>
       {/* Page title / subtitle row */}
       <div>
-        <h1 className="text-2xl font-extrabold text-chrome-text tracking-[-0.01em]">{title}</h1>
-        {subtitle && <p className="text-sm text-chrome-muted mt-0.5">{subtitle}</p>}
+        <h1 className="font-display text-3xl font-normal text-chrome-text">{title}</h1>
+        {subtitle && <p className="font-display uppercase tracking-[0.14em] text-[10px] text-chrome-muted mt-1">{subtitle}</p>}
       </div>
     </header>
   )
