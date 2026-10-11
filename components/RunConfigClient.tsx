@@ -37,7 +37,7 @@ export default function RunConfigClient({ runConfig, runLeaders, currentUserId, 
         <PostTemplateTab runConfig={runConfig} nextEntry={nextEntry} roster={roster} variants={variants} />
       </div>
       <div className={tab === 'card-layout' ? '' : 'hidden'}>
-        <CardTemplateTab runConfig={runConfig} />
+        <CardTemplateTab runConfig={runConfig} variants={variants} nextEntry={nextEntry} />
       </div>
       {tab === 'roster' && <RosterTab runLeaders={runLeaders} runId={runConfig.id} currentUserId={currentUserId} />}
     </div>
