@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import WorkoutCardBody from './WorkoutCardBody'
 import { pickerRecordsForRun, type PickerRecord } from '@/lib/libraryPicker'
 import type { CardTemplate, WorkoutVariantRow, ScheduleEntry, RunConfig } from '@/lib/data'
@@ -22,6 +22,15 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
   const [pickerOpen, setPickerOpen] = useState(false)
   const [surface, setSurface] = useState<Surface>('myplan')
   const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    if (!pickerOpen) return
+    function onDown(e: MouseEvent) {
+      if (!(e.target as HTMLElement).closest('[data-picker-menu]')) setPickerOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [pickerOpen])
 
   if (records.length === 0) {
     return (
@@ -104,7 +113,7 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
             <div className="p-4">
               {/* Run identity line */}
               <div className="inline-flex items-center gap-1 text-xs font-bold tracking-wide text-accent">
-                {runConfig.emoji ? `${runConfig.emoji} ` : ''}{runConfig.name}
+                {runConfig.emoji}{' '}{runConfig.name}
                 <span aria-hidden>›</span>
               </div>
               {/* Date + type pill */}
@@ -156,7 +165,7 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
 
       {/* Caption */}
       <p className="text-[11px] text-muted text-center">
-        Preview uses your unsaved changes. Save to apply to your run&#39;s cards.
+        Preview uses your unsaved changes. Save to apply to your run's cards.
       </p>
     </div>
   )
