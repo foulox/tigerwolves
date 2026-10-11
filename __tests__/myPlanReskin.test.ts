@@ -11,5 +11,5 @@ describe('My Plan reskin (#489)', () => {
     expect(cl).not.toMatch(/orange-\d/); expect(cd).not.toMatch(/orange-\d/)
     for (const dead of ['bg-green-100', 'bg-blue-100', 'bg-purple-100', 'bg-pink-100', 'bg-yellow-100']) expect(cd).not.toContain(dead)
   })
-  test('flagged state stays red', () => { expect(cd).toContain('bg-red-100') })
+  test('flagged state is monochrome (no red)', () => { expect(cd).not.toContain('bg-red-100'); expect(cd).not.toContain('text-red-800') })
 })

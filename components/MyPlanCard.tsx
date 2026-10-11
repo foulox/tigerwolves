@@ -86,7 +86,7 @@ export default function MyPlanCard({
                 initialVoteData={voteData}
               />
               {workout.flagged ? (
-                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-red-100 px-3 py-1.5 text-xs font-bold text-red-800">
+                <span className="flex shrink-0 items-center gap-1.5 border border-ink px-3 py-1.5 text-xs font-bold text-ink">
                   <Flag size={12} />
                   Issue reported
                 </span>

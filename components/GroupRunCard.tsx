@@ -174,7 +174,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
               <button
                 type="button"
                 onClick={e => { e.stopPropagation(); setFlagSheetOpen(true) }}
-                className="flex items-center gap-1.5 bg-red-100 text-red-800 rounded-full px-3 py-1.5 text-xs font-bold shrink-0 touch-manipulation"
+                className="flex items-center gap-1.5 border border-ink text-ink px-3 py-1.5 text-xs font-bold shrink-0 touch-manipulation"
               >
                 <Flag size={12} />
                 Issue reported
