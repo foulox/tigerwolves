@@ -12,7 +12,7 @@ import { captureClientEvent } from '@/lib/analyticsClient'
 import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import Header from '@/components/Header'
-import WorkoutDetails from '@/components/WorkoutDetails'
+import WorkoutCardBody from '@/components/WorkoutCardBody'
 import LeaderPicker from '@/components/LeaderPicker'
 import AdoptRouteControls from '@/components/AdoptRouteControls'
 import { formatDateShort } from '@/lib/dateUtils'
@@ -531,26 +531,18 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                         <div className="font-semibold text-ink">{w.name}</div>
                         <div className="flex items-center gap-2 shrink-0">
                           <VoteBadge v={voteData[workoutVoteId(w.name, w.label ?? '')]} />
-                          <span className="text-xs text-muted">{w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}</span>
                         </div>
                       </div>
                       {w.label && <div className="text-xs text-muted mt-0.5">{w.label}</div>}
-                      {w.rawInput && <div className="text-sm text-ink mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</div>}
-                      {w.coachingNotes && <div className="text-sm text-muted mt-1.5 italic leading-snug">{w.coachingNotes}</div>}
-                      <div className="text-xs text-muted mt-2">{w.distTime}</div>
                     </button>
-                    <button
-                      onClick={() => toggleExpand(eid)}
-                      className="w-full px-4 pb-3 text-left text-xs text-muted touch-manipulation flex items-center gap-1"
-                    >
-                      <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
-                      {expanded ? 'Hide details' : 'Show details'}
-                    </button>
-                    {expanded && (
-                      <div className="px-4 pb-4 mt-3 pt-3 border-t border-line">
-                        <WorkoutDetails w={w} />
-                      </div>
-                    )}
+                    <div className="px-4 pb-4">
+                      <WorkoutCardBody
+                        workout={w}
+                        layout={runConfig.cardTemplate}
+                        expanded={expanded}
+                        onToggle={() => toggleExpand(eid)}
+                      />
+                    </div>
                   </div>
                 </div>
               )
@@ -710,26 +702,18 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                   <div className="font-semibold text-ink">{w.name}</div>
                                   <div className="flex items-center gap-2 shrink-0">
                                     <VoteBadge v={voteData[workoutVoteId(w.name, w.label ?? '')]} />
-                                    <span className="text-xs text-muted">{w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}</span>
                                   </div>
                                 </div>
                                 {w.label && <div className="text-xs text-muted mt-0.5">{w.label}</div>}
-                                {w.rawInput && <div className="text-sm text-ink mt-1.5 whitespace-pre-wrap leading-snug">{w.rawInput}</div>}
-                                {w.coachingNotes && <div className="text-sm text-muted mt-1.5 italic leading-snug">{w.coachingNotes}</div>}
-                                <div className="text-xs text-muted mt-2">{w.distTime}</div>
                               </button>
-                              <button
-                                onClick={() => toggleExpand(eid)}
-                                className="w-full px-4 pb-3 text-left text-xs text-muted touch-manipulation flex items-center gap-1"
-                              >
-                                <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
-                                {expanded ? 'Hide details' : 'Show details'}
-                              </button>
-                              {expanded && (
-                                <div className="px-4 pb-4 mt-3 pt-3 border-t border-line">
-                                  <WorkoutDetails w={w} />
-                                </div>
-                              )}
+                              <div className="px-4 pb-4">
+                                <WorkoutCardBody
+                                  workout={w}
+                                  layout={runConfig.cardTemplate}
+                                  expanded={expanded}
+                                  onToggle={() => toggleExpand(eid)}
+                                />
+                              </div>
                               {adoptControls(w.familyId, w.runGroupId, w.category, w.type)}
                             </div>
                           )
@@ -768,19 +752,18 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                       </div>
                                       <div className="flex items-center gap-2 shrink-0">
                                         <VoteBadge v={voteData[workoutVoteId(v.name, v.label ?? '')]} />
-                                        <span className="text-xs text-muted">{v.lastRan ? formatDateShort(new Date(v.lastRan + 'T00:00:00')) : 'Never'}</span>
                                       </div>
                                     </div>
                                     {v.label && <div className="text-sm text-ink mt-1 ml-6 leading-snug">{v.label}</div>}
-                                    {v.rawInput && <div className="text-sm text-ink mt-1.5 ml-6 whitespace-pre-wrap leading-snug">{v.rawInput}</div>}
-                                    {v.coachingNotes && <div className="text-sm text-muted mt-1.5 ml-6 italic leading-snug">{v.coachingNotes}</div>}
-                                    {v.distTime && <div className="text-xs text-muted mt-0.5 ml-6">{v.distTime}</div>}
                                   </button>
-                                  <button onClick={() => toggleExpand(eid)} className="w-full px-4 pb-2 text-left text-xs text-muted touch-manipulation flex items-center gap-1 ml-6">
-                                    <span className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
-                                    {expanded ? 'Hide' : 'Details'}
-                                  </button>
-                                  {expanded && <div className="px-4 pb-3 mt-3 pt-3 border-t border-line"><WorkoutDetails w={v} /></div>}
+                                  <div className="px-4 pb-3">
+                                    <WorkoutCardBody
+                                      workout={v}
+                                      layout={runConfig.cardTemplate}
+                                      expanded={expanded}
+                                      onToggle={() => toggleExpand(eid)}
+                                    />
+                                  </div>
                                 </div>
                               )
                             })}
