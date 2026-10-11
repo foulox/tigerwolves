@@ -362,7 +362,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                         }}
                       />
                     )}
-                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-0.5">
                       {row.total} versions
                     </span>
                     <span className={TYPE_LABEL}>{row.type}</span>
@@ -378,7 +378,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
               {isExpanded && (
                 <div className="mt-1 ml-2 flex flex-col gap-1">
                   {row.base && (
-                    <div className="bg-card rounded-xl px-4 py-3 border border-line">
+                    <div className="bg-card px-4 py-3 border border-line">
                       <div className="flex justify-between items-start">
                         <div className="text-xs font-bold text-muted mb-0.5">Standard</div>
                         <div className="flex items-center gap-1.5">
@@ -389,7 +389,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                           {isLeader && (
                             <Link
                               href={`/library/edit?variantId=${row.base.id}`}
-                              className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted text-xs touch-manipulation"
+                              className="w-7 h-7 flex items-center justify-center border border-line text-muted text-xs touch-manipulation"
                               title="Edit"
                             >✎</Link>
                           )}
@@ -406,9 +406,9 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                     </div>
                   )}
                   {row.variants.map(p => (
-                    <div key={p.id} className="bg-card rounded-xl px-4 py-3 border border-line">
+                    <div key={p.id} className="bg-card px-4 py-3 border border-line">
                       <div className="flex justify-between items-start">
-                        <div className="text-xs font-bold text-accent mb-0.5">Variation {p.sortOrder} of {row.total}</div>
+                        <div className="text-xs font-bold text-muted mb-0.5">Variation {p.sortOrder} of {row.total}</div>
                         <div className="flex items-center gap-1.5">
                           {p.flagged && (
                             <FlagBadge onClick={() => setFlagSheetFor(p.id)} />
@@ -417,13 +417,13 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                           {isLeader && (
                             <Link
                               href={`/library/edit?variantId=${p.id}`}
-                              className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted text-xs touch-manipulation"
+                              className="w-7 h-7 flex items-center justify-center border border-line text-muted text-xs touch-manipulation"
                               title="Edit"
                             >✎</Link>
                           )}
                         </div>
                       </div>
-                      <div className="text-sm font-semibold text-ink">{p.label}</div>
+                      <div className="text-sm font-semibold text-ink font-display">{p.label}</div>
                       <WorkoutCardBody workout={p} layout={cardTemplate} expanded={expandedNotes === p.id} onToggle={() => setExpandedNotes(expandedNotes === p.id ? null : p.id)} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
@@ -437,7 +437,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                   {isLeader && (
                     <Link
                       href={`/library/add?parent=${row.familyId}`}
-                      className="bg-card rounded-xl px-4 py-3 border border-dashed border-accent text-xs font-semibold text-accent touch-manipulation text-center"
+                      className={`bg-card px-4 py-3 border border-dashed border-line text-center block ${CARD_LINK}`}
                     >
                       + Add variation
                     </Link>
