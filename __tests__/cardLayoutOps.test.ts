@@ -1,6 +1,6 @@
 // __tests__/cardLayoutOps.test.ts
 import { test, expect } from 'vitest'
-import { normalizeTemplate, moveToField, setAlign, moveRow, mergeRowUp, splitToNewRow } from '../lib/cardLayoutOps'
+import { normalizeTemplate, moveToField, setAlign, moveRow, mergeRowUp, splitToNewRow, CARD_FIELD_LABELS } from '../lib/cardLayoutOps'
 import type { CardTemplate } from '../lib/data'
 
 const base: CardTemplate = {
@@ -19,7 +19,10 @@ test('normalizeTemplate(null) → default, every field present once', () => {
 })
 test('normalizeTemplate appends a missing field to hidden', () => {
   const stripped: CardTemplate = { version:1, upfront:[], expanded:[], hidden:[] }
-  expect(normalizeTemplate(stripped).hidden).toContain('author')  // and the other 14
+  const result = normalizeTemplate(stripped)
+  const allKeys = Object.keys(CARD_FIELD_LABELS)
+  expect(result.hidden.length).toBe(15)
+  expect(new Set(result.hidden)).toEqual(new Set(allKeys))
 })
 test('moveToField to hidden removes from rows and adds to hidden', () => {
   const t = moveToField(base, 'mapLink', 'hidden')

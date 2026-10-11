@@ -46,139 +46,27 @@ export default function CardTemplateTab({ runConfig }: Props) {
 
   return (
     <div className="p-4 flex flex-col gap-4">
-      {/* Show upfront section */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-col gap-2">
-        <div className="text-[10.5px] font-extrabold uppercase tracking-wide text-emerald-700">
-          ● Show upfront
-        </div>
-        {template.upfront.map((row, rowIdx) => (
-          <div
-            key={rowIdx}
-            className="bg-white border border-gray-200 rounded-lg overflow-hidden"
-          >
-            {/* Row header with move controls */}
-            <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-b border-gray-100">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">
-                Row {rowIdx + 1}
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  aria-label={`Move row ${rowIdx + 1} up in Show upfront`}
-                  disabled={rowIdx === 0}
-                  onClick={() => setTemplate(moveRow(template, 'upfront', rowIdx, 'up'))}
-                  className="touch-manipulation text-gray-400 disabled:opacity-30 hover:text-gray-700 text-xs px-1"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Move row ${rowIdx + 1} down in Show upfront`}
-                  disabled={rowIdx === template.upfront.length - 1}
-                  onClick={() => setTemplate(moveRow(template, 'upfront', rowIdx, 'down'))}
-                  className="touch-manipulation text-gray-400 disabled:opacity-30 hover:text-gray-700 text-xs px-1"
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Merge row ${rowIdx + 1} up with previous row in Show upfront`}
-                  disabled={rowIdx === 0}
-                  onClick={() => setTemplate(mergeRowUp(template, 'upfront', rowIdx))}
-                  className="touch-manipulation text-[10px] font-bold text-gray-400 disabled:opacity-30 hover:text-gray-700 px-1"
-                >
-                  ⤒ Merge up
-                </button>
-              </div>
-            </div>
-            {/* Chips */}
-            <div className="flex flex-wrap gap-1.5 p-2">
-              {row.fields.map(({ key, align }) => (
-                <FieldChip
-                  key={key}
-                  fieldKey={key}
-                  align={align}
-                  currentSection="upfront"
-                  onMove={dest => setTemplate(moveToField(template, key, dest))}
-                  onAlign={a => setTemplate(setAlign(template, key, a))}
-                  onSplit={() => setTemplate(splitToNewRow(template, key))}
-                  chipColor="upfront"
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-        {template.upfront.length === 0 && (
-          <p className="text-xs text-emerald-500 italic px-1">No fields — move one here from another section.</p>
-        )}
-      </div>
+      <SectionRows
+        section="upfront"
+        rows={template.upfront}
+        title="● Show upfront"
+        containerCls="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-col gap-2"
+        titleCls="text-[10.5px] font-extrabold uppercase tracking-wide text-emerald-700"
+        emptyMsg={<p className="text-xs text-emerald-500 italic px-1">No fields — move one here from another section.</p>}
+        template={template}
+        setTemplate={setTemplate}
+      />
 
-      {/* When expanded section */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex flex-col gap-2">
-        <div className="text-[10.5px] font-extrabold uppercase tracking-wide text-blue-700">
-          ◐ When expanded
-        </div>
-        {template.expanded.map((row, rowIdx) => (
-          <div
-            key={rowIdx}
-            className="bg-white border border-gray-200 rounded-lg overflow-hidden"
-          >
-            {/* Row header with move controls */}
-            <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-b border-gray-100">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">
-                Row {rowIdx + 1}
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  aria-label={`Move row ${rowIdx + 1} up in When expanded`}
-                  disabled={rowIdx === 0}
-                  onClick={() => setTemplate(moveRow(template, 'expanded', rowIdx, 'up'))}
-                  className="touch-manipulation text-gray-400 disabled:opacity-30 hover:text-gray-700 text-xs px-1"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Move row ${rowIdx + 1} down in When expanded`}
-                  disabled={rowIdx === template.expanded.length - 1}
-                  onClick={() => setTemplate(moveRow(template, 'expanded', rowIdx, 'down'))}
-                  className="touch-manipulation text-gray-400 disabled:opacity-30 hover:text-gray-700 text-xs px-1"
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Merge row ${rowIdx + 1} up with previous row in When expanded`}
-                  disabled={rowIdx === 0}
-                  onClick={() => setTemplate(mergeRowUp(template, 'expanded', rowIdx))}
-                  className="touch-manipulation text-[10px] font-bold text-gray-400 disabled:opacity-30 hover:text-gray-700 px-1"
-                >
-                  ⤒ Merge up
-                </button>
-              </div>
-            </div>
-            {/* Chips */}
-            <div className="flex flex-wrap gap-1.5 p-2">
-              {row.fields.map(({ key, align }) => (
-                <FieldChip
-                  key={key}
-                  fieldKey={key}
-                  align={align}
-                  currentSection="expanded"
-                  onMove={dest => setTemplate(moveToField(template, key, dest))}
-                  onAlign={a => setTemplate(setAlign(template, key, a))}
-                  onSplit={() => setTemplate(splitToNewRow(template, key))}
-                  chipColor="expanded"
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-        {template.expanded.length === 0 && (
-          <p className="text-xs text-blue-400 italic px-1">No fields — move one here from another section.</p>
-        )}
-      </div>
+      <SectionRows
+        section="expanded"
+        rows={template.expanded}
+        title="◐ When expanded"
+        containerCls="bg-blue-50 border border-blue-200 rounded-xl p-3 flex flex-col gap-2"
+        titleCls="text-[10.5px] font-extrabold uppercase tracking-wide text-blue-700"
+        emptyMsg={<p className="text-xs text-blue-400 italic px-1">No fields — move one here from another section.</p>}
+        template={template}
+        setTemplate={setTemplate}
+      />
 
       {/* Hidden section */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col gap-2">
@@ -214,6 +102,100 @@ export default function CardTemplateTab({ runConfig }: Props) {
       >
         {saved ? 'Saved!' : isPending ? 'Saving…' : 'Save card layout'}
       </button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// RowSection subcomponent — shared by upfront and expanded sections
+// ---------------------------------------------------------------------------
+
+type SectionRowsProps = {
+  section: RowSection
+  rows: CardTemplate['upfront']
+  title: string
+  containerCls: string
+  titleCls: string
+  emptyMsg: React.ReactNode
+  template: CardTemplate
+  setTemplate: (t: CardTemplate) => void
+}
+
+function SectionRows({
+  section,
+  rows,
+  title,
+  containerCls,
+  titleCls,
+  emptyMsg,
+  template,
+  setTemplate,
+}: SectionRowsProps) {
+  const sectionLabel = section === 'upfront' ? 'Show upfront' : 'When expanded'
+  return (
+    <div className={containerCls}>
+      <div className={titleCls}>{title}</div>
+      {rows.map((row, rowIdx) => {
+        const stableKey = row.fields.map(f => f.key).join('-')
+        return (
+          <div
+            key={stableKey}
+            className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+          >
+            {/* Row header with move controls */}
+            <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-b border-gray-100">
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">
+                Row {rowIdx + 1}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  aria-label={`Move row ${rowIdx + 1} up in ${sectionLabel}`}
+                  disabled={rowIdx === 0}
+                  onClick={() => setTemplate(moveRow(template, section, rowIdx, 'up'))}
+                  className="touch-manipulation text-gray-400 disabled:opacity-30 hover:text-gray-700 text-xs px-1"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move row ${rowIdx + 1} down in ${sectionLabel}`}
+                  disabled={rowIdx === rows.length - 1}
+                  onClick={() => setTemplate(moveRow(template, section, rowIdx, 'down'))}
+                  className="touch-manipulation text-gray-400 disabled:opacity-30 hover:text-gray-700 text-xs px-1"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Merge row ${rowIdx + 1} up with previous row in ${sectionLabel}`}
+                  disabled={rowIdx === 0}
+                  onClick={() => setTemplate(mergeRowUp(template, section, rowIdx))}
+                  className="touch-manipulation text-[10px] font-bold text-gray-400 disabled:opacity-30 hover:text-gray-700 px-1"
+                >
+                  ⤒ Merge up
+                </button>
+              </div>
+            </div>
+            {/* Chips */}
+            <div className="flex flex-wrap gap-1.5 p-2">
+              {row.fields.map(({ key, align }) => (
+                <FieldChip
+                  key={key}
+                  fieldKey={key}
+                  align={align}
+                  currentSection={section}
+                  onMove={dest => setTemplate(moveToField(template, key, dest))}
+                  onAlign={a => setTemplate(setAlign(template, key, a))}
+                  onSplit={() => setTemplate(splitToNewRow(template, key))}
+                  chipColor={section}
+                />
+              ))}
+            </div>
+          </div>
+        )
+      })}
+      {rows.length === 0 && emptyMsg}
     </div>
   )
 }
