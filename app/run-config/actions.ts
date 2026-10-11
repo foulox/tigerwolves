@@ -4,6 +4,7 @@ import type { User } from '@clerk/nextjs/server'
 import { updateTag } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
 import { sql, getLeaderRun, getRunRoster, toDateString } from '@/lib/db'
+import type { CardTemplate } from '@/lib/data'
 import { getNextLeader } from '@/lib/rotation'
 import { RUN_KINDS, WORKOUT_TYPE_OPTIONS, WEEK_SLOTS, parseSlotValue, joinSlotValue } from '@/lib/runProfile'
 import { RunIdentityValues, validateRunIdentity } from '@/lib/runIdentity'
@@ -96,6 +97,21 @@ export async function savePostTemplate(runId: string, data: { postTemplate: stri
   } catch (err) {
     Sentry.captureException(err)
     return { error: 'Failed to save' }
+  }
+}
+
+export async function saveCardTemplate(runId: string, data: { cardTemplate: CardTemplate }): Promise<{ error?: string }> {
+  try {
+    const user = await authorizeWriteCaller()
+    if (!user) return { error: 'Unauthorized' }
+    try { await assertCanManageRun(user, runId) } catch { return { error: 'Forbidden' } }
+
+    await sql`UPDATE runs SET card_template = ${JSON.stringify(data.cardTemplate)}::jsonb WHERE id = ${runId}`
+    updateTag('tigerwolves-data')
+    return {}
+  } catch (err) {
+    Sentry.captureException(err)
+    return { error: 'Failed to save card layout' }
   }
 }
 

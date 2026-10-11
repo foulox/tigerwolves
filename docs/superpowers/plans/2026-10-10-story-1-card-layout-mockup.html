@@ -1,0 +1,103 @@
+<h2>Card layout — vertical, with live preview</h2>
+<p class="subtitle">The real shape: editor on top, preview below, stacked. Pick a workout to test with; flip the preview between My Plan / Schedule / Library.</p>
+
+<style>
+  .col{max-width:430px;margin:0 auto}
+  .rctabs{display:flex;gap:16px;border-bottom:1px solid #E5E7EB;margin-bottom:14px}
+  .rctab{font-size:12px;font-weight:700;color:#9CA3AF;padding-bottom:7px}
+  .rctab.on{color:#111;border-bottom:2px solid #EA580C}
+  .hint{display:flex;align-items:center;gap:7px;background:#FFF7ED;border:1px solid #FED7AA;color:#9A3412;border-radius:9px;padding:8px 11px;font-size:11px;margin-bottom:12px}
+  .sec{border-radius:12px;padding:9px 11px;margin-bottom:10px}
+  .s-up{background:#ECFDF5;border:1px solid #A7F3D0}
+  .s-exp{background:#EFF6FF;border:1px solid #BFDBFE}
+  .s-hid{background:#F9FAFB;border:1px solid #E5E7EB}
+  .shead{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px}
+  .row{display:flex;align-items:stretch;background:#fff;border:1px solid #E5E7EB;border-radius:9px;margin-bottom:6px;overflow:hidden}
+  .rnum{font-size:9px;font-weight:800;color:#9CA3AF;width:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;background:#FAFAFA;border-right:1px solid #F0F0F0}
+  .zone{flex:1;padding:5px 7px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-height:32px}
+  .zone.right{justify-content:flex-end;background:#FCFCFD;border-left:1px dashed #EEE}
+  .fchip{display:inline-flex;align-items:center;gap:5px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:7px;padding:3px 7px;font-size:11.5px;font-weight:600;color:#166534}
+  .s-exp .fchip{background:#EFF6FF;border-color:#BFDBFE;color:#1E40AF}
+  .grip{color:#9CA3AF;letter-spacing:-2px;cursor:grab}
+  .zlab{font-size:8px;color:#C7CBD1;text-transform:uppercase;align-self:center}
+  .addrow{font-size:10.5px;font-weight:700;color:#059669;border:1px dashed #A7F3D0;border-radius:8px;padding:5px;text-align:center}
+  .hchip{background:#fff;border:1px solid #E5E7EB;border-radius:7px;padding:3px 8px;font-size:11.5px;font-weight:600;color:#6B7280}
+  .savebtn{background:#EA580C;color:#fff;border:none;border-radius:10px;padding:10px;font-weight:800;font-size:12.5px;width:100%;margin-bottom:18px}
+
+  .pvlabel{font-size:10px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 8px}
+  .pick{border:1px solid #EA580C;border-radius:9px;background:#fff;padding:8px 11px;font-size:12px;color:#111;display:flex;justify-content:space-between;font-weight:700;margin-bottom:9px}
+  .tabs{display:flex;gap:6px;margin-bottom:10px}
+  .tab{flex:1;text-align:center;font-size:11.5px;font-weight:700;padding:6px 4px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;color:#6B7280}
+  .tab.on{background:#EA580C;border-color:#EA580C;color:#fff}
+  .phone{background:#000;border-radius:24px;padding:9px}
+  .screen{background:#F3F4F6;border-radius:16px;overflow:hidden}
+  .appbar{background:#000;color:#fff;padding:10px 13px;font-weight:800;font-size:13px}
+  .wcard{background:#fff;margin:10px;border-radius:13px;padding:11px;box-shadow:0 1px 4px rgba(0,0,0,.08);font-size:12.5px}
+  .wtitle{font-weight:800;font-size:15px;padding:3px 0}
+  .flex{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0}
+  .muted{color:#6B7280}
+  .typepill{background:#FFE4E6;border:1px solid #FDA4AF;color:#9F1239;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700}
+  .pill{display:inline-block;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700;color:#374151;margin:0 3px 0 0}
+  .maplink{color:#2563EB;font-weight:700}
+  .showdet{color:#6B7280;font-size:11px;margin-top:6px;font-weight:600}
+</style>
+
+<div class="col">
+  <div class="rctabs">
+    <div class="rctab">About</div><div class="rctab">Post template</div><div class="rctab on">Card layout</div><div class="rctab">Roster</div>
+  </div>
+  <div class="hint">💻 <span><b>Easiest on a computer</b> — arranging rows involves dragging.</span></div>
+
+  <!-- EDITOR (top) -->
+  <div class="sec s-up">
+    <div class="shead" style="color:#047857">● Show upfront</div>
+    <div class="row"><div class="rnum">R1</div><div class="zone"><span class="fchip"><span class="grip">⠿</span>Description</span></div><div class="zone right"><span class="zlab">right</span></div></div>
+    <div class="row"><div class="rnum">R2</div><div class="zone"><span class="fchip"><span class="grip">⠿</span>Coaching notes</span></div><div class="zone right"><span class="zlab">right</span></div></div>
+    <div class="row"><div class="rnum">R3</div><div class="zone"><span class="fchip"><span class="grip">⠿</span>Distance &amp; elev.</span><span class="fchip"><span class="grip">⠿</span>Last ran</span></div><div class="zone right"><span class="fchip"><span class="grip">⠿</span>Map link</span></div></div>
+    <div class="row"><div class="rnum">R4</div><div class="zone"><span class="fchip"><span class="grip">⠿</span>Race types</span></div><div class="zone right"><span class="zlab">right</span></div></div>
+    <div class="addrow">+ Add row</div>
+  </div>
+  <div class="sec s-exp">
+    <div class="shead" style="color:#1D4ED8">◐ When expanded</div>
+    <div class="row"><div class="rnum">R1</div><div class="zone"><span class="fchip"><span class="grip">⠿</span>Energy system</span></div><div class="zone right"><span class="fchip"><span class="grip">⠿</span>HR zone</span></div></div>
+    <div class="row"><div class="rnum">R2</div><div class="zone"><span class="fchip"><span class="grip">⠿</span>Route map image</span></div><div class="zone right"><span class="zlab">right</span></div></div>
+    <div class="row"><div class="rnum">R3</div><div class="zone"><span class="fchip"><span class="grip">⠿</span>Reason</span><span class="fchip"><span class="grip">⠿</span>Turnaround</span></div><div class="zone right"><span class="zlab">right</span></div></div>
+    <div class="addrow" style="color:#2563EB;border-color:#BFDBFE">+ Add row</div>
+  </div>
+  <div class="sec s-hid">
+    <div class="shead" style="color:#6B7280">○ Hidden</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px"><span class="hchip">Author</span><span class="hchip">Training phases</span><span class="hchip">RPE</span><span class="hchip">Route directions</span></div>
+  </div>
+  <button class="savebtn">Save card layout</button>
+
+  <!-- PREVIEW (below) -->
+  <div class="pvlabel">Live preview</div>
+  <div class="pick"><span>Preview with: Domino Park Loop</span><span>▾</span></div>
+  <div class="tabs"><div class="tab on">My Plan</div><div class="tab">Schedule</div><div class="tab">Library</div></div>
+  <div class="phone"><div class="screen">
+    <div class="appbar">My Plan</div>
+    <div class="wcard">
+      <div class="flex"><span style="color:#EA580C;font-weight:800;font-size:12px">🐯🐺 Tuesday Morning Tigerwolves ›</span></div>
+      <div class="flex"><span class="muted" style="font-size:12px">Tue, Oct 13</span><span class="typepill">Broken Tempo</span></div>
+      <div class="wtitle">Domino Park Loop</div>
+      <div style="padding:3px 0">800m loop around Domino Park with standing rest</div>
+      <div class="muted" style="font-style:italic;padding:3px 0">Keep each 800m loop honest…</div>
+      <div class="flex muted"><span>3–5 mi · 520 ft · Last ran Sep 30</span><span class="maplink">Map ↗</span></div>
+      <div class="flex"><span><span class="pill">5K</span><span class="pill">10K</span></span></div>
+      <div class="showdet">▾ Show details</div>
+    </div>
+  </div></div>
+  <p class="subtitle" style="font-size:11px;margin-top:8px;text-align:center">Everything stacks vertically. Workout picklist + 3 surface tabs drive the preview.</p>
+</div>
+
+<h3 style="margin-top:20px">Locked. Pick the build scope:</h3>
+<div class="options">
+  <div class="option" data-choice="library" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content"><h3>Library first (recommended)</h3><p>Build the full model + editor + preview on Library, prove it, then extend the same config to Schedule &amp; My Plan.</p></div>
+  </div>
+  <div class="option" data-choice="all" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content"><h3>All three surfaces now</h3><p>Wire My Plan + Schedule + Library to the config in the first build.</p></div>
+  </div>
+</div>
