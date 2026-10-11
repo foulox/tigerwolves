@@ -165,7 +165,7 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
 
       {/* Caption */}
       <p className="text-[11px] text-muted text-center">
-        Preview uses your unsaved changes. Save to apply to your run's cards.
+        Preview uses your unsaved changes. Save to apply to your run&rsquo;s cards.
       </p>
     </div>
   )
