@@ -310,6 +310,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                       <Link
                         href={`/library/edit?variantId=${w.id}`}
                         className="w-7 h-7 flex items-center justify-center border border-line text-muted text-xs touch-manipulation"
+                        aria-label="Edit workout"
                         title="Edit workout"
                       >✎</Link>
                     )}
@@ -390,6 +391,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                             <Link
                               href={`/library/edit?variantId=${row.base.id}`}
                               className="w-7 h-7 flex items-center justify-center border border-line text-muted text-xs touch-manipulation"
+                              aria-label="Edit"
                               title="Edit"
                             >✎</Link>
                           )}
@@ -418,6 +420,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                             <Link
                               href={`/library/edit?variantId=${p.id}`}
                               className="w-7 h-7 flex items-center justify-center border border-line text-muted text-xs touch-manipulation"
+                              aria-label="Edit"
                               title="Edit"
                             >✎</Link>
                           )}
