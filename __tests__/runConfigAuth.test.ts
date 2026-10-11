@@ -30,11 +30,13 @@ import {
   removeRunLeader,
   addRunLeaderByEmail,
   savePostTemplate,
+  saveCardTemplate,
   saveRunProfile,
   saveRunCycle,
   saveRunIdentity,
   setRunStatus,
 } from '../app/run-config/actions'
+import { DEFAULT_CARD_TEMPLATE } from '../lib/cardLayout'
 
 // These tests write run_leaders/runs rows, so they only run against the test-data
 // branch — never production (which is what .env.local's DATABASE_URL points at
@@ -194,6 +196,7 @@ describe.skipIf(!onTestData)('run-leader access is scoped to the run they lead',
       expect((await removeAwayPeriod(leaderAId, 0)).error).toBe('Unauthorized')
       expect((await addRunLeaderByEmail('tuesday-morning-tigerwolves', 'whoever@example.com')).error).toBe('Unauthorized')
       expect((await savePostTemplate('tuesday-morning-tigerwolves', { postTemplate: 'template' })).error).toBe('Unauthorized')
+      expect((await saveCardTemplate('tuesday-morning-tigerwolves', { cardTemplate: DEFAULT_CARD_TEMPLATE })).error).toBe('Unauthorized')
       expect((await saveRunProfile('tuesday-morning-tigerwolves', { kind: 'Workout', workoutTypes: ['Hills'] })).error).toBe('Unauthorized')
       expect((await saveRunCycle('tuesday-morning-tigerwolves', { cycleMode: 'week_of_month', cycle: { '1': 'Hills' } })).error).toBe('Unauthorized')
       expect(

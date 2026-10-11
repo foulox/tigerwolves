@@ -21,17 +21,18 @@ export default function RunConfigClient({ runConfig, runLeaders, currentUserId, 
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 py-2.5 text-sm font-semibold touch-manipulation ${tab === t ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-400'}`}
+            className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap touch-manipulation ${tab === t ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-400'}`}
           >
             {TAB_LABELS[t]}
           </button>
         ))}
       </div>
       {tab === 'about' && <AboutRunTab runConfig={runConfig} runLeaders={runLeaders} />}
-      {/* #382: keep the template editor MOUNTED (just hidden when inactive) so switching
-          tabs and back doesn't unmount it and discard in-flight unsaved edits — the
-          contenteditable DOM is the editor's source of truth, so it must survive the switch.
-          Scoped to this tab only; About/Roster keep their existing unmount-on-switch behavior. */}
+      {/* #382 / #505: both the Post template and Card layout editors stay MOUNTED (just
+          hidden when inactive) so switching tabs and back doesn't discard in-flight unsaved
+          edits. Their sources of truth differ — PostTemplateTab's is its contenteditable DOM,
+          CardTemplateTab's is React state — but either way the editor must survive the switch.
+          About/Roster keep their existing unmount-on-switch behavior. */}
       <div className={tab === 'template' ? '' : 'hidden'}>
         <PostTemplateTab runConfig={runConfig} nextEntry={nextEntry} roster={roster} variants={variants} />
       </div>
