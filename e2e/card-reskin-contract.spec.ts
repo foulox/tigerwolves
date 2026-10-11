@@ -89,6 +89,18 @@ test.describe('workout card interactive contract', () => {
     await page.waitForURL(/\/schedule\?week=0/)
   })
 
+  // ── View-route link (MMER — Easy run with a route) ───────────────────────
+  // tuesday-morning-tigerwolves is an Intervals run and has no route link, so
+  // schedule-route-0 would never be asserted against that run.  MMER carries a
+  // route and the link is visible in the collapsed state (per-run.spec.ts:200).
+
+  test('Schedule (per-run): View-route link present on a run that has one (MMER)', async ({ page }) => {
+    await page.goto('/runs/monday-morning-easy-run')
+    await page.waitForLoadState('load')
+
+    await expect(page.locator('[data-testid="schedule-route-0"]')).toContainText('View route')
+  })
+
   // ── Past-card leader "Edit in library" ────────────────────────────────────
   // The e2e seed has no past-history rows for tuesday-morning-tigerwolves
   // (confirmed by per-run.spec.ts: 'fixture has no past history — past-card
