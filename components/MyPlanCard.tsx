@@ -12,8 +12,7 @@ import ReactionPicker from '@/components/ReactionPicker'
 import { FlagGhostButton, FlagWorkoutDrawer } from '@/components/WorkoutFlagSheet'
 import WorkoutCardBody from '@/components/WorkoutCardBody'
 import { captureClientEvent } from '@/lib/analyticsClient'
-
-const TYPE_PILL = 'bg-surface text-muted border border-line'
+import { CARD_LINK, TYPE_LABEL, CARD_NAME } from '@/lib/cardStyles'
 
 // #331 My Plan — cross-run home card. Frame (run-name link to /runs/[id], date,
 // workout name, type pill, "Led by", reactions, flag) is My Plan chrome; starts
@@ -48,13 +47,13 @@ export default function MyPlanCard({
   }
 
   return (
-    <div className="rounded-2xl shadow-sm border border-line bg-card touch-manipulation" data-testid={testId}>
+    <div className="border border-line bg-card touch-manipulation" data-testid={testId}>
       <div className="p-4">
         {/* Run identity — a link to the per-run page. */}
         <Link
           href={`/runs/${run.id}`}
           data-testid={`my-plan-run-link-${run.id}`}
-          className="inline-flex items-center gap-1 text-xs font-bold tracking-wide text-accent touch-manipulation"
+          className={`${CARD_LINK} inline-flex items-center gap-1`}
         >
           {run.emoji ? `${run.emoji} ` : ''}{run.name}
           <span aria-hidden>›</span>
@@ -63,13 +62,13 @@ export default function MyPlanCard({
         <div className="mt-1 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-sm font-semibold text-muted">{formatDateMedium(entry.date)}</div>
-            <div className="mt-0.5 truncate text-base font-bold text-ink">
+            <div className={`mt-0.5 truncate ${CARD_NAME}`}>
               {entry.workoutName ?? <span className="font-normal italic text-muted">Not planned yet</span>}
             </div>
           </div>
           {compact.shape === 'workout' && (
             <span
-              className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${TYPE_PILL}`}
+              className={`shrink-0 ${TYPE_LABEL}`}
               data-testid={`my-plan-type-${run.id}`}
             >
               {compact.typePill}
@@ -87,7 +86,7 @@ export default function MyPlanCard({
                 initialVoteData={voteData}
               />
               {workout.flagged ? (
-                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-red-100 px-3 py-1.5 text-xs font-bold text-red-800">
+                <span className="flex shrink-0 items-center gap-1.5 border border-ink px-3 py-1.5 text-xs font-bold text-ink">
                   <Flag size={12} />
                   Issue reported
                 </span>

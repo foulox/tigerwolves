@@ -12,8 +12,7 @@ import WorkoutFlagSheet, { FlagBadge, FlagGhostButton, FlagWorkoutDrawer } from 
 import { captureClientEvent } from '@/lib/analyticsClient'
 import WorkoutDetails, { DetailRow, ChipRow } from '@/components/WorkoutDetails'
 import { compactCardFields } from '@/lib/myPlan'
-
-const TYPE_PILL = 'bg-surface text-muted border border-line'
+import { CARD_LINK, TYPE_LABEL, NEXT_UP_LABEL, OUTLINE_BTN, CARD_NAME } from '@/lib/cardStyles'
 
 interface Props {
   entry: ScheduleEntry
@@ -55,8 +54,8 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
 
   return (
     <div
-      className={`rounded-2xl shadow-sm border touch-manipulation ${
-        isPast ? 'bg-surface border-line' : isNext ? 'bg-card border-accent' : 'bg-card border-line'
+      className={`border touch-manipulation ${
+        isPast ? 'bg-surface border-line' : isNext ? 'bg-card border-ink border-l-[3px]' : 'bg-card border-line'
       }`}
     >
       {/* Card header — interactive when workout exists */}
@@ -70,11 +69,11 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
         data-testid={cardTestId}
         data-tour={isNext ? 'schedule-detail' : undefined}
       >
-        {isNext && <div className="text-xs font-bold text-accent tracking-wide mb-1">NEXT UP</div>}
+        {isNext && <div className={`${NEXT_UP_LABEL} mb-1`}>NEXT UP</div>}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-sm font-semibold text-muted">{formatDateMedium(entry.date)}</div>
-            <div className={`mt-0.5 truncate ${isPast ? 'text-sm font-semibold text-muted' : 'text-base font-bold text-ink'}`}>
+            <div className={`mt-0.5 truncate ${isPast ? 'font-display text-sm font-semibold text-muted' : CARD_NAME}`}>
               {entry.workoutName ?? <span className="text-muted font-normal italic">Not planned yet</span>}
             </div>
             {/* #331: kind-aware compact body (only when a kind is supplied). */}
@@ -93,7 +92,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     data-testid={`schedule-route-${index}`}
-                    className="font-semibold text-accent touch-manipulation"
+                    className={CARD_LINK}
                   >
                     View route ↗
                   </a>
@@ -108,7 +107,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
               )}
               {compact?.shape !== 'route' && (
                 <span
-                  className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${TYPE_PILL}`}
+                  className={TYPE_LABEL}
                 >
                   {entry.workoutType}
                 </span>
@@ -117,7 +116,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
             {isLeader && isPast && hasWorkout && (
               <Link
                 href={`/library/edit?variantId=${workout.id}`}
-                className="text-xs font-semibold text-muted border border-line rounded-full px-3 py-1 bg-card active:bg-surface touch-manipulation whitespace-nowrap"
+                className={OUTLINE_BTN}
                 onClick={(e) => e.stopPropagation()}
                 data-testid={`edit-in-library-${index}`}
               >
@@ -127,7 +126,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
             {isLeader && !isPast && (
               <Link
                 href={`/schedule?week=${index}`}
-                className="text-xs font-semibold text-accent border border-accent rounded-full px-3 py-1 active:bg-surface touch-manipulation whitespace-nowrap"
+                className={OUTLINE_BTN}
                 onClick={(e) => e.stopPropagation()}
                 data-testid={`schedule-week-${index}`}
               >
@@ -175,7 +174,7 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
               <button
                 type="button"
                 onClick={e => { e.stopPropagation(); setFlagSheetOpen(true) }}
-                className="flex items-center gap-1.5 bg-red-100 text-red-800 rounded-full px-3 py-1.5 text-xs font-bold shrink-0 touch-manipulation"
+                className="flex items-center gap-1.5 border border-ink text-ink px-3 py-1.5 text-xs font-bold shrink-0 touch-manipulation"
               >
                 <Flag size={12} />
                 Issue reported

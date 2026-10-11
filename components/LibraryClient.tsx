@@ -15,6 +15,7 @@ import { resolveAllowedTypes } from '@/lib/runProfile'
 import RatingFilter from '@/components/RatingFilter'
 import { passesRatingThreshold, rankByRating } from '@/lib/rating'
 import type { RatingThreshold } from '@/lib/rating'
+import { CARD_LINK, TYPE_LABEL, CARD_NAME } from '@/lib/cardStyles'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -297,9 +298,9 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           if (row.kind === 'standalone') {
             const w = row.workout
             return (
-              <div key={`s-${w.id}`} data-testid="workout-card" className="bg-card rounded-2xl p-4 border border-line shadow-sm">
+              <div key={`s-${w.id}`} data-testid="workout-card" className="bg-card p-4 border border-line">
                 <div className="flex justify-between items-start gap-2">
-                  <div className="font-semibold text-ink">{w.name}</div>
+                  <div className={CARD_NAME}>{w.name}</div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {w.flagged && (
                       <FlagBadge onClick={() => setFlagSheetFor(w.id)} />
@@ -308,11 +309,12 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                     {isLeader && (
                       <Link
                         href={`/library/edit?variantId=${w.id}`}
-                        className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted text-xs touch-manipulation"
+                        className="w-7 h-7 flex items-center justify-center border border-line text-muted text-xs touch-manipulation"
+                        aria-label="Edit workout"
                         title="Edit workout"
                       >✎</Link>
                     )}
-                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-1 rounded-full">{w.type}</span>
+                    <span className={TYPE_LABEL}>{w.type}</span>
                   </div>
                 </div>
                 {w.label && <p className="text-xs text-muted mt-0.5">{w.label}</p>}
@@ -328,7 +330,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                   <div className="mt-3 pt-3 border-t border-line">
                     <Link
                       href={`/library/add?parent=${w.familyId}`}
-                      className="text-xs font-semibold text-accent touch-manipulation"
+                      className={CARD_LINK}
                     >
                       + Add variation
                     </Link>
@@ -347,10 +349,10 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
               <button
                 data-testid="workout-card"
                 onClick={() => setExpandedFamily(isExpanded ? null : row.familyId)}
-                className="w-full text-left bg-card rounded-2xl p-4 border border-line shadow-sm touch-manipulation"
+                className="w-full text-left bg-card p-4 border border-line touch-manipulation"
               >
                 <div className="flex justify-between items-start gap-2">
-                  <div className="font-semibold text-ink">{row.name}</div>
+                  <div className={CARD_NAME}>{row.name}</div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {familyFlagged && (
                       <FlagBadge
@@ -361,10 +363,10 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                         }}
                       />
                     )}
-                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-0.5">
                       {row.total} versions
                     </span>
-                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-1 rounded-full">{row.type}</span>
+                    <span className={TYPE_LABEL}>{row.type}</span>
                   </div>
                 </div>
                 <p className="text-sm text-muted mt-1.5 leading-snug">{row.reason}</p>
@@ -377,7 +379,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
               {isExpanded && (
                 <div className="mt-1 ml-2 flex flex-col gap-1">
                   {row.base && (
-                    <div className="bg-card rounded-xl px-4 py-3 border border-line">
+                    <div className="bg-card px-4 py-3 border border-line">
                       <div className="flex justify-between items-start">
                         <div className="text-xs font-bold text-muted mb-0.5">Standard</div>
                         <div className="flex items-center gap-1.5">
@@ -388,7 +390,8 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                           {isLeader && (
                             <Link
                               href={`/library/edit?variantId=${row.base.id}`}
-                              className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted text-xs touch-manipulation"
+                              className="w-7 h-7 flex items-center justify-center border border-line text-muted text-xs touch-manipulation"
+                              aria-label="Edit"
                               title="Edit"
                             >✎</Link>
                           )}
@@ -405,9 +408,9 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                     </div>
                   )}
                   {row.variants.map(p => (
-                    <div key={p.id} className="bg-card rounded-xl px-4 py-3 border border-line">
+                    <div key={p.id} className="bg-card px-4 py-3 border border-line">
                       <div className="flex justify-between items-start">
-                        <div className="text-xs font-bold text-accent mb-0.5">Variation {p.sortOrder} of {row.total}</div>
+                        <div className="text-xs font-bold text-muted mb-0.5">Variation {p.sortOrder} of {row.total}</div>
                         <div className="flex items-center gap-1.5">
                           {p.flagged && (
                             <FlagBadge onClick={() => setFlagSheetFor(p.id)} />
@@ -416,13 +419,14 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                           {isLeader && (
                             <Link
                               href={`/library/edit?variantId=${p.id}`}
-                              className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-muted text-xs touch-manipulation"
+                              className="w-7 h-7 flex items-center justify-center border border-line text-muted text-xs touch-manipulation"
+                              aria-label="Edit"
                               title="Edit"
                             >✎</Link>
                           )}
                         </div>
                       </div>
-                      <div className="text-sm font-semibold text-ink">{p.label}</div>
+                      <div className="text-sm font-semibold text-ink font-display">{p.label}</div>
                       <WorkoutCardBody workout={p} layout={cardTemplate} expanded={expandedNotes === p.id} onToggle={() => setExpandedNotes(expandedNotes === p.id ? null : p.id)} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
@@ -436,7 +440,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                   {isLeader && (
                     <Link
                       href={`/library/add?parent=${row.familyId}`}
-                      className="bg-card rounded-xl px-4 py-3 border border-dashed border-accent text-xs font-semibold text-accent touch-manipulation text-center"
+                      className={`bg-card px-4 py-3 border border-dashed border-line text-center block ${CARD_LINK}`}
                     >
                       + Add variation
                     </Link>

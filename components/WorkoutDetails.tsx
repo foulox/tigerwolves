@@ -1,4 +1,5 @@
 import type { WorkoutVariantRow } from '@/lib/data'
+import { CARD_LINK, SQUARE_LABEL, SQUARE_LABEL_BASE } from '@/lib/cardStyles'
 
 export const PHASE_COLORS: Record<string, string> = {
   Base: 'bg-surface text-muted border border-line',
@@ -28,7 +29,9 @@ export function ChipRow({ label, chips, getChipClass }: {
         {chips.map(chip => (
           <span
             key={chip}
-            className={`text-xs rounded-full px-2.5 py-0.5 ${getChipClass ? getChipClass(chip) : 'bg-surface text-muted border border-line'}`}
+            className={getChipClass
+              ? `${SQUARE_LABEL_BASE} ${getChipClass(chip)}`
+              : SQUARE_LABEL}
           >
             {chip}
           </span>
@@ -108,7 +111,7 @@ export default function WorkoutDetails({ w, exclude = [] }: {
             src={w.mapImageUrl}
             alt="Route map"
             loading="lazy"
-            className="w-full max-h-56 object-contain rounded-lg border border-line bg-surface"
+            className="w-full max-h-56 object-contain border border-line bg-surface"
           />
         </a>
       )}
@@ -117,7 +120,7 @@ export default function WorkoutDetails({ w, exclude = [] }: {
           href={w.mapLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs font-semibold text-accent touch-manipulation block"
+          className={`${CARD_LINK} block`}
         >
           Map ↗
         </a>
