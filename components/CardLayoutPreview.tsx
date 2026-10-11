@@ -107,60 +107,64 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
         })}
       </div>
 
-      {/* Frame */}
+      {/* Frame — header + body share a single p-4 so the body gets the same
+          horizontal/bottom padding as the real cards (MyPlanCard/LibraryClient
+          mount WorkoutCardBody inside their own p-4). */}
       {w && (
         <div className="rounded-2xl shadow-sm border border-line bg-card overflow-hidden">
-          {surface === 'myplan' && (
-            <div className="p-4">
-              {/* Run identity line */}
-              <div className="inline-flex items-center gap-1 text-xs font-bold tracking-wide text-accent">
-                {runConfig.emoji ? `${runConfig.emoji} ` : ''}{runConfig.name}
-                <span aria-hidden>›</span>
-              </div>
-              {/* Date + type pill */}
-              <div className="mt-1 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-muted">{dateLabel}</div>
-                  <div className="mt-0.5 truncate text-base font-bold text-ink">{w.name}</div>
+          <div className="p-4">
+            {surface === 'myplan' && (
+              <>
+                {/* Run identity line */}
+                <div className="inline-flex items-center gap-1 text-xs font-bold tracking-wide text-accent">
+                  {runConfig.emoji ? `${runConfig.emoji} ` : ''}{runConfig.name}
+                  <span aria-hidden>›</span>
                 </div>
-                <span className="shrink-0 whitespace-nowrap rounded-full bg-rose-50 border border-rose-200 px-2.5 py-1 text-xs font-semibold text-rose-800">
-                  {w.type}
-                </span>
-              </div>
-            </div>
-          )}
+                {/* Date + type pill */}
+                <div className="mt-1 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-muted">{dateLabel}</div>
+                    <div className="mt-0.5 truncate text-base font-bold text-ink">{w.name}</div>
+                  </div>
+                  <span className="shrink-0 whitespace-nowrap rounded-full bg-rose-50 border border-rose-200 px-2.5 py-1 text-xs font-semibold text-rose-800">
+                    {w.type}
+                  </span>
+                </div>
+              </>
+            )}
 
-          {surface === 'schedule' && (
-            <div className="p-4">
-              <div className="text-sm font-bold text-ink mb-1">Currently planned</div>
-              <div className="flex justify-between items-start gap-2">
-                <div className="font-semibold text-ink">{w.name}</div>
-                <span className="text-xs text-muted shrink-0">
-                  {w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}
-                </span>
-              </div>
-              {w.label && <div className="text-xs text-muted mt-0.5">{w.label}</div>}
-            </div>
-          )}
+            {surface === 'schedule' && (
+              <>
+                <div className="text-sm font-bold text-ink mb-1">Currently planned</div>
+                <div className="flex justify-between items-start gap-2">
+                  <div className="font-semibold text-ink">{w.name}</div>
+                  <span className="text-xs text-muted shrink-0">
+                    {w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}
+                  </span>
+                </div>
+                {w.label && <div className="text-xs text-muted mt-0.5">{w.label}</div>}
+              </>
+            )}
 
-          {surface === 'library' && (
-            <div className="p-4">
-              <div className="flex justify-between items-start gap-2">
-                <div className="font-semibold text-ink">{w.name}</div>
-                <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-1 rounded-full shrink-0">
-                  {w.type}
-                </span>
-              </div>
-              {w.label && <p className="text-xs text-muted mt-0.5">{w.label}</p>}
-            </div>
-          )}
+            {surface === 'library' && (
+              <>
+                <div className="flex justify-between items-start gap-2">
+                  <div className="font-semibold text-ink">{w.name}</div>
+                  <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-1 rounded-full shrink-0">
+                    {w.type}
+                  </span>
+                </div>
+                {w.label && <p className="text-xs text-muted mt-0.5">{w.label}</p>}
+              </>
+            )}
 
-          <WorkoutCardBody
-            workout={w}
-            layout={template}
-            expanded={expanded}
-            onToggle={() => setExpanded(e => !e)}
-          />
+            <WorkoutCardBody
+              workout={w}
+              layout={template}
+              expanded={expanded}
+              onToggle={() => setExpanded(e => !e)}
+            />
+          </div>
         </div>
       )}
 
