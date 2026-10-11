@@ -32,8 +32,9 @@ export default function BottomNav({ isLeader }: Props) {
             href={href}
             data-tour={tour}
             aria-label={label}
-            className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors touch-manipulation ${active ? 'text-accent' : 'text-chrome-muted'}`}
+            className={`flex-1 relative flex flex-col items-center py-3 gap-1 font-display uppercase tracking-[0.1em] text-[9px] font-medium transition-colors touch-manipulation ${active ? 'text-white' : 'text-chrome-muted'}`}
           >
+            {active && <span className="absolute top-0 inset-x-[22%] h-0.5 bg-white" />}
             <Icon size={22} strokeWidth={active ? 2.5 : 1.75} />
             {label}
           </Link>
