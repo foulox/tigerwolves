@@ -1,5 +1,8 @@
 # NBR reskin — Story 1: shell + theme Implementation Plan
 
+> **⚠️ SUPERSEDED (2026-10-11) by epic #510 (NBR brand-true reskin v2).** This plan belongs to the first NBR reskin (#466), which introduced an invented red `#f0523d` not sourced from NBR. Epic #510 corrects the brand to NBR's real design system; its Story 1 plan is `2026-10-11-nbr-redesign-story-1-foundation.md`. Kept for history — **do not build from this file.**
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make the app read as the NBR app everywhere — dark chrome (header with logo + bottom nav), the NBR color system as CSS tokens, and the app name as NBR — without changing any capability.

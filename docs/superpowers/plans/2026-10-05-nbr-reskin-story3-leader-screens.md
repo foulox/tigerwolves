@@ -1,5 +1,8 @@
 # NBR reskin — Story 3: leader screens (Schedule + My Plan) Implementation Plan
 
+> **⚠️ SUPERSEDED (2026-10-11) by epic #510 (NBR brand-true reskin v2).** This plan belongs to the first NBR reskin (#466), which introduced an invented red `#f0523d` not sourced from NBR. Epic #510 corrects the brand to NBR's real design system. Kept for history — **do not build from this file.**
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Restyle the two leader write-surfaces — Schedule and My Plan — onto the NBR design system, reusing the vocabulary Stories 2a/2b shipped, without changing a single capability.

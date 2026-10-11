@@ -1,5 +1,8 @@
 # NBR reskin — Story 2a: All Runs Implementation Plan
 
+> **⚠️ SUPERSEDED (2026-10-11) by epic #510 (NBR brand-true reskin v2).** This plan belongs to the first NBR reskin (#466), which introduced an invented red `#f0523d` not sourced from NBR. Epic #510 corrects the brand to NBR's real design system. Kept for history — **do not build from this file.**
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Restyle the All Runs screen onto the NBR design system — a pure recolor of `components/AllRunsClient.tsx` onto the Story-1 `@theme` tokens, preserving every capability — and confirm it stays lovable at 24-run scale.
