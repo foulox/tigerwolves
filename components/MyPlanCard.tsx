@@ -15,13 +15,11 @@ import { captureClientEvent } from '@/lib/analyticsClient'
 
 const TYPE_PILL = 'bg-surface text-muted border border-line'
 
-// #331 My Plan — the one new card in the runner redesign. Same frame and expanded
-// fidelity as the per-run GroupRunCard (reuses WorkoutCardBody so a
-// Workout-kind run is field-for-field identical), plus three things that card
-// doesn't have: the run-name link to /runs/[id], a kind-driven compact body, and
-// collapsed-by-default. Compact field selection is shared with GroupRunCard via
-// compactCardFields() so the two surfaces can't drift.
-// #503: card body now rendered via WorkoutCardBody (shared renderer, per-run layout).
+// #331 My Plan — cross-run home card. Frame (run-name link to /runs/[id], date,
+// workout name, type pill, "Led by", reactions, flag) is My Plan chrome; starts
+// collapsed. #503: body rendered via WorkoutCardBody using each run's cardTemplate
+// layout—condensed shows Upfront fields, "Show details" reveals When-expanded fields
+// (uniform with Library/Schedule). compactCardFields() picks the type pill (kind-driven).
 export default function MyPlanCard({
   item,
   voteData,
