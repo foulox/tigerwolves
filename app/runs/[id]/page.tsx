@@ -2,6 +2,9 @@ import { currentUser } from '@clerk/nextjs/server'
 import { getRunById, fetchSchedule, fetchWorkoutVariants, getLeaderRun, getFollowedRunIds } from '@/lib/db'
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import Header from '@/components/Header'
+import Masthead from '@/components/Masthead'
+import HeaderControls from '@/components/HeaderControls'
+import BackButton from '@/components/BackButton'
 import GroupRunClient from '@/components/GroupRunClient'
 import RunFollowToggle from '@/components/RunFollowToggle'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
@@ -85,10 +88,15 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
 
   return (
     <div>
-      <Header
+      <Masthead
+        photoSrc="/hero/run-detail.jpg"
+        photoAlt={runConfig.name}
         title={`${runConfig.emoji ? `${runConfig.emoji} ` : ''}${runConfig.name}`}
         subtitle={subtitleParts.join(' · ')}
-        isLeader={isOwningLeader}
+        objectPosition="center 12%"
+        heightClassName="h-[210px]"
+        brandStart={<BackButton />}
+        brandEnd={<HeaderControls isLeader={isOwningLeader} />}
       />
 
       {user && (
