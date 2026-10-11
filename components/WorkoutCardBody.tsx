@@ -235,6 +235,7 @@ export default function WorkoutCardBody({ workout, layout, expanded, onToggle }:
               e.stopPropagation()
               onToggle()
             }}
+            aria-expanded={expanded}
             className="text-xs font-semibold text-accent touch-manipulation"
           >
             {expanded ? 'Hide details' : 'Show details'}

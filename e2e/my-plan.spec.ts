@@ -43,7 +43,7 @@ test.describe('My Plan (/my-plan) — signed-in leader', () => {
     await expect(page.locator('[data-testid^="my-plan-card-tuesday-morning-tigerwolves-"]').first()).toBeVisible()
   })
 
-  test('shows cross-run cards grouped by day, with kind-aware compact bodies', async ({ page }) => {
+  test('shows cross-run cards grouped by day, each with its run\'s layout-driven body', async ({ page }) => {
     await setFollow(page, 'tuesday-morning-tigerwolves', true)
     await setFollow(page, 'monday-morning-easy-run', true)
 
