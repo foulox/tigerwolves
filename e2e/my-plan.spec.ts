@@ -43,7 +43,7 @@ test.describe('My Plan (/my-plan) — signed-in leader', () => {
     await expect(page.locator('[data-testid^="my-plan-card-tuesday-morning-tigerwolves-"]').first()).toBeVisible()
   })
 
-  test('shows cross-run cards grouped by day, with kind-aware compact bodies', async ({ page }) => {
+  test('shows cross-run cards grouped by day, each with its run\'s layout-driven body', async ({ page }) => {
     await setFollow(page, 'tuesday-morning-tigerwolves', true)
     await setFollow(page, 'monday-morning-easy-run', true)
 
@@ -58,29 +58,38 @@ test.describe('My Plan (/my-plan) — signed-in leader', () => {
     // Both sit under day-group sections (grouped by day).
     expect(await page.locator('[data-testid^="day-group-"]').count()).toBeGreaterThan(0)
 
-    // TigerWolves (Workout kind) → type pill + short set line, no route link.
+    // TigerWolves (Intervals): type pill, description body text visible upfront, no map link.
     await expect(page.locator('[data-testid="my-plan-type-tuesday-morning-tigerwolves"]')).toContainText('Intervals')
-    await expect(page.locator('[data-testid="my-plan-set-tuesday-morning-tigerwolves"]')).toContainText('45 sec rec btwn reps')
-    await expect(page.locator('[data-testid="my-plan-route-tuesday-morning-tigerwolves"]')).toHaveCount(0)
+    await expect(tigerCard).toContainText('45 sec rec btwn reps')
+    await expect(tigerCard.getByRole('link', { name: /Map ↗/ })).toHaveCount(0)
 
-    // MMER (Easy/route kind) → distance + "View route ↗", no type pill.
-    await expect(page.locator('[data-testid="my-plan-distance-monday-morning-easy-run"]')).toContainText('4 miles')
-    await expect(page.locator('[data-testid="my-plan-route-monday-morning-easy-run"]')).toContainText('View route')
+    // MMER (Easy/route): distance inline, "Map ↗" link, no type pill.
+    await expect(mmerCard).toContainText('4 miles')
+    await expect(mmerCard.getByRole('link', { name: 'Map ↗' })).toBeVisible()
     await expect(page.locator('[data-testid="my-plan-type-monday-morning-easy-run"]')).toHaveCount(0)
   })
 
-  test('cards start collapsed; tap toggles the expanded panel (reuses WorkoutDetails)', async ({ page }) => {
+  test('cards start collapsed; "Show details" button toggles the expanded panel', async ({ page }) => {
     await setFollow(page, 'tuesday-morning-tigerwolves', true)
 
     await page.goto('/my-plan')
     await page.waitForLoadState('load')
 
-    const detail = page.locator('[data-testid="my-plan-detail-tuesday-morning-tigerwolves"]')
-    await expect(detail).toHaveCount(0) // collapsed by default
+    const card = page.locator('[data-testid^="my-plan-card-tuesday-morning-tigerwolves-"]').first()
 
-    await page.locator('[data-testid^="my-plan-card-tuesday-morning-tigerwolves-"]').first().click()
-    await expect(detail).toBeVisible()
-    await expect(detail).toContainText('Instructions')
+    // Expanded content (Reason) is not visible initially.
+    await expect(card.getByText('race-specific coordination')).toHaveCount(0)
+
+    // "Show details" button is present; clicking it reveals the expanded section.
+    const showBtn = card.getByRole('button', { name: 'Show details' })
+    await expect(showBtn).toBeVisible()
+    await showBtn.click()
+
+    // Reason text is now visible.
+    await expect(card.getByText('race-specific coordination')).toBeVisible()
+
+    // Button now reads "Hide details".
+    await expect(card.getByRole('button', { name: 'Hide details' })).toBeVisible()
   })
 
   test('date strip navigates the whole view forward/back one week', async ({ page }) => {
