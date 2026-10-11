@@ -113,7 +113,7 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
             <div className="p-4">
               {/* Run identity line */}
               <div className="inline-flex items-center gap-1 text-xs font-bold tracking-wide text-accent">
-                {runConfig.emoji}{' '}{runConfig.name}
+                {runConfig.emoji ? `${runConfig.emoji} ` : ''}{runConfig.name}
                 <span aria-hidden>›</span>
               </div>
               {/* Date + type pill */}
