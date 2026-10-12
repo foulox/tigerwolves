@@ -95,6 +95,7 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
             <button
               key={s}
               type="button"
+              aria-pressed={surface === s}
               onClick={() => { setSurface(s); setExpanded(false) }}
               className={`flex-1 text-center ${filterChip(surface === s)}`}
             >

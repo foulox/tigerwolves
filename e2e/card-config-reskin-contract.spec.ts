@@ -89,7 +89,9 @@ test.describe('card-layout config — interactive contract', () => {
     const emptyState = page.getByText('Add a workout to your library to preview')
     if (await emptyState.isVisible().catch(() => false)) {
       // No library workouts seeded for this run — nothing to drive. The
-      // empty-state copy itself is the contract in that case.
+      // empty-state copy itself is the contract in that case, so assert it
+      // rather than returning with no verification.
+      await expect(emptyState).toBeVisible()
       return
     }
 
