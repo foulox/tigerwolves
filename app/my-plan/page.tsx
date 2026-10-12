@@ -3,7 +3,8 @@ import { currentUser } from '@clerk/nextjs/server'
 import { getFollowedRunIds, getMyPlan, ensureLeaderSelfFollow } from '@/lib/db'
 import { addDays } from '@/lib/myPlan'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
-import Header from '@/components/Header'
+import Masthead from '@/components/Masthead'
+import HeaderControls from '@/components/HeaderControls'
 import MyPlanClient from '@/components/MyPlanClient'
 
 // #331 My Plan — the cross-run home. Auth-required: it is deliberately NOT listed
@@ -30,7 +31,15 @@ export default async function MyPlanPage() {
   if (followedIds.length === 0) {
     return (
       <div>
-        <Header title="My Plan" subtitle="Across the runs you follow" isLeader={isLeader} />
+        <Masthead
+          photoSrc="/hero/my-plan.jpg"
+          photoAlt="NBR runners"
+          objectPosition="center 35%"
+          kicker="Across the runs you follow"
+          title="My Plan"
+          underline
+          brandEnd={<HeaderControls isLeader={isLeader} />}
+        />
         <div className="px-4 py-10 text-center" data-testid="my-plan-empty">
           <p className="text-gray-900 font-semibold">You&apos;re not following any runs yet.</p>
           <p className="mt-1 text-sm text-gray-500">
@@ -61,7 +70,15 @@ export default async function MyPlanPage() {
 
   return (
     <div>
-      <Header title="My Plan" subtitle="Across the runs you follow" isLeader={isLeader} />
+      <Masthead
+        photoSrc="/hero/my-plan.jpg"
+        photoAlt="NBR runners"
+        objectPosition="center 35%"
+        kicker="Across the runs you follow"
+        title="My Plan"
+        underline
+        brandEnd={<HeaderControls isLeader={isLeader} />}
+      />
       <MyPlanClient items={items} today={today} voteData={voteData} />
     </div>
   )

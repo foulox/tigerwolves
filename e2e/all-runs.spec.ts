@@ -116,14 +116,16 @@ test('page renders without horizontal overflow at 390px (AC9)', async ({ page })
   expect(overflow).toBe(false)
 })
 
-test('header is standard Header.tsx — no Join NBR, no NORTH BROOKLYN RUNNERS eyebrow (AC10)', async ({ browser }) => {
+test('All Runs masthead: logo + logged-out sign-in link; no legacy "Join NBR" (AC10, #513)', async ({ browser }) => {
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   const page = await context.newPage()
   await page.goto('/all-runs')
   await page.waitForLoadState('load')
+  // #513: the photographic masthead reintroduces an NBR kicker by design — the old
+  // "no NORTH BROOKLYN RUNNERS eyebrow" assertion is intentionally retired here.
+  await expect(page.locator('header')).toBeVisible()
+  await expect(page.locator('header img[alt="North Brooklyn Runners"]')).toBeVisible()
   await expect(page.getByText('Join NBR', { exact: false })).toHaveCount(0)
-  await expect(page.getByText('NORTH BROOKLYN RUNNERS', { exact: false })).toHaveCount(0)
-  // Standard sign-in link (not a "Log in" text link) should be present for logged-out users
   await expect(page.locator('a[href*="sign-in"]')).toBeVisible()
   await context.close()
 })

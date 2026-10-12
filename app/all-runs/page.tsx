@@ -1,5 +1,6 @@
 import { currentUser } from '@clerk/nextjs/server'
-import Header from '@/components/Header'
+import Masthead from '@/components/Masthead'
+import HeaderControls from '@/components/HeaderControls'
 import AllRunsClient from '@/components/AllRunsClient'
 import { getDirectoryRuns, getFollowedRunIds, getLeaderRun } from '@/lib/db'
 import { shouldShowIntro } from '@/lib/allRunsIntro'
@@ -29,7 +30,15 @@ export default async function AllRunsPage() {
 
   return (
     <div>
-      <Header title="All Runs" isLeader={isLeader} />
+      <Masthead
+        photoSrc="/hero/all-runs.jpg"
+        photoAlt="NBR Sunday Funday"
+        objectPosition="center 20%"
+        kicker="North Brooklyn Runners"
+        title="All Runs"
+        underline
+        brandEnd={<HeaderControls isLeader={isLeader} />}
+      />
       <AllRunsClient
         runs={visibleRuns}
         viewer={{ isLoggedIn, isAdmin, owningLeaderRunId }}
