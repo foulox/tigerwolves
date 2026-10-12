@@ -5,6 +5,7 @@ import { Target, Wrench, PartyPopper, Flag, Clock, Check, Plus, Loader2 } from '
 import type { Race } from '@/lib/data'
 import type { RaceTier, RaceTally } from '@/lib/raceTags'
 import { addRace, flagRaceIssue, verifyRace, fixRaceAndClearFlag } from '@/app/actions'
+import { OUTLINE_BTN, SQUARE_LABEL, TYPE_LABEL } from '@/lib/cardStyles'
 
 const STORAGE_KEY = 'tw_race_tags'
 
@@ -43,10 +44,10 @@ function daysUntil(iso: string) {
   return Math.ceil((new Date(iso + 'T00:00:00').getTime() - today.getTime()) / 86400000)
 }
 
-const TIER_META: Record<RaceTier, { label: string; icon: typeof Target; pill: string; ring: string }> = {
-  target: { label: 'Target', icon: Target, pill: 'bg-surface text-muted border border-line', ring: 'ring-2 ring-accent' },
-  tuneup: { label: 'Tune-Up', icon: Wrench, pill: 'bg-surface text-muted border border-line', ring: 'ring-2 ring-accent' },
-  fun: { label: 'Fun', icon: PartyPopper, pill: 'bg-surface text-muted border border-line', ring: 'ring-2 ring-accent' },
+const TIER_META: Record<RaceTier, { label: string; icon: typeof Target }> = {
+  target: { label: 'Target', icon: Target },
+  tuneup: { label: 'Tune-Up', icon: Wrench },
+  fun: { label: 'Fun', icon: PartyPopper },
 }
 
 type SheetState =
@@ -219,11 +220,11 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
   return (
     <>
       <div className="flex items-center justify-between mb-3">
-        <div className="text-xs font-bold text-muted">{races.length} upcoming</div>
+        <div className={TYPE_LABEL}>{races.length} upcoming</div>
         <button
           type="button"
           onClick={openAdd}
-          className="touch-manipulation flex items-center gap-1.5 bg-accent text-white rounded-full pl-3 pr-4 py-2 text-sm font-bold shadow-sm"
+          className={`${OUTLINE_BTN} inline-flex items-center gap-1.5`}
         >
           <Plus size={15} strokeWidth={3} />
           Add a race
@@ -239,19 +240,19 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
           const tally = tallies[race.id] ?? { target: 0, tuneup: 0, fun: 0 }
           const myTag = myTagFor(race.id)
           return (
-            <div key={race.id} data-testid={`race-card-${race.name}`} className="relative bg-card rounded-2xl p-4 border border-line shadow-sm">
+            <div key={race.id} data-testid={`race-card-${race.name}`} className="relative bg-card p-4 border border-line">
               <div className="absolute top-3 right-3 w-[22px] h-[22px] rounded-full flex items-center justify-center shadow-sm">
                 {race.verified ? (
-                  <div className="w-full h-full rounded-full bg-green-500 flex items-center justify-center">
+                  <div className="w-full h-full rounded-full bg-ink flex items-center justify-center">
                     <Check size={12} className="text-white" strokeWidth={3} />
                   </div>
                 ) : race.flagged ? (
-                  <div className="w-full h-full rounded-full bg-red-500 flex items-center justify-center">
+                  <div className="w-full h-full rounded-full bg-ink flex items-center justify-center">
                     <Flag size={11} className="text-white" fill="white" strokeWidth={2} />
                   </div>
                 ) : (
-                  <div className="w-full h-full rounded-full bg-yellow-500 flex items-center justify-center">
-                    <Clock size={12} className="text-white" strokeWidth={2} />
+                  <div className="w-full h-full rounded-full bg-surface border border-line flex items-center justify-center">
+                    <Clock size={12} className="text-muted" strokeWidth={2} />
                   </div>
                 )}
               </div>
@@ -259,13 +260,13 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
               <div className="pr-7">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <div className="font-bold text-ink">{race.name}</div>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${days <= 30 ? 'bg-red-100 text-red-700' : 'bg-surface text-muted border border-line'}`}>
+                  <span className={`${SQUARE_LABEL} shrink-0`}>
                     {days}d
                   </span>
                   {race.verified ? (
-                    <span className="text-[10.5px] font-bold text-green-800 bg-green-100 rounded-full px-2 py-0.5">Verified</span>
+                    <span className={SQUARE_LABEL}>Verified</span>
                   ) : (
-                    <span className="text-[10.5px] font-bold text-muted bg-gray-200 rounded-full px-2 py-0.5">Unverified</span>
+                    <span className={SQUARE_LABEL}>Unverified</span>
                   )}
                 </div>
                 <div className="text-sm text-muted mt-1">{formatDate(race.date)}</div>
@@ -287,7 +288,9 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                       key={tier}
                       type="button"
                       onClick={() => handleTag(race.id, tier)}
-                      className={`touch-manipulation inline-flex items-center gap-1 text-xs font-bold rounded-full pl-2 pr-2.5 py-1.5 ${meta.pill} ${selected ? meta.ring : ''}`}
+                      className={`${SQUARE_LABEL} inline-flex items-center gap-1 touch-manipulation ${
+                        selected ? 'bg-ink text-white border-ink' : ''
+                      }`}
                     >
                       <Icon size={13} />
                       {meta.label} · {tally[tier]}
@@ -301,7 +304,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                   <button
                     type="button"
                     onClick={() => openIssue(race.id)}
-                    className="touch-manipulation flex items-center gap-1.5 bg-red-100 text-red-800 rounded-full px-3 py-1.5 text-xs font-bold"
+                    className="touch-manipulation flex items-center gap-1.5 border border-line text-ink px-3 py-1.5 text-xs font-bold"
                   >
                     <Flag size={12} />
                     Issue reported
@@ -310,7 +313,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                   <button
                     type="button"
                     onClick={() => openFlag(race.id)}
-                    className="touch-manipulation border border-dashed border-line text-muted rounded-full px-2.5 py-1.5 text-xs font-semibold"
+                    className="touch-manipulation border border-dashed border-line text-muted px-2.5 py-1.5 text-xs font-semibold"
                   >
                     Flag an issue
                   </button>
@@ -320,7 +323,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                     type="button"
                     onClick={() => submitVerify(race.id)}
                     disabled={isPending}
-                    className="touch-manipulation flex items-center gap-1.5 bg-green-100 text-green-800 rounded-full px-3 py-1.5 text-xs font-bold disabled:opacity-50"
+                    className="touch-manipulation flex items-center gap-1.5 border border-ink text-ink px-3 py-1.5 text-xs font-bold disabled:opacity-50"
                   >
                     <Check size={12} />
                     Mark as verified
@@ -335,7 +338,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
       {sheet && (
         <div className="fixed inset-0 z-50 flex items-end" onClick={closeSheet}>
           <div
-            className="w-full bg-card rounded-t-2xl shadow-xl max-h-[85vh] overflow-y-auto flex flex-col px-5 pt-3 pb-6"
+            className="w-full bg-card shadow-xl max-h-[85vh] overflow-y-auto flex flex-col px-5 pt-3 pb-6"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center pb-3">
@@ -354,7 +357,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                     value={addForm.name}
                     onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="e.g. NYC Marathon"
-                    className="w-full rounded-xl border border-line px-3 py-2.5 text-sm text-ink font-normal"
+                    className="w-full border border-line px-3 py-2.5 text-sm text-ink font-normal"
                   />
                 </label>
                 <div className="grid grid-cols-2 gap-2.5">
@@ -364,7 +367,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                       type="date"
                       value={addForm.date}
                       onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))}
-                      className="w-full rounded-xl border border-line px-2 py-2.5 text-sm text-ink font-normal min-w-0"
+                      className="w-full border border-line px-2 py-2.5 text-sm text-ink font-normal min-w-0"
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs font-bold text-muted min-w-0">
@@ -373,7 +376,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                       value={addForm.distance}
                       onChange={e => setAddForm(f => ({ ...f, distance: e.target.value }))}
                       placeholder="26.2 mi"
-                      className="w-full rounded-xl border border-line px-3 py-2.5 text-sm text-ink font-normal min-w-0"
+                      className="w-full border border-line px-3 py-2.5 text-sm text-ink font-normal min-w-0"
                     />
                   </label>
                 </div>
@@ -383,7 +386,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                     value={addForm.location}
                     onChange={e => setAddForm(f => ({ ...f, location: e.target.value }))}
                     placeholder="e.g. Central Park, NYC"
-                    className="w-full rounded-xl border border-line px-3 py-2.5 text-sm text-ink font-normal"
+                    className="w-full border border-line px-3 py-2.5 text-sm text-ink font-normal"
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-xs font-bold text-muted">
@@ -392,7 +395,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                     value={addForm.organizer}
                     onChange={e => setAddForm(f => ({ ...f, organizer: e.target.value }))}
                     placeholder="e.g. NYRR"
-                    className="w-full rounded-xl border border-line px-3 py-2.5 text-sm text-ink font-normal"
+                    className="w-full border border-line px-3 py-2.5 text-sm text-ink font-normal"
                   />
                 </label>
                 <div className="flex flex-col gap-1.5">
@@ -407,7 +410,9 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                           key={tier}
                           type="button"
                           onClick={() => setAddForm(f => ({ ...f, tier: f.tier === tier ? null : tier }))}
-                          className={`touch-manipulation inline-flex items-center gap-1 text-xs font-bold rounded-full px-3 py-1.5 ${meta.pill} ${selected ? meta.ring : ''}`}
+                          className={`${SQUARE_LABEL} inline-flex items-center gap-1 touch-manipulation ${
+                            selected ? 'bg-ink text-white border-ink' : ''
+                          }`}
                         >
                           <Icon size={13} />
                           {meta.label}
@@ -421,7 +426,7 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                   type="button"
                   onClick={submitAdd}
                   disabled={isPending}
-                  className="touch-manipulation w-full bg-accent text-white rounded-2xl py-3 font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="touch-manipulation w-full bg-ink text-white py-3 font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isPending && <Loader2 size={15} className="animate-spin" />}
                   Add race
@@ -443,19 +448,19 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                     onChange={e => setFlagText(e.target.value)}
                     placeholder="e.g. the date's wrong, this year it's May 17"
                     rows={4}
-                    className="w-full rounded-xl border border-line px-3 py-2.5 text-sm text-ink font-normal resize-none"
+                    className="w-full border border-line px-3 py-2.5 text-sm text-ink font-normal resize-none"
                   />
                 </label>
                 {flagError && <p className="text-sm text-red-600">{flagError}</p>}
                 <div className="flex gap-2.5">
-                  <button type="button" onClick={closeSheet} className="touch-manipulation flex-1 bg-surface text-muted rounded-2xl py-3 font-bold text-sm">
+                  <button type="button" onClick={closeSheet} className="touch-manipulation flex-1 bg-surface text-muted border border-line py-3 font-bold text-sm">
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={submitFlag}
                     disabled={isPending}
-                    className="touch-manipulation flex-1 bg-accent text-white rounded-2xl py-3 font-bold text-sm disabled:opacity-50"
+                    className="touch-manipulation flex-1 bg-ink text-white py-3 font-bold text-sm disabled:opacity-50"
                   >
                     Submit
                   </button>
@@ -469,12 +474,12 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                   <h2 className="text-lg font-bold text-ink">Reported issue</h2>
                   <p className="text-sm text-muted">{activeRace.name}</p>
                 </div>
-                <div className="text-sm text-red-800 bg-red-100 rounded-xl px-3.5 py-3">
+                <div className="text-sm text-ink bg-surface border border-line px-3.5 py-3">
                   <div className="text-[10.5px] font-bold uppercase tracking-wide opacity-75 mb-1">Reported by a runner</div>
                   {activeRace.flagNote}
                 </div>
                 <p className="text-xs text-muted italic">Only run leaders can edit race details.</p>
-                <button type="button" onClick={closeSheet} className="touch-manipulation w-full bg-surface text-muted rounded-2xl py-3 font-bold text-sm">
+                <button type="button" onClick={closeSheet} className="touch-manipulation w-full bg-surface text-muted border border-line py-3 font-bold text-sm">
                   Close
                 </button>
               </div>
@@ -486,42 +491,42 @@ export default function RacesClient({ initialRaces, initialTallies, isLeader }: 
                   <h2 className="text-lg font-bold text-ink">Review &amp; fix</h2>
                   <p className="text-sm text-muted">{activeRace.name}</p>
                 </div>
-                <div className="text-xs text-red-800 bg-red-100 rounded-lg px-3 py-2.5">
+                <div className="text-xs text-ink bg-surface border border-line px-3 py-2.5">
                   <div className="text-[10.5px] font-bold uppercase tracking-wide opacity-75 mb-0.5">Reported by a runner</div>
                   {activeRace.flagNote}
                 </div>
                 <div className="grid grid-cols-2 gap-2.5">
                   <label className="flex flex-col gap-1 text-[10.5px] font-bold text-muted">
                     Name
-                    <input value={fixForm.name} onChange={e => setFixForm(f => ({ ...f, name: e.target.value }))} className="w-full rounded-lg border border-line px-2.5 py-2 text-sm text-ink font-normal" />
+                    <input value={fixForm.name} onChange={e => setFixForm(f => ({ ...f, name: e.target.value }))} className="w-full border border-line px-2.5 py-2 text-sm text-ink font-normal" />
                   </label>
                   <label className="flex flex-col gap-1 text-[10.5px] font-bold text-muted">
                     Date
-                    <input type="date" value={fixForm.date} onChange={e => setFixForm(f => ({ ...f, date: e.target.value }))} className="w-full rounded-lg border border-line px-2.5 py-2 text-sm text-ink font-normal" />
+                    <input type="date" value={fixForm.date} onChange={e => setFixForm(f => ({ ...f, date: e.target.value }))} className="w-full border border-line px-2.5 py-2 text-sm text-ink font-normal" />
                   </label>
                   <label className="flex flex-col gap-1 text-[10.5px] font-bold text-muted">
                     Distance
-                    <input value={fixForm.distance} onChange={e => setFixForm(f => ({ ...f, distance: e.target.value }))} className="w-full rounded-lg border border-line px-2.5 py-2 text-sm text-ink font-normal" />
+                    <input value={fixForm.distance} onChange={e => setFixForm(f => ({ ...f, distance: e.target.value }))} className="w-full border border-line px-2.5 py-2 text-sm text-ink font-normal" />
                   </label>
                   <label className="flex flex-col gap-1 text-[10.5px] font-bold text-muted">
                     Location
-                    <input value={fixForm.location} onChange={e => setFixForm(f => ({ ...f, location: e.target.value }))} className="w-full rounded-lg border border-line px-2.5 py-2 text-sm text-ink font-normal" />
+                    <input value={fixForm.location} onChange={e => setFixForm(f => ({ ...f, location: e.target.value }))} className="w-full border border-line px-2.5 py-2 text-sm text-ink font-normal" />
                   </label>
                 </div>
                 <label className="flex flex-col gap-1 text-[10.5px] font-bold text-muted">
                   Organizer
-                  <input value={fixForm.organizer} onChange={e => setFixForm(f => ({ ...f, organizer: e.target.value }))} placeholder="e.g. NYRR" className="w-full rounded-lg border border-line px-2.5 py-2 text-sm text-ink font-normal" />
+                  <input value={fixForm.organizer} onChange={e => setFixForm(f => ({ ...f, organizer: e.target.value }))} placeholder="e.g. NYRR" className="w-full border border-line px-2.5 py-2 text-sm text-ink font-normal" />
                 </label>
                 {fixError && <p className="text-sm text-red-600">{fixError}</p>}
                 <div className="flex gap-2.5">
-                  <button type="button" onClick={closeSheet} className="touch-manipulation flex-1 bg-surface text-muted rounded-2xl py-3 font-bold text-sm">
+                  <button type="button" onClick={closeSheet} className="touch-manipulation flex-1 bg-surface text-muted border border-line py-3 font-bold text-sm">
                     Dismiss
                   </button>
                   <button
                     type="button"
                     onClick={submitFix}
                     disabled={isPending}
-                    className="touch-manipulation flex-1 bg-accent text-white rounded-2xl py-3 font-bold text-sm disabled:opacity-50"
+                    className="touch-manipulation flex-1 bg-ink text-white py-3 font-bold text-sm disabled:opacity-50"
                   >
                     Save fix &amp; clear flag
                   </button>
