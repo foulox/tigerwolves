@@ -113,7 +113,7 @@ export default function RosterTab({
   return (
     <div className="p-4 flex flex-col gap-4">
       {banner && (
-        <div className="border border-line bg-surface text-ink px-4 py-3 text-sm whitespace-pre-line">{banner.message}</div>
+        <div className={`border px-4 py-3 text-sm whitespace-pre-line ${banner.isWarning ? 'bg-ink text-white border-ink' : 'bg-surface text-ink border-line'}`}>{banner.message}</div>
       )}
 
       <div>
