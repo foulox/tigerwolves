@@ -14,7 +14,7 @@ export default function Masthead({
   subtitle,
   underline = false,
   objectPosition = 'center',
-  heightClassName = 'h-[232px]',
+  heightClassName = 'aspect-[390/232]',
   brandStart,
   brandEnd,
 }: {
