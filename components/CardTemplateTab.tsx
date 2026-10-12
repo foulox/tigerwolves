@@ -53,9 +53,9 @@ export default function CardTemplateTab({ runConfig, variants, nextEntry }: Prop
         section="upfront"
         rows={template.upfront}
         title="● Show upfront"
-        containerCls="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-col gap-2"
-        titleCls="text-[10.5px] font-extrabold uppercase tracking-wide text-emerald-700"
-        emptyMsg={<p className="text-xs text-emerald-500 italic px-1">No fields — move one here from another section.</p>}
+        containerCls="border border-line bg-surface p-3 flex flex-col gap-2"
+        titleCls="font-display uppercase tracking-[0.14em] text-[10px] font-medium text-ink"
+        emptyMsg={<p className="text-[11px] text-muted italic px-1">No fields — move one here from another section.</p>}
         template={template}
         setTemplate={setTemplate}
       />
@@ -64,16 +64,16 @@ export default function CardTemplateTab({ runConfig, variants, nextEntry }: Prop
         section="expanded"
         rows={template.expanded}
         title="◐ When expanded"
-        containerCls="bg-blue-50 border border-blue-200 rounded-xl p-3 flex flex-col gap-2"
-        titleCls="text-[10.5px] font-extrabold uppercase tracking-wide text-blue-700"
-        emptyMsg={<p className="text-xs text-blue-400 italic px-1">No fields — move one here from another section.</p>}
+        containerCls="border border-line bg-surface p-3 flex flex-col gap-2"
+        titleCls="font-display uppercase tracking-[0.14em] text-[10px] font-medium text-ink"
+        emptyMsg={<p className="text-[11px] text-muted italic px-1">No fields — move one here from another section.</p>}
         template={template}
         setTemplate={setTemplate}
       />
 
       {/* Hidden section */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col gap-2">
-        <div className="text-[10.5px] font-extrabold uppercase tracking-wide text-gray-500">
+      <div className="border border-line bg-surface p-3 flex flex-col gap-2">
+        <div className="font-display uppercase tracking-[0.14em] text-[10px] font-medium text-ink">
           ○ Hidden
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -85,13 +85,13 @@ export default function CardTemplateTab({ runConfig, variants, nextEntry }: Prop
             />
           ))}
           {template.hidden.length === 0 && (
-            <p className="text-xs text-gray-400 italic">All fields are shown in a section above.</p>
+            <p className="text-[11px] text-muted italic">All fields are shown in a section above.</p>
           )}
         </div>
       </div>
 
       {/* Hint */}
-      <p className="text-xs text-gray-400 text-center">
+      <p className="text-[11px] text-muted text-center">
         Changes show on your Library cards after you Save.
       </p>
 
@@ -101,7 +101,7 @@ export default function CardTemplateTab({ runConfig, variants, nextEntry }: Prop
         type="button"
         onClick={handleSave}
         disabled={isPending}
-        className="bg-orange-600 text-white rounded-xl py-3 font-bold text-sm disabled:opacity-50 touch-manipulation"
+        className="bg-ink text-white py-3 font-display uppercase tracking-[0.1em] text-[11px] font-medium disabled:opacity-50 touch-manipulation"
       >
         {saved ? 'Saved!' : isPending ? 'Saving…' : 'Save card layout'}
       </button>
@@ -145,11 +145,11 @@ function SectionRows({
         return (
           <div
             key={stableKey}
-            className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+            className="bg-card border border-line overflow-hidden"
           >
             {/* Row header with move controls */}
-            <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-b border-gray-100">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">
+            <div className="flex items-center justify-between px-2 py-1 bg-surface border-b border-line">
+              <span className="font-display uppercase tracking-[0.1em] text-[9px] font-medium text-muted">
                 Row {rowIdx + 1}
               </span>
               <div className="flex items-center gap-1">
@@ -158,7 +158,7 @@ function SectionRows({
                   aria-label={`Move row ${rowIdx + 1} up in ${sectionLabel}`}
                   disabled={rowIdx === 0}
                   onClick={() => setTemplate(moveRow(template, section, rowIdx, 'up'))}
-                  className="touch-manipulation text-gray-400 disabled:opacity-30 hover:text-gray-700 text-xs px-1"
+                  className="touch-manipulation text-muted disabled:opacity-30 active:text-ink text-xs px-1"
                 >
                   ↑
                 </button>
@@ -167,7 +167,7 @@ function SectionRows({
                   aria-label={`Move row ${rowIdx + 1} down in ${sectionLabel}`}
                   disabled={rowIdx === rows.length - 1}
                   onClick={() => setTemplate(moveRow(template, section, rowIdx, 'down'))}
-                  className="touch-manipulation text-gray-400 disabled:opacity-30 hover:text-gray-700 text-xs px-1"
+                  className="touch-manipulation text-muted disabled:opacity-30 active:text-ink text-xs px-1"
                 >
                   ↓
                 </button>
@@ -176,7 +176,7 @@ function SectionRows({
                   aria-label={`Merge row ${rowIdx + 1} up with previous row in ${sectionLabel}`}
                   disabled={rowIdx === 0}
                   onClick={() => setTemplate(mergeRowUp(template, section, rowIdx))}
-                  className="touch-manipulation text-[10px] font-bold text-gray-400 disabled:opacity-30 hover:text-gray-700 px-1"
+                  className="touch-manipulation text-[10px] font-medium text-muted disabled:opacity-30 active:text-ink px-1"
                 >
                   ⤒ Merge up
                 </button>
@@ -221,15 +221,11 @@ type FieldChipProps = {
 
 function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, chipColor }: FieldChipProps) {
   const label = CARD_FIELD_LABELS[fieldKey]
-  const chipCls =
-    chipColor === 'upfront'
-      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-      : 'bg-blue-50 border-blue-200 text-blue-800'
 
   return (
-    <div className={`inline-flex flex-col gap-0.5 border rounded-lg px-2 py-1 ${chipCls}`}>
+    <div className="inline-flex flex-col gap-0.5 border border-line bg-surface px-2 py-1">
       {/* Label row */}
-      <span className="text-[11.5px] font-semibold whitespace-nowrap">{label}</span>
+      <span className="font-display text-[11px] font-medium text-ink whitespace-nowrap">{label}</span>
       {/* Controls row */}
       <div className="flex items-center gap-0.5 flex-wrap">
         {/* Section move buttons — omit current section */}
@@ -238,7 +234,7 @@ function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, 
             type="button"
             aria-label={`Move ${label} to Show upfront`}
             onClick={() => onMove('upfront')}
-            className="touch-manipulation text-[9px] font-bold bg-emerald-100 text-emerald-700 rounded px-1 py-0.5 hover:bg-emerald-200"
+            className="touch-manipulation text-[9px] font-medium border border-line text-muted active:bg-surface px-1 py-0.5"
           >
             ● up
           </button>
@@ -248,7 +244,7 @@ function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, 
             type="button"
             aria-label={`Move ${label} to When expanded`}
             onClick={() => onMove('expanded')}
-            className="touch-manipulation text-[9px] font-bold bg-blue-100 text-blue-700 rounded px-1 py-0.5 hover:bg-blue-200"
+            className="touch-manipulation text-[9px] font-medium border border-line text-muted active:bg-surface px-1 py-0.5"
           >
             ◐ exp
           </button>
@@ -257,7 +253,7 @@ function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, 
           type="button"
           aria-label={`Move ${label} to hidden`}
           onClick={() => onMove('hidden')}
-          className="touch-manipulation text-[9px] font-bold bg-gray-100 text-gray-600 rounded px-1 py-0.5 hover:bg-gray-200"
+          className="touch-manipulation text-[9px] font-medium border border-line text-muted active:bg-surface px-1 py-0.5"
         >
           ○ hide
         </button>
@@ -267,7 +263,7 @@ function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, 
           aria-label={`Align ${label} left`}
           aria-pressed={align === 'left'}
           onClick={() => onAlign('left')}
-          className={`touch-manipulation text-[9px] font-bold rounded px-1 py-0.5 ${align === 'left' ? 'bg-orange-200 text-orange-800' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+          className={`touch-manipulation text-[9px] font-medium border border-line px-1 py-0.5 ${align === 'left' ? 'bg-ink text-white' : 'text-muted active:bg-surface'}`}
         >
           ←L
         </button>
@@ -276,7 +272,7 @@ function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, 
           aria-label={`Align ${label} right`}
           aria-pressed={align === 'right'}
           onClick={() => onAlign('right')}
-          className={`touch-manipulation text-[9px] font-bold rounded px-1 py-0.5 ${align === 'right' ? 'bg-orange-200 text-orange-800' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+          className={`touch-manipulation text-[9px] font-medium border border-line px-1 py-0.5 ${align === 'right' ? 'bg-ink text-white' : 'text-muted active:bg-surface'}`}
         >
           R→
         </button>
@@ -285,7 +281,7 @@ function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, 
           type="button"
           aria-label={`Split ${label} to its own row`}
           onClick={() => onSplit()}
-          className="touch-manipulation text-[9px] font-bold bg-gray-100 text-gray-600 rounded px-1 py-0.5 hover:bg-gray-200"
+          className="touch-manipulation text-[9px] font-medium border border-line text-muted active:bg-surface px-1 py-0.5"
         >
           ⬡ split
         </button>
@@ -302,14 +298,14 @@ type HiddenChipProps = {
 function HiddenChip({ fieldKey, onMove }: HiddenChipProps) {
   const label = CARD_FIELD_LABELS[fieldKey]
   return (
-    <div className="inline-flex flex-col gap-0.5 bg-white border border-gray-200 rounded-lg px-2 py-1">
-      <span className="text-[11.5px] font-semibold text-gray-600 whitespace-nowrap">{label}</span>
+    <div className="inline-flex flex-col gap-0.5 border border-line bg-surface px-2 py-1">
+      <span className="font-display text-[11px] font-medium text-muted whitespace-nowrap">{label}</span>
       <div className="flex items-center gap-0.5">
         <button
           type="button"
           aria-label={`Move ${label} to Show upfront`}
           onClick={() => onMove('upfront')}
-          className="touch-manipulation text-[9px] font-bold bg-emerald-100 text-emerald-700 rounded px-1 py-0.5 hover:bg-emerald-200"
+          className="touch-manipulation text-[9px] font-medium border border-line text-muted active:bg-surface px-1 py-0.5"
         >
           ● up
         </button>
@@ -317,7 +313,7 @@ function HiddenChip({ fieldKey, onMove }: HiddenChipProps) {
           type="button"
           aria-label={`Move ${label} to When expanded`}
           onClick={() => onMove('expanded')}
-          className="touch-manipulation text-[9px] font-bold bg-blue-100 text-blue-700 rounded px-1 py-0.5 hover:bg-blue-200"
+          className="touch-manipulation text-[9px] font-medium border border-line text-muted active:bg-surface px-1 py-0.5"
         >
           ◐ exp
         </button>
