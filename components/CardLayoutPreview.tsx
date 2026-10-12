@@ -120,7 +120,7 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
                 {/* Date + type pill */}
                 <div className="mt-1 flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-sm text-muted">{dateLabel}</div>
+                    <div className="text-sm font-semibold text-muted">{dateLabel}</div>
                     <div className="mt-0.5 truncate text-base font-display font-normal text-ink">{w.name}</div>
                   </div>
                   <span className="shrink-0 whitespace-nowrap border border-line font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted px-2 py-1">
