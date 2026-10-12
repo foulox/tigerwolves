@@ -122,7 +122,11 @@ test.describe('My Plan (/my-plan) — signed-in leader', () => {
     await page.waitForLoadState('load')
 
     const card = page.locator('[data-testid^="my-plan-card-monday-morning-easy-run-"]').first()
-    const reactBtn = card.locator('button', { hasText: 'React' })
+    // The reaction button's label depends on whether the workout already has votes
+    // ("🙂 React" with none, "😡 N · Add yours" once rated). KV is shared across specs
+    // and an earlier one (card-reskin-contract) reacts on this same run, so match the
+    // button by its stable aria-label in either state rather than the no-votes-only text.
+    const reactBtn = card.getByRole('button', { name: /add a reaction|open reaction picker/i })
     await reactBtn.click()
     // Picker opens with emoji options, then a pick closes it.
     const emoji = page.locator('button[aria-label^="React "]').first()
