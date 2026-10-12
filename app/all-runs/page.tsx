@@ -33,6 +33,7 @@ export default async function AllRunsPage() {
       <Masthead
         photoSrc="/hero/all-runs.jpg"
         photoAlt="NBR Sunday Funday"
+        objectPosition="center 20%"
         kicker="North Brooklyn Runners"
         title="All Runs"
         underline

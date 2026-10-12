@@ -34,6 +34,7 @@ export default async function MyPlanPage() {
         <Masthead
           photoSrc="/hero/my-plan.jpg"
           photoAlt="NBR runners"
+          objectPosition="center 35%"
           kicker="Across the runs you follow"
           title="My Plan"
           underline
@@ -72,6 +73,7 @@ export default async function MyPlanPage() {
       <Masthead
         photoSrc="/hero/my-plan.jpg"
         photoAlt="NBR runners"
+        objectPosition="center 35%"
         kicker="Across the runs you follow"
         title="My Plan"
         underline
