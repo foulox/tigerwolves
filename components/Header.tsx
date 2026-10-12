@@ -31,7 +31,7 @@ export default function Header({
               <ChevronLeft size={24} strokeWidth={2.5} />
             </button>
           )}
-          <img src="/nbr-logo.png" alt="North Brooklyn Runners" className="h-7 w-auto" />
+          <img src="/nbr-logo.png" alt="North Brooklyn Runners" className="h-9 w-auto" />
         </div>
         <HeaderControls isLeader={isLeader} />
       </div>

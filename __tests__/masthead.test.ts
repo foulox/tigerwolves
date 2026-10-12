@@ -30,7 +30,9 @@ describe('Masthead (#513)', () => {
     expect(render()).not.toContain('Tuesday · 6:30 AM')
   })
   test('applies the warm photo scrim', () => {
-    expect(render()).toContain('rgba(32,26,22,0.6)')
+    // Assert the warm vertical scrim is present without pinning the exact
+    // stop opacities — those are Preview-tunable judgment calls (#524).
+    expect(render()).toContain('linear-gradient(180deg, rgba(32,26,22')
   })
   test('carries a solid fallback bg so the title reads if the photo fails', () => {
     expect(render()).toContain('bg-[#111]')

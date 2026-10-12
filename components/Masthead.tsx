@@ -37,19 +37,22 @@ export default function Masthead({
         className="absolute inset-0 h-full w-full object-cover"
         style={{ objectPosition }}
       />
-      {/* warm scrim so white type reads over the photo */}
+      {/* warm scrim so white type reads over the photo. The top stop is lifted
+          (0.78) so the brand row — logo + account/feedback controls — reads
+          clearly over the B&W banner (#524); the mid/bottom stops are unchanged
+          to preserve the strong title scrim at the bottom. */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            'linear-gradient(180deg, rgba(32,26,22,0.6) 0%, rgba(32,26,22,0.12) 42%, rgba(32,26,22,0.86) 100%)',
+            'linear-gradient(180deg, rgba(32,26,22,0.78) 0%, rgba(32,26,22,0.12) 42%, rgba(32,26,22,0.86) 100%)',
         }}
       />
       {/* brand row */}
       <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
         <div className="flex items-center">
           {brandStart ?? (
-            <img src="/nbr-logo.png" alt="North Brooklyn Runners" className="h-7 w-auto" />
+            <img src="/nbr-logo.png" alt="North Brooklyn Runners" className="h-9 w-auto" />
           )}
         </div>
         {brandEnd && <div className="flex items-center">{brandEnd}</div>}
