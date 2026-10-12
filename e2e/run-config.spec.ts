@@ -70,6 +70,101 @@ test.describe('Run Settings', () => {
     await expect(page.getByRole('button', { name: /saved!/i })).toBeVisible()
   })
 
+  test('tab switch preserves unsaved post-template edit (mounted-but-hidden)', async ({ page }) => {
+    await page.goto('/run-config')
+    await page.waitForLoadState('load')
+
+    // Switch to Post template tab. The editor is mounted-but-hidden when inactive
+    // (#382 / #505 contract): switching away and back must not discard unsaved edits.
+    await page.getByRole('button', { name: 'Post template' }).click()
+
+    const editor = page.getByRole('textbox', { name: 'Post template editor' })
+    await expect(editor).not.toBeEmpty()
+
+    // Capture original HTML for restore at the end (mirrors lines 44 / 64–70 of
+    // the persist test above — same discipline, same reason: later schedule specs
+    // run serial on this same run and will render the template from the DB).
+    const originalHtml = await editor.evaluate(el => el.innerHTML)
+
+    const sentinel = 'TABSWITCH_KEEP'
+    await editor.click()
+    await page.keyboard.type(` ${sentinel}`)
+
+    // Switch away to Roster without saving, then come back.
+    await page.getByRole('button', { name: 'Roster' }).click()
+    await page.getByRole('button', { name: 'Post template' }).click()
+
+    // The sentinel must still be present — the editor DOM was hidden, not unmounted.
+    await expect(editor).toContainText(sentinel)
+
+    // Restore the original HTML and save so the DB returns to its seeded state.
+    // (The typed sentinel was never saved to the DB, but if a prior run left drift,
+    // this save normalises it.)
+    await editor.evaluate((el, html) => {
+      el.innerHTML = html
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    }, originalHtml)
+    await page.getByRole('button', { name: /^save template$/i }).click()
+    await expect(page.getByRole('button', { name: /saved!/i })).toBeVisible()
+  })
+
+  test('roster rotation reorder round-trips (reversible)', async ({ page }) => {
+    await page.goto('/run-config')
+    await page.waitForLoadState('load')
+
+    await page.getByRole('button', { name: 'Roster' }).click()
+
+    // Each leader row has "Remove {name}" buttons — use them to read roster order
+    // by accessible name without relying on any Tailwind class.
+    const removeButtons = page.getByRole('button', { name: /^Remove / })
+    const count = await removeButtons.count()
+
+    if (count < 2) {
+      // Defensive guard: fewer than 2 leaders means reorder is meaningless.
+      // Document the skip so it's visible in CI output, then exit cleanly.
+      console.log('Roster reorder test skipped — fewer than 2 leaders in seed data')
+      return
+    }
+
+    // Edge contract: "Move up" on the first leader and "Move down" on the last
+    // must be disabled (no out-of-bounds reorder allowed).
+    const moveUpButtons = page.getByRole('button', { name: 'Move up' })
+    const moveDownButtons = page.getByRole('button', { name: 'Move down' })
+    await expect(moveUpButtons.first()).toBeDisabled()
+    await expect(moveDownButtons.last()).toBeDisabled()
+
+    // Read initial name order from the Remove-button aria-labels.
+    const namesBefore = await removeButtons.evaluateAll(els =>
+      els.map(el => el.getAttribute('aria-label')?.replace(/^Remove /, '') ?? '')
+    )
+
+    // Move the first leader down (swaps leaders 1 ↔ 2 and persists via saveRotationOrder).
+    await moveDownButtons.first().click()
+
+    // Wait for the optimistic update to settle — the button state flips immediately
+    // because React applies the local swap synchronously before the server round-trip.
+    // We need to wait for the new DOM order to reflect the swap.
+    await expect(removeButtons.first()).not.toHaveAttribute('aria-label', `Remove ${namesBefore[0]}`)
+
+    const namesAfter = await removeButtons.evaluateAll(els =>
+      els.map(el => el.getAttribute('aria-label')?.replace(/^Remove /, '') ?? '')
+    )
+
+    // The first two leaders should have swapped; the rest should be unchanged.
+    expect(namesAfter[0]).toBe(namesBefore[1])
+    expect(namesAfter[1]).toBe(namesBefore[0])
+    expect(namesAfter.slice(2)).toEqual(namesBefore.slice(2))
+
+    // Swap back by moving the current first leader down again, restoring seeded order.
+    await moveDownButtons.first().click()
+    await expect(removeButtons.first()).toHaveAttribute('aria-label', `Remove ${namesBefore[0]}`)
+
+    const namesRestored = await removeButtons.evaluateAll(els =>
+      els.map(el => el.getAttribute('aria-label')?.replace(/^Remove /, '') ?? '')
+    )
+    expect(namesRestored).toEqual(namesBefore)
+  })
+
   test('away period save shows confirmation banner', async ({ page }) => {
     await page.goto('/run-config')
     await page.waitForLoadState('load')

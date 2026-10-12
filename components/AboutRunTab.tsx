@@ -108,8 +108,8 @@ export default function AboutRunTab({
 
   const summaryRow = (label: string, value: string) => (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</span>
-      <span className="text-sm text-gray-900">{value || '—'}</span>
+      <span className="font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted">{label}</span>
+      <span className="text-sm text-ink">{value || '—'}</span>
     </div>
   )
 
@@ -135,9 +135,9 @@ export default function AboutRunTab({
     <div className="p-4 flex flex-col gap-4">
       {/* Publish / draft status card (#353) — first so leaders see run state
           before touching any identity or profile field. */}
-      <div className="bg-white rounded-xl p-4 flex flex-col gap-3 shadow-sm">
-        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Run status</h2>
-        <p className="text-sm text-gray-600">
+      <div className="bg-card border border-line p-4 flex flex-col gap-3">
+        <h2 className="font-display uppercase tracking-[0.12em] text-[11px] font-medium text-ink">Run status</h2>
+        <p className="text-sm text-muted">
           {status === 'live'
             ? 'This run is live. Runners can see it and request to join.'
             : 'This run is a draft. You can see it, but runners cannot join yet.'}
@@ -147,7 +147,7 @@ export default function AboutRunTab({
           type="button"
           onClick={handleStatusToggle}
           disabled={isStatusPending}
-          className="bg-orange-600 text-white rounded-xl py-3 font-bold text-sm disabled:opacity-50 touch-manipulation"
+          className="bg-ink text-white py-3 font-display uppercase tracking-[0.1em] text-[11px] font-medium disabled:opacity-50 touch-manipulation"
         >
           {isStatusPending
             ? 'Saving…'
@@ -159,8 +159,8 @@ export default function AboutRunTab({
 
       {/* Identity fields — editable (#348). Leaders are managed in the Roster tab
           and remain read-only here. */}
-      <div className="bg-white rounded-xl p-4 flex flex-col gap-3 shadow-sm">
-        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">At a glance</h2>
+      <div className="bg-card border border-line p-4 flex flex-col gap-3">
+        <h2 className="font-display uppercase tracking-[0.12em] text-[11px] font-medium text-ink">At a glance</h2>
         <RunIdentityFields
           values={identityValues}
           onChange={patch => setIdentityValues(prev => ({ ...prev, ...patch }))}
@@ -168,16 +168,16 @@ export default function AboutRunTab({
         {summaryRow('Leaders', leaderNames)}
       </div>
 
-      <div className="bg-white rounded-xl p-4 flex flex-col gap-4 shadow-sm">
+      <div className="bg-card border border-line p-4 flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <label htmlFor="run-kind" className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+          <label htmlFor="run-kind" className="font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted">
             Kind of run
           </label>
           <select
             id="run-kind"
             value={kind}
             onChange={e => setKind(e.target.value)}
-            className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 touch-manipulation"
+            className="bg-card border border-line px-3 py-2 text-sm text-ink touch-manipulation"
           >
             {/* Placeholder shown only until a kind is chosen (runs.kind may start empty). */}
             {!(RUN_KINDS as readonly string[]).includes(kind) && (
@@ -191,7 +191,7 @@ export default function AboutRunTab({
 
         {isWorkout && (
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+            <span className="font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted">
               Workout types offered
             </span>
             <div className="grid grid-cols-2 gap-2">
@@ -203,10 +203,10 @@ export default function AboutRunTab({
                     type="button"
                     aria-pressed={on}
                     onClick={() => toggleType(type)}
-                    className={`rounded-lg px-3 py-2 text-sm font-semibold border touch-manipulation ${
+                    className={`font-display uppercase tracking-[0.1em] text-[11px] font-medium px-3 py-1.5 border touch-manipulation ${
                       on
-                        ? 'bg-orange-50 border-orange-600 text-orange-700'
-                        : 'bg-gray-50 border-gray-200 text-gray-500'
+                        ? 'bg-ink text-white border-ink'
+                        : 'bg-transparent text-ink border-line'
                     }`}
                   >
                     {type}
@@ -220,12 +220,12 @@ export default function AboutRunTab({
         {/* Cycle cadence (#323) — only Workout runs schedule a workout-type cadence,
             and its slot choices are the types offered above. */}
         {isWorkout && (
-          <div className="flex flex-col gap-3 border-t border-gray-100 pt-4">
+          <div className="flex flex-col gap-3 border-t border-line pt-4">
             <div className="flex flex-col gap-2">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+              <span className="font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted">
                 Workout-type cycle
               </span>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted">
                 Auto-fills each new week&apos;s workout type when the schedule is generated.
               </p>
               <div className="grid grid-cols-2 gap-2">
@@ -240,10 +240,10 @@ export default function AboutRunTab({
                       type="button"
                       aria-pressed={on}
                       onClick={() => setCycleMode(mode)}
-                      className={`rounded-lg px-3 py-2 text-sm font-semibold border touch-manipulation ${
+                      className={`font-display uppercase tracking-[0.1em] text-[11px] font-medium px-3 py-1.5 border touch-manipulation ${
                         on
-                          ? 'bg-orange-50 border-orange-600 text-orange-700'
-                          : 'bg-gray-50 border-gray-200 text-gray-500'
+                          ? 'bg-ink text-white border-ink'
+                          : 'bg-transparent text-ink border-line'
                       }`}
                     >
                       {label}
@@ -256,7 +256,7 @@ export default function AboutRunTab({
             {cycleMode === 'week_of_month' && (
               <div className="flex flex-col gap-3">
                 {workoutTypes.length === 0 && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted">
                     Turn on some workout types above to assign them to weeks.
                   </p>
                 )}
@@ -265,10 +265,10 @@ export default function AboutRunTab({
                   const selected = slotTypes[key] ?? []
                   return (
                     <div key={key} className="flex flex-col gap-1.5">
-                      <span className="text-xs font-semibold text-gray-700">
+                      <span className="font-display uppercase tracking-[0.1em] text-[10px] font-medium text-ink">
                         {ORDINALS[slot]} {identityValues.dayOfWeek}
                         {slot === 5 && (
-                          <span className="font-normal text-gray-400"> (some months)</span>
+                          <span className="font-normal normal-case text-muted"> (some months)</span>
                         )}
                       </span>
                       <div className="flex flex-wrap gap-1.5">
@@ -280,10 +280,10 @@ export default function AboutRunTab({
                               type="button"
                               aria-pressed={on}
                               onClick={() => toggleSlotType(key, type)}
-                              className={`rounded-full px-3 py-1 text-xs font-semibold border touch-manipulation ${
+                              className={`font-display uppercase tracking-[0.1em] text-[11px] font-medium px-3 py-1.5 border touch-manipulation ${
                                 on
-                                  ? 'bg-orange-50 border-orange-600 text-orange-700'
-                                  : 'bg-gray-50 border-gray-200 text-gray-500'
+                                  ? 'bg-ink text-white border-ink'
+                                  : 'bg-transparent text-ink border-line'
                               }`}
                             >
                               {type}
@@ -303,7 +303,7 @@ export default function AboutRunTab({
         <button
           onClick={handleSave}
           disabled={isPending}
-          className="bg-orange-600 text-white rounded-xl py-3 font-bold text-sm disabled:opacity-50 touch-manipulation"
+          className="bg-ink text-white py-3 font-display uppercase tracking-[0.1em] text-[11px] font-medium disabled:opacity-50 touch-manipulation"
         >
           {saved ? 'Saved!' : isPending ? 'Saving…' : 'Save changes'}
         </button>

@@ -113,12 +113,12 @@ export default function RosterTab({
   return (
     <div className="p-4 flex flex-col gap-4">
       {banner && (
-        <div className={`border rounded-xl px-4 py-3 text-sm font-semibold whitespace-pre-line ${banner.isWarning ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-green-50 border-green-200 text-green-800'}`}>{banner.message}</div>
+        <div className={`border px-4 py-3 text-sm whitespace-pre-line ${banner.isWarning ? 'bg-ink text-white border-ink' : 'bg-surface text-ink border-line'}`}>{banner.message}</div>
       )}
 
       <div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Rotation order</p>
-        <div className="bg-white rounded-xl overflow-hidden shadow-sm divide-y divide-gray-100">
+        <p className="font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted mb-2">Rotation order</p>
+        <div className="bg-card border border-line overflow-hidden divide-y divide-line">
           {leaders.map((l, idx) => {
             const badge = awayBadgeText(l.awayPeriods)
             const isOpen = openAwayId === l.id
@@ -126,67 +126,67 @@ export default function RosterTab({
             return (
               <div key={l.id}>
                 <div className="flex items-center gap-2 px-3 py-2.5">
-                  <span className="text-xs font-bold text-gray-300 w-4 text-center">{idx + 1}</span>
+                  <span className="text-xs font-bold text-muted w-4 text-center">{idx + 1}</span>
                   <div className="flex flex-col gap-0.5">
                     <button
                       onClick={() => moveLeader(idx, -1)}
                       disabled={idx === 0}
-                      className="text-gray-300 text-xs leading-none disabled:opacity-20 touch-manipulation"
+                      className="text-muted text-xs leading-none disabled:opacity-20 active:text-ink touch-manipulation"
                       aria-label="Move up"
                     >▲</button>
                     <button
                       onClick={() => moveLeader(idx, 1)}
                       disabled={idx === leaders.length - 1}
-                      className="text-gray-300 text-xs leading-none disabled:opacity-20 touch-manipulation"
+                      className="text-muted text-xs leading-none disabled:opacity-20 active:text-ink touch-manipulation"
                       aria-label="Move down"
                     >▼</button>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-500 shrink-0">
+                  <div className="w-8 h-8 bg-surface border border-line flex items-center justify-center text-sm font-bold text-ink shrink-0">
                     {l.name[0]}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-gray-900 flex items-center gap-1 flex-wrap">
+                    <div className="text-sm font-semibold text-ink flex items-center gap-1 flex-wrap">
                       {l.name}
-                      {l.clerkUserId === currentUserId && <span className="text-[9px] bg-green-50 text-green-600 font-bold px-1.5 py-0.5 rounded">you</span>}
-                      {badge && <span className="text-[9px] bg-yellow-50 text-yellow-700 font-bold px-1.5 py-0.5 rounded">{badge}</span>}
+                      {l.clerkUserId === currentUserId && <span className="text-[9px] bg-ink text-white font-display uppercase tracking-[0.1em] px-1.5 py-0.5">you</span>}
+                      {badge && <span className="text-[9px] border border-line text-muted font-display uppercase tracking-[0.08em] px-1.5 py-0.5">{badge}</span>}
                     </div>
-                    {l.email && <div className="text-xs text-gray-400">{l.email}</div>}
+                    {l.email && <div className="text-xs text-muted">{l.email}</div>}
                   </div>
                   <div className="flex gap-1.5 shrink-0">
                     <button
                       onClick={() => { setOpenAwayId(isOpen ? null : l.id); setNewFrom(''); setNewTo('') }}
-                      className={`text-[10px] font-bold border rounded-md px-2 py-1 touch-manipulation ${isOpen ? 'border-yellow-300 text-yellow-700 bg-yellow-50' : 'border-gray-200 text-gray-500 bg-white'}`}
+                      className={`font-display uppercase tracking-[0.1em] text-[11px] font-medium border px-3 py-1.5 touch-manipulation ${isOpen ? 'bg-ink text-white border-ink' : 'bg-transparent border-line text-muted'}`}
                     >Away{isOpen ? ' ▾' : ''}</button>
                     <button
                       onClick={() => handleRemove(l.id, l.name)}
-                      className="w-6 h-6 rounded-full bg-red-50 text-orange-600 flex items-center justify-center text-sm touch-manipulation"
+                      className="w-6 h-6 border border-line text-ink active:bg-surface flex items-center justify-center text-sm touch-manipulation"
                       aria-label={`Remove ${l.name}`}
                     >×</button>
                   </div>
                 </div>
                 {isOpen && (
-                  <div className="bg-yellow-50 border-t border-yellow-100 px-3 py-3 flex flex-col gap-2">
+                  <div className="bg-surface border-t border-line px-3 py-3 flex flex-col gap-2">
                     {future.map((p, pi) => (
-                      <div key={pi} className="flex justify-between items-center bg-white rounded-lg px-3 py-2 border border-yellow-200 text-xs">
-                        <span className="font-semibold text-yellow-800">{p.from} – {p.to}</span>
+                      <div key={pi} className="flex justify-between items-center bg-card border border-line px-3 py-2 text-xs">
+                        <span className="font-semibold text-ink">{p.from} – {p.to}</span>
                         <button
                           onClick={() => startTransition(async () => { try { await removeAwayPeriod(l.id, l.awayPeriods.indexOf(p)); setLeaders(prev => prev.map(r => r.id === l.id ? { ...r, awayPeriods: r.awayPeriods.filter((_, i) => i !== r.awayPeriods.indexOf(p)) } : r)) } catch(e) { Sentry.captureException(e) } })}
-                          className="text-yellow-700 font-bold touch-manipulation"
+                          className="text-ink active:text-muted font-bold touch-manipulation"
                           aria-label={`Remove away period ${p.from} to ${p.to}`}
                         >Remove</button>
                       </div>
                     ))}
                     <div className="flex gap-2 items-center">
-                      <label htmlFor={`away-from-${l.id}`} className="text-[10px] font-bold text-yellow-800 w-8">From</label>
-                      <input id={`away-from-${l.id}`} type="date" value={newFrom} onChange={e => setNewFrom(e.target.value)} className="flex-1 bg-white border border-yellow-200 rounded-lg px-2 py-1.5 text-xs touch-manipulation" />
+                      <label htmlFor={`away-from-${l.id}`} className="text-[10px] font-medium text-muted w-8">From</label>
+                      <input id={`away-from-${l.id}`} type="date" value={newFrom} onChange={e => setNewFrom(e.target.value)} className="flex-1 bg-card border border-line px-2 py-1.5 text-xs text-ink touch-manipulation" />
                     </div>
                     <div className="flex gap-2 items-center">
-                      <label htmlFor={`away-to-${l.id}`} className="text-[10px] font-bold text-yellow-800 w-8">To</label>
-                      <input id={`away-to-${l.id}`} type="date" value={newTo} onChange={e => setNewTo(e.target.value)} className="flex-1 bg-white border border-yellow-200 rounded-lg px-2 py-1.5 text-xs touch-manipulation" />
+                      <label htmlFor={`away-to-${l.id}`} className="text-[10px] font-medium text-muted w-8">To</label>
+                      <input id={`away-to-${l.id}`} type="date" value={newTo} onChange={e => setNewTo(e.target.value)} className="flex-1 bg-card border border-line px-2 py-1.5 text-xs text-ink touch-manipulation" />
                     </div>
                     <div className="flex gap-2 justify-end">
-                      <button onClick={() => setOpenAwayId(null)} className="bg-white border border-yellow-200 text-yellow-800 rounded-lg px-3 py-1.5 text-xs font-bold touch-manipulation">Cancel</button>
-                      <button onClick={() => handleSaveAway(l.id)} disabled={isPending || !newFrom || !newTo} className="bg-yellow-600 text-white rounded-lg px-3 py-1.5 text-xs font-bold disabled:opacity-50 touch-manipulation">Save away period</button>
+                      <button onClick={() => setOpenAwayId(null)} className="bg-card border border-line text-ink px-3 py-1.5 font-display uppercase tracking-[0.1em] text-[10px] font-medium touch-manipulation">Cancel</button>
+                      <button onClick={() => handleSaveAway(l.id)} disabled={isPending || !newFrom || !newTo} className="bg-ink text-white py-1.5 px-3 font-display uppercase tracking-[0.1em] text-[11px] font-medium disabled:opacity-50 touch-manipulation">Save away period</button>
                     </div>
                   </div>
                 )}
@@ -196,24 +196,24 @@ export default function RosterTab({
         </div>
       </div>
 
-      <div className="bg-white rounded-xl p-4 shadow-sm">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Add leader</p>
+      <div className="bg-card border border-line p-4">
+        <p className="font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted mb-2">Add leader</p>
         <div className="flex gap-2">
           <input
             type="email"
             value={newEmail}
             onChange={e => { setNewEmail(e.target.value); setAddError(null) }}
             placeholder="Email address…"
-            className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm touch-manipulation"
+            className="flex-1 bg-card border border-line px-3 py-2 text-sm text-ink placeholder:text-muted touch-manipulation"
           />
           <button
             onClick={handleAddLeader}
             disabled={isPending || !newEmail.trim()}
-            className="bg-orange-600 text-white rounded-lg px-3 py-2 text-sm font-bold disabled:opacity-50 touch-manipulation"
+            className="bg-ink text-white px-3 py-2 font-display uppercase tracking-[0.1em] text-[11px] font-medium disabled:opacity-50 touch-manipulation"
           >Add</button>
         </div>
         {addError && <p className="mt-2 text-xs font-medium text-red-600">{addError}</p>}
-        <p className="mt-2 text-[11px] text-gray-400 leading-snug">A leader must have signed in at least once before they can be added.</p>
+        <p className="mt-2 text-[11px] text-muted leading-snug">A leader must have signed in at least once before they can be added.</p>
       </div>
     </div>
   )

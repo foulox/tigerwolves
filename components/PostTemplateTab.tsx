@@ -86,8 +86,8 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
   function makeChip(key: string): HTMLSpanElement {
     const span = document.createElement('span')
     span.className =
-      'chip inline-flex items-center gap-1 align-baseline bg-orange-100 text-orange-700 ' +
-      'border border-orange-200 rounded-md pl-2 pr-1 py-0.5 text-xs font-bold whitespace-nowrap ' +
+      'chip inline-flex items-center gap-1 align-baseline bg-surface text-ink ' +
+      'border border-line pl-2 pr-1 py-0.5 text-xs font-bold whitespace-nowrap ' +
       'select-none touch-manipulation'
     span.setAttribute('contenteditable', 'false')
     span.setAttribute('data-key', key)
@@ -99,7 +99,7 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
     x.type = 'button'
     x.textContent = '✕'
     x.className =
-      'x inline-flex items-center justify-center w-4 h-4 rounded-full bg-black/10 ' +
+      'x inline-flex items-center justify-center w-4 h-4 bg-ink/10 ' +
       'text-[10px] leading-none touch-manipulation'
     x.setAttribute('aria-label', `Remove ${FIELD_LABEL.get(key) ?? key} field`)
     x.addEventListener('mousedown', ev => {
@@ -216,9 +216,9 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
   return (
     <div className="p-4 flex flex-col gap-4">
       {/* Editor card */}
-      <div className="bg-white rounded-xl p-4 flex flex-col gap-3 shadow-sm">
-        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
-          Template <span className="normal-case font-semibold text-gray-300">— type freely, ✕ a chip to remove</span>
+      <div className="bg-card border border-line p-4 flex flex-col gap-3">
+        <div className="font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted">
+          Template <span className="normal-case text-muted">— type freely, ✕ a chip to remove</span>
         </div>
 
         <div
@@ -231,7 +231,7 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
           onInput={syncTokens}
           onKeyUp={saveSelection}
           onMouseUp={saveSelection}
-          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-gray-50 whitespace-pre-wrap outline-none min-h-[220px] leading-loose focus:bg-white focus:border-orange-200 touch-manipulation"
+          className="border border-line px-3 py-2.5 text-sm text-ink bg-card whitespace-pre-wrap outline-none min-h-[220px] leading-loose focus:border-ink touch-manipulation"
         />
 
         {/* Insert field menu */}
@@ -244,15 +244,15 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
               saveSelection()
             }}
             onClick={() => setInsertOpen(o => !o)}
-            className="inline-flex items-center gap-1.5 border border-orange-600 text-orange-600 font-bold text-sm rounded-lg px-3 py-2 touch-manipulation"
+            className="inline-flex items-center gap-1.5 border border-ink text-ink rounded-none font-display uppercase tracking-[0.1em] text-[11px] font-medium px-3 py-2 touch-manipulation"
           >
             ＋ Insert field ▾
           </button>
           {insertOpen && (
-            <div className="absolute z-20 left-0 top-full mt-1.5 min-w-[220px] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+            <div className="absolute z-20 left-0 top-full mt-1.5 min-w-[220px] bg-card border border-line shadow-lg overflow-hidden">
               {INSERT_MENU.map(group => (
                 <div key={group.source}>
-                  <div className="px-3 pt-2 pb-1 text-[9.5px] font-bold uppercase tracking-wide text-gray-400 bg-gray-50">
+                  <div className="px-3 pt-2 pb-1 font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted bg-surface">
                     {group.source}
                   </div>
                   {group.fields.map(field => (
@@ -264,11 +264,11 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
                         setInsertOpen(false)
                         insertChipAtCaret(field.key)
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left border-t border-gray-100 first:border-t-0 hover:bg-orange-50 touch-manipulation"
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left border-t border-line first:border-t-0 active:bg-surface touch-manipulation"
                     >
                       {field.affix && <span>{field.affix}</span>}
                       <span>{field.label}</span>
-                      <span className="ml-auto text-[10px] font-bold text-gray-400">{field.source}</span>
+                      <span className="ml-auto text-[10px] font-medium text-muted">{field.source}</span>
                     </button>
                   ))}
                 </div>
@@ -283,35 +283,35 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
           type="button"
           onClick={handleSave}
           disabled={isPending}
-          className="bg-orange-600 text-white rounded-xl py-3 font-bold text-sm disabled:opacity-50 touch-manipulation"
+          className="bg-ink text-white py-3 font-display uppercase tracking-[0.1em] text-[11px] font-medium disabled:opacity-50 touch-manipulation"
         >
           {saved ? 'Saved!' : isPending ? 'Saving…' : 'Save template'}
         </button>
       </div>
 
       {/* Preview-with band */}
-      <div className="bg-orange-50 border border-dashed border-orange-200 rounded-xl p-3 flex flex-col gap-2">
-        <div className="text-[11px] font-bold text-orange-700 uppercase tracking-wide">
+      <div className="bg-surface border border-dashed border-line p-3 flex flex-col gap-2">
+        <div className="font-display uppercase tracking-[0.1em] text-[10px] font-medium text-ink">
           Preview with…
         </div>
         <div className="relative" data-picker-menu>
           <button
             type="button"
             onClick={() => setPickerOpen(o => !o)}
-            className="w-full flex items-center justify-between border border-gray-200 rounded-lg bg-white px-3 py-2.5 text-sm text-gray-900 touch-manipulation"
+            className="w-full flex items-center justify-between border border-line bg-card px-3 py-2.5 text-sm text-ink touch-manipulation"
           >
-            <span className={picked ? '' : 'text-gray-400'}>
+            <span className={picked ? '' : 'text-muted'}>
               {picked ? picked.name : `Choose from ${category}…`}
             </span>
             <span>▾</span>
           </button>
           {pickerOpen && (
-            <div className="absolute z-20 left-0 right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-h-72 overflow-y-auto">
-              <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-gray-400 bg-gray-50 sticky top-0">
+            <div className="absolute z-20 left-0 right-0 top-full mt-1.5 bg-card border border-line shadow-lg overflow-hidden max-h-72 overflow-y-auto">
+              <div className="px-3 py-2 font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted bg-surface sticky top-0">
                 📚 Library · {category}
               </div>
               {records.length === 0 ? (
-                <div className="px-3 py-3 text-sm text-gray-400">No records in this library.</div>
+                <div className="px-3 py-3 text-sm text-muted">No records in this library.</div>
               ) : (
                 records.map(rec => (
                   <button
@@ -321,10 +321,10 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
                       setPicked(rec)
                       setPickerOpen(false)
                     }}
-                    className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm text-left border-t border-gray-100 hover:bg-orange-50 touch-manipulation"
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm text-left border-t border-line active:bg-surface touch-manipulation"
                   >
                     <span>{rec.name}</span>
-                    <span className="text-gray-400 text-xs whitespace-nowrap">{rec.subtitle}</span>
+                    <span className="text-muted text-xs whitespace-nowrap">{rec.subtitle}</span>
                   </button>
                 ))
               )}
@@ -335,7 +335,7 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
           type="button"
           onClick={handleGenerate}
           disabled={!picked}
-          className="w-full bg-orange-600 text-white rounded-lg py-2.5 font-bold text-sm disabled:opacity-40 touch-manipulation"
+          className="w-full bg-ink text-white py-2.5 font-display uppercase tracking-[0.1em] text-[11px] font-medium disabled:opacity-40 touch-manipulation"
         >
           Generate preview
         </button>
@@ -343,13 +343,13 @@ export default function PostTemplateTab({ runConfig, nextEntry, roster, variants
 
       {/* Live preview */}
       <div className="flex flex-col gap-2">
-        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Live preview</div>
+        <div className="font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted">Live preview</div>
         {preview === null ? (
-          <div className="bg-white rounded-xl px-4 py-5 text-center text-sm text-gray-400 shadow-sm">
+          <div className="bg-card border border-line px-4 py-5 text-center text-sm text-muted">
             Pick a record and tap <b>Generate preview</b> to see the resolved post.
           </div>
         ) : (
-          <div className="bg-white rounded-xl p-4 text-sm text-gray-900 whitespace-pre-wrap shadow-sm">
+          <div className="bg-card border border-line p-4 text-sm text-ink whitespace-pre-wrap">
             {preview}
           </div>
         )}
