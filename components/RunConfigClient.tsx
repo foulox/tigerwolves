@@ -21,7 +21,7 @@ export default function RunConfigClient({ runConfig, runLeaders, currentUserId, 
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 py-2.5 whitespace-nowrap touch-manipulation font-display uppercase tracking-[0.08em] text-[11px] sm:text-xs font-medium ${tab === t ? 'text-ink border-b-2 border-ink' : 'text-muted'}`}
+            className={`flex-1 flex items-center justify-center text-center py-2.5 px-1.5 leading-tight touch-manipulation font-display uppercase tracking-[0.04em] text-[10px] sm:text-xs font-medium ${tab === t ? 'text-ink border-b-2 border-ink' : 'text-muted'}`}
           >
             {TAB_LABELS[t]}
           </button>
