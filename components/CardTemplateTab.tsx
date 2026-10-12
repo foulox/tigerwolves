@@ -263,7 +263,7 @@ function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, 
           aria-label={`Align ${label} left`}
           aria-pressed={align === 'left'}
           onClick={() => onAlign('left')}
-          className={`touch-manipulation text-[9px] font-medium border border-line px-1 py-0.5 ${align === 'left' ? 'bg-ink text-white' : 'text-muted active:bg-surface'}`}
+          className={`touch-manipulation text-[9px] font-medium border px-1 py-0.5 ${align === 'left' ? 'bg-ink text-white border-ink' : 'text-muted active:bg-surface border-line'}`}
         >
           ←L
         </button>
@@ -272,7 +272,7 @@ function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, 
           aria-label={`Align ${label} right`}
           aria-pressed={align === 'right'}
           onClick={() => onAlign('right')}
-          className={`touch-manipulation text-[9px] font-medium border border-line px-1 py-0.5 ${align === 'right' ? 'bg-ink text-white' : 'text-muted active:bg-surface'}`}
+          className={`touch-manipulation text-[9px] font-medium border px-1 py-0.5 ${align === 'right' ? 'bg-ink text-white border-ink' : 'text-muted active:bg-surface border-line'}`}
         >
           R→
         </button>
