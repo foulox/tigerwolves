@@ -6,6 +6,7 @@ import { pickerRecordsForRun, type PickerRecord } from '@/lib/libraryPicker'
 import type { CardTemplate, WorkoutVariantRow, ScheduleEntry, RunConfig } from '@/lib/data'
 import { formatDateMedium } from '@/lib/postBuilder'
 import { formatDateShort } from '@/lib/dateUtils'
+import { filterChip } from '@/lib/cardStyles'
 
 type Surface = 'myplan' | 'schedule' | 'library'
 
@@ -55,16 +56,16 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
           onClick={() => setPickerOpen(o => !o)}
           aria-label="Choose a workout to preview"
           aria-expanded={pickerOpen}
-          className="w-full flex items-center justify-between border border-gray-200 rounded-lg bg-white px-3 py-2.5 text-sm text-gray-900 touch-manipulation"
+          className="w-full flex items-center justify-between border border-line bg-card px-3 py-2.5 text-sm text-ink touch-manipulation"
         >
-          <span className={picked ? '' : 'text-gray-400'}>
+          <span className={picked ? '' : 'text-muted'}>
             {picked ? picked.name : 'Choose a workout…'}
           </span>
           <span aria-hidden>▾</span>
         </button>
         {pickerOpen && (
-          <div className="absolute z-20 left-0 right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-h-72 overflow-y-auto">
-            <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-gray-400 bg-gray-50 sticky top-0">
+          <div className="absolute z-20 left-0 right-0 top-full mt-1.5 bg-card border border-line shadow-lg overflow-hidden max-h-72 overflow-y-auto">
+            <div className="px-3 py-2 font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted bg-surface sticky top-0">
               Preview with…
             </div>
             {records.map(rec => (
@@ -76,10 +77,10 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
                   setPickerOpen(false)
                   setExpanded(false)
                 }}
-                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm text-left border-t border-gray-100 hover:bg-orange-50 touch-manipulation"
+                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm text-left border-t border-line active:bg-surface touch-manipulation"
               >
                 <span>{rec.name}</span>
-                <span className="text-gray-400 text-xs whitespace-nowrap">{rec.subtitle}</span>
+                <span className="text-muted text-xs whitespace-nowrap">{rec.subtitle}</span>
               </button>
             ))}
           </div>
@@ -95,11 +96,7 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
               key={s}
               type="button"
               onClick={() => { setSurface(s); setExpanded(false) }}
-              className={`flex-1 text-center text-xs font-bold py-1.5 px-1 rounded-lg border touch-manipulation transition-colors ${
-                surface === s
-                  ? 'bg-orange-600 border-orange-600 text-white'
-                  : 'bg-white border-gray-200 text-gray-600'
-              }`}
+              className={`flex-1 text-center ${filterChip(surface === s)}`}
             >
               {label}
             </button>
@@ -111,22 +108,22 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
           horizontal/bottom padding as the real cards (MyPlanCard/LibraryClient
           mount WorkoutCardBody inside their own p-4). */}
       {w && (
-        <div className="rounded-2xl shadow-sm border border-line bg-card overflow-hidden">
+        <div className="border border-line bg-card overflow-hidden">
           <div className="p-4">
             {surface === 'myplan' && (
               <>
                 {/* Run identity line */}
-                <div className="inline-flex items-center gap-1 text-xs font-bold tracking-wide text-accent">
+                <div className="inline-flex items-center gap-1 font-display uppercase tracking-[0.1em] text-[11px] font-medium text-ink">
                   {runConfig.emoji ? `${runConfig.emoji} ` : ''}{runConfig.name}
                   <span aria-hidden>›</span>
                 </div>
                 {/* Date + type pill */}
                 <div className="mt-1 flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-muted">{dateLabel}</div>
-                    <div className="mt-0.5 truncate text-base font-bold text-ink">{w.name}</div>
+                    <div className="text-sm text-muted">{dateLabel}</div>
+                    <div className="mt-0.5 truncate text-base font-display font-normal text-ink">{w.name}</div>
                   </div>
-                  <span className="shrink-0 whitespace-nowrap rounded-full bg-rose-50 border border-rose-200 px-2.5 py-1 text-xs font-semibold text-rose-800">
+                  <span className="shrink-0 whitespace-nowrap border border-line font-display uppercase tracking-[0.1em] text-[10px] font-medium text-muted px-2 py-1">
                     {w.type}
                   </span>
                 </div>
@@ -135,9 +132,9 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
 
             {surface === 'schedule' && (
               <>
-                <div className="text-sm font-bold text-ink mb-1">Currently planned</div>
+                <div className="font-display uppercase tracking-[0.12em] text-[11px] font-medium text-ink mb-1">Currently planned</div>
                 <div className="flex justify-between items-start gap-2">
-                  <div className="font-semibold text-ink">{w.name}</div>
+                  <div className="font-display font-normal text-ink">{w.name}</div>
                   <span className="text-xs text-muted shrink-0">
                     {w.lastRan ? formatDateShort(new Date(w.lastRan + 'T00:00:00')) : 'Never'}
                   </span>
@@ -149,8 +146,8 @@ export default function CardLayoutPreview({ template, variants, runConfig, nextE
             {surface === 'library' && (
               <>
                 <div className="flex justify-between items-start gap-2">
-                  <div className="font-semibold text-ink">{w.name}</div>
-                  <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-1 rounded-full shrink-0">
+                  <div className="font-display font-normal text-ink">{w.name}</div>
+                  <span className="font-display uppercase tracking-[0.1em] text-[10px] font-medium border border-line text-muted px-2 py-1 shrink-0">
                     {w.type}
                   </span>
                 </div>
