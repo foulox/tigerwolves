@@ -265,6 +265,7 @@ function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, 
         <button
           type="button"
           aria-label={`Align ${label} left`}
+          aria-pressed={align === 'left'}
           onClick={() => onAlign('left')}
           className={`touch-manipulation text-[9px] font-bold rounded px-1 py-0.5 ${align === 'left' ? 'bg-orange-200 text-orange-800' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
         >
@@ -273,6 +274,7 @@ function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, 
         <button
           type="button"
           aria-label={`Align ${label} right`}
+          aria-pressed={align === 'right'}
           onClick={() => onAlign('right')}
           className={`touch-manipulation text-[9px] font-bold rounded px-1 py-0.5 ${align === 'right' ? 'bg-orange-200 text-orange-800' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
         >
