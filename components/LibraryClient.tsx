@@ -15,7 +15,7 @@ import { resolveAllowedTypes } from '@/lib/runProfile'
 import RatingFilter from '@/components/RatingFilter'
 import { passesRatingThreshold, rankByRating } from '@/lib/rating'
 import type { RatingThreshold } from '@/lib/rating'
-import { CARD_LINK, TYPE_LABEL, CARD_NAME } from '@/lib/cardStyles'
+import { CARD_LINK, TYPE_LABEL, CARD_NAME, filterChip, SEARCH_FIELD, SEARCH_INPUT, SQUARE_LABEL } from '@/lib/cardStyles'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -191,13 +191,14 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
         <div className="flex items-center gap-2" data-tour="library-manage">
           <button
             onClick={() => setShowAbbrev(v => !v)}
-            className="w-8 h-8 flex items-center justify-center rounded-full border border-line text-muted text-xs font-bold touch-manipulation"
+            className="w-8 h-8 flex items-center justify-center border border-line text-muted text-xs font-bold touch-manipulation"
             title="Abbreviation key"
+            aria-label="Abbreviation key"
           >
             ?
           </button>
           {isLeader && (
-            <Link href="/library/add" className="w-9 h-9 flex items-center justify-center rounded-full bg-accent text-white text-xl font-bold shadow-sm touch-manipulation">
+            <Link href="/library/add" aria-label="Add workout" className="w-9 h-9 flex items-center justify-center bg-ink text-white text-xl font-bold touch-manipulation">
               +
             </Link>
           )}
@@ -205,7 +206,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
       </div>
 
       {showAbbrev && (
-        <div className="mx-4 mb-4 p-3 bg-surface rounded-xl border border-line">
+        <div className="mx-4 mb-4 p-3 bg-surface border border-line">
           <p className="text-xs font-bold text-ink mb-2">Abbreviation Key</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
             {ABBREVIATIONS.map(({ abbr, meaning }) => (
@@ -224,11 +225,11 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           <>
             <button
               onClick={() => setScope(false)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
+              className={filterChip(!showAllRuns)}
             >Your run</button>
             <button
               onClick={() => setScope(true)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
+              className={filterChip(showAllRuns)}
             >All runs</button>
           </>
         )}
@@ -237,40 +238,40 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
 
       {/* Search */}
       <div className="px-4 mb-3">
-        <div className="relative">
+        <div className={SEARCH_FIELD}>
+          <span className="text-muted text-sm" aria-hidden="true">⌕</span>
           <input
             type="search"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search by name, type, race distance…"
-            className="w-full rounded-xl border border-line bg-card pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-accent"
+            className={SEARCH_INPUT}
           />
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">🔍</span>
         </div>
       </div>
 
       {/* Category filter — available in both "Your run" and "All runs" modes (#401) */}
       <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-        <button onClick={() => setcat(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!category ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>All</button>
+        <button onClick={() => setcat(null)} className={filterChip(!category)}>All</button>
         {CATEGORIES.map(c => (
-          <button key={c} onClick={() => setcat(category === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${category === c ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{c}</button>
+          <button key={c} onClick={() => setcat(category === c ? null : c)} className={filterChip(category === c)}>{c}</button>
         ))}
       </div>
 
       {/* Race type filter */}
       <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-        <button onClick={() => setRaceFilter(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!raceFilter ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>Any race</button>
+        <button onClick={() => setRaceFilter(null)} className={filterChip(!raceFilter)}>Any race</button>
         {RACE_TYPES.map(r => (
-          <button key={r} onClick={() => setRaceFilter(raceFilter === r ? null : r)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${raceFilter === r ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{r}</button>
+          <button key={r} onClick={() => setRaceFilter(raceFilter === r ? null : r)} className={filterChip(raceFilter === r)}>{r}</button>
         ))}
       </div>
 
       {/* Type filter (only when category selected or effective in "Your run" mode) */}
       {effectiveCategory && types.length > 1 && (
         <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: 'none' }}>
-          <button onClick={() => setTypeFilter(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${!typeFilter ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>All types</button>
+          <button onClick={() => setTypeFilter(null)} className={filterChip(!typeFilter)}>All types</button>
           {types.map(t => (
-            <button key={t} onClick={() => setTypeFilter(typeFilter === t ? null : t)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${typeFilter === t ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{t}</button>
+            <button key={t} onClick={() => setTypeFilter(typeFilter === t ? null : t)} className={filterChip(typeFilter === t)}>{t}</button>
           ))}
         </div>
       )}
@@ -279,11 +280,11 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
       <div className="flex items-center gap-2 px-4 pb-2">
         <button
           onClick={() => setSortBy('recent')}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'recent' ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
+          className={filterChip(sortBy === 'recent')}
         >Least recent</button>
         <button
           onClick={() => setSortBy('rating')}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'rating' ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
+          className={filterChip(sortBy === 'rating')}
         >Top rated</button>
       </div>
 
@@ -363,7 +364,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                         }}
                       />
                     )}
-                    <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-0.5">
+                    <span className={SQUARE_LABEL}>
                       {row.total} versions
                     </span>
                     <span className={TYPE_LABEL}>{row.type}</span>
