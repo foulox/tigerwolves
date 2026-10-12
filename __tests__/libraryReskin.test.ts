@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 const src = readFileSync(path.resolve(__dirname, '../components/LibraryClient.tsx'), 'utf8')
 describe('Library reskin (#491)', () => {
-  test('NBR tokens + accent-active present', () => {
+  test('NBR tokens present (v2 monochrome — accent removed, see dead-classes test)', () => {
     for (const t of ['bg-card', 'border-line', 'text-ink', 'text-muted']) expect(src).toContain(t)
   })
   test('orange + gray-900 active + neutral-pill-collapse: dead classes gone', () => {

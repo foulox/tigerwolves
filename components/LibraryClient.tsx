@@ -193,11 +193,12 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
             onClick={() => setShowAbbrev(v => !v)}
             className="w-8 h-8 flex items-center justify-center border border-line text-muted text-xs font-bold touch-manipulation"
             title="Abbreviation key"
+            aria-label="Abbreviation key"
           >
             ?
           </button>
           {isLeader && (
-            <Link href="/library/add" className="w-9 h-9 flex items-center justify-center bg-ink text-white text-xl font-bold touch-manipulation">
+            <Link href="/library/add" aria-label="Add workout" className="w-9 h-9 flex items-center justify-center bg-ink text-white text-xl font-bold touch-manipulation">
               +
             </Link>
           )}
