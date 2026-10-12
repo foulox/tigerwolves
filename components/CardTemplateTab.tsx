@@ -193,7 +193,6 @@ function SectionRows({
                   onMove={dest => setTemplate(moveToField(template, key, dest))}
                   onAlign={a => setTemplate(setAlign(template, key, a))}
                   onSplit={() => setTemplate(splitToNewRow(template, key))}
-                  chipColor={section}
                 />
               ))}
             </div>
@@ -216,10 +215,9 @@ type FieldChipProps = {
   onMove: (dest: 'upfront' | 'expanded' | 'hidden') => void
   onAlign: (align: 'left' | 'right') => void
   onSplit: () => void
-  chipColor: 'upfront' | 'expanded'
 }
 
-function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit, chipColor }: FieldChipProps) {
+function FieldChip({ fieldKey, align, currentSection, onMove, onAlign, onSplit }: FieldChipProps) {
   const label = CARD_FIELD_LABELS[fieldKey]
 
   return (
