@@ -92,7 +92,7 @@ jobs:
     needs: migrate-demo-schema
     runs-on: ubuntu-latest
     env:
-      DEMO_URL: https://demo.tigerwolves.foulox.me
+      DEMO_URL: https://demo.nbr.foulox.me
       DEMO_HOST: ep-ancient-math
     steps:
       - name: Assert the demo is reading demo-data

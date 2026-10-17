@@ -11,7 +11,7 @@ import { isSeedAllowed } from '@/lib/seedFixtures'
 // Server Action write would take (see revalidateAll() in app/actions.ts).
 //
 // Reachable on any non-production deployment (preview/development, including
-// the demo at demo.tigerwolves.foulox.me), hard-off on production. Its only
+// the demo at demo.nbr.foulox.me), hard-off on production. Its only
 // side effect is cache invalidation — no data write, no auth bypass — so
 // preview reachability is safe. VERCEL_ENV is unset in CI e2e (next start
 // runs outside Vercel), which isSeedAllowed treats as allowed, so the

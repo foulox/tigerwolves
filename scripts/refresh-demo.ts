@@ -23,7 +23,7 @@ const DEMO_HOST = 'ep-ancient-math-atvtz5p9'
 const NEON_PROJECT_ID = 'purple-star-02119717'
 const DEMO_BRANCH_ID = 'br-little-rice-at9l08ja'
 const PRODUCTION_BRANCH_ID = 'br-square-river-atjn0mzq'
-const DEMO_URL = 'https://demo.tigerwolves.foulox.me'
+const DEMO_URL = 'https://demo.nbr.foulox.me'
 
 // ── Demo leaders — all must exist in the demo Clerk instance ─────────────────
 // VERIFIED against prod run_leaders rows — use verbatim.

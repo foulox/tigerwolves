@@ -16,11 +16,11 @@
  *
  * Raw SQL does NOT invalidate the Next.js data cache (CLAUDE.md guardrail). Pass
  * REVALIDATE_URL=<app-origin> to POST <origin>/api/e2e-revalidate after the load
- * (e.g. https://tigerwolves.foulox.me or https://demo.tigerwolves.foulox.me).
+ * (e.g. https://nbr.foulox.me or https://demo.nbr.foulox.me).
  *
  * Usage:
  *   DATABASE_URL=<connection-string> npx tsx scripts/seed-mourning-doves.ts --yes
- *   DATABASE_URL=<...> REVALIDATE_URL=https://demo.tigerwolves.foulox.me npx tsx scripts/seed-mourning-doves.ts --yes
+ *   DATABASE_URL=<...> REVALIDATE_URL=https://demo.nbr.foulox.me npx tsx scripts/seed-mourning-doves.ts --yes
  */
 import { neon } from '@neondatabase/serverless'
 import {
