@@ -58,6 +58,15 @@ Target: `tigerwolves` Vercel project, **prod** Clerk instance, production Neon b
    - `tigerwolves.foulox.me` 308-redirects to `nbr.foulox.me`.
 8. **[Lou]** Announce to the ~20 users: "We've moved to nbr.foulox.me — please sign in again."
 
+### As executed (2026-10-16) — read this before any future Clerk domain change
+
+- **Choose "Secondary application" in the Change domain dialog.** It asks *Primary application* (Clerk stays on the root domain: `clerk.foulox.me`, email from `@foulox.me`) vs *Secondary application* (Clerk scoped to the subdomain: `clerk.nbr.foulox.me`, email from `@nbr.foulox.me`). The old `tigerwolves.foulox.me` setup was the Secondary shape. Picking Primary moved Clerk to `foulox.me` and cost a ~45 min sign-in outage until a second Change domain fixed it. Read the bullet points under each option — they name the exact FAPI host.
+- **Pre-add the frontend/accounts CNAMEs before clicking Change domain** (`clerk.<sub>` → `frontend-api.clerk.services`, `accounts.<sub>` → `accounts.clerk.services`) — Clerk verified them within seconds. The **three email CNAMEs get new values on every domain change** (`mail./dkim1./dkim2.<token>.clerk.services`, new token each time); add them after the change, from the dashboard.
+- **Social login with custom credentials:** add `https://clerk.<new-domain>/v1/oauth_callback` (and the app origin) to the Google OAuth client *before* the change. Done; old entries kept until cleanup.
+- **Publishable key is deterministic** — `pk_live_` + base64(`clerk.<domain>$`) with padding stripped — so it can be set in Vercel and redeployed without waiting for the dashboard. Vercel CLI ≥64 refuses `--sensitive` for `NEXT_PUBLIC_*`; use `--type config`.
+- **Redirects** are Vercel per-domain redirects (`PATCH /v9/projects/<p>/domains/<d>` with `redirect`, `redirectStatusCode: 308`). Vercel refuses to redirect a domain that another domain already redirects *to* — retarget the other one first.
+- Prod Google OAuth custom credentials meant the demo dry-run could not rehearse this; Development instances use Clerk's shared credentials.
+
 ---
 
 ## Acceptance criteria
