@@ -25,16 +25,16 @@
 
 ## Phase A — Demo dry-run → `demo.nbr.foulox.me`
 
-Target: `tigerwolves-demo` Vercel project, **demo** Clerk instance, `demo-data` Neon branch.
+Target: `tigerwolves-demo` Vercel project, `tigerwolves-demo` Clerk application (**Development instance only**, `romantic-oriole-1639`, `pk_test_…`), `demo-data` Neon branch.
 
-1. **[Lou]** DNS: add `CNAME demo.nbr.foulox.me → cname.vercel-dns.com`, plus the `clerk.demo.nbr.foulox.me` CNAME Clerk specifies.
-2. **[Lou]** Vercel (`tigerwolves-demo`): add `demo.nbr.foulox.me`, set primary.
-3. **[Lou]** Clerk (**demo instance**): Domains → Danger zone → Change domain → `demo.nbr.foulox.me`; complete DNS/SSL verification.
-4. **[Lou]** Copy the new publishable key → update `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` in `tigerwolves-demo` Vercel env → redeploy.
-5. **[Lou]** Vercel: `demo.tigerwolves.foulox.me` → silent redirect to `demo.nbr.foulox.me`.
-6. **[Claude]** Verify:
+> **Corrected at build time (2026-10-16):** the demo Clerk app has no production instance. Development instances run on Clerk's own `*.accounts.dev` domain — there is no Change domain, no `clerk.` CNAME, and no new publishable key. Phase A therefore rehearses DNS, the Vercel domain, the redirect, and signed-in behavior on a new hostname — **not** the Clerk Change-domain + key swap. Those happen for the first time in Phase B; see the before/after role check there. Creating a demo production instance to rehearse it was considered and rejected: it's a fresh instance (users not carried over), so it rehearses new-instance setup, not Change domain.
+
+1. **[Lou]** Vercel (`tigerwolves-demo`): add `demo.nbr.foulox.me`, set primary.
+2. **[Lou]** DNS: add the record Vercel shows for `demo.nbr.foulox.me` (expected `CNAME → cname.vercel-dns.com`).
+3. **[Lou]** Vercel: `demo.tigerwolves.foulox.me` → silent redirect to `demo.nbr.foulox.me`.
+4. **[Claude]** Verify:
    - `demo.nbr.foulox.me/api/health` → `{ ok: true, dbHost: ep-ancient-math-… }` (demo-data).
-   - Playwright sign-in as `foulox+demo@gmail.com` succeeds; account still has `role: leader`; demo content intact.
+   - Playwright sign-in as `foulox+demo@gmail.com` succeeds on the new hostname; account has `role: leader`; demo content intact; still `pk_test_cm9tYW50aWMtb3Jpb2xl…`.
    - `demo.tigerwolves.foulox.me` 308-redirects to `demo.nbr.foulox.me`.
 
 **Gate:** Phase A passes clean before Phase B is touched.
@@ -46,6 +46,7 @@ Target: `tigerwolves-demo` Vercel project, **demo** Clerk instance, `demo-data` 
 Target: `tigerwolves` Vercel project, **prod** Clerk instance, production Neon branch.
 
 1. **[Lou]** Choose a low-traffic window — never near Tuesday-morning run time.
+   **[Claude]** Baseline before touching anything: Playwright sign-in as the test-leader on `tigerwolves.foulox.me`; record the account's `role` and the current `pk_live_…` key. This is the "before" half of the role-survival check.
 2. **[Lou]** DNS: add `nbr.foulox.me` + `clerk.nbr.foulox.me` CNAMEs.
 3. **[Lou]** Vercel (`tigerwolves`): add `nbr.foulox.me`, set primary.
 4. **[Lou]** Clerk (**prod instance**): Change domain → `nbr.foulox.me`; complete DNS/SSL.
@@ -66,7 +67,7 @@ Target: `tigerwolves` Vercel project, **prod** Clerk instance, production Neon b
 - [ ] `nbr.foulox.me` serves the app on the prod instance; `tigerwolves.foulox.me` redirects to it.
 - [ ] A production leader retains `role: leader` after the prod cutover.
 - [ ] `signInUrl: '/sign-in'` still present in `proxy.ts`; no sign-in loop on either domain.
-- [ ] `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` updated in both Vercel projects; no "Clerk failed to load."
+- [ ] `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` updated in the `tigerwolves` (prod) Vercel project — demo's Development instance has no key change; no "Clerk failed to load" on either domain.
 - [ ] Users announced to after prod cutover.
 
 ## Out of scope
