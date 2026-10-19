@@ -233,7 +233,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   }, [pickerSource, ratingThreshold, sortBy, voteData])
 
   const effectiveBrowseType = !showAllRuns && isWorkout && !browseTypeCleared
-    ? (activeType ?? scheduledTypes[0] ?? null)
+    ? (activeType ?? entry?.workoutType ?? null)
     : null
   const scheduleFilters: ScheduleFilters = {
     showAllRuns,
