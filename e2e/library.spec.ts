@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test'
 
+async function openFilters(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'Filters', exact: false }).first().click()
+  await expect(page.getByRole('dialog', { name: 'Filters' })).toBeVisible()
+}
+
 // #426: fixtures are now a curated subset of REAL production workouts. TigerWolves
 // owns 15 single-variant quality-type families (2 of each type, 1 Threshold) plus
 // one reserved 2-variant family ("Domino Park Loop") for the admin regroup e2e, so
@@ -32,14 +37,18 @@ test('Library "All runs" mode reveals the full shared catalog incl. other runs, 
   await page.waitForLoadState('load')
 
   // Switch to "All runs" — shared catalog, all categories, category selector visible.
+  await openFilters(page)
   await page.getByRole('button', { name: 'All runs', exact: true }).click()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
 
   // Other runs' non-Quality workouts now appear: a Doves Long route + MMER's Easy loop.
   await expect(page.getByText('All The Water Fountains')).toBeVisible()
   await expect(page.getByText('McCarren Easy Loop')).toBeVisible()
 
   // Category selector is now visible in "All runs" mode — filter to Quality.
+  await openFilters(page)
   await page.getByRole('button', { name: 'Quality', exact: true }).click()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
 
   // The Long route and the other run's Easy workout drop out of the Quality-filtered view.
   await expect(page.getByText('All The Water Fountains')).toHaveCount(0)
@@ -59,7 +68,9 @@ test('Library "All runs" mode reveals the full shared catalog incl. other runs, 
 test('Library shows ≥1 workout of every seeded type (#426 per-type coverage)', async ({ page }) => {
   await page.goto('/library')
   await page.waitForLoadState('load')
+  await openFilters(page)
   await page.getByRole('button', { name: 'All runs', exact: true }).click()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
 
   const byType: Record<string, string> = {
     Hills: 'Hills - 2 Sets 7x30s',
@@ -177,7 +188,9 @@ test('Adopt: a route from "All runs" appears in "Your run", marked adopted, and 
   await expect(page.getByText('MMER Threshold Session')).toHaveCount(0)
 
   // Find it under "All runs" and adopt it into our run.
+  await openFilters(page)
   await page.getByRole('button', { name: 'All runs', exact: true }).click()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
   const allRunsCard = page.locator('[data-testid="workout-card"]', { hasText: 'MMER Threshold Session' })
   await expect(allRunsCard).toBeVisible()
   await allRunsCard.getByRole('button', { name: '+ Add to my run' }).click()
@@ -185,7 +198,9 @@ test('Adopt: a route from "All runs" appears in "Your run", marked adopted, and 
   await expect(allRunsCard.getByRole('button', { name: '+ Add to my run' })).toHaveCount(0)
 
   // Switch to "Your run": the adopted route now shows, marked with its creator.
+  await openFilters(page)
   await page.getByRole('button', { name: 'Your run', exact: true }).click()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
   const yourRunCard = page.locator('[data-testid="workout-card"]', { hasText: 'MMER Threshold Session' })
   await expect(yourRunCard).toBeVisible()
   await expect(yourRunCard.getByText(/adopted from MMER/)).toBeVisible()
