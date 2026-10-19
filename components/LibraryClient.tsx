@@ -13,9 +13,16 @@ import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import { resolveAllowedTypes } from '@/lib/runProfile'
 import RatingFilter from '@/components/RatingFilter'
-import { passesRatingThreshold, rankByRating } from '@/lib/rating'
+import { rankByRating } from '@/lib/rating'
 import type { RatingThreshold } from '@/lib/rating'
 import { CARD_LINK, TYPE_LABEL, CARD_NAME, filterChip, SEARCH_FIELD, SEARCH_INPUT, SQUARE_LABEL } from '@/lib/cardStyles'
+import SortControl from '@/components/SortControl'
+import FiltersButton from '@/components/FiltersButton'
+import FilterSheet from '@/components/FilterSheet'
+import {
+  applyLibraryFilters, activeFilterCount, activeFilterSummary, withCategory, withScope,
+  type LibraryFilters,
+} from '@/lib/libraryFilters'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -59,6 +66,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const [showAllRuns, setShowAllRuns] = useState(false)
   const [ratingThreshold, setRatingThreshold] = useState<RatingThreshold>('any')
   const [sortBy, setSortBy] = useState<'recent' | 'rating'>('recent')
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   const flaggedWorkout = flagSheetFor ? variants.find(w => w.id === flagSheetFor) ?? null : null
 
@@ -69,9 +77,10 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   // (anonymous/non-leader views also hit this fallback, runGroupId null).
   const libSet = useMemo(() => new Set(libraryFamilyIds), [libraryFamilyIds])
   const inYourRun = !!runId && !showAllRuns
-  const visibleVariants = inYourRun && runGroupId != null
-    ? variants.filter(w => libSet.has(w.familyId))
-    : variants
+  const visibleVariants = useMemo(
+    () => inYourRun && runGroupId != null ? variants.filter(w => libSet.has(w.familyId)) : variants,
+    [inYourRun, runGroupId, variants, libSet]
+  )
 
   // Only leaders who actually lead a reconciled run (non-null group → real membership)
   // see adopt/remove affordances (AC5/AC8). An unreconciled run falls back to the full
@@ -99,17 +108,12 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   // by the category state directly (no per-run pinning).
   const effectiveCategory = category
 
-  const q = search.toLowerCase()
-  function matchesSearch(w: WorkoutVariantRow) {
-    if (!q) return true
-    return (
-      w.name.toLowerCase().includes(q) ||
-      w.type.toLowerCase().includes(q) ||
-      (w.label ?? '').toLowerCase().includes(q) ||
-      w.reason.toLowerCase().includes(q) ||
-      w.raceTypes.some(r => r.toLowerCase().includes(q))
-    )
-  }
+  // Model C: the facet state assembled into one object the shared helpers operate on.
+  const filters: LibraryFilters = { category, type: typeFilter, race: raceFilter, rating: ratingThreshold, showAllRuns }
+  const filterCount = activeFilterCount(filters)
+  const filterSummary = activeFilterSummary(filters)
+
+  const filteredBase = applyLibraryFilters(visibleVariants, filters, search, voteData)
 
   // #322: in "Your run" mode the type-filter options are the run's allowlist
   // (∩ types present); "All runs" mode shows every present type as before. An
@@ -118,14 +122,6 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const types = inYourRun
     ? resolveAllowedTypes(presentTypes, allowedTypes ?? [])
     : Array.from(new Set(presentTypes)).sort()
-
-  const filteredBase = visibleVariants
-    .filter(w => !effectiveCategory || w.category === effectiveCategory)
-    .filter(w => !typeFilter || w.type === typeFilter)
-    .filter(w => !raceFilter || w.raceTypes.includes(raceFilter))
-    .filter(matchesSearch)
-    // #241: raw-average rating threshold (no minimum vote count); ANDs with the filters above.
-    .filter(w => passesRatingThreshold(voteData[workoutVoteId(w.name, w.label ?? '')], ratingThreshold))
   // #241: "Top rated" ranks the flat variant list by the confidence-weighted score;
   // the existing first-seen family grouping below preserves this order.
   const filtered = sortBy === 'rating'
@@ -139,9 +135,9 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const familyIds = useMemo(() => {
     const counts = new Map<number, number>()
     for (const w of visibleVariants) counts.set(w.familyId, (counts.get(w.familyId) ?? 0) + 1)
-    const s = new Set<number>()
-    for (const [id, count] of counts) if (count > 1) s.add(id)
-    return s
+    const ids: number[] = []
+    for (const [id, count] of counts) if (count > 1) ids.push(id)
+    return new Set(ids)
   }, [visibleVariants])
 
   const displayRows: DisplayRow[] = []
@@ -167,21 +163,16 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   }
 
   function setcat(c: string | null) {
-    setCategory(c)
-    setTypeFilter(null)
+    const next = withCategory(filters, c)
+    setCategory(next.category)
+    setTypeFilter(next.type)
   }
 
-  // #322: the "Your run" and "All runs" type-filter option sets can differ (the
-  // former is allowlist-intersected), so a type selected in one mode may not
-  // exist in the other. Reset the type filter on toggle — same as setcat does on
-  // category change — so a stale filter can't silently empty the list with no
-  // visible pill to clear it.
-  // #401: also reset the category on toggle so the two scopes stay independent —
-  // a category narrowed under one scope shouldn't silently carry into the other.
   function setScope(all: boolean) {
-    setShowAllRuns(all)
-    setTypeFilter(null)
-    setCategory(null)
+    const next = withScope(filters, all)
+    setShowAllRuns(next.showAllRuns)
+    setCategory(next.category)
+    setTypeFilter(next.type)
   }
 
   return (
@@ -219,26 +210,9 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
         </div>
       )}
 
-      {/* Your run / All runs toggle + #241 rating filter */}
-      <div className="flex items-center gap-2 px-4 pb-2">
-        {runId && (
-          <>
-            <button
-              onClick={() => setScope(false)}
-              className={filterChip(!showAllRuns)}
-            >Your run</button>
-            <button
-              onClick={() => setScope(true)}
-              className={filterChip(showAllRuns)}
-            >All runs</button>
-          </>
-        )}
-        <RatingFilter value={ratingThreshold} onChange={setRatingThreshold} className="ml-auto" />
-      </div>
-
-      {/* Search */}
-      <div className="px-4 mb-3">
-        <div className={SEARCH_FIELD}>
+      {/* Model C top bar: search + sort */}
+      <div className="px-4 mb-2 flex items-center gap-2">
+        <div className={`${SEARCH_FIELD} flex-1`}>
           <span className="text-muted text-sm" aria-hidden="true">⌕</span>
           <input
             type="search"
@@ -248,45 +222,71 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
             className={SEARCH_INPUT}
           />
         </div>
+        <SortControl
+          value={sortBy}
+          options={[{ value: 'recent', label: 'Least recent' }, { value: 'rating', label: 'Top rated' }]}
+          onChange={setSortBy}
+        />
       </div>
 
-      {/* Category filter — available in both "Your run" and "All runs" modes (#401) */}
-      <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-        <button onClick={() => setcat(null)} className={filterChip(!category)}>All</button>
-        {CATEGORIES.map(c => (
-          <button key={c} onClick={() => setcat(category === c ? null : c)} className={filterChip(category === c)}>{c}</button>
-        ))}
+      {/* Filters button carrying the active summary */}
+      <div className="px-4 mb-3">
+        <FiltersButton count={filterCount} summary={filterSummary} onOpen={() => setSheetOpen(true)} />
       </div>
 
-      {/* Race type filter */}
-      <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-        <button onClick={() => setRaceFilter(null)} className={filterChip(!raceFilter)}>Any race</button>
-        {RACE_TYPES.map(r => (
-          <button key={r} onClick={() => setRaceFilter(raceFilter === r ? null : r)} className={filterChip(raceFilter === r)}>{r}</button>
-        ))}
-      </div>
+      {/* The filter facets live in the sheet */}
+      <FilterSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        onClear={() => { setCategory(null); setTypeFilter(null); setRaceFilter(null); setRatingThreshold('any'); setShowAllRuns(false) }}
+      >
+        {runId && (
+          <div>
+            <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Scope</p>
+            <div className="flex gap-2">
+              <button onClick={() => setScope(false)} className={filterChip(!showAllRuns)}>Your run</button>
+              <button onClick={() => setScope(true)} className={filterChip(showAllRuns)}>All runs</button>
+            </div>
+          </div>
+        )}
 
-      {/* Type filter (only when category selected or effective in "Your run" mode) */}
-      {effectiveCategory && types.length > 1 && (
-        <div className="flex gap-2 px-4 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: 'none' }}>
-          <button onClick={() => setTypeFilter(null)} className={filterChip(!typeFilter)}>All types</button>
-          {types.map(t => (
-            <button key={t} onClick={() => setTypeFilter(typeFilter === t ? null : t)} className={filterChip(typeFilter === t)}>{t}</button>
-          ))}
+        <div>
+          <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Category</p>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => setcat(null)} className={filterChip(!category)}>All</button>
+            {CATEGORIES.map(c => (
+              <button key={c} onClick={() => setcat(category === c ? null : c)} className={filterChip(category === c)}>{c}</button>
+            ))}
+          </div>
         </div>
-      )}
 
-      {/* #241 sort toggle */}
-      <div className="flex items-center gap-2 px-4 pb-2">
-        <button
-          onClick={() => setSortBy('recent')}
-          className={filterChip(sortBy === 'recent')}
-        >Least recent</button>
-        <button
-          onClick={() => setSortBy('rating')}
-          className={filterChip(sortBy === 'rating')}
-        >Top rated</button>
-      </div>
+        {effectiveCategory && types.length > 1 && (
+          <div>
+            <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Type</p>
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={() => setTypeFilter(null)} className={filterChip(!typeFilter)}>All types</button>
+              {types.map(t => (
+                <button key={t} onClick={() => setTypeFilter(typeFilter === t ? null : t)} className={filterChip(typeFilter === t)}>{t}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Race type</p>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => setRaceFilter(null)} className={filterChip(!raceFilter)}>Any race</button>
+            {RACE_TYPES.map(r => (
+              <button key={r} onClick={() => setRaceFilter(raceFilter === r ? null : r)} className={filterChip(raceFilter === r)}>{r}</button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Rating</p>
+          <RatingFilter value={ratingThreshold} onChange={setRatingThreshold} />
+        </div>
+      </FilterSheet>
 
       <div className="px-4 flex flex-col gap-3">
         {visibleVariants.length === 0 && (
