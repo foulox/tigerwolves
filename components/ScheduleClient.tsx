@@ -746,8 +746,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                   >
                                     <div className="flex justify-between items-start gap-2">
                                       <div className="flex items-center gap-2">
-                                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-ink bg-ink' : 'border-line'}`} />
-                                        <span className={`text-xs font-bold ${i === 0 ? 'text-muted' : 'text-muted'}`}>{label}</span>
+                                        <div className={`w-4 h-4 border-2 flex-shrink-0 ${sel ? 'border-ink bg-ink' : 'border-line'}`} />
+                                        <span className={`text-xs font-bold ${i === 0 ? 'text-muted' : 'text-ink'}`}>{label}</span>
                                       </div>
                                       <div className="flex items-center gap-2 shrink-0">
                                         <VoteBadge v={voteData[workoutVoteId(v.name, v.label ?? '')]} />
@@ -825,7 +825,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     id="verify-checkbox"
                     checked={verified}
                     onChange={e => setVerified(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 shrink-0 accent-accent touch-manipulation"
+                    className="mt-0.5 w-4 h-4 shrink-0 accent-ink touch-manipulation"
                   />
                   <label htmlFor="verify-checkbox" className="text-sm text-muted leading-snug cursor-pointer">
                     {effectiveSelections.length > 0 ? buildVerificationLabel(effectiveSelections[0]) : 'I\'ve verified the key workout details'}
