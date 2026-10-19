@@ -23,7 +23,7 @@ export default function FilterSheet({
   return (
     <div className="fixed inset-0 z-40">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} aria-hidden="true" />
-      <div role="dialog" aria-label="Filters" className="absolute left-0 right-0 bottom-0 bg-card border-t border-ink max-h-[86%] overflow-y-auto p-4 flex flex-col gap-4">
+      <div role="dialog" aria-label="Filters" aria-modal="true" className="absolute left-0 right-0 bottom-0 bg-card border-t border-ink max-h-[86%] overflow-y-auto p-4 flex flex-col gap-4">
         {children}
         <div className="flex gap-3 pt-1">
           <button type="button" onClick={onClear} className="flex-1 font-display uppercase tracking-[0.1em] text-[11px] font-medium text-ink border border-line py-3 touch-manipulation">Clear all</button>

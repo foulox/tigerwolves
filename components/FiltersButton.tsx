@@ -13,7 +13,7 @@ export default function FiltersButton({
     <button
       type="button"
       onClick={onOpen}
-      aria-label={count > 0 ? `Filters, ${count} active` : 'Filters'}
+      aria-label={count > 0 ? `Filters, ${count} active: ${summary}` : 'Filters'}
       className={`flex items-center gap-2 min-w-0 max-w-full border px-3 py-2 touch-manipulation font-display uppercase tracking-[0.08em] text-[11px] font-medium text-ink ${count > 0 ? 'border-ink' : 'border-line'}`}
     >
       <span className="truncate">{summary ? `Filters · ${summary}` : 'Filters'}</span>
