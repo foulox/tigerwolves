@@ -1,5 +1,3 @@
-import type { RatingThreshold } from './rating'
-
 // Story 1B: summarizes the Schedule picker's active browse filters for the Filters
 // button. The filtering itself stays in lib/schedulePicker.ts; this is display-only.
 // typeLabel = the effective browse type in Your-run workout mode (the committed week
@@ -10,11 +8,6 @@ export type ScheduleFilters = {
   typeLabel: string | null
   browseCategory: string | null
   browseType: string | null
-  rating: RatingThreshold
-}
-
-const RATING_SUMMARY: Record<Exclude<RatingThreshold, 'any'>, string> = {
-  ok: '😐 & up', good: '😃 & up', love: '🥳 only',
 }
 
 function parts(f: ScheduleFilters): string[] {
@@ -26,7 +19,6 @@ function parts(f: ScheduleFilters): string[] {
   } else if (f.typeLabel) {
     p.push(f.typeLabel)
   }
-  if (f.rating !== 'any') p.push(RATING_SUMMARY[f.rating])
   return p
 }
 

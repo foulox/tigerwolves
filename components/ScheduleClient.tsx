@@ -18,9 +18,7 @@ import LeaderPicker from '@/components/LeaderPicker'
 import AdoptRouteControls from '@/components/AdoptRouteControls'
 import { formatDateShort } from '@/lib/dateUtils'
 import { schedulePickerScope, schedulePickerSuggestions, allRunsCategories, allRunsTypes } from '@/lib/schedulePicker'
-import RatingFilter from '@/components/RatingFilter'
-import { passesRatingThreshold, rankByRating } from '@/lib/rating'
-import type { RatingThreshold } from '@/lib/rating'
+import { rankByRating } from '@/lib/rating'
 import SortControl from '@/components/SortControl'
 import FiltersButton from '@/components/FiltersButton'
 import FilterSheet from '@/components/FilterSheet'
@@ -82,7 +80,6 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   // whole catalog, with its own category/type browse pills (independent of the week's
   // type chips, which the widened mode ignores).
   const [showAllRuns, setShowAllRuns] = useState(false)
-  const [ratingThreshold, setRatingThreshold] = useState<RatingThreshold>('any')
   const [sortBy, setSortBy] = useState<'recent' | 'rating'>('recent')
   const [browseCategory, setBrowseCategory] = useState<string | null>(null)
   const [browseType, setBrowseType] = useState<string | null>(null)
@@ -222,15 +219,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
   }, [pickerSearch, allSuggestions, scopeVariants, plannedWorkout, showAllRuns, browseCategory, browseType])
 
-  // #241: apply the rating threshold, then optionally the confidence-weighted
-  // "Top rated" sort, on top of whatever pickerSource already filtered (scope,
-  // type chip / All-runs pills, search). Rating ANDs with those — never bypasses.
+  // #241: optionally apply the confidence-weighted "Top rated" sort, on top of
+  // whatever pickerSource already filtered (scope, type chip / All-runs pills, search).
   const rankedSource = useMemo(() => {
-    const filtered = pickerSource.filter(w =>
-      passesRatingThreshold(voteData[workoutVoteId(w.name, w.label ?? '')], ratingThreshold),
-    )
-    return sortBy === 'rating' ? rankByRating(filtered, voteData) : filtered
-  }, [pickerSource, ratingThreshold, sortBy, voteData])
+    return sortBy === 'rating' ? rankByRating(pickerSource, voteData) : pickerSource
+  }, [pickerSource, sortBy, voteData])
 
   const effectiveBrowseType = !showAllRuns && isWorkout && !browseTypeCleared
     ? (activeType ?? entry?.workoutType ?? null)
@@ -240,7 +233,6 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     typeLabel: effectiveBrowseType,
     browseCategory,
     browseType,
-    rating: ratingThreshold,
   }
   const filterCount = scheduleFilterCount(scheduleFilters)
   const filterSummary = scheduleFilterSummary(scheduleFilters)
@@ -297,10 +289,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setBrowseCategory(null)
     setBrowseType(null)
     setBrowseTypeCleared(false)
-    // #241: rating threshold + sort are browse filters too — reset them on a week
-    // change like every other filter, so a "Top rated" / "🥳 only" view doesn't
-    // silently carry into the next week's list (mirrors the #405 stale-filter fix).
-    setRatingThreshold('any')
+    // #241: sort is a browse filter too — reset on a week change so a "Top rated"
+    // view doesn't silently carry into the next week's list.
     setSortBy('recent')
     setPlanTab('post')
     setLeaderPickerOpen(false)
@@ -318,8 +308,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     // #405 (review): reset the week-type chip too, like every other filter — else a
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
-    // #241: same for the rating filter + sort — reset on a scope round-trip.
-    setRatingThreshold('any')
+    // #241: reset sort on a scope round-trip too.
     setSortBy('recent')
     setPickerSearch('')
     setShowCount(3)
@@ -614,7 +603,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 <FilterSheet
                   open={sheetOpen}
                   onClose={() => setSheetOpen(false)}
-                  onClear={() => { setShowAllRuns(false); setBrowseCategory(null); setBrowseType(null); setBrowseTypeCleared(false); setRatingThreshold('any') }}
+                  onClear={() => { setShowAllRuns(false); setBrowseCategory(null); setBrowseType(null); setBrowseTypeCleared(false) }}
                 >
                   {runConfig.runGroupId != null && (
                     <div>
@@ -667,11 +656,6 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     </div>
                   )}
 
-                  <div>
-                    <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Rating</p>
-                    <RatingFilter value={ratingThreshold} onChange={setRatingThreshold} />
-                  </div>
-
                   {showAllRuns && (
                     <p className="text-xs text-muted leading-snug">
                       Browsing every run&rsquo;s workouts. <span className="font-semibold text-ink">Schedule for this week</span> borrows one for this week only — it won&rsquo;t join your library or rotation. <span className="font-semibold text-link">+ Add to my run</span> adopts it permanently. You can only <span className="font-semibold text-link">+ Add</span> a route whose type fits one of your runs — borrow works for any type.
@@ -692,7 +676,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                             : 'No workouts in your library yet.')}
                   </p>
                 ) : displayRows.length === 0 ? (
-                  <p className="text-muted italic text-sm">{pickerSearch ? 'No workouts match your search.' : ratingThreshold !== 'any' ? 'No workouts match this rating filter.' : 'No workouts match these filters.'}</p>
+                  <p className="text-muted italic text-sm">{pickerSearch ? 'No workouts match your search.' : 'No workouts match these filters.'}</p>
                 ) : (
                   <div className="mb-6">
                     <div className="text-sm font-bold text-ink mb-2">
