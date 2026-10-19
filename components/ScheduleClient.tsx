@@ -84,6 +84,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   const [browseCategory, setBrowseCategory] = useState<string | null>(null)
   const [browseType, setBrowseType] = useState<string | null>(null)
   const [browseTypeCleared, setBrowseTypeCleared] = useState(false)
+  const [yourRunBrowseType, setYourRunBrowseType] = useState<string | null>(null)
   const [planTab, setPlanTab] = useState<'post' | 'browse'>('post')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [leaderPickerOpen, setLeaderPickerOpen] = useState(false)
@@ -185,7 +186,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       ? []
       : browseTypeCleared
         ? []
-        : activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
+        : yourRunBrowseType
+          ? [yourRunBrowseType]
+          : activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
     return schedulePickerSuggestions({
       showAllRuns,
       ownVariants,
@@ -197,7 +200,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       browseType,
       plannedId: plannedWorkout?.id ?? null,
     })
-  }, [entry, ownVariants, variants, showAllRuns, activeType, browseTypeCleared, plannedWorkout, isWorkout, runCategory, browseCategory, browseType])
+  }, [entry, ownVariants, variants, showAllRuns, activeType, browseTypeCleared, yourRunBrowseType, plannedWorkout, isWorkout, runCategory, browseCategory, browseType])
 
   const pickerSource = useMemo(() => {
     const q = pickerSearch.toLowerCase()
@@ -226,7 +229,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   }, [pickerSource, sortBy, voteData])
 
   const effectiveBrowseType = !showAllRuns && isWorkout && !browseTypeCleared
-    ? (activeType ?? entry?.workoutType ?? null)
+    ? (yourRunBrowseType ?? activeType ?? entry?.workoutType ?? null)
     : null
   const scheduleFilters: ScheduleFilters = {
     showAllRuns,
@@ -289,6 +292,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setBrowseCategory(null)
     setBrowseType(null)
     setBrowseTypeCleared(false)
+    setYourRunBrowseType(null)
     // #241: sort is a browse filter too — reset on a week change so a "Top rated"
     // view doesn't silently carry into the next week's list.
     setSortBy('recent')
@@ -305,6 +309,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setBrowseCategory(null)
     setBrowseType(null)
     setBrowseTypeCleared(false)
+    setYourRunBrowseType(null)
     // #405 (review): reset the week-type chip too, like every other filter — else a
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
@@ -388,7 +393,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
   // #241: a change to the committed week type re-derives the browse chip — a
   // previously-cleared chip must snap back to filtering by the new committed type.
-  useEffect(() => { setBrowseTypeCleared(false) }, [activeType])
+  useEffect(() => { setBrowseTypeCleared(false); setYourRunBrowseType(null) }, [activeType])
 
   function handleCopy() {
     navigator.clipboard.writeText(draftPost).then(() => {
@@ -603,7 +608,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 <FilterSheet
                   open={sheetOpen}
                   onClose={() => setSheetOpen(false)}
-                  onClear={() => { setShowAllRuns(false); setBrowseCategory(null); setBrowseType(null); setBrowseTypeCleared(false) }}
+                  onClear={() => { setShowAllRuns(false); setBrowseCategory(null); setBrowseType(null); setBrowseTypeCleared(false); setYourRunBrowseType(null) }}
                 >
                   {runConfig.runGroupId != null && (
                     <div>
@@ -615,19 +620,26 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     </div>
                   )}
 
-                  {/* Your-run workout: Type facet, defaulting to the week's committed type, clearable to all */}
+                  {/* Your-run workout: Type facet — full browse-only picker (All types + per-type pills) */}
                   {!showAllRuns && isWorkout && availableTypes.length > 1 && (
                     <div>
                       <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Type</p>
                       <div className="flex gap-2 flex-wrap">
                         <button
-                          onClick={() => setBrowseTypeCleared(true)}
+                          onClick={() => { setBrowseTypeCleared(true); setYourRunBrowseType(null) }}
                           className={filterChip(browseTypeCleared)}
                         >All types</button>
-                        <button
-                          onClick={() => setBrowseTypeCleared(false)}
-                          className={filterChip(!browseTypeCleared)}
-                        >{activeType ?? entry.workoutType} (this week)</button>
+                        {availableTypes.map(t => {
+                          const scheduled = activeType ? t === activeType : scheduledTypes.includes(t)
+                          const active = !browseTypeCleared && (yourRunBrowseType === t || (yourRunBrowseType === null && scheduled))
+                          return (
+                            <button
+                              key={t}
+                              onClick={() => { setBrowseTypeCleared(false); setYourRunBrowseType(t) }}
+                              className={filterChip(active)}
+                            >{t}{scheduled ? ' (this week)' : ''}</button>
+                          )
+                        })}
                       </div>
                     </div>
                   )}
