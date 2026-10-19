@@ -7,6 +7,7 @@ import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/l
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import { resolveAllowedTypes, isWorkoutKind, kindToCategory } from '@/lib/runProfile'
 import { buildPost, buildVerificationLabel, formatDateLong } from '@/lib/postBuilder'
+import { filterChip, SQUARE_LABEL, NEXT_UP_LABEL, CARD_NAME } from '@/lib/cardStyles'
 import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
 import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
@@ -423,12 +424,12 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       <div className="px-4 pb-4" data-tour="heylo-area">
 
         {/* Week nav */}
-        <div className={`flex items-center justify-between bg-card rounded-2xl border border-line shadow-sm px-2 py-2 ${leaderPickerOpen ? 'mb-2' : 'mb-5'}`}>
+        <div className={`flex items-center justify-between bg-card border border-line px-2 py-2 ${leaderPickerOpen ? 'mb-2' : 'mb-5'}`}>
           <button
             onClick={() => changeWeek(weekIndex - 1)}
             disabled={weekIndex === 0}
             aria-label="Previous week"
-            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-muted active:bg-surface"
+            className="p-2 touch-manipulation disabled:opacity-30 text-muted active:bg-surface"
           >
             <ChevronLeft size={20} />
           </button>
@@ -442,7 +443,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 <div className="text-sm font-semibold text-ink flex items-center gap-1">
                   {localLeader ?? entry.leader}
                   {entry.needsLeader && <span className="text-[9px] bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded">Needs leader</span>}
-                  <span className="text-xs text-accent">tap to change</span>
+                  <span className="text-xs text-link">tap to change</span>
                 </div>
               </button>
             ) : (
@@ -454,14 +455,14 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
             onClick={() => changeWeek(weekIndex + 1)}
             disabled={weekIndex >= upcoming.length - 1}
             aria-label="Next week"
-            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-muted active:bg-surface"
+            className="p-2 touch-manipulation disabled:opacity-30 text-muted active:bg-surface"
           >
             <ChevronRight size={20} />
           </button>
         </div>
 
         {isLeader && leaderPickerOpen && entry && (
-          <div className="mb-3 bg-card rounded-2xl border border-line shadow-sm overflow-hidden">
+          <div className="mb-3 bg-card border border-line overflow-hidden">
             <LeaderPicker
               date={entry.date}
               currentLeader={localLeader ?? entry.leader}
@@ -475,9 +476,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
         {entry && (
           <>
             {isWorkout && (
-            <div className="bg-surface border border-line rounded-2xl p-4 mb-6">
-              <div className="text-xs font-bold text-accent tracking-wide mb-1">WORKOUT TYPE</div>
-              <div className="text-2xl font-bold text-ink">{activeType ?? entry.workoutType}</div>
+            <div className="bg-surface border border-line p-4 mb-6">
+              <div className={`${NEXT_UP_LABEL} mb-1`}>WORKOUT TYPE</div>
+              <div className={`${CARD_NAME}`}>{activeType ?? entry.workoutType}</div>
               {activeType && (
                 <div className="text-xs text-muted mt-0.5">Scheduled: {entry.workoutType}</div>
               )}
@@ -493,9 +494,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     return (
                       <button key={t} type="button"
                         onClick={() => setActiveType(scheduledTypes.includes(t) ? null : t)}
-                        className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
-                          isActive ? 'bg-accent text-white' : 'bg-card border border-line text-muted'
-                        }`}
+                        className={filterChip(isActive)}
                       >
                         {t}
                       </button>
@@ -507,7 +506,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
             )}
 
             {plannedNotFound && (
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-3 mb-4 text-sm text-red-700">
+              <div className="bg-red-50 border border-red-200 p-3 mb-4 text-sm text-red-700">
                 ⚠️ &ldquo;{entry.workoutName}&rdquo; is no longer in the workout library — pick a replacement below.
               </div>
             )}
@@ -521,7 +520,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 <div className="mb-4">
                   <div className="text-sm font-bold text-ink mb-2">Currently planned</div>
                   <div
-                    className={`bg-card rounded-2xl border shadow-sm transition-colors ${sel ? 'border-accent ring-1 ring-accent' : 'border-line'}`}
+                    className={`bg-card border transition-colors ${sel ? 'border-2 border-ink' : 'border-line'}`}
                   >
                     <button
                       onClick={() => handleSelect(w)}
@@ -549,19 +548,19 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
             })()}
 
             {plannedWorkout && (
-              <div className="flex bg-surface rounded-xl p-1 gap-1 mb-4">
+              <div className="flex border border-line mb-4">
                 <button
                   onClick={() => setPlanTab('post')}
-                  className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
-                    planTab === 'post' ? 'bg-card text-ink shadow-sm' : 'bg-transparent text-muted'
+                  className={`flex-1 py-2.5 text-xs font-bold transition-colors touch-manipulation ${
+                    planTab === 'post' ? 'bg-ink text-white' : 'text-muted'
                   }`}
                 >
                   Post draft
                 </button>
                 <button
                   onClick={() => setPlanTab('browse')}
-                  className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
-                    planTab === 'browse' ? 'bg-card text-ink shadow-sm' : 'bg-transparent text-muted'
+                  className={`flex-1 py-2.5 text-xs font-bold transition-colors touch-manipulation ${
+                    planTab === 'browse' ? 'bg-ink text-white' : 'text-muted'
                   }`}
                 >
                   Change workout
@@ -692,7 +691,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                           return (
                             <div
                               key={`s-${w.id}`}
-                              className={`bg-card rounded-2xl border shadow-sm transition-colors ${sel ? 'border-accent ring-1 ring-accent' : 'border-line'}`}
+                              className={`bg-card border transition-colors ${sel ? 'border-2 border-ink' : 'border-line'}`}
                             >
                               <button
                                 onClick={() => handleSelect(w)}
@@ -724,11 +723,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                         // Total"), not driven by label — label is a short leader-authored
                         // tag ("Shorter"/"Longer"), shown as the subtitle beneath it.
                         return (
-                          <div key={`f-${row.familyId}`} className="bg-card rounded-2xl border border-line shadow-sm overflow-hidden">
+                          <div key={`f-${row.familyId}`} className="bg-card border border-line overflow-hidden">
                             <div className="px-4 py-3 border-b border-line">
                               <div className="flex justify-between items-start gap-2">
                                 <div className="font-semibold text-ink">{row.name}</div>
-                                <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-0.5 rounded-full shrink-0">
+                                <span className={`${SQUARE_LABEL} shrink-0`}>
                                   {row.total} versions
                                 </span>
                               </div>
@@ -747,8 +746,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                   >
                                     <div className="flex justify-between items-start gap-2">
                                       <div className="flex items-center gap-2">
-                                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-accent bg-accent' : 'border-line'}`} />
-                                        <span className={`text-xs font-bold ${i === 0 ? 'text-muted' : 'text-accent'}`}>{label}</span>
+                                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-ink bg-ink' : 'border-line'}`} />
+                                        <span className={`text-xs font-bold ${i === 0 ? 'text-muted' : 'text-muted'}`}>{label}</span>
                                       </div>
                                       <div className="flex items-center gap-2 shrink-0">
                                         <VoteBadge v={voteData[workoutVoteId(v.name, v.label ?? '')]} />
@@ -775,7 +774,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     {remainingCount > 0 && (
                       <button
                         onClick={() => setShowCount(showCount + 3)}
-                        className="mt-3 w-full py-2.5 rounded-xl border border-line text-sm font-medium text-muted bg-card active:bg-surface touch-manipulation"
+                        className="mt-3 w-full py-2.5 border border-line text-sm font-medium text-muted bg-card active:bg-surface touch-manipulation"
                       >
                         Show {Math.min(remainingCount, 3)} more
                       </button>
@@ -787,10 +786,10 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                   <button
                     onClick={handleSetPlan}
                     disabled={saving || saved}
-                    className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm mb-6 touch-manipulation transition-colors ${
+                    className={`w-full flex items-center justify-center gap-2 py-3.5 font-semibold text-sm mb-6 touch-manipulation transition-colors ${
                       saved
                         ? 'bg-green-500 text-white'
-                        : 'bg-accent text-white active:bg-accent disabled:opacity-60'
+                        : 'bg-ink text-white active:bg-ink disabled:opacity-60'
                     }`}
                   >
                     {saved ? <><Check size={16} /> Saved to plan</> : saving ? 'Saving…' : showAllRuns ? 'Schedule for this week' : 'Set as plan'}
@@ -806,7 +805,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     <div className="text-[10px] font-bold text-muted tracking-wide uppercase">
                       This week&rsquo;s post · {formatDateShort(new Date(entry.date + 'T00:00:00'))}
                     </div>
-                    <div className="text-xs text-accent flex items-center gap-1">✎ editable</div>
+                    <div className="text-xs text-link flex items-center gap-1">✎ editable</div>
                   </div>
                   <textarea
                     ref={setPostRef}
@@ -814,13 +813,13 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     onChange={e => setEditedPost(e.target.value)}
                     aria-label="Editable weekly post"
                     spellCheck={false}
-                    className="w-full min-h-[210px] resize-none rounded-xl border border-line bg-card px-3 py-3 text-sm text-ink leading-relaxed font-sans touch-manipulation focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent"
+                    className="w-full min-h-[210px] resize-none border border-line bg-card px-3 py-3 text-sm text-ink leading-relaxed font-sans touch-manipulation focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink"
                   />
                   <div className="text-xs text-muted mt-1.5 px-0.5">
                     Changes here affect only this week&rsquo;s post — your template stays as saved.
                   </div>
                 </div>
-                <div className="flex items-start gap-3 bg-surface rounded-xl px-4 py-3">
+                <div className="flex items-start gap-3 bg-surface px-4 py-3">
                   <input
                     type="checkbox"
                     id="verify-checkbox"
@@ -836,7 +835,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                   onClick={handleCopy}
                   disabled={!verified}
                   data-tour="heylo-copy"
-                  className={`flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-sm touch-manipulation transition-opacity ${verified ? 'bg-accent text-white' : 'bg-accent text-white opacity-35 cursor-not-allowed'}`}
+                  className={`flex items-center justify-center gap-2 w-full py-3.5 font-bold text-sm touch-manipulation transition-opacity ${verified ? 'bg-ink text-white' : 'bg-ink text-white opacity-35 cursor-not-allowed'}`}
                 >
                   {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
                 </button>
