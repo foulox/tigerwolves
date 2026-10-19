@@ -7,7 +7,7 @@ import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/l
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import { resolveAllowedTypes, isWorkoutKind, kindToCategory } from '@/lib/runProfile'
 import { buildPost, buildVerificationLabel, formatDateLong } from '@/lib/postBuilder'
-import { filterChip, SQUARE_LABEL, NEXT_UP_LABEL, CARD_NAME } from '@/lib/cardStyles'
+import { filterChip, SQUARE_LABEL, NEXT_UP_LABEL, CARD_NAME, SEARCH_FIELD, SEARCH_INPUT } from '@/lib/cardStyles'
 import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
 import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
@@ -21,6 +21,10 @@ import { schedulePickerScope, schedulePickerSuggestions, allRunsCategories, allR
 import RatingFilter from '@/components/RatingFilter'
 import { passesRatingThreshold, rankByRating } from '@/lib/rating'
 import type { RatingThreshold } from '@/lib/rating'
+import SortControl from '@/components/SortControl'
+import FiltersButton from '@/components/FiltersButton'
+import FilterSheet from '@/components/FilterSheet'
+import { scheduleFilterCount, scheduleFilterSummary, type ScheduleFilters } from '@/lib/scheduleFilters'
 
 
 type PlanStandaloneRow = { kind: 'standalone'; workout: WorkoutVariantRow }
@@ -84,6 +88,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   const [browseType, setBrowseType] = useState<string | null>(null)
   const [browseTypeCleared, setBrowseTypeCleared] = useState(false)
   const [planTab, setPlanTab] = useState<'post' | 'browse'>('post')
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [leaderPickerOpen, setLeaderPickerOpen] = useState(false)
   const [localLeader, setLocalLeader] = useState<string | null>(null)
   const [verified, setVerified] = useState(false)
@@ -226,6 +231,19 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     )
     return sortBy === 'rating' ? rankByRating(filtered, voteData) : filtered
   }, [pickerSource, ratingThreshold, sortBy, voteData])
+
+  const effectiveBrowseType = !showAllRuns && isWorkout && !browseTypeCleared
+    ? (activeType ?? scheduledTypes[0] ?? null)
+    : null
+  const scheduleFilters: ScheduleFilters = {
+    showAllRuns,
+    typeLabel: effectiveBrowseType,
+    browseCategory,
+    browseType,
+    rating: ratingThreshold,
+  }
+  const filterCount = scheduleFilterCount(scheduleFilters)
+  const filterSummary = scheduleFilterSummary(scheduleFilters)
 
   const displayRows = useMemo<PlanDisplayRow[]>(() => {
     const rows: PlanDisplayRow[] = []
@@ -570,97 +588,96 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
             {(!plannedWorkout || planTab === 'browse') && (
               <>
-                {/* #405: Your run / All runs scope toggle — mirrors the Library's.
-                    "All runs" is the one-time cross-run borrow escape hatch.
-                    #241: RatingFilter always visible, right-aligned on this same row. */}
+                {/* Model C top bar: search + sort */}
                 <div className="flex items-center gap-2 mb-2">
-                  {runConfig.runGroupId != null && (
-                    <>
-                      <button
-                        onClick={() => setScope(false)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
-                      >Your run</button>
-                      <button
-                        onClick={() => setScope(true)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
-                      >All runs</button>
-                    </>
-                  )}
-                  <RatingFilter value={ratingThreshold} onChange={setRatingThreshold} className="ml-auto" />
-                </div>
-
-                {!showAllRuns && isWorkout && availableTypes.length > 1 && (
-                  <div className="flex items-center gap-2 px-1 mb-2 text-xs">
-                    {browseTypeCleared ? (
-                      <button
-                        type="button"
-                        onClick={() => setBrowseTypeCleared(false)}
-                        className="font-semibold px-3 py-1 rounded-full bg-card border border-line text-muted touch-manipulation"
-                      >Filter to {activeType ?? entry.workoutType} type</button>
-                    ) : (
-                      <>
-                        <span className="font-semibold px-3 py-1 rounded-full bg-accent text-white inline-flex items-center gap-1">
-                          {activeType ?? entry.workoutType}
-                          <button
-                            type="button"
-                            aria-label="Clear type filter — show all types"
-                            onClick={() => setBrowseTypeCleared(true)}
-                            className="touch-manipulation leading-none"
-                          >✕</button>
-                        </span>
-                        <span className="text-muted">Clear — show all types</span>
-                      </>
-                    )}
+                  <div className={`${SEARCH_FIELD} flex-1`}>
+                    <span className="text-muted text-sm" aria-hidden="true">⌕</span>
+                    <input
+                      type="search"
+                      value={pickerSearch}
+                      onChange={e => setPickerSearch(e.target.value)}
+                      placeholder={showAllRuns ? "Search every run's workouts…" : "Search your run's workouts…"}
+                      className={SEARCH_INPUT}
+                    />
                   </div>
-                )}
-
-                {showAllRuns && (
-                  <p className="text-xs text-muted mb-3 leading-snug">
-                    Browsing every run&rsquo;s workouts. <span className="font-semibold text-ink">Schedule for this week</span> borrows one for this week only — it won&rsquo;t join your library or rotation. <span className="font-semibold text-accent">+ Add to my run</span> adopts it permanently. You can only <span className="font-semibold text-accent">+ Add</span> a route whose type fits one of your runs — borrow works for any type.
-                  </p>
-                )}
-
-                <div className="relative mb-4">
-                  <input
-                    type="search"
-                    value={pickerSearch}
-                    onChange={e => setPickerSearch(e.target.value)}
-                    placeholder={showAllRuns ? "Search every run's workouts by name, type, race…" : "Search your run's workouts by name, type, race…"}
-                    className="w-full rounded-xl border border-line bg-card pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-accent"
+                  <SortControl
+                    value={sortBy}
+                    options={[{ value: 'recent', label: 'Least recent' }, { value: 'rating', label: 'Top rated' }]}
+                    onChange={setSortBy}
                   />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">🔍</span>
                 </div>
 
-                {/* #241: Least recent / Top rated sort toggle */}
-                <div className="flex items-center gap-2 mb-3">
-                  <button
-                    onClick={() => setSortBy('recent')}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'recent' ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
-                  >Least recent</button>
-                  <button
-                    onClick={() => setSortBy('rating')}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'rating' ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
-                  >Top rated</button>
+                <div className="mb-3">
+                  <FiltersButton count={filterCount} summary={filterSummary} onOpen={() => setSheetOpen(true)} />
                 </div>
 
-                {/* #405: "All runs" category + type pills — every category/type across
-                    all runs, no run-scope and no week-type restriction (AC4). */}
-                {showAllRuns && browseCategories.length > 0 && (
-                  <div className="flex gap-2 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-                    <button onClick={() => selectBrowseCategory(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${!browseCategory ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>All</button>
-                    {browseCategories.map(c => (
-                      <button key={c} onClick={() => selectBrowseCategory(browseCategory === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${browseCategory === c ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{c}</button>
-                    ))}
+                <FilterSheet
+                  open={sheetOpen}
+                  onClose={() => setSheetOpen(false)}
+                  onClear={() => setScope(showAllRuns)}
+                >
+                  {runConfig.runGroupId != null && (
+                    <div>
+                      <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Scope</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => setScope(false)} className={filterChip(!showAllRuns)}>Your run</button>
+                        <button onClick={() => setScope(true)} className={filterChip(showAllRuns)}>All runs</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Your-run workout: Type facet, defaulting to the week's committed type, clearable to all */}
+                  {!showAllRuns && isWorkout && availableTypes.length > 1 && (
+                    <div>
+                      <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Type</p>
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => setBrowseTypeCleared(true)}
+                          className={filterChip(browseTypeCleared)}
+                        >All types</button>
+                        <button
+                          onClick={() => setBrowseTypeCleared(false)}
+                          className={filterChip(!browseTypeCleared)}
+                        >{activeType ?? entry.workoutType} (this week)</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* All-runs browse pills */}
+                  {showAllRuns && browseCategories.length > 0 && (
+                    <div>
+                      <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Category</p>
+                      <div className="flex gap-2 flex-wrap">
+                        <button onClick={() => selectBrowseCategory(null)} className={filterChip(!browseCategory)}>All</button>
+                        {browseCategories.map(c => (
+                          <button key={c} onClick={() => selectBrowseCategory(browseCategory === c ? null : c)} className={filterChip(browseCategory === c)}>{c}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {showAllRuns && browseTypes.length > 1 && (
+                    <div>
+                      <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Type</p>
+                      <div className="flex gap-2 flex-wrap">
+                        <button onClick={() => setBrowseType(null)} className={filterChip(!browseType)}>All types</button>
+                        {browseTypes.map(t => (
+                          <button key={t} onClick={() => setBrowseType(browseType === t ? null : t)} className={filterChip(browseType === t)}>{t}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Rating</p>
+                    <RatingFilter value={ratingThreshold} onChange={setRatingThreshold} />
                   </div>
-                )}
-                {showAllRuns && browseTypes.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: 'none' }}>
-                    <button onClick={() => setBrowseType(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${!browseType ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>All types</button>
-                    {browseTypes.map(t => (
-                      <button key={t} onClick={() => setBrowseType(browseType === t ? null : t)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${browseType === t ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{t}</button>
-                    ))}
-                  </div>
-                )}
+
+                  {showAllRuns && (
+                    <p className="text-xs text-muted leading-snug">
+                      Browsing every run&rsquo;s workouts. <span className="font-semibold text-ink">Schedule for this week</span> borrows one for this week only; <span className="font-semibold text-link">+ Add to my run</span> adopts it permanently.
+                    </p>
+                  )}
+                </FilterSheet>
 
                 {allSuggestions.length === 0 && !pickerSearch ? (
                   <p className="text-muted italic text-sm">

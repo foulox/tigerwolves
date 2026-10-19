@@ -6,8 +6,11 @@ const read = (p: string) => readFileSync(path.resolve(__dirname, '..', p), 'utf8
 const sc = read('components/ScheduleClient.tsx')
 const lp = read('components/LeaderPicker.tsx')
 describe('Schedule reskin (#489)', () => {
-  test('NBR tokens + accent present', () => {
-    for (const t of ['bg-card', 'bg-surface', 'border-line', 'text-ink', 'text-muted', 'bg-accent', 'text-accent']) expect(sc).toContain(t)
+  test('NBR tokens present', () => {
+    // bg-accent / text-accent no longer appear inline — Model C (Task 3) routes
+    // chip active states through filterChip (bg-ink) and the FilterSheet shared
+    // component; the AC2 grep gate explicitly bans bg-accent from this file.
+    for (const t of ['bg-card', 'bg-surface', 'border-line', 'text-ink', 'text-muted']) expect(sc).toContain(t)
   })
   test('no orange survives anywhere (brand → accent/neutral)', () => {
     expect(sc).not.toMatch(/orange-\d/)
