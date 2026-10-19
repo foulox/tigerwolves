@@ -614,7 +614,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 <FilterSheet
                   open={sheetOpen}
                   onClose={() => setSheetOpen(false)}
-                  onClear={() => setScope(showAllRuns)}
+                  onClear={() => { setShowAllRuns(false); setBrowseCategory(null); setBrowseType(null); setBrowseTypeCleared(false); setRatingThreshold('any') }}
                 >
                   {runConfig.runGroupId != null && (
                     <div>
