@@ -7,6 +7,7 @@ import type { ScheduleEntry, WorkoutVariantRow, RunConfig, RunLeader } from '@/l
 import { resolveWorkoutVariant } from '@/lib/scheduleUtils'
 import { resolveAllowedTypes, isWorkoutKind, kindToCategory } from '@/lib/runProfile'
 import { buildPost, buildVerificationLabel, formatDateLong } from '@/lib/postBuilder'
+import { filterChip, SQUARE_LABEL, NEXT_UP_LABEL, CARD_NAME, SEARCH_FIELD, SEARCH_INPUT } from '@/lib/cardStyles'
 import { setPlanWorkout } from '@/app/actions'
 import { captureClientEvent } from '@/lib/analyticsClient'
 import { workoutVoteId, ratingToEmoji } from '@/lib/votes'
@@ -17,9 +18,11 @@ import LeaderPicker from '@/components/LeaderPicker'
 import AdoptRouteControls from '@/components/AdoptRouteControls'
 import { formatDateShort } from '@/lib/dateUtils'
 import { schedulePickerScope, schedulePickerSuggestions, allRunsCategories, allRunsTypes } from '@/lib/schedulePicker'
-import RatingFilter from '@/components/RatingFilter'
-import { passesRatingThreshold, rankByRating } from '@/lib/rating'
-import type { RatingThreshold } from '@/lib/rating'
+import { rankByRating } from '@/lib/rating'
+import SortControl from '@/components/SortControl'
+import FiltersButton from '@/components/FiltersButton'
+import FilterSheet from '@/components/FilterSheet'
+import { scheduleFilterCount, scheduleFilterSummary, type ScheduleFilters } from '@/lib/scheduleFilters'
 
 
 type PlanStandaloneRow = { kind: 'standalone'; workout: WorkoutVariantRow }
@@ -77,12 +80,13 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   // whole catalog, with its own category/type browse pills (independent of the week's
   // type chips, which the widened mode ignores).
   const [showAllRuns, setShowAllRuns] = useState(false)
-  const [ratingThreshold, setRatingThreshold] = useState<RatingThreshold>('any')
   const [sortBy, setSortBy] = useState<'recent' | 'rating'>('recent')
   const [browseCategory, setBrowseCategory] = useState<string | null>(null)
   const [browseType, setBrowseType] = useState<string | null>(null)
   const [browseTypeCleared, setBrowseTypeCleared] = useState(false)
+  const [yourRunBrowseType, setYourRunBrowseType] = useState<string | null>(null)
   const [planTab, setPlanTab] = useState<'post' | 'browse'>('post')
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [leaderPickerOpen, setLeaderPickerOpen] = useState(false)
   const [localLeader, setLocalLeader] = useState<string | null>(null)
   const [verified, setVerified] = useState(false)
@@ -182,7 +186,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       ? []
       : browseTypeCleared
         ? []
-        : activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
+        : yourRunBrowseType
+          ? [yourRunBrowseType]
+          : activeType ? [activeType] : entry.workoutType.split(' or ').map(t => t.trim())
     return schedulePickerSuggestions({
       showAllRuns,
       ownVariants,
@@ -194,7 +200,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       browseType,
       plannedId: plannedWorkout?.id ?? null,
     })
-  }, [entry, ownVariants, variants, showAllRuns, activeType, browseTypeCleared, plannedWorkout, isWorkout, runCategory, browseCategory, browseType])
+  }, [entry, ownVariants, variants, showAllRuns, activeType, browseTypeCleared, yourRunBrowseType, plannedWorkout, isWorkout, runCategory, browseCategory, browseType])
 
   const pickerSource = useMemo(() => {
     const q = pickerSearch.toLowerCase()
@@ -216,15 +222,23 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
   }, [pickerSearch, allSuggestions, scopeVariants, plannedWorkout, showAllRuns, browseCategory, browseType])
 
-  // #241: apply the rating threshold, then optionally the confidence-weighted
-  // "Top rated" sort, on top of whatever pickerSource already filtered (scope,
-  // type chip / All-runs pills, search). Rating ANDs with those — never bypasses.
+  // #241: optionally apply the confidence-weighted "Top rated" sort, on top of
+  // whatever pickerSource already filtered (scope, type chip / All-runs pills, search).
   const rankedSource = useMemo(() => {
-    const filtered = pickerSource.filter(w =>
-      passesRatingThreshold(voteData[workoutVoteId(w.name, w.label ?? '')], ratingThreshold),
-    )
-    return sortBy === 'rating' ? rankByRating(filtered, voteData) : filtered
-  }, [pickerSource, ratingThreshold, sortBy, voteData])
+    return sortBy === 'rating' ? rankByRating(pickerSource, voteData) : pickerSource
+  }, [pickerSource, sortBy, voteData])
+
+  const effectiveBrowseType = !showAllRuns && isWorkout && !browseTypeCleared
+    ? (yourRunBrowseType ?? activeType ?? entry?.workoutType ?? null)
+    : null
+  const scheduleFilters: ScheduleFilters = {
+    showAllRuns,
+    typeLabel: effectiveBrowseType,
+    browseCategory,
+    browseType,
+  }
+  const filterCount = scheduleFilterCount(scheduleFilters)
+  const filterSummary = scheduleFilterSummary(scheduleFilters)
 
   const displayRows = useMemo<PlanDisplayRow[]>(() => {
     const rows: PlanDisplayRow[] = []
@@ -278,10 +292,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setBrowseCategory(null)
     setBrowseType(null)
     setBrowseTypeCleared(false)
-    // #241: rating threshold + sort are browse filters too — reset them on a week
-    // change like every other filter, so a "Top rated" / "🥳 only" view doesn't
-    // silently carry into the next week's list (mirrors the #405 stale-filter fix).
-    setRatingThreshold('any')
+    setYourRunBrowseType(null)
+    // #241: sort is a browse filter too — reset on a week change so a "Top rated"
+    // view doesn't silently carry into the next week's list.
     setSortBy('recent')
     setPlanTab('post')
     setLeaderPickerOpen(false)
@@ -296,11 +309,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setBrowseCategory(null)
     setBrowseType(null)
     setBrowseTypeCleared(false)
+    setYourRunBrowseType(null)
     // #405 (review): reset the week-type chip too, like every other filter — else a
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
-    // #241: same for the rating filter + sort — reset on a scope round-trip.
-    setRatingThreshold('any')
+    // #241: reset sort on a scope round-trip too.
     setSortBy('recent')
     setPickerSearch('')
     setShowCount(3)
@@ -380,7 +393,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
   // #241: a change to the committed week type re-derives the browse chip — a
   // previously-cleared chip must snap back to filtering by the new committed type.
-  useEffect(() => { setBrowseTypeCleared(false) }, [activeType])
+  useEffect(() => { setBrowseTypeCleared(false); setYourRunBrowseType(null) }, [activeType])
 
   function handleCopy() {
     navigator.clipboard.writeText(draftPost).then(() => {
@@ -423,12 +436,12 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       <div className="px-4 pb-4" data-tour="heylo-area">
 
         {/* Week nav */}
-        <div className={`flex items-center justify-between bg-card rounded-2xl border border-line shadow-sm px-2 py-2 ${leaderPickerOpen ? 'mb-2' : 'mb-5'}`}>
+        <div className={`flex items-center justify-between bg-card border border-line px-2 py-2 ${leaderPickerOpen ? 'mb-2' : 'mb-5'}`}>
           <button
             onClick={() => changeWeek(weekIndex - 1)}
             disabled={weekIndex === 0}
             aria-label="Previous week"
-            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-muted active:bg-surface"
+            className="p-2 touch-manipulation disabled:opacity-30 text-muted active:bg-surface"
           >
             <ChevronLeft size={20} />
           </button>
@@ -442,7 +455,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 <div className="text-sm font-semibold text-ink flex items-center gap-1">
                   {localLeader ?? entry.leader}
                   {entry.needsLeader && <span className="text-[9px] bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded">Needs leader</span>}
-                  <span className="text-xs text-accent">tap to change</span>
+                  <span className="text-xs text-link">tap to change</span>
                 </div>
               </button>
             ) : (
@@ -454,14 +467,14 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
             onClick={() => changeWeek(weekIndex + 1)}
             disabled={weekIndex >= upcoming.length - 1}
             aria-label="Next week"
-            className="p-2 rounded-xl touch-manipulation disabled:opacity-30 text-muted active:bg-surface"
+            className="p-2 touch-manipulation disabled:opacity-30 text-muted active:bg-surface"
           >
             <ChevronRight size={20} />
           </button>
         </div>
 
         {isLeader && leaderPickerOpen && entry && (
-          <div className="mb-3 bg-card rounded-2xl border border-line shadow-sm overflow-hidden">
+          <div className="mb-3 bg-card border border-line overflow-hidden">
             <LeaderPicker
               date={entry.date}
               currentLeader={localLeader ?? entry.leader}
@@ -475,9 +488,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
         {entry && (
           <>
             {isWorkout && (
-            <div className="bg-surface border border-line rounded-2xl p-4 mb-6">
-              <div className="text-xs font-bold text-accent tracking-wide mb-1">WORKOUT TYPE</div>
-              <div className="text-2xl font-bold text-ink">{activeType ?? entry.workoutType}</div>
+            <div className="bg-surface border border-line p-4 mb-6">
+              <div className={`${NEXT_UP_LABEL} mb-1`}>WORKOUT TYPE</div>
+              <div className={`${CARD_NAME}`}>{activeType ?? entry.workoutType}</div>
               {activeType && (
                 <div className="text-xs text-muted mt-0.5">Scheduled: {entry.workoutType}</div>
               )}
@@ -493,9 +506,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     return (
                       <button key={t} type="button"
                         onClick={() => setActiveType(scheduledTypes.includes(t) ? null : t)}
-                        className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
-                          isActive ? 'bg-accent text-white' : 'bg-card border border-line text-muted'
-                        }`}
+                        className={filterChip(isActive)}
                       >
                         {t}
                       </button>
@@ -507,7 +518,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
             )}
 
             {plannedNotFound && (
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-3 mb-4 text-sm text-red-700">
+              <div className="bg-red-50 border border-red-200 p-3 mb-4 text-sm text-red-700">
                 ⚠️ &ldquo;{entry.workoutName}&rdquo; is no longer in the workout library — pick a replacement below.
               </div>
             )}
@@ -521,7 +532,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 <div className="mb-4">
                   <div className="text-sm font-bold text-ink mb-2">Currently planned</div>
                   <div
-                    className={`bg-card rounded-2xl border shadow-sm transition-colors ${sel ? 'border-accent ring-1 ring-accent' : 'border-line'}`}
+                    className={`bg-card border transition-colors ${sel ? 'border-2 border-ink' : 'border-line'}`}
                   >
                     <button
                       onClick={() => handleSelect(w)}
@@ -549,19 +560,19 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
             })()}
 
             {plannedWorkout && (
-              <div className="flex bg-surface rounded-xl p-1 gap-1 mb-4">
+              <div className="flex border border-line mb-4">
                 <button
                   onClick={() => setPlanTab('post')}
-                  className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
-                    planTab === 'post' ? 'bg-card text-ink shadow-sm' : 'bg-transparent text-muted'
+                  className={`flex-1 py-2.5 text-xs font-bold transition-colors touch-manipulation ${
+                    planTab === 'post' ? 'bg-ink text-white' : 'text-muted'
                   }`}
                 >
                   Post draft
                 </button>
                 <button
                   onClick={() => setPlanTab('browse')}
-                  className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors touch-manipulation ${
-                    planTab === 'browse' ? 'bg-card text-ink shadow-sm' : 'bg-transparent text-muted'
+                  className={`flex-1 py-2.5 text-xs font-bold transition-colors touch-manipulation ${
+                    planTab === 'browse' ? 'bg-ink text-white' : 'text-muted'
                   }`}
                 >
                   Change workout
@@ -571,97 +582,98 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
             {(!plannedWorkout || planTab === 'browse') && (
               <>
-                {/* #405: Your run / All runs scope toggle — mirrors the Library's.
-                    "All runs" is the one-time cross-run borrow escape hatch.
-                    #241: RatingFilter always visible, right-aligned on this same row. */}
+                {/* Model C top bar: search + sort */}
                 <div className="flex items-center gap-2 mb-2">
-                  {runConfig.runGroupId != null && (
-                    <>
-                      <button
-                        onClick={() => setScope(false)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${!showAllRuns ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
-                      >Your run</button>
-                      <button
-                        onClick={() => setScope(true)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${showAllRuns ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
-                      >All runs</button>
-                    </>
-                  )}
-                  <RatingFilter value={ratingThreshold} onChange={setRatingThreshold} className="ml-auto" />
-                </div>
-
-                {!showAllRuns && isWorkout && availableTypes.length > 1 && (
-                  <div className="flex items-center gap-2 px-1 mb-2 text-xs">
-                    {browseTypeCleared ? (
-                      <button
-                        type="button"
-                        onClick={() => setBrowseTypeCleared(false)}
-                        className="font-semibold px-3 py-1 rounded-full bg-card border border-line text-muted touch-manipulation"
-                      >Filter to {activeType ?? entry.workoutType} type</button>
-                    ) : (
-                      <>
-                        <span className="font-semibold px-3 py-1 rounded-full bg-accent text-white inline-flex items-center gap-1">
-                          {activeType ?? entry.workoutType}
-                          <button
-                            type="button"
-                            aria-label="Clear type filter — show all types"
-                            onClick={() => setBrowseTypeCleared(true)}
-                            className="touch-manipulation leading-none"
-                          >✕</button>
-                        </span>
-                        <span className="text-muted">Clear — show all types</span>
-                      </>
-                    )}
+                  <div className={`${SEARCH_FIELD} flex-1`}>
+                    <span className="text-muted text-sm" aria-hidden="true">⌕</span>
+                    <input
+                      type="search"
+                      value={pickerSearch}
+                      onChange={e => setPickerSearch(e.target.value)}
+                      placeholder={showAllRuns ? "Search every run's workouts…" : "Search your run's workouts…"}
+                      className={SEARCH_INPUT}
+                    />
                   </div>
-                )}
-
-                {showAllRuns && (
-                  <p className="text-xs text-muted mb-3 leading-snug">
-                    Browsing every run&rsquo;s workouts. <span className="font-semibold text-ink">Schedule for this week</span> borrows one for this week only — it won&rsquo;t join your library or rotation. <span className="font-semibold text-accent">+ Add to my run</span> adopts it permanently. You can only <span className="font-semibold text-accent">+ Add</span> a route whose type fits one of your runs — borrow works for any type.
-                  </p>
-                )}
-
-                <div className="relative mb-4">
-                  <input
-                    type="search"
-                    value={pickerSearch}
-                    onChange={e => setPickerSearch(e.target.value)}
-                    placeholder={showAllRuns ? "Search every run's workouts by name, type, race…" : "Search your run's workouts by name, type, race…"}
-                    className="w-full rounded-xl border border-line bg-card pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-accent"
+                  <SortControl
+                    value={sortBy}
+                    options={[{ value: 'recent', label: 'Least recent' }, { value: 'rating', label: 'Top rated' }]}
+                    onChange={setSortBy}
                   />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">🔍</span>
                 </div>
 
-                {/* #241: Least recent / Top rated sort toggle */}
-                <div className="flex items-center gap-2 mb-3">
-                  <button
-                    onClick={() => setSortBy('recent')}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'recent' ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
-                  >Least recent</button>
-                  <button
-                    onClick={() => setSortBy('rating')}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation ${sortBy === 'rating' ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}
-                  >Top rated</button>
+                <div className="mb-3">
+                  <FiltersButton count={filterCount} summary={filterSummary} onOpen={() => setSheetOpen(true)} />
                 </div>
 
-                {/* #405: "All runs" category + type pills — every category/type across
-                    all runs, no run-scope and no week-type restriction (AC4). */}
-                {showAllRuns && browseCategories.length > 0 && (
-                  <div className="flex gap-2 overflow-x-auto pb-1 mb-2" style={{ scrollbarWidth: 'none' }}>
-                    <button onClick={() => selectBrowseCategory(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${!browseCategory ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>All</button>
-                    {browseCategories.map(c => (
-                      <button key={c} onClick={() => selectBrowseCategory(browseCategory === c ? null : c)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${browseCategory === c ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{c}</button>
-                    ))}
-                  </div>
-                )}
-                {showAllRuns && browseTypes.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-1 mb-3" style={{ scrollbarWidth: 'none' }}>
-                    <button onClick={() => setBrowseType(null)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${!browseType ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>All types</button>
-                    {browseTypes.map(t => (
-                      <button key={t} onClick={() => setBrowseType(browseType === t ? null : t)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full touch-manipulation transition-colors ${browseType === t ? 'bg-accent text-white' : 'bg-card border border-line text-muted'}`}>{t}</button>
-                    ))}
-                  </div>
-                )}
+                <FilterSheet
+                  open={sheetOpen}
+                  onClose={() => setSheetOpen(false)}
+                  onClear={() => { setShowAllRuns(false); setBrowseCategory(null); setBrowseType(null); setBrowseTypeCleared(false); setYourRunBrowseType(null) }}
+                >
+                  {runConfig.runGroupId != null && (
+                    <div>
+                      <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Scope</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => setScope(false)} className={filterChip(!showAllRuns)}>Your run</button>
+                        <button onClick={() => setScope(true)} className={filterChip(showAllRuns)}>All runs</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Your-run workout: Type facet — full browse-only picker (All types + per-type pills) */}
+                  {!showAllRuns && isWorkout && availableTypes.length > 1 && (
+                    <div>
+                      <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Type</p>
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => { setBrowseTypeCleared(true); setYourRunBrowseType(null) }}
+                          className={filterChip(browseTypeCleared)}
+                        >All types</button>
+                        {availableTypes.map(t => {
+                          const scheduled = activeType ? t === activeType : scheduledTypes.includes(t)
+                          const active = !browseTypeCleared && (yourRunBrowseType === t || (yourRunBrowseType === null && scheduled))
+                          return (
+                            <button
+                              key={t}
+                              onClick={() => { setBrowseTypeCleared(false); setYourRunBrowseType(t) }}
+                              className={filterChip(active)}
+                            >{t}{scheduled ? ' (this week)' : ''}</button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* All-runs browse pills */}
+                  {showAllRuns && browseCategories.length > 0 && (
+                    <div>
+                      <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Category</p>
+                      <div className="flex gap-2 flex-wrap">
+                        <button onClick={() => selectBrowseCategory(null)} className={filterChip(!browseCategory)}>All</button>
+                        {browseCategories.map(c => (
+                          <button key={c} onClick={() => selectBrowseCategory(browseCategory === c ? null : c)} className={filterChip(browseCategory === c)}>{c}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {showAllRuns && browseTypes.length > 1 && (
+                    <div>
+                      <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Type</p>
+                      <div className="flex gap-2 flex-wrap">
+                        <button onClick={() => setBrowseType(null)} className={filterChip(!browseType)}>All types</button>
+                        {browseTypes.map(t => (
+                          <button key={t} onClick={() => setBrowseType(browseType === t ? null : t)} className={filterChip(browseType === t)}>{t}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {showAllRuns && (
+                    <p className="text-xs text-muted leading-snug">
+                      Browsing every run&rsquo;s workouts. <span className="font-semibold text-ink">Schedule for this week</span> borrows one for this week only — it won&rsquo;t join your library or rotation. <span className="font-semibold text-link">+ Add to my run</span> adopts it permanently. You can only <span className="font-semibold text-link">+ Add</span> a route whose type fits one of your runs — borrow works for any type.
+                    </p>
+                  )}
+                </FilterSheet>
 
                 {allSuggestions.length === 0 && !pickerSearch ? (
                   <p className="text-muted italic text-sm">
@@ -676,7 +688,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                             : 'No workouts in your library yet.')}
                   </p>
                 ) : displayRows.length === 0 ? (
-                  <p className="text-muted italic text-sm">{pickerSearch ? 'No workouts match your search.' : ratingThreshold !== 'any' ? 'No workouts match this rating filter.' : 'No workouts match these filters.'}</p>
+                  <p className="text-muted italic text-sm">{pickerSearch ? 'No workouts match your search.' : 'No workouts match these filters.'}</p>
                 ) : (
                   <div className="mb-6">
                     <div className="text-sm font-bold text-ink mb-2">
@@ -692,7 +704,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                           return (
                             <div
                               key={`s-${w.id}`}
-                              className={`bg-card rounded-2xl border shadow-sm transition-colors ${sel ? 'border-accent ring-1 ring-accent' : 'border-line'}`}
+                              className={`bg-card border transition-colors ${sel ? 'border-2 border-ink' : 'border-line'}`}
                             >
                               <button
                                 onClick={() => handleSelect(w)}
@@ -724,11 +736,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                         // Total"), not driven by label — label is a short leader-authored
                         // tag ("Shorter"/"Longer"), shown as the subtitle beneath it.
                         return (
-                          <div key={`f-${row.familyId}`} className="bg-card rounded-2xl border border-line shadow-sm overflow-hidden">
+                          <div key={`f-${row.familyId}`} className="bg-card border border-line overflow-hidden">
                             <div className="px-4 py-3 border-b border-line">
                               <div className="flex justify-between items-start gap-2">
                                 <div className="font-semibold text-ink">{row.name}</div>
-                                <span className="text-xs font-semibold bg-surface text-muted border border-line px-2 py-0.5 rounded-full shrink-0">
+                                <span className={`${SQUARE_LABEL} shrink-0`}>
                                   {row.total} versions
                                 </span>
                               </div>
@@ -747,8 +759,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                   >
                                     <div className="flex justify-between items-start gap-2">
                                       <div className="flex items-center gap-2">
-                                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${sel ? 'border-accent bg-accent' : 'border-line'}`} />
-                                        <span className={`text-xs font-bold ${i === 0 ? 'text-muted' : 'text-accent'}`}>{label}</span>
+                                        <div className={`w-4 h-4 border-2 flex-shrink-0 ${sel ? 'border-ink bg-ink' : 'border-line'}`} />
+                                        <span className={`text-xs font-bold ${i === 0 ? 'text-muted' : 'text-ink'}`}>{label}</span>
                                       </div>
                                       <div className="flex items-center gap-2 shrink-0">
                                         <VoteBadge v={voteData[workoutVoteId(v.name, v.label ?? '')]} />
@@ -775,7 +787,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     {remainingCount > 0 && (
                       <button
                         onClick={() => setShowCount(showCount + 3)}
-                        className="mt-3 w-full py-2.5 rounded-xl border border-line text-sm font-medium text-muted bg-card active:bg-surface touch-manipulation"
+                        className="mt-3 w-full py-2.5 border border-line text-sm font-medium text-muted bg-card active:bg-surface touch-manipulation"
                       >
                         Show {Math.min(remainingCount, 3)} more
                       </button>
@@ -787,10 +799,10 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                   <button
                     onClick={handleSetPlan}
                     disabled={saving || saved}
-                    className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm mb-6 touch-manipulation transition-colors ${
+                    className={`w-full flex items-center justify-center gap-2 py-3.5 font-semibold text-sm mb-6 touch-manipulation transition-colors ${
                       saved
                         ? 'bg-green-500 text-white'
-                        : 'bg-accent text-white active:bg-accent disabled:opacity-60'
+                        : 'bg-ink text-white active:bg-ink disabled:opacity-60'
                     }`}
                   >
                     {saved ? <><Check size={16} /> Saved to plan</> : saving ? 'Saving…' : showAllRuns ? 'Schedule for this week' : 'Set as plan'}
@@ -806,7 +818,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     <div className="text-[10px] font-bold text-muted tracking-wide uppercase">
                       This week&rsquo;s post · {formatDateShort(new Date(entry.date + 'T00:00:00'))}
                     </div>
-                    <div className="text-xs text-accent flex items-center gap-1">✎ editable</div>
+                    <div className="text-xs text-link flex items-center gap-1">✎ editable</div>
                   </div>
                   <textarea
                     ref={setPostRef}
@@ -814,19 +826,19 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     onChange={e => setEditedPost(e.target.value)}
                     aria-label="Editable weekly post"
                     spellCheck={false}
-                    className="w-full min-h-[210px] resize-none rounded-xl border border-line bg-card px-3 py-3 text-sm text-ink leading-relaxed font-sans touch-manipulation focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent"
+                    className="w-full min-h-[210px] resize-none border border-line bg-card px-3 py-3 text-sm text-ink leading-relaxed font-sans touch-manipulation focus:outline-none focus:border-ink focus:ring-2 focus:ring-ink"
                   />
                   <div className="text-xs text-muted mt-1.5 px-0.5">
                     Changes here affect only this week&rsquo;s post — your template stays as saved.
                   </div>
                 </div>
-                <div className="flex items-start gap-3 bg-surface rounded-xl px-4 py-3">
+                <div className="flex items-start gap-3 bg-surface px-4 py-3">
                   <input
                     type="checkbox"
                     id="verify-checkbox"
                     checked={verified}
                     onChange={e => setVerified(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 shrink-0 accent-accent touch-manipulation"
+                    className="mt-0.5 w-4 h-4 shrink-0 accent-ink touch-manipulation"
                   />
                   <label htmlFor="verify-checkbox" className="text-sm text-muted leading-snug cursor-pointer">
                     {effectiveSelections.length > 0 ? buildVerificationLabel(effectiveSelections[0]) : 'I\'ve verified the key workout details'}
@@ -836,7 +848,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                   onClick={handleCopy}
                   disabled={!verified}
                   data-tour="heylo-copy"
-                  className={`flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-sm touch-manipulation transition-opacity ${verified ? 'bg-accent text-white' : 'bg-accent text-white opacity-35 cursor-not-allowed'}`}
+                  className={`flex items-center justify-center gap-2 w-full py-3.5 font-bold text-sm touch-manipulation transition-opacity ${verified ? 'bg-ink text-white' : 'bg-ink text-white opacity-35 cursor-not-allowed'}`}
                 >
                   {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy to clipboard</>}
                 </button>

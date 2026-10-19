@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test'
 
+async function openFilters(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'Filters', exact: false }).first().click()
+  await expect(page.getByRole('dialog', { name: 'Filters' })).toBeVisible()
+}
+
 test('Schedule page for the already-planned week shows the Heylo post with fixture content', async ({ page }) => {
   await page.goto('/schedule?week=0')
   await page.waitForLoadState('load')
@@ -134,10 +139,14 @@ test('All runs mode: borrow another run\'s off-type workout onto the week', asyn
   await search.fill('McCarren Easy Loop')
   await expect(page.locator('button').filter({ hasText: 'McCarren Easy Loop' })).toHaveCount(0)
 
-  // Flip to "All runs" — the borrow escape hatch. (setScope clears the search.)
+  // Flip to "All runs" via the Filters sheet — the borrow escape hatch.
+  await openFilters(page)
   await page.getByRole('button', { name: 'All runs', exact: true }).click()
+  // Borrow explainer is inside the sheet — assert while it's still open.
   await expect(page.getByText(/borrows one for this week only/i)).toBeVisible()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
 
+  // setScope clears the search — re-fill after closing the sheet.
   // Now the cross-run workout is browsable and selectable.
   await search.fill('McCarren Easy Loop')
   await page.locator('button').filter({ hasText: 'McCarren Easy Loop' }).first().click()

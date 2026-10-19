@@ -12,9 +12,7 @@ import AdoptRouteControls from '@/components/AdoptRouteControls'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import { resolveAllowedTypes } from '@/lib/runProfile'
-import RatingFilter from '@/components/RatingFilter'
 import { rankByRating } from '@/lib/rating'
-import type { RatingThreshold } from '@/lib/rating'
 import { CARD_LINK, TYPE_LABEL, CARD_NAME, filterChip, SEARCH_FIELD, SEARCH_INPUT, SQUARE_LABEL } from '@/lib/cardStyles'
 import SortControl from '@/components/SortControl'
 import FiltersButton from '@/components/FiltersButton'
@@ -64,7 +62,6 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const [showAbbrev, setShowAbbrev] = useState(false)
   const [flagSheetFor, setFlagSheetFor] = useState<number | null>(null)
   const [showAllRuns, setShowAllRuns] = useState(false)
-  const [ratingThreshold, setRatingThreshold] = useState<RatingThreshold>('any')
   const [sortBy, setSortBy] = useState<'recent' | 'rating'>('recent')
   const [sheetOpen, setSheetOpen] = useState(false)
 
@@ -109,11 +106,11 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const effectiveCategory = category
 
   // Model C: the facet state assembled into one object the shared helpers operate on.
-  const filters: LibraryFilters = { category, type: typeFilter, race: raceFilter, rating: ratingThreshold, showAllRuns }
+  const filters: LibraryFilters = { category, type: typeFilter, race: raceFilter, showAllRuns }
   const filterCount = activeFilterCount(filters)
   const filterSummary = activeFilterSummary(filters)
 
-  const filteredBase = applyLibraryFilters(visibleVariants, filters, search, voteData)
+  const filteredBase = applyLibraryFilters(visibleVariants, filters, search)
 
   // #322: in "Your run" mode the type-filter options are the run's allowlist
   // (∩ types present); "All runs" mode shows every present type as before. An
@@ -238,7 +235,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
       <FilterSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        onClear={() => { setCategory(null); setTypeFilter(null); setRaceFilter(null); setRatingThreshold('any'); setShowAllRuns(false) }}
+        onClear={() => { setCategory(null); setTypeFilter(null); setRaceFilter(null); setShowAllRuns(false) }}
       >
         {runId && (
           <div>
@@ -282,10 +279,6 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           </div>
         </div>
 
-        <div>
-          <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Rating</p>
-          <RatingFilter value={ratingThreshold} onChange={setRatingThreshold} />
-        </div>
       </FilterSheet>
 
       <div className="px-4 flex flex-col gap-3">

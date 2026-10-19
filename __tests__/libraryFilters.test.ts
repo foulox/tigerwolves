@@ -10,8 +10,6 @@ import {
   type LibraryFilters,
 } from '../lib/libraryFilters'
 import type { WorkoutVariantRow } from '../lib/data'
-import type { VoteData } from '../lib/votes'
-import { workoutVoteId } from '../lib/votes'
 
 function makeVariant(
   o: Pick<WorkoutVariantRow, 'id' | 'familyId' | 'name' | 'category' | 'type'> &
@@ -38,12 +36,12 @@ describe('activeFilterCount / activeFilterSummary', () => {
   })
 
   test('counts and summarizes each active facet in order', () => {
-    const f: LibraryFilters = { category: 'Quality', type: 'Hills', race: '5K', rating: 'good', showAllRuns: true }
-    expect(activeFilterCount(f)).toBe(5)
-    expect(activeFilterSummary(f)).toBe('Quality · Hills · 5K · 😃 & up · All runs')
+    const f: LibraryFilters = { category: 'Quality', type: 'Hills', race: '5K', showAllRuns: true }
+    expect(activeFilterCount(f)).toBe(4)
+    expect(activeFilterSummary(f)).toBe('Quality · Hills · 5K · All runs')
   })
 
-  test('"any" rating and "Your run" scope are not counted', () => {
+  test('"Your run" scope is not counted', () => {
     const f: LibraryFilters = { ...EMPTY_FILTERS, category: 'Easy' }
     expect(activeFilterCount(f)).toBe(1)
     expect(activeFilterSummary(f)).toBe('Easy')
@@ -70,20 +68,14 @@ describe('matchesQuery', () => {
 })
 
 describe('applyLibraryFilters', () => {
-  const noVotes: Record<string, VoteData | null> = {}
   test('category + type + race AND together', () => {
     const f: LibraryFilters = { ...EMPTY_FILTERS, category: 'Quality' }
-    expect(applyLibraryFilters(all, f, '', noVotes).map(w => w.id)).toEqual([1, 2])
-    expect(applyLibraryFilters(all, { ...f, type: 'Hills' }, '', noVotes).map(w => w.id)).toEqual([1])
-    expect(applyLibraryFilters(all, { ...f, race: '5K' }, '', noVotes).map(w => w.id)).toEqual([1])
+    expect(applyLibraryFilters(all, f, '').map(w => w.id)).toEqual([1, 2])
+    expect(applyLibraryFilters(all, { ...f, type: 'Hills' }, '').map(w => w.id)).toEqual([1])
+    expect(applyLibraryFilters(all, { ...f, race: '5K' }, '').map(w => w.id)).toEqual([1])
   })
   test('query ANDs with the facets', () => {
-    expect(applyLibraryFilters(all, EMPTY_FILTERS, 'mccarren', noVotes).map(w => w.id)).toEqual([3])
-  })
-  test('rating threshold ANDs: a zero-vote row fails any non-"any" threshold', () => {
-    const votes = { [workoutVoteId(hills.name, '')]: { avg: 5, count: 4 } as VoteData }
-    const f: LibraryFilters = { ...EMPTY_FILTERS, rating: 'good' }
-    expect(applyLibraryFilters(all, f, '', votes).map(w => w.id)).toEqual([1]) // only the rated row survives
+    expect(applyLibraryFilters(all, EMPTY_FILTERS, 'mccarren').map(w => w.id)).toEqual([3])
   })
 })
 
@@ -92,8 +84,8 @@ describe('reset rules (withCategory / withScope)', () => {
     const f: LibraryFilters = { ...EMPTY_FILTERS, category: 'Quality', type: 'Hills' }
     expect(withCategory(f, 'Easy')).toEqual({ ...EMPTY_FILTERS, category: 'Easy' })
   })
-  test('toggling scope clears category and type but keeps race/rating', () => {
-    const f: LibraryFilters = { category: 'Quality', type: 'Hills', race: '5K', rating: 'good', showAllRuns: false }
-    expect(withScope(f, true)).toEqual({ category: null, type: null, race: '5K', rating: 'good', showAllRuns: true })
+  test('toggling scope clears category and type but keeps race', () => {
+    const f: LibraryFilters = { category: 'Quality', type: 'Hills', race: '5K', showAllRuns: false }
+    expect(withScope(f, true)).toEqual({ category: null, type: null, race: '5K', showAllRuns: true })
   })
 })
