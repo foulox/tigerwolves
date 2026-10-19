@@ -674,7 +674,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
 
                   {showAllRuns && (
                     <p className="text-xs text-muted leading-snug">
-                      Browsing every run&rsquo;s workouts. <span className="font-semibold text-ink">Schedule for this week</span> borrows one for this week only; <span className="font-semibold text-link">+ Add to my run</span> adopts it permanently.
+                      Browsing every run&rsquo;s workouts. <span className="font-semibold text-ink">Schedule for this week</span> borrows one for this week only — it won&rsquo;t join your library or rotation. <span className="font-semibold text-link">+ Add to my run</span> adopts it permanently. You can only <span className="font-semibold text-link">+ Add</span> a route whose type fits one of your runs — borrow works for any type.
                     </p>
                   )}
                 </FilterSheet>
