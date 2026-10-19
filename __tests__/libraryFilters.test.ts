@@ -61,6 +61,12 @@ describe('matchesQuery', () => {
     expect(matchesQuery(hills, '5k')).toBe(true)
     expect(matchesQuery(hills, 'ladder')).toBe(false)
   })
+  test('matches the label and reason fields case-insensitively', () => {
+    const v = makeVariant({ id: 9, familyId: 90, name: 'Hill Repeats', category: 'Quality', type: 'Hills', label: 'Short', reason: 'VO2 max builder' })
+    expect(matchesQuery(v, 'short')).toBe(true)    // label
+    expect(matchesQuery(v, 'vo2 max')).toBe(true)  // reason
+    expect(matchesQuery(v, 'tempo')).toBe(false)
+  })
 })
 
 describe('applyLibraryFilters', () => {

@@ -71,11 +71,16 @@ export function applyLibraryFilters(
     .filter(w => !f.type || w.type === f.type)
     .filter(w => !f.race || w.raceTypes.includes(f.race))
     .filter(w => matchesQuery(w, query))
+    // #241: raw-average rating threshold (no minimum vote count); ANDs with the filters above.
     .filter(w => passesRatingThreshold(voteData[workoutVoteId(w.name, w.label ?? '')], f.rating))
 }
 
 // Reset rules, mirroring LibraryClient's setcat (category change clears type) and
 // setScope (scope toggle clears category + type so the two scopes stay independent).
+// #322: the two scopes' type-filter option sets differ (one is allowlist-intersected),
+// so a stale type from the other scope could silently empty the list with no pill to
+// clear it — hence the type reset. #401: reset category on scope toggle so a narrowing
+// under one scope doesn't carry into the other. Both are pinned by unit tests below.
 export function withCategory(f: LibraryFilters, category: string | null): LibraryFilters {
   return { ...f, category, type: null }
 }

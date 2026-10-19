@@ -29,7 +29,7 @@ export default function SortControl<T extends string>({
     <div ref={ref} className="relative">
       <button
         type="button"
-        aria-label="Change sort order"
+        aria-label={`Change sort order, current: ${current}`}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(v => !v)}
