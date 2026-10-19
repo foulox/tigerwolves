@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { resolveAllowedTypes, isWorkoutKind, WEEK_SLOTS, parseSlotValue, joinSlotValue, kindToCategory, isRouteAdoptable, adoptableRunsFor } from '../lib/runProfile'
+import { resolveAllowedTypes, isWorkoutKind, WEEK_SLOTS, parseSlotValue, joinSlotValue, kindToCategory, isRouteAdoptable, adoptableRunsFor, RUN_KINDS, KIND_TO_NBR_CATEGORY } from '../lib/runProfile'
 
 describe('resolveAllowedTypes', () => {
   test('intersects present types with the allowlist, sorted', () => {
@@ -27,7 +27,6 @@ describe('isWorkoutKind', () => {
   test('is false for non-workout kinds', () => {
     expect(isWorkoutKind('Easy')).toBe(false)
     expect(isWorkoutKind('Long')).toBe(false)
-    expect(isWorkoutKind('Beginner-Friendly')).toBe(false)
     expect(isWorkoutKind('Food')).toBe(false)
   })
 })
@@ -73,16 +72,22 @@ describe('kindToCategory', () => {
     expect(kindToCategory('Long')).toBe('Long')
   })
 
-  test('maps Beginner-Friendly to Easy', () => {
-    expect(kindToCategory('Beginner-Friendly')).toBe('Easy')
-  })
-
   test('maps Food to null', () => {
     expect(kindToCategory('Food')).toBe(null)
   })
 
   test('maps unknown kind to null', () => {
     expect(kindToCategory('SomethingUnknown')).toBe(null)
+  })
+
+  test('Beginner-Friendly is no longer a run kind', () => {
+    expect((RUN_KINDS as readonly string[]).includes('Beginner-Friendly')).toBe(false)
+    expect(KIND_TO_NBR_CATEGORY['Beginner-Friendly']).toBeUndefined()
+  })
+
+  test('Easy still maps to the Easy library category and the Easy Runs directory group', () => {
+    expect(kindToCategory('Easy')).toBe('Easy')
+    expect(KIND_TO_NBR_CATEGORY['Easy']).toBe('Easy Runs')
   })
 })
 
@@ -113,10 +118,6 @@ describe('isRouteAdoptable', () => {
 
   test('Easy run accepts an Easy-category workout', () => {
     expect(isRouteAdoptable({ category: 'Easy', type: 'Easy' }, { kind: 'Easy', workoutTypes: [] })).toBe(true)
-  })
-
-  test('Beginner-Friendly run accepts an Easy-category workout (maps to Easy)', () => {
-    expect(isRouteAdoptable({ category: 'Easy', type: 'Easy' }, { kind: 'Beginner-Friendly', workoutTypes: [] })).toBe(true)
   })
 
   test('Easy run rejects a Long-category workout', () => {
