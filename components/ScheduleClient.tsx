@@ -267,7 +267,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       : entry?.workoutName
         ? []
         : (() => {
-            const w = allSuggestions[0] ?? null
+            // #536: default to the first suggestion that's actually in the "Last ran"
+            // view. Never-ran workouts are excluded from that view, but allSuggestions
+            // floats them to the front, so allSuggestions[0] would pre-select a workout
+            // that's hidden from the list below (a selection with no visible card).
+            const w = allSuggestions.find(s => s.lastRan != null) ?? null
             return w ? [w] : []
           })()
 
