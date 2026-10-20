@@ -436,6 +436,11 @@ export async function seedE2E(): Promise<void> {
     JOIN runs r ON r.run_group_id = wf.run_group_id
     ON CONFLICT (run_id, family_id) DO NOTHING
   `
+  // #536: give every membership a last_ran so the default "Last ran" library/picker
+  // view isn't empty. The sort/view model (lib/variantSort) excludes never-ran
+  // workouts from the recency view; production runs carry run-history (~80/99 run),
+  // so the real default view is non-empty. A deterministic spread keeps tests stable.
+  await sql`UPDATE run_workouts SET last_ran = DATE '2026-09-15' - (family_id % 45)`
 
   const familyCount = CURATED_FAMILIES.length + 1 + CURATED_DOVES_ROUTES.length // + MMER Easy + doves routes
   console.log(`  seeded ${familyCount} workout_families, 4 runs (tuesday-morning-tigerwolves + monday-morning-easy-run + wednesday-mourning-doves + e2e-draft-thursday) + 5 run_leaders, ${4 + CURATED_DOVES_ROUTES.length} schedule entries (tuesday-morning-tigerwolves: ${week1}, ${week2}, ${week3}; monday-morning-easy-run: ${mon1}; wednesday-mourning-doves: ${wed1}, ${wed2}), ${RACES.length} races, run_workouts membership seeded`)

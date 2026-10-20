@@ -13,14 +13,11 @@ test('Library "Your run" mode shows only the run\'s own workouts across categori
   await page.goto('/library')
   await page.waitForLoadState('load')
 
-  // Default "Your run" owns 17 rows, but the fixture has no last_ran dates, so the
-  // default "Last ran" view hides them all as never-ran. Switch to A–Z (shows every
-  // row) to assert run_group scoping: 15 single-variant families + 1 two-variant
-  // reserved family → 17 rows.
-  await page.getByRole('button', { name: 'Change sort order' }).click()
-  await page.getByRole('menuitem', { name: 'A–Z', exact: true }).click()
-  const countEl = page.locator('p').filter({ hasText: /workouts · A–Z/ })
-  await expect(countEl).toHaveText('17 workouts · A–Z')
+  // Default "Your run" owns 17 rows (15 single-variant families + 1 two-variant
+  // reserved family). The fixture seeds last_ran, so the default "Last ran, oldest
+  // first" view shows all 17 rows — assert that directly.
+  const countEl = page.locator('p').filter({ hasText: /workouts · Last ran, oldest first/ })
+  await expect(countEl).toHaveText('17 workouts · Last ran, oldest first')
 
   // Spot-check a spread of the curated real names across types. Each name is unique
   // (never also a type-pill string), so a bare toBeVisible() stays single-match.
@@ -44,6 +41,12 @@ test('Library "All runs" mode reveals the full shared catalog incl. other runs, 
   await openFilters(page)
   await page.getByRole('button', { name: 'All runs', exact: true }).click()
   await page.getByRole('button', { name: 'Show results', exact: true }).click()
+
+  // Cross-run workouts (Doves, MMER) have no last_ran from the TigerWolves viewer's
+  // perspective — the recency join resolves against the viewer's run_workouts rows only.
+  // Switch to A–Z so the never-ran exclusion doesn't hide them.
+  await page.getByRole('button', { name: 'Change sort order' }).click()
+  await page.getByRole('menuitem', { name: 'A–Z', exact: true }).click()
 
   // Other runs' non-Quality workouts now appear: a Doves Long route + MMER's Easy loop.
   await expect(page.getByText('All The Water Fountains')).toBeVisible()
@@ -75,6 +78,11 @@ test('Library shows ≥1 workout of every seeded type (#426 per-type coverage)',
   await openFilters(page)
   await page.getByRole('button', { name: 'All runs', exact: true }).click()
   await page.getByRole('button', { name: 'Show results', exact: true }).click()
+
+  // Long-type workouts (Doves run) have no last_ran from TigerWolves' view — switch
+  // to A–Z so every type is visible regardless of recency.
+  await page.getByRole('button', { name: 'Change sort order' }).click()
+  await page.getByRole('menuitem', { name: 'A–Z', exact: true }).click()
 
   const byType: Record<string, string> = {
     Hills: 'Hills - 2 Sets 7x30s',
@@ -195,6 +203,9 @@ test('Adopt: a route from "All runs" appears in "Your run", marked adopted, and 
   await openFilters(page)
   await page.getByRole('button', { name: 'All runs', exact: true }).click()
   await page.getByRole('button', { name: 'Show results', exact: true }).click()
+  // MMER's workout has no last_ran from TigerWolves' view — switch to A–Z so it's visible.
+  await page.getByRole('button', { name: 'Change sort order' }).click()
+  await page.getByRole('menuitem', { name: 'A–Z', exact: true }).click()
   const allRunsCard = page.locator('[data-testid="workout-card"]', { hasText: 'MMER Threshold Session' })
   await expect(allRunsCard).toBeVisible()
   await allRunsCard.getByRole('button', { name: '+ Add to my run' }).click()
