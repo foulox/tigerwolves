@@ -146,8 +146,11 @@ test('All runs mode: borrow another run\'s off-type workout onto the week', asyn
   await expect(page.getByText(/borrows one for this week only/i)).toBeVisible()
   await page.getByRole('button', { name: 'Show results', exact: true }).click()
 
-  // setScope clears the search — re-fill after closing the sheet.
-  // Now the cross-run workout is browsable and selectable.
+  // setScope clears the search — switch to A–Z first (cross-run workouts have no
+  // last_ran from TigerWolves' view, so the default recency sort hides them), then
+  // re-fill the search so the cross-run workout is browsable and selectable.
+  await page.getByRole('button', { name: 'Change sort order' }).click()
+  await page.getByRole('menuitem', { name: 'A–Z', exact: true }).click()
   await search.fill('McCarren Easy Loop')
   await page.locator('button').filter({ hasText: 'McCarren Easy Loop' }).first().click()
 

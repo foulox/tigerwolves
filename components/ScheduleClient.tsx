@@ -18,7 +18,7 @@ import LeaderPicker from '@/components/LeaderPicker'
 import AdoptRouteControls from '@/components/AdoptRouteControls'
 import { formatDateShort } from '@/lib/dateUtils'
 import { schedulePickerScope, schedulePickerSuggestions, allRunsCategories, allRunsTypes } from '@/lib/schedulePicker'
-import { rankByRating } from '@/lib/rating'
+import { sortVariants, SORT_LABELS, DEFAULT_DIR, sortCountLabel, directionApplies, type SortField, type SortDir } from '@/lib/variantSort'
 import SortControl from '@/components/SortControl'
 import FiltersButton from '@/components/FiltersButton'
 import FilterSheet from '@/components/FilterSheet'
@@ -80,7 +80,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   // whole catalog, with its own category/type browse pills (independent of the week's
   // type chips, which the widened mode ignores).
   const [showAllRuns, setShowAllRuns] = useState(false)
-  const [sortBy, setSortBy] = useState<'recent' | 'rating'>('recent')
+  const [sortField, setSortField] = useState<SortField>('recent')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [browseCategory, setBrowseCategory] = useState<string | null>(null)
   const [browseType, setBrowseType] = useState<string | null>(null)
   const [browseTypeCleared, setBrowseTypeCleared] = useState(false)
@@ -219,14 +220,13 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
         w.raceTypes.some(r => r.toLowerCase().includes(q))
       )
       .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
-      .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
   }, [pickerSearch, allSuggestions, scopeVariants, plannedWorkout, showAllRuns, browseCategory, browseType])
 
-  // #241: optionally apply the confidence-weighted "Top rated" sort, on top of
-  // whatever pickerSource already filtered (scope, type chip / All-runs pills, search).
-  const rankedSource = useMemo(() => {
-    return sortBy === 'rating' ? rankByRating(pickerSource, voteData) : pickerSource
-  }, [pickerSource, sortBy, voteData])
+  // #241: sort through the shared sort model — recent / A–Z / rating, with direction.
+  const rankedSource = useMemo(
+    () => sortVariants(pickerSource, sortField, sortDir, voteData),
+    [pickerSource, sortField, sortDir, voteData],
+  )
 
   const effectiveBrowseType = !showAllRuns && isWorkout && !browseTypeCleared
     ? (yourRunBrowseType ?? activeType ?? entry?.workoutType ?? null)
@@ -267,7 +267,11 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
       : entry?.workoutName
         ? []
         : (() => {
-            const w = allSuggestions[0] ?? null
+            // #536: default to the first suggestion that's actually in the "Last ran"
+            // view. Never-ran workouts are excluded from that view, but allSuggestions
+            // floats them to the front, so allSuggestions[0] would pre-select a workout
+            // that's hidden from the list below (a selection with no visible card).
+            const w = allSuggestions.find(s => s.lastRan != null) ?? null
             return w ? [w] : []
           })()
 
@@ -295,7 +299,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setYourRunBrowseType(null)
     // #241: sort is a browse filter too — reset on a week change so a "Top rated"
     // view doesn't silently carry into the next week's list.
-    setSortBy('recent')
+    setSortField('recent'); setSortDir('asc')
     setPlanTab('post')
     setLeaderPickerOpen(false)
     setLocalLeader(null)
@@ -314,7 +318,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
     // #241: reset sort on a scope round-trip too.
-    setSortBy('recent')
+    setSortField('recent'); setSortDir('asc')
     setPickerSearch('')
     setShowCount(3)
   }
@@ -595,9 +599,16 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     />
                   </div>
                   <SortControl
-                    value={sortBy}
-                    options={[{ value: 'recent', label: 'Least recent' }, { value: 'rating', label: 'Top rated' }]}
-                    onChange={setSortBy}
+                    value={sortField}
+                    direction={sortDir}
+                    showDirection={directionApplies(sortField)}
+                    options={[
+                      { value: 'recent', label: SORT_LABELS.recent },
+                      { value: 'az', label: SORT_LABELS.az },
+                      { value: 'rating', label: SORT_LABELS.rating },
+                    ]}
+                    onChange={(f) => { setSortField(f); setSortDir(DEFAULT_DIR[f]) }}
+                    onDirectionChange={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
                   />
                 </div>
 
@@ -692,7 +703,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 ) : (
                   <div className="mb-6">
                     <div className="text-sm font-bold text-ink mb-2">
-                      {pickerSearch ? `All workouts matching "${pickerSearch}"` : sortBy === 'rating' ? 'Workouts — top rated' : 'Workouts — least recently used'}
+                      {pickerSearch ? `All workouts matching "${pickerSearch}"` : `Workouts — ${sortCountLabel(sortField, sortDir)}`}
                     </div>
                     <div className="flex flex-col gap-2">
                       {visibleRows.map(row => {
@@ -717,6 +728,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                   </div>
                                 </div>
                                 {w.label && <div className="text-xs text-muted mt-0.5">{w.label}</div>}
+                                <div className="text-xs text-muted mt-0.5">
+                                  {w.lastRan ? `Last ran ${formatDateShort(new Date(w.lastRan + 'T00:00:00'))}` : 'Never run'}
+                                </div>
                               </button>
                               <div className="px-4 pb-4">
                                 <WorkoutCardBody
@@ -735,6 +749,12 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                         // Badge text is a generic ordinal ("Standard" / "Variation N of
                         // Total"), not driven by label — label is a short leader-authored
                         // tag ("Shorter"/"Longer"), shown as the subtitle beneath it.
+                        // last_ran is keyed per family (run_workouts), so every variant
+                        // shares it — surface it once on the family header.
+                        const famLastRan = row.variants.reduce<string | null>(
+                          (best, v) => (!v.lastRan ? best : !best || v.lastRan > best ? v.lastRan : best),
+                          null,
+                        )
                         return (
                           <div key={`f-${row.familyId}`} className="bg-card border border-line overflow-hidden">
                             <div className="px-4 py-3 border-b border-line">
@@ -743,6 +763,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                 <span className={`${SQUARE_LABEL} shrink-0`}>
                                   {row.total} versions
                                 </span>
+                              </div>
+                              <div className="text-xs text-muted mt-0.5">
+                                {famLastRan ? `Last ran ${formatDateShort(new Date(famLastRan + 'T00:00:00'))}` : 'Never run'}
                               </div>
                             </div>
                             {row.variants.map((v, i) => {

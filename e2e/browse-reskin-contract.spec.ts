@@ -44,13 +44,16 @@ test.describe('Library browse contract (#514)', () => {
     // survived the reskin. (Race-type/type chips are the same filterChip + onClick
     // swap as the category chips, which library.spec.ts locks; seeded workouts carry
     // no race tags, so a race-type filter can't be asserted here.)
-    await expect(page.getByText(/workouts · oldest first/)).toBeVisible()
+    await expect(page.getByText(/workouts · Last ran, oldest first/)).toBeVisible()
     await page.getByRole('button', { name: 'Change sort order' }).click()
-    await page.getByRole('menuitem', { name: 'Top rated', exact: true }).click()
-    await expect(page.getByText(/workouts · top rated/)).toBeVisible()
+    await page.getByRole('menuitem', { name: 'A–Z', exact: true }).click()
+    await expect(page.getByText(/workouts · A–Z/)).toBeVisible()
+    await page.getByRole('button', { name: /Sort direction/ }).click()           // A–Z → Z–A
+    await expect(page.getByText(/workouts · Z–A/)).toBeVisible()
     await page.getByRole('button', { name: 'Change sort order' }).click()
-    await page.getByRole('menuitem', { name: 'Least recent', exact: true }).click()
-    await expect(page.getByText(/workouts · oldest first/)).toBeVisible()
+    await page.getByRole('menuitem', { name: 'Rating', exact: true }).click()
+    await expect(page.getByText(/workouts · Rating/)).toBeVisible()
+    await expect(page.getByRole('button', { name: /Sort direction/ })).toHaveCount(0)  // hidden for Rating
   })
 })
 

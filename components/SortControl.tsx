@@ -6,11 +6,14 @@ import { useState, useRef, useEffect } from 'react'
 // sort value so Library (recent|rating) and later surfaces reuse it. Story 2 adds
 // the ascending/descending direction toggle alongside this field selector.
 export default function SortControl<T extends string>({
-  value, options, onChange,
+  value, direction, showDirection, options, onChange, onDirectionChange,
 }: {
   value: T
+  direction: 'asc' | 'desc'
+  showDirection: boolean
   options: { value: T; label: string }[]
   onChange: (v: T) => void
+  onDirectionChange: () => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -26,7 +29,7 @@ export default function SortControl<T extends string>({
   }, [open])
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative flex items-stretch">
       <button
         type="button"
         aria-label={`Change sort order, current: ${current}`}
@@ -37,6 +40,16 @@ export default function SortControl<T extends string>({
       >
         {current} ▾
       </button>
+      {showDirection && (
+        <button
+          type="button"
+          aria-label={`Sort direction: ${direction === 'asc' ? 'ascending' : 'descending'}`}
+          onClick={onDirectionChange}
+          className="font-display text-[11px] text-ink border border-l-0 border-line px-2 py-1.5 touch-manipulation"
+        >
+          {direction === 'asc' ? '▲' : '▼'}
+        </button>
+      )}
       {open && (
         <div role="menu" className="absolute right-0 mt-1 z-20 bg-card border border-ink min-w-[150px]">
           {options.map(o => (
