@@ -18,7 +18,7 @@ import LeaderPicker from '@/components/LeaderPicker'
 import AdoptRouteControls from '@/components/AdoptRouteControls'
 import { formatDateShort } from '@/lib/dateUtils'
 import { schedulePickerScope, schedulePickerSuggestions, allRunsCategories, allRunsTypes } from '@/lib/schedulePicker'
-import { rankByRating } from '@/lib/rating'
+import { sortVariants, SORT_LABELS, DEFAULT_DIR, sortCountLabel, directionApplies, type SortField, type SortDir } from '@/lib/variantSort'
 import SortControl from '@/components/SortControl'
 import FiltersButton from '@/components/FiltersButton'
 import FilterSheet from '@/components/FilterSheet'
@@ -80,7 +80,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   // whole catalog, with its own category/type browse pills (independent of the week's
   // type chips, which the widened mode ignores).
   const [showAllRuns, setShowAllRuns] = useState(false)
-  const [sortBy, setSortBy] = useState<'recent' | 'rating'>('recent')
+  const [sortField, setSortField] = useState<SortField>('recent')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [browseCategory, setBrowseCategory] = useState<string | null>(null)
   const [browseType, setBrowseType] = useState<string | null>(null)
   const [browseTypeCleared, setBrowseTypeCleared] = useState(false)
@@ -219,14 +220,13 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
         w.raceTypes.some(r => r.toLowerCase().includes(q))
       )
       .filter(w => !plannedWorkout || workoutKey(w) !== workoutKey(plannedWorkout))
-      .sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
   }, [pickerSearch, allSuggestions, scopeVariants, plannedWorkout, showAllRuns, browseCategory, browseType])
 
-  // #241: optionally apply the confidence-weighted "Top rated" sort, on top of
-  // whatever pickerSource already filtered (scope, type chip / All-runs pills, search).
-  const rankedSource = useMemo(() => {
-    return sortBy === 'rating' ? rankByRating(pickerSource, voteData) : pickerSource
-  }, [pickerSource, sortBy, voteData])
+  // #241: sort through the shared sort model — recent / A–Z / rating, with direction.
+  const rankedSource = useMemo(
+    () => sortVariants(pickerSource, sortField, sortDir, voteData),
+    [pickerSource, sortField, sortDir, voteData],
+  )
 
   const effectiveBrowseType = !showAllRuns && isWorkout && !browseTypeCleared
     ? (yourRunBrowseType ?? activeType ?? entry?.workoutType ?? null)
@@ -295,7 +295,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     setYourRunBrowseType(null)
     // #241: sort is a browse filter too — reset on a week change so a "Top rated"
     // view doesn't silently carry into the next week's list.
-    setSortBy('recent')
+    setSortField('recent'); setSortDir('asc')
     setPlanTab('post')
     setLeaderPickerOpen(false)
     setLocalLeader(null)
@@ -314,7 +314,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
     // #241: reset sort on a scope round-trip too.
-    setSortBy('recent')
+    setSortField('recent'); setSortDir('asc')
     setPickerSearch('')
     setShowCount(3)
   }
@@ -595,9 +595,16 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     />
                   </div>
                   <SortControl
-                    value={sortBy}
-                    options={[{ value: 'recent', label: 'Least recent' }, { value: 'rating', label: 'Top rated' }]}
-                    onChange={setSortBy}
+                    value={sortField}
+                    direction={sortDir}
+                    showDirection={directionApplies(sortField)}
+                    options={[
+                      { value: 'recent', label: SORT_LABELS.recent },
+                      { value: 'az', label: SORT_LABELS.az },
+                      { value: 'rating', label: SORT_LABELS.rating },
+                    ]}
+                    onChange={(f) => { setSortField(f); setSortDir(DEFAULT_DIR[f]) }}
+                    onDirectionChange={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
                   />
                 </div>
 
@@ -692,7 +699,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 ) : (
                   <div className="mb-6">
                     <div className="text-sm font-bold text-ink mb-2">
-                      {pickerSearch ? `All workouts matching "${pickerSearch}"` : sortBy === 'rating' ? 'Workouts — top rated' : 'Workouts — least recently used'}
+                      {pickerSearch ? `All workouts matching "${pickerSearch}"` : `Workouts — ${sortCountLabel(sortField, sortDir)}`}
                     </div>
                     <div className="flex flex-col gap-2">
                       {visibleRows.map(row => {
