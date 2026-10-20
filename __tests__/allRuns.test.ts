@@ -110,7 +110,6 @@ describe('parseStartHour — display time → 24h float', () => {
 
 describe('KIND_TO_NBR_CATEGORY and NBR_CATEGORY_TO_KIND maps', () => {
   test('KIND_TO_NBR_CATEGORY maps all RUN_KINDS to NBR categories', () => {
-    expect(KIND_TO_NBR_CATEGORY['Beginner-Friendly']).toBe('Beginner-Friendly')
     expect(KIND_TO_NBR_CATEGORY['Easy']).toBe('Easy Runs')
     expect(KIND_TO_NBR_CATEGORY['Long']).toBe('Long Runs')
     expect(KIND_TO_NBR_CATEGORY['Food']).toBe('Food Runs')

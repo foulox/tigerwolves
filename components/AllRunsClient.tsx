@@ -29,7 +29,7 @@ type EditorInitial = {
 
 type Day = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 type TimeFilter = 'all' | 'am' | 'pm' | 'wknd'
-type Category = 'All' | 'Beginner-Friendly' | 'Easy Runs' | 'Long Runs' | 'Food Runs' | 'Workouts'
+type Category = 'All' | 'Easy Runs' | 'Long Runs' | 'Food Runs' | 'Workouts'
 
 const JS_DAY_TO_KEY: Day[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
@@ -38,7 +38,7 @@ const DAY_NAMES: Record<Day, string> = {
   thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday',
 }
 
-const CATEGORIES: Category[] = ['All', 'Beginner-Friendly', 'Easy Runs', 'Long Runs', 'Food Runs', 'Workouts']
+const CATEGORIES: Category[] = ['All', 'Easy Runs', 'Long Runs', 'Food Runs', 'Workouts']
 
 const TIME_FILTER_LABELS: Record<TimeFilter, string> = { all: 'All week', am: 'Morning', pm: 'Evening', wknd: 'Weekend' }
 

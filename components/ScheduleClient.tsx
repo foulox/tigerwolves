@@ -104,7 +104,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   const entry = upcoming[weekIndex]
 
   // #347: a Workout-kind run picks by workout TYPE (the Quality type chips); a
-  // non-Workout run (Easy/Long/Beginner-Friendly/Food) has no typing, so it picks
+  // non-Workout run (Easy/Long/Food) has no typing, so it picks
   // from its whole category (kind→category) instead. Both still pick a workout and
   // it goes in the post — buildPost renders a light line (name + reason) for the
   // non-Workout case.

@@ -13,16 +13,16 @@ ALTER TABLE runs ADD COLUMN IF NOT EXISTS distance TEXT;
 INSERT INTO runs (id, name, day_of_week, meeting_time, meeting_location, kind, distance, status)
 SELECT v.id, v.name, v.day_of_week, v.meeting_time, v.meeting_location, v.kind, v.distance, 'unclaimed'
 FROM (VALUES
-  ('monday-morning-easy-run',    'Monday Morning Easy Run',       'Monday',    '6:45am', 'McCarren Park',        'Beginner-Friendly', '3–4 mi'),
+  ('monday-morning-easy-run',    'Monday Morning Easy Run',       'Monday',    '6:45am', 'McCarren Park',        'Easy', '3–4 mi'),
   ('monday-night-plyo',          'Monday Night Plyo',             'Monday',    '6:30pm', 'McCarren Park',        'Workout',           'Strength & Cross-Training'),
-  ('monday-night-easy-run',      'Monday Night Easy Run',         'Monday',    '7:30pm', 'McCarren Park',        'Beginner-Friendly', '3–4 mi'),
+  ('monday-night-easy-run',      'Monday Night Easy Run',         'Monday',    '7:30pm', 'McCarren Park',        'Easy', '3–4 mi'),
   ('monday-nite-owls',           'Monday Nite Owls',              'Monday',    '9:10pm', 'McCarren Park',        'Long',              '9–10 mi'),
   ('tuesday-morning-tigerwolves','Tuesday Morning Tigerwolves',   'Tuesday',   '6:30am', 'McCarren Park',        'Workout',           '4–7 mi'),
   ('tuesday-bushwick-run',       'Tuesday Bushwick Run',          'Tuesday',   '7:00am', 'Maria Hernandez Park', 'Easy',              '4–6 mi'),
   ('tuesday-lc-tempo',           'Tuesday LC Tempo',              'Tuesday',   '7:00pm', 'Grand Army Plaza',     'Workout',           '4–8 mi'),
   ('tuesday-night-tempo-tnt',    'Tuesday Night Tempo (TNT)',     'Tuesday',   '7:30pm', 'McCarren Park',        'Workout',           '4–7 mi'),
   ('wednesday-mourning-doves',   'Wednesday Mourning Doves',      'Wednesday', '6:00am', 'Tom Stofka Garden',    'Long',              '7–11 mi'),
-  ('wednesday-night-beginner-run','Wednesday Night Beginner Run', 'Wednesday', '7:00pm', 'McCarren Park',        'Beginner-Friendly', '2–3 mi'),
+  ('wednesday-night-beginner-run','Wednesday Night Beginner Run', 'Wednesday', '7:00pm', 'McCarren Park',        'Easy', '2–3 mi'),
   ('wednesday-night-road-run',   'Wednesday Night Road Run',      'Wednesday', '7:30pm', 'McCarren Park',        'Easy',              '4–6 mi'),
   ('wednesday-night-form-run',   'Wednesday Night Form Run',      'Wednesday', '7:30pm', 'Grand Army Plaza',     'Easy',              '3–4 mi'),
   ('thursday-just-south-tempo',  'Thursday ''Just South'' Tempo', 'Thursday',  '6:30am', 'Grand Army Plaza',     'Workout',           '3–5 mi'),
@@ -35,7 +35,7 @@ FROM (VALUES
   ('second-friday-brewery-run',  'Second Friday Brewery Run',     'Friday',    '6:30pm', 'McCarren',             'Food',              '2–4 mi'),
   ('saturday-narwhals',          'Saturday Narwhals',             'Saturday',  '7:00am', 'McCarren Park',        'Long',              '10–22 mi'),
   ('saturday-lc-long-run',       'Saturday LC Long Run',          'Saturday',  '7:15am', 'BP Station',           'Long',              '10–22 mi'),
-  ('saturday-bridge-coffee-run', 'Saturday Bridge & Coffee Run',  'Saturday',  '9:00am', 'Williamsburg Bridge',  'Beginner-Friendly', '3–4 mi'),
+  ('saturday-bridge-coffee-run', 'Saturday Bridge & Coffee Run',  'Saturday',  '9:00am', 'Williamsburg Bridge',  'Easy', '3–4 mi'),
   ('sunday-funday',              'Sunday Funday',                 'Sunday',    '8:30am', 'McCarren Park',        'Long',              '10–22 mi')
 ) AS v(id, name, day_of_week, meeting_time, meeting_location, kind, distance)
 WHERE NOT EXISTS (SELECT 1 FROM runs r WHERE r.id = v.id);

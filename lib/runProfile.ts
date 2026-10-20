@@ -7,7 +7,6 @@
 // `Workout` kind exposes a workout-type allowlist.
 
 export const RUN_KINDS = [
-  'Beginner-Friendly',
   'Easy',
   'Long',
   'Food',
@@ -35,13 +34,11 @@ export function isWorkoutKind(kind: string): boolean {
 }
 
 // Map a run's `kind` to the workout-library `category` used for shared-catalog
-// client-side scoping (#347). `Beginner-Friendly` and `Easy` both map to `'Easy'`;
-// `Food` has no library category.
+// client-side scoping (#347). `Easy` maps to `'Easy'`; `Food` has no library category.
 const KIND_TO_CATEGORY_MAP: Record<string, string | null> = {
   'Workout': 'Quality',
   'Easy': 'Easy',
   'Long': 'Long',
-  'Beginner-Friendly': 'Easy',
   'Food': null,
 }
 
@@ -110,10 +107,9 @@ export function adoptableRunsFor<R extends { kind: string; workoutTypes: string[
 // #360: NBR directory category maps. KIND_TO_NBR_CATEGORY maps a run's `kind`
 // (DB column) to the NBRRun.category value used by the All Runs directory.
 // This is distinct from kindToCategory() above which maps to workout-library categories.
-export type NBRCategory = 'Beginner-Friendly' | 'Easy Runs' | 'Long Runs' | 'Food Runs' | 'Workouts'
+export type NBRCategory = 'Easy Runs' | 'Long Runs' | 'Food Runs' | 'Workouts'
 
 export const KIND_TO_NBR_CATEGORY: Record<string, NBRCategory> = {
-  'Beginner-Friendly': 'Beginner-Friendly',
   'Easy': 'Easy Runs',
   'Long': 'Long Runs',
   'Food': 'Food Runs',
@@ -121,7 +117,6 @@ export const KIND_TO_NBR_CATEGORY: Record<string, NBRCategory> = {
 }
 
 export const NBR_CATEGORY_TO_KIND: Record<NBRCategory, string> = {
-  'Beginner-Friendly': 'Beginner-Friendly',
   'Easy Runs': 'Easy',
   'Long Runs': 'Long',
   'Food Runs': 'Food',

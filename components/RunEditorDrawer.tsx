@@ -8,7 +8,6 @@ import { DAYS_OF_WEEK } from '@/lib/runIdentity'
 import type { NBRCategory } from '@/lib/runProfile'
 
 const NBR_CATEGORIES: NBRCategory[] = [
-  'Beginner-Friendly',
   'Easy Runs',
   'Long Runs',
   'Food Runs',
