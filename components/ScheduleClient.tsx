@@ -728,6 +728,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                   </div>
                                 </div>
                                 {w.label && <div className="text-xs text-muted mt-0.5">{w.label}</div>}
+                                <div className="text-xs text-muted mt-0.5">
+                                  {w.lastRan ? `Last ran ${formatDateShort(new Date(w.lastRan + 'T00:00:00'))}` : 'Never run'}
+                                </div>
                               </button>
                               <div className="px-4 pb-4">
                                 <WorkoutCardBody
@@ -746,6 +749,12 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                         // Badge text is a generic ordinal ("Standard" / "Variation N of
                         // Total"), not driven by label — label is a short leader-authored
                         // tag ("Shorter"/"Longer"), shown as the subtitle beneath it.
+                        // last_ran is keyed per family (run_workouts), so every variant
+                        // shares it — surface it once on the family header.
+                        const famLastRan = row.variants.reduce<string | null>(
+                          (best, v) => (!v.lastRan ? best : !best || v.lastRan > best ? v.lastRan : best),
+                          null,
+                        )
                         return (
                           <div key={`f-${row.familyId}`} className="bg-card border border-line overflow-hidden">
                             <div className="px-4 py-3 border-b border-line">
@@ -754,6 +763,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                                 <span className={`${SQUARE_LABEL} shrink-0`}>
                                   {row.total} versions
                                 </span>
+                              </div>
+                              <div className="text-xs text-muted mt-0.5">
+                                {famLastRan ? `Last ran ${formatDateShort(new Date(famLastRan + 'T00:00:00'))}` : 'Never run'}
                               </div>
                             </div>
                             {row.variants.map((v, i) => {

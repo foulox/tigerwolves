@@ -374,7 +374,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                 </div>
                 <p className="text-sm text-muted mt-1.5 leading-snug">{row.reason}</p>
                 <div className="text-xs text-muted mt-2">
-                  {row.lastRan ? `Last ran ${formatDate(row.lastRan)}` : 'Never used'} · tap to {isExpanded ? 'collapse' : 'expand'}
+                  {row.lastRan ? `Last ran ${formatDate(row.lastRan)}` : 'Never run'} · tap to {isExpanded ? 'collapse' : 'expand'}
                 </div>
               </button>
               {adoptControls(row.familyId, familyCreatorGroupId, (row.base ?? row.variants[0])?.category ?? '', row.type)}
