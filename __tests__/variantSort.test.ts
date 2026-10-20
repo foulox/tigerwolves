@@ -20,7 +20,7 @@ const never = v({ id: 3, name: 'Charlie', lastRan: null })
 const rows = [a, b, never]
 const noVotes: Record<string, VoteData | null> = {}
 
-describe('sortVariants — recent excludes never-ran (the #NNN bug fix)', () => {
+describe('sortVariants — recent excludes never-ran (the #536 bug fix)', () => {
   test('ascending (oldest first) drops the never-ran row entirely', () => {
     const out = sortVariants(rows, 'recent', 'asc', noVotes)
     expect(out.map(r => r.id)).toEqual([2, 1]) // Bravo (older) then Alpha; Charlie excluded

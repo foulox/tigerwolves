@@ -120,8 +120,8 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const types = inYourRun
     ? resolveAllowedTypes(presentTypes, allowedTypes ?? [])
     : Array.from(new Set(presentTypes)).sort()
-  // #241: "Top rated" ranks the flat variant list by the confidence-weighted score;
-  // the existing first-seen family grouping below preserves this order.
+  // All ordering (recent/az/rating) is owned by sortVariants (#536); the first-seen
+  // family grouping below preserves whatever order sortVariants returns.
   const neverRanHidden = sortField === 'recent' ? filteredBase.filter(w => w.lastRan == null).length : 0
   const filtered = sortVariants(filteredBase, sortField, sortDir, voteData)
 
