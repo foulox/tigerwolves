@@ -12,7 +12,7 @@ import AdoptRouteControls from '@/components/AdoptRouteControls'
 import { workoutVoteId } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import { resolveAllowedTypes } from '@/lib/runProfile'
-import { rankByRating } from '@/lib/rating'
+import { sortVariants, SORT_LABELS, DEFAULT_DIR, sortCountLabel, directionApplies, type SortField, type SortDir } from '@/lib/variantSort'
 import { CARD_LINK, TYPE_LABEL, CARD_NAME, filterChip, SEARCH_FIELD, SEARCH_INPUT, SQUARE_LABEL } from '@/lib/cardStyles'
 import SortControl from '@/components/SortControl'
 import FiltersButton from '@/components/FiltersButton'
@@ -62,7 +62,8 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const [showAbbrev, setShowAbbrev] = useState(false)
   const [flagSheetFor, setFlagSheetFor] = useState<number | null>(null)
   const [showAllRuns, setShowAllRuns] = useState(false)
-  const [sortBy, setSortBy] = useState<'recent' | 'rating'>('recent')
+  const [sortField, setSortField] = useState<SortField>('recent')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const flaggedWorkout = flagSheetFor ? variants.find(w => w.id === flagSheetFor) ?? null : null
@@ -121,9 +122,8 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
     : Array.from(new Set(presentTypes)).sort()
   // #241: "Top rated" ranks the flat variant list by the confidence-weighted score;
   // the existing first-seen family grouping below preserves this order.
-  const filtered = sortBy === 'rating'
-    ? rankByRating(filteredBase, voteData)
-    : [...filteredBase].sort((a, b) => (a.lastRan ?? '0') < (b.lastRan ?? '0') ? -1 : 1)
+  const neverRanHidden = sortField === 'recent' ? filteredBase.filter(w => w.lastRan == null).length : 0
+  const filtered = sortVariants(filteredBase, sortField, sortDir, voteData)
 
   // A family is "multi-version" (expandable Standard/Variation N group) only
   // when its familyId has more than one variant row — same rule ScheduleClient
@@ -175,7 +175,9 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   return (
     <div className="pb-4">
       <div className="px-4 mb-4 flex justify-between items-start">
-        <p className="text-sm text-muted">{filtered.length} workouts · {sortBy === 'rating' ? 'top rated' : 'oldest first'}</p>
+        <p className="text-sm text-muted">
+          {filtered.length} workouts · {sortCountLabel(sortField, sortDir)}{neverRanHidden > 0 ? ` · ${neverRanHidden} never-ran hidden` : ''}
+        </p>
         <div className="flex items-center gap-2" data-tour="library-manage">
           <button
             onClick={() => setShowAbbrev(v => !v)}
@@ -220,9 +222,16 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           />
         </div>
         <SortControl
-          value={sortBy}
-          options={[{ value: 'recent', label: 'Least recent' }, { value: 'rating', label: 'Top rated' }]}
-          onChange={setSortBy}
+          value={sortField}
+          direction={sortDir}
+          showDirection={directionApplies(sortField)}
+          options={[
+            { value: 'recent', label: SORT_LABELS.recent },
+            { value: 'az', label: SORT_LABELS.az },
+            { value: 'rating', label: SORT_LABELS.rating },
+          ]}
+          onChange={(f) => { setSortField(f); setSortDir(DEFAULT_DIR[f]) }}
+          onDirectionChange={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
         />
       </div>
 
