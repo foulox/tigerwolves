@@ -13,10 +13,14 @@ test('Library "Your run" mode shows only the run\'s own workouts across categori
   await page.goto('/library')
   await page.waitForLoadState('load')
 
-  // Default view is "Your run" mode: every workout TigerWolves owns. 15 single-variant
-  // families + 1 two-variant reserved family → 17 rows.
-  const countEl = page.locator('p').filter({ hasText: /workouts · oldest first/ })
-  await expect(countEl).toHaveText('17 workouts · oldest first')
+  // Default "Your run" owns 17 rows, but the fixture has no last_ran dates, so the
+  // default "Last ran" view hides them all as never-ran. Switch to A–Z (shows every
+  // row) to assert run_group scoping: 15 single-variant families + 1 two-variant
+  // reserved family → 17 rows.
+  await page.getByRole('button', { name: 'Change sort order' }).click()
+  await page.getByRole('menuitem', { name: 'A–Z', exact: true }).click()
+  const countEl = page.locator('p').filter({ hasText: /workouts · A–Z/ })
+  await expect(countEl).toHaveText('17 workouts · A–Z')
 
   // Spot-check a spread of the curated real names across types. Each name is unique
   // (never also a type-pill string), so a bare toBeVisible() stays single-match.
