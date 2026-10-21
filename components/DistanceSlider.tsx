@@ -23,12 +23,12 @@ export default function DistanceSlider({
         <input
           type="range" aria-label="Minimum distance" min={bounds.min} max={bounds.max} step={0.1} value={value.min}
           onChange={e => onChange({ min: Math.min(+e.target.value, value.max), max: value.max })}
-          className="dual-range absolute inset-x-0 top-0 h-[34px] w-full appearance-none bg-transparent pointer-events-none"
+          className="dual-range absolute inset-x-0 top-0 h-[34px] w-full appearance-none bg-transparent touch-manipulation pointer-events-none"
         />
         <input
           type="range" aria-label="Maximum distance" min={bounds.min} max={bounds.max} step={0.1} value={value.max}
           onChange={e => onChange({ min: value.min, max: Math.max(+e.target.value, value.min) })}
-          className="dual-range absolute inset-x-0 top-0 h-[34px] w-full appearance-none bg-transparent pointer-events-none"
+          className="dual-range absolute inset-x-0 top-0 h-[34px] w-full appearance-none bg-transparent touch-manipulation pointer-events-none"
         />
       </div>
       <div className="flex justify-between text-[9px] tracking-[0.08em] uppercase text-muted mx-[7px]">
