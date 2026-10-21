@@ -21,6 +21,8 @@ import {
   applyLibraryFilters, activeFilterCount, activeFilterSummary, withCategory, withScope,
   type LibraryFilters,
 } from '@/lib/libraryFilters'
+import DistanceSlider from '@/components/DistanceSlider'
+import { distanceBounds, applyDistanceRange, distanceRangeSummary, type DistRange } from '@/lib/distanceFilter'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -65,6 +67,8 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const [sortField, setSortField] = useState<SortField>('recent')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [distRange, setDistRange] = useState<DistRange>(null)
+  const isDistanceCategory = category === 'Long' || category === 'Easy'
 
   const flaggedWorkout = flagSheetFor ? variants.find(w => w.id === flagSheetFor) ?? null : null
 
@@ -108,10 +112,13 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
 
   // Model C: the facet state assembled into one object the shared helpers operate on.
   const filters: LibraryFilters = { category, type: typeFilter, race: raceFilter, showAllRuns }
-  const filterCount = activeFilterCount(filters)
-  const filterSummary = activeFilterSummary(filters)
+  const distSummary = isDistanceCategory ? distanceRangeSummary(distRange) : ''
+  const filterSummary = [activeFilterSummary(filters), distSummary].filter(Boolean).join(' · ')
+  const filterCount = activeFilterCount(filters) + (distRange ? 1 : 0)
 
   const filteredBase = applyLibraryFilters(visibleVariants, filters, search)
+  // bounds come from the category-filtered candidates (before the distance filter)
+  const distBounds = useMemo(() => distanceBounds(filteredBase), [filteredBase])
 
   // #322: in "Your run" mode the type-filter options are the run's allowlist
   // (∩ types present); "All runs" mode shows every present type as before. An
@@ -120,10 +127,11 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const types = inYourRun
     ? resolveAllowedTypes(presentTypes, allowedTypes ?? [])
     : Array.from(new Set(presentTypes)).sort()
-  // All ordering (recent/az/rating) is owned by sortVariants (#536); the first-seen
+  // All ordering (recent/az/rating/distance) is owned by sortVariants (#536); the first-seen
   // family grouping below preserves whatever order sortVariants returns.
-  const neverRanHidden = sortField === 'recent' ? filteredBase.filter(w => w.lastRan == null).length : 0
-  const filtered = sortVariants(filteredBase, sortField, sortDir, voteData)
+  const distanceFiltered = isDistanceCategory ? applyDistanceRange(filteredBase, distRange) : filteredBase
+  const neverRanHidden = sortField === 'recent' ? distanceFiltered.filter(w => w.lastRan == null).length : 0
+  const filtered = sortVariants(distanceFiltered, sortField, sortDir, voteData)
 
   // A family is "multi-version" (expandable Standard/Variation N group) only
   // when its familyId has more than one variant row — same rule ScheduleClient
@@ -161,8 +169,11 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
 
   function setcat(c: string | null) {
     const next = withCategory(filters, c)
-    setCategory(next.category)
-    setTypeFilter(next.type)
+    setCategory(next.category); setTypeFilter(next.type)
+    if (c !== 'Long' && c !== 'Easy') {
+      setDistRange(null)
+      if (sortField === 'distance') { setSortField('recent'); setSortDir(DEFAULT_DIR.recent) }
+    }
   }
 
   function setScope(all: boolean) {
@@ -226,9 +237,10 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           direction={sortDir}
           showDirection={directionApplies(sortField)}
           options={[
-            { value: 'recent', label: SORT_LABELS.recent },
-            { value: 'az', label: SORT_LABELS.az },
-            { value: 'rating', label: SORT_LABELS.rating },
+            { value: 'recent' as const, label: SORT_LABELS.recent },
+            { value: 'az' as const, label: SORT_LABELS.az },
+            { value: 'rating' as const, label: SORT_LABELS.rating },
+            ...(isDistanceCategory ? [{ value: 'distance' as const, label: SORT_LABELS.distance }] : []),
           ]}
           onChange={(f) => { setSortField(f); setSortDir(DEFAULT_DIR[f]) }}
           onDirectionChange={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
@@ -244,7 +256,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
       <FilterSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        onClear={() => { setCategory(null); setTypeFilter(null); setRaceFilter(null); setShowAllRuns(false) }}
+        onClear={() => { setCategory(null); setTypeFilter(null); setRaceFilter(null); setShowAllRuns(false); setDistRange(null) }}
       >
         {runId && (
           <div>
@@ -265,6 +277,13 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
             ))}
           </div>
         </div>
+
+        {isDistanceCategory && distBounds && (
+          <div>
+            <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Distance</p>
+            <DistanceSlider bounds={distBounds} value={distRange ?? distBounds} onChange={setDistRange} />
+          </div>
+        )}
 
         {effectiveCategory && types.length > 1 && (
           <div>
@@ -317,6 +336,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                         title="Edit workout"
                       >✎</Link>
                     )}
+                    {w.distanceMiles != null && <span className={TYPE_LABEL}>{w.distanceMiles.toFixed(1)} mi</span>}
                     <span className={TYPE_LABEL}>{w.type}</span>
                   </div>
                 </div>
@@ -369,6 +389,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                     <span className={SQUARE_LABEL}>
                       {row.total} versions
                     </span>
+                    {(row.base ?? row.variants[0])?.distanceMiles != null && <span className={TYPE_LABEL}>{(row.base ?? row.variants[0])!.distanceMiles!.toFixed(1)} mi</span>}
                     <span className={TYPE_LABEL}>{row.type}</span>
                   </div>
                 </div>
