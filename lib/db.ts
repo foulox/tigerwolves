@@ -61,13 +61,14 @@ export async function fetchSchedule(runId?: string): Promise<ScheduleEntry[]> {
 // the full catalog so its library is never empty (backfill closes this gap for
 // production; the fallback covers any run reconciliation hasn't reached).
 //
-// #402: `lastRan` is per (run, workout) — a shared route's last-run differs by run —
-// so it's read from run_workouts(recencyRunId, family).last_ran via a LEFT JOIN. The
-// recency run is `recencyRunId ?? runId`: scoped callers get their own run's recency
-// for free, while the Library "All runs" view passes the VIEWER's runId separately
-// (AC6) so recency stays the viewer's even while browsing the full catalog. When no
-// recency run is given, the join matches nothing → lastRan is null everywhere (the
-// pre-#402 behavior), so the aggregate/anonymous paths are unchanged.
+// #402: `lastRan` is per (run, workout) — a shared route's last-run differs by run — read
+// from run_workouts(recencyRunId, family).last_ran via a LEFT JOIN. The recency run is
+// `recencyRunId ?? runId`: scoped callers (Schedule picker, run pages, admin) get their own
+// run's recency, which rotation planning needs. When no recency run is given, the join
+// matches nothing → lastRan null (pre-#402), so the aggregate/anonymous paths are unchanged.
+// #461-followup: the Library is a cross-run browse, where "my run's" recency reads "Never"
+// for every other run's routes — so it opts into `globalRecency` (below), which ignores the
+// per-run join and takes MAX(last_ran) across all runs instead.
 export async function fetchWorkoutVariants(
   runId?: string,
   recencyRunId?: string,
