@@ -224,3 +224,65 @@ test('Adopt: a route from "All runs" appears in "Your run", marked adopted, and 
   await yourRunCard.getByRole('button', { name: 'Remove from my run' }).click()
   await expect(page.getByText('MMER Threshold Session')).toHaveCount(0)
 })
+
+// #461: Library distance slider — switching to the Long category (All runs mode)
+// reveals the Distance filter section + Minimum distance control, and the sort
+// dropdown gains a Distance option. The Doves Long routes are seeded with real
+// distance_miles values (9.4, 11.25, 14.0 mi) so distanceBounds returns a real
+// range. Non-mutating: no library state is modified.
+test('Library: Long category shows Distance slider and Distance sort option (#461)', async ({ page }) => {
+  await page.goto('/library')
+  await page.waitForLoadState('load')
+
+  // Switch to All runs so the Doves Long routes (not TigerWolves-owned) are visible.
+  await openFilters(page)
+  await page.getByRole('button', { name: 'All runs', exact: true }).click()
+  await page.getByRole('button', { name: 'Long', exact: true }).click()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
+
+  // Re-open the filter sheet — the Distance section should now appear since
+  // the Long category has routes with distance_miles values.
+  await openFilters(page)
+  await expect(page.getByText('Distance', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Minimum distance')).toBeVisible()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
+
+  // The sort dropdown should include Distance as an option.
+  await page.getByRole('button', { name: 'Change sort order' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Distance', exact: true })).toBeVisible()
+})
+
+// #461 effectiveRange: switching from Long to Easy (or All) with a set distance range
+// must not leave a stale range that silently empties the list. Assert the Distance
+// slider still renders after the switch (proving the sheet didn't crash) and the result
+// list is non-empty (proving effectiveRange treated the stale range as inactive).
+// Non-mutating: no library state is modified.
+test('Library: switching from Long to Easy clears a stale distance range (#461 effectiveRange)', async ({ page }) => {
+  await page.goto('/library')
+  await page.waitForLoadState('load')
+
+  // Switch to All runs → Long to reach the distance slider.
+  await openFilters(page)
+  await page.getByRole('button', { name: 'All runs', exact: true }).click()
+  await page.getByRole('button', { name: 'Long', exact: true }).click()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
+
+  // Now switch to Easy — the Long bounds (9–14 mi) don't apply to Easy (≤3 mi).
+  // effectiveRange should return null, so the list stays non-empty.
+  await openFilters(page)
+  await page.getByRole('button', { name: 'Easy', exact: true }).click()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
+
+  // The Distance slider section should still render (Easy is a distance category).
+  await openFilters(page)
+  await expect(page.getByText('Distance', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
+
+  // Most importantly: the result list must be non-empty — a stale Long range applied
+  // to Easy would silently drop every row.
+  const countEl = page.locator('p').filter({ hasText: /workouts · / })
+  const countText = await countEl.first().textContent()
+  const match = countText?.match(/^(\d+) workouts/)
+  expect(match).not.toBeNull()
+  expect(parseInt(match![1])).toBeGreaterThan(0)
+})

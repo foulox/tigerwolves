@@ -61,23 +61,31 @@ export async function fetchSchedule(runId?: string): Promise<ScheduleEntry[]> {
 // the full catalog so its library is never empty (backfill closes this gap for
 // production; the fallback covers any run reconciliation hasn't reached).
 //
-// #402: `lastRan` is per (run, workout) — a shared route's last-run differs by run —
-// so it's read from run_workouts(recencyRunId, family).last_ran via a LEFT JOIN. The
-// recency run is `recencyRunId ?? runId`: scoped callers get their own run's recency
-// for free, while the Library "All runs" view passes the VIEWER's runId separately
-// (AC6) so recency stays the viewer's even while browsing the full catalog. When no
-// recency run is given, the join matches nothing → lastRan is null everywhere (the
-// pre-#402 behavior), so the aggregate/anonymous paths are unchanged.
+// #402: `lastRan` is per (run, workout) — a shared route's last-run differs by run — read
+// from run_workouts(recencyRunId, family).last_ran via a LEFT JOIN. The recency run is
+// `recencyRunId ?? runId`: scoped callers (Schedule picker, run pages, admin) get their own
+// run's recency, which rotation planning needs. When no recency run is given, the join
+// matches nothing → lastRan null (pre-#402), so the aggregate/anonymous paths are unchanged.
+// #461-followup: the Library is a cross-run browse, where "my run's" recency reads "Never"
+// for every other run's routes — so it opts into `globalRecency` (below), which ignores the
+// per-run join and takes MAX(last_ran) across all runs instead.
 export async function fetchWorkoutVariants(
   runId?: string,
   recencyRunId?: string,
+  opts?: { globalRecency?: boolean },
 ): Promise<WorkoutVariantRow[]> {
   let groupId: number | null = null
   if (runId) {
     const [run] = await sql`SELECT run_group_id FROM runs WHERE id = ${runId}`
     groupId = (run?.run_group_id as number | null) ?? null
   }
-  const recencyRun = recencyRunId ?? runId ?? null
+  // #461-followup: the Library shows a GLOBAL "last ran" — the last time ANY run used a
+  // workout — not the viewer's-run recency #402 keys elsewhere. Browsing the full catalog,
+  // per-run recency reads "Never" for every OTHER run's routes, which hid most of the list
+  // under the default last-ran sort. globalRecency nulls the per-run join and overrides
+  // lastRan from MAX(last_ran) across all runs. Only the Library opts in; the Schedule
+  // picker, run pages, and admin keep the per-run recency (rotation needs "my run's" date).
+  const recencyRun = opts?.globalRecency ? null : (recencyRunId ?? runId ?? null)
 
   const rows = groupId != null
     ? await sql`
@@ -109,6 +117,14 @@ export async function fetchWorkoutVariants(
         LEFT JOIN run_workouts rw ON rw.family_id = wf.id AND rw.run_id = ${recencyRun}
         ORDER BY wf.name, wv.sort_order NULLS LAST
       `
+  // Global last-ran (Library only): one aggregate over run_workouts, keyed by family.
+  const globalLastRan = opts?.globalRecency
+    ? new Map(
+        (await sql`SELECT family_id, MAX(last_ran) AS last_ran FROM run_workouts GROUP BY family_id`).map(
+          (g) => [g.family_id as number, g.last_ran != null ? toDateString(g.last_ran as string) : null] as const,
+        ),
+      )
+    : null
   return rows.map((r) => ({
     id: r.variant_id as number,
     familyId: r.family_id as number,
@@ -140,7 +156,10 @@ export async function fetchWorkoutVariants(
     runGroupId: (r.run_group_id as number | null) ?? null,
     // #402: the recency run's last_ran for this family, or null ("Never"). Normalized
     // to a 'YYYY-MM-DD' string so the sort/label consumers compare it lexically.
-    lastRan: r.last_ran != null ? toDateString(r.last_ran) : null,
+    // #461-followup: globalRecency overrides this with the cross-run MAX for the Library.
+    lastRan: globalLastRan
+      ? (globalLastRan.get(r.family_id as number) ?? null)
+      : (r.last_ran != null ? toDateString(r.last_ran) : null),
   }))
 }
 

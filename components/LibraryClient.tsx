@@ -21,6 +21,8 @@ import {
   applyLibraryFilters, activeFilterCount, activeFilterSummary, withCategory, withScope,
   type LibraryFilters,
 } from '@/lib/libraryFilters'
+import DistanceSlider from '@/components/DistanceSlider'
+import { distanceBounds, applyDistanceRange, distanceRangeSummary, activeRange, type DistRange } from '@/lib/distanceFilter'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -62,9 +64,14 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const [showAbbrev, setShowAbbrev] = useState(false)
   const [flagSheetFor, setFlagSheetFor] = useState<number | null>(null)
   const [showAllRuns, setShowAllRuns] = useState(false)
-  const [sortField, setSortField] = useState<SortField>('recent')
+  // #461-followup: default to A–Z, not 'recent'. The last-ran sort EXCLUDES never-ran rows
+  // (variantSort), so defaulting to it hid most of the catalog whenever last-ran was sparse.
+  // A–Z shows every workout up front; the leader can switch to Last ran deliberately.
+  const [sortField, setSortField] = useState<SortField>('az')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [distRange, setDistRange] = useState<DistRange>(null)
+  const isDistanceCategory = category === 'Long' || category === 'Easy'
 
   const flaggedWorkout = flagSheetFor ? variants.find(w => w.id === flagSheetFor) ?? null : null
 
@@ -108,10 +115,24 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
 
   // Model C: the facet state assembled into one object the shared helpers operate on.
   const filters: LibraryFilters = { category, type: typeFilter, race: raceFilter, showAllRuns }
-  const filterCount = activeFilterCount(filters)
-  const filterSummary = activeFilterSummary(filters)
 
-  const filteredBase = applyLibraryFilters(visibleVariants, filters, search)
+  const filteredBase = useMemo(
+    () => applyLibraryFilters(visibleVariants, filters, search),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleVariants, category, typeFilter, raceFilter, showAllRuns, search],
+  )
+  // bounds come from the category-filtered candidates (before the distance filter)
+  const distBounds = useMemo(() => distanceBounds(filteredBase), [filteredBase])
+
+  // A stored range is only meaningful while it still fits inside the current bounds. When
+  // the category switches (Long↔Easy have different spans) or a text search narrows the
+  // pool, distBounds recomputes but distRange doesn't — treat a stale range as inactive
+  // (show all) to prevent a silently empty list and off-track slider thumbs.
+  const effectiveRange = isDistanceCategory ? activeRange(distRange, distBounds) : null
+
+  const distSummary = effectiveRange ? distanceRangeSummary(effectiveRange) : ''
+  const filterSummary = [activeFilterSummary(filters), distSummary].filter(Boolean).join(' · ')
+  const filterCount = activeFilterCount(filters) + (effectiveRange ? 1 : 0)
 
   // #322: in "Your run" mode the type-filter options are the run's allowlist
   // (∩ types present); "All runs" mode shows every present type as before. An
@@ -120,10 +141,13 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const types = inYourRun
     ? resolveAllowedTypes(presentTypes, allowedTypes ?? [])
     : Array.from(new Set(presentTypes)).sort()
-  // All ordering (recent/az/rating) is owned by sortVariants (#536); the first-seen
+  // All ordering (recent/az/rating/distance) is owned by sortVariants (#536); the first-seen
   // family grouping below preserves whatever order sortVariants returns.
-  const neverRanHidden = sortField === 'recent' ? filteredBase.filter(w => w.lastRan == null).length : 0
-  const filtered = sortVariants(filteredBase, sortField, sortDir, voteData)
+  // effectiveRange is null outside the distance context (non-Long/Easy category), so
+  // applyDistanceRange is a no-op there — no isDistanceCategory ternary needed.
+  const distanceFiltered = applyDistanceRange(filteredBase, effectiveRange)
+  const neverRanHidden = sortField === 'recent' ? distanceFiltered.filter(w => w.lastRan == null).length : 0
+  const filtered = sortVariants(distanceFiltered, sortField, sortDir, voteData)
 
   // A family is "multi-version" (expandable Standard/Variation N group) only
   // when its familyId has more than one variant row — same rule ScheduleClient
@@ -159,10 +183,17 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
     }
   }
 
+  function resetDistanceAxis() {
+    setDistRange(null)
+    if (sortField === 'distance') { setSortField('recent'); setSortDir(DEFAULT_DIR.recent) }
+  }
+
   function setcat(c: string | null) {
     const next = withCategory(filters, c)
-    setCategory(next.category)
-    setTypeFilter(next.type)
+    setCategory(next.category); setTypeFilter(next.type)
+    if (c !== 'Long' && c !== 'Easy') {
+      resetDistanceAxis()
+    }
   }
 
   function setScope(all: boolean) {
@@ -170,6 +201,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
     setShowAllRuns(next.showAllRuns)
     setCategory(next.category)
     setTypeFilter(next.type)
+    resetDistanceAxis()
   }
 
   return (
@@ -226,9 +258,10 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           direction={sortDir}
           showDirection={directionApplies(sortField)}
           options={[
-            { value: 'recent', label: SORT_LABELS.recent },
-            { value: 'az', label: SORT_LABELS.az },
-            { value: 'rating', label: SORT_LABELS.rating },
+            { value: 'recent' as const, label: SORT_LABELS.recent },
+            { value: 'az' as const, label: SORT_LABELS.az },
+            { value: 'rating' as const, label: SORT_LABELS.rating },
+            ...(isDistanceCategory ? [{ value: 'distance' as const, label: SORT_LABELS.distance }] : []),
           ]}
           onChange={(f) => { setSortField(f); setSortDir(DEFAULT_DIR[f]) }}
           onDirectionChange={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
@@ -244,7 +277,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
       <FilterSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        onClear={() => { setCategory(null); setTypeFilter(null); setRaceFilter(null); setShowAllRuns(false) }}
+        onClear={() => { setCategory(null); setTypeFilter(null); setRaceFilter(null); setShowAllRuns(false); resetDistanceAxis() }}
       >
         {runId && (
           <div>
@@ -265,6 +298,13 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
             ))}
           </div>
         </div>
+
+        {isDistanceCategory && distBounds && (
+          <div>
+            <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Distance</p>
+            <DistanceSlider bounds={distBounds} value={effectiveRange ?? distBounds} onChange={setDistRange} />
+          </div>
+        )}
 
         {effectiveCategory && types.length > 1 && (
           <div>
@@ -317,6 +357,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                         title="Edit workout"
                       >✎</Link>
                     )}
+                    {w.distanceMiles != null && <span className={TYPE_LABEL}>{w.distanceMiles.toFixed(1)} mi</span>}
                     <span className={TYPE_LABEL}>{w.type}</span>
                   </div>
                 </div>
@@ -345,7 +386,8 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           }
 
           const isExpanded = expandedFamily === row.familyId
-          const familyCreatorGroupId = (row.base ?? row.variants[0])?.runGroupId ?? null
+          const headRow = row.base ?? row.variants[0]
+          const familyCreatorGroupId = headRow?.runGroupId ?? null
           const familyFlagged = row.base?.flagged || row.variants.some(p => p.flagged)
           return (
             <div key={`f-${row.familyId}`} data-tour="library-variations">
@@ -369,6 +411,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                     <span className={SQUARE_LABEL}>
                       {row.total} versions
                     </span>
+                    {headRow?.distanceMiles != null && <span className={TYPE_LABEL}>{headRow.distanceMiles.toFixed(1)} mi</span>}
                     <span className={TYPE_LABEL}>{row.type}</span>
                   </div>
                 </div>
@@ -377,7 +420,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                   {row.lastRan ? `Last ran ${formatDate(row.lastRan)}` : 'Never run'} · tap to {isExpanded ? 'collapse' : 'expand'}
                 </div>
               </button>
-              {adoptControls(row.familyId, familyCreatorGroupId, (row.base ?? row.variants[0])?.category ?? '', row.type)}
+              {adoptControls(row.familyId, familyCreatorGroupId, headRow?.category ?? '', row.type)}
 
               {isExpanded && (
                 <div className="mt-1 ml-2 flex flex-col gap-1">
