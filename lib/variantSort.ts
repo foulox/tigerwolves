@@ -5,19 +5,20 @@ import { rankByRating } from './rating'
 // Story 2: the shared sort model for both pickers. Extracted from the inline sorts
 // in LibraryClient / ScheduleClient / schedulePicker so the semantics live (and are
 // tested) in one place. Distance sort arrives in Story 4 (#461).
-export type SortField = 'recent' | 'rating' | 'az'
+export type SortField = 'recent' | 'rating' | 'az' | 'distance'
 export type SortDir = 'asc' | 'desc'
 
 export const DEFAULT_DIR: Record<SortField, SortDir> = {
   recent: 'asc',  // oldest (least recently run) first
   rating: 'desc', // highest first
   az: 'asc',      // A → Z
+  distance: 'asc',
 }
 
 // Dropdown labels name the DIMENSION (a plain noun), not a direction — the arrow
 // owns direction. ('Last ran' not 'Least recent'; 'Rating' not 'Top rated'.)
 export const SORT_LABELS: Record<SortField, string> = {
-  recent: 'Last ran', rating: 'Rating', az: 'A–Z',
+  recent: 'Last ran', rating: 'Rating', az: 'A–Z', distance: 'Distance',
 }
 
 // Direction only applies where both ends are useful. Rating is always best-first
@@ -31,6 +32,7 @@ export function directionApplies(field: SortField): boolean {
 export function sortCountLabel(field: SortField, dir: SortDir): string {
   if (field === 'rating') return 'Rating'
   if (field === 'az') return dir === 'asc' ? 'A–Z' : 'Z–A'
+  if (field === 'distance') return dir === 'asc' ? 'Distance, shortest first' : 'Distance, longest first'
   return dir === 'asc' ? 'Last ran, oldest first' : 'Last ran, most recent first'
 }
 
@@ -49,6 +51,13 @@ export function sortVariants(
     out = rankByRating(rows, voteData) // high → low (its own stable order)
   } else if (field === 'az') {
     out = [...rows].sort((x, y) => x.name.localeCompare(y.name))
+  } else if (field === 'distance') {
+    return [...rows].sort((x, y) => {
+      if (x.distanceMiles == null && y.distanceMiles == null) return 0
+      if (x.distanceMiles == null) return 1   // nulls always last
+      if (y.distanceMiles == null) return -1
+      return dir === 'asc' ? x.distanceMiles - y.distanceMiles : y.distanceMiles - x.distanceMiles
+    })
   } else {
     out = rows
       .filter(r => r.lastRan != null)

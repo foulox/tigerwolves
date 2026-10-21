@@ -57,9 +57,25 @@ describe('sortVariants — rating uses the weighted rank', () => {
   })
 })
 
+describe('sortVariants — distance (nulls trail, never coerced to 0)', () => {
+  const short = v({ id: 10, name: 'Short', lastRan: '2026-01-01' }); short.distanceMiles = 2.0
+  const mid = v({ id: 11, name: 'Mid', lastRan: '2026-01-01' }); mid.distanceMiles = 5.0
+  const long = v({ id: 12, name: 'Long', lastRan: '2026-01-01' }); long.distanceMiles = 9.0
+  const unknown = v({ id: 13, name: 'Unknown', lastRan: '2026-01-01' }); unknown.distanceMiles = null
+  const rows = [long, unknown, short, mid]
+  const noVotes = {}
+
+  test('ascending = shortest first, null distance trails', () => {
+    expect(sortVariants(rows, 'distance', 'asc', noVotes).map(r => r.id)).toEqual([10, 11, 12, 13])
+  })
+  test('descending = longest first, null distance still trails', () => {
+    expect(sortVariants(rows, 'distance', 'desc', noVotes).map(r => r.id)).toEqual([12, 11, 10, 13])
+  })
+})
+
 describe('defaults + labels', () => {
   test('default directions', () => {
-    expect(DEFAULT_DIR).toEqual({ recent: 'asc', rating: 'desc', az: 'asc' })
+    expect(DEFAULT_DIR).toEqual({ recent: 'asc', rating: 'desc', az: 'asc', distance: 'asc' })
   })
   test('count-line labels name the dimension + direction', () => {
     expect(sortCountLabel('recent', 'asc')).toBe('Last ran, oldest first')
@@ -67,10 +83,13 @@ describe('defaults + labels', () => {
     expect(sortCountLabel('rating', 'desc')).toBe('Rating')
     expect(sortCountLabel('az', 'asc')).toBe('A–Z')
     expect(sortCountLabel('az', 'desc')).toBe('Z–A')
+    expect(sortCountLabel('distance', 'asc')).toBe('Distance, shortest first')
+    expect(sortCountLabel('distance', 'desc')).toBe('Distance, longest first')
   })
   test('direction applies to all but Rating', () => {
     expect(directionApplies('recent')).toBe(true)
     expect(directionApplies('az')).toBe(true)
+    expect(directionApplies('distance')).toBe(true)
     expect(directionApplies('rating')).toBe(false)
   })
 })
