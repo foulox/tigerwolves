@@ -269,10 +269,10 @@ export async function seedE2E(): Promise<void> {
   // renders the route shape (distance from dist_time + "View route ↗" from
   // map_link), the read-side mirror of #322. Owned by the MMER run_group.
   const [mmerFamily] = await sql`
-    INSERT INTO workout_families (name, category, type, reason, author, run_group_id, map_link)
+    INSERT INTO workout_families (name, category, type, reason, author, run_group_id, map_link, distance_miles)
     VALUES (
       'McCarren Easy Loop', 'Easy', 'Easy', 'Relaxed conversational miles.',
-      'MMER', ${mmerGroupId}, 'https://maps.app.goo.gl/mccarren-easy-loop'
+      'MMER', ${mmerGroupId}, 'https://maps.app.goo.gl/mccarren-easy-loop', 3.2
     )
     RETURNING id
   `
@@ -382,8 +382,8 @@ export async function seedE2E(): Promise<void> {
   `
   for (const route of CURATED_DOVES_ROUTES) {
     const [dovesFamily] = await sql`
-      INSERT INTO workout_families (name, category, type, reason, author, run_group_id, map_link)
-      VALUES (${route.name}, 'Long', 'Long', 'A social long route at conversational effort.', 'Wednesday Mourning Doves', ${dovesGroupId}, ${route.mapLink})
+      INSERT INTO workout_families (name, category, type, reason, author, run_group_id, map_link, distance_miles)
+      VALUES (${route.name}, 'Long', 'Long', 'A social long route at conversational effort.', 'Wednesday Mourning Doves', ${dovesGroupId}, ${route.mapLink}, ${route.distanceMiles})
       RETURNING id
     `
     await sql`

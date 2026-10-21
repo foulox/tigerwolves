@@ -224,3 +224,30 @@ test('Adopt: a route from "All runs" appears in "Your run", marked adopted, and 
   await yourRunCard.getByRole('button', { name: 'Remove from my run' }).click()
   await expect(page.getByText('MMER Threshold Session')).toHaveCount(0)
 })
+
+// #461: Library distance slider — switching to the Long category (All runs mode)
+// reveals the Distance filter section + Minimum distance control, and the sort
+// dropdown gains a Distance option. The Doves Long routes are seeded with real
+// distance_miles values (9.4, 11.25, 14.0 mi) so distanceBounds returns a real
+// range. Non-mutating: no library state is modified.
+test('Library: Long category shows Distance slider and Distance sort option (#461)', async ({ page }) => {
+  await page.goto('/library')
+  await page.waitForLoadState('load')
+
+  // Switch to All runs so the Doves Long routes (not TigerWolves-owned) are visible.
+  await openFilters(page)
+  await page.getByRole('button', { name: 'All runs', exact: true }).click()
+  await page.getByRole('button', { name: 'Long', exact: true }).click()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
+
+  // Re-open the filter sheet — the Distance section should now appear since
+  // the Long category has routes with distance_miles values.
+  await openFilters(page)
+  await expect(page.getByText('Distance', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Minimum distance')).toBeVisible()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
+
+  // The sort dropdown should include Distance as an option.
+  await page.getByRole('button', { name: 'Change sort order' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Distance', exact: true })).toBeVisible()
+})
