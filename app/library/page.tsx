@@ -37,17 +37,16 @@ export default async function LibraryPage() {
   // #401: fetch the FULL shared catalog (no runId scoping) so the "All runs" escape
   // hatch can browse everything. "Your run" scoping is applied client-side by library
   // membership in LibraryClient — the read that AC2 turns on.
-  // #402: key recency to the run this leader LEADS (`leaderRun.id`), so each card's
-  // "Last ran" is that run's date even while browsing the full catalog (AC6). Keyed on
-  // the led run itself — NOT on run_group_id — because recency lives on run_workouts
-  // (keyed by run_id) and is independent of whether the run is reconciled to a group; a
-  // group-less run (e.g. MMER) still has its own recency. Null led run → no recency run
-  // → "Never" everywhere (anonymous/unlinked fallback).
+  // #461-followup: the Library shows a GLOBAL "Last ran" — the last time ANY run used a
+  // workout — via `globalRecency`. #402's per-run recency (keyed to `leaderRun.id`) read
+  // "Never" for every other run's routes while browsing the full catalog, which hid most
+  // of the catalog under the default last-ran sort. Per-run recency stays where rotation
+  // needs it (the Schedule picker, run pages); the Library is a cross-run browse.
   // `.catch(() => [])`: this call (like the Schedule page's) now hard-depends on
   // migrate-402's `last_ran` column. On a branch where the migration hasn't landed yet
   // (#238/#272 hazard), degrade to an empty library rather than crashing the page — the
   // same error isolation fetchData() provides for the pages that still read through it.
-  const workoutVariants = await fetchWorkoutVariants(undefined, leaderRun?.id).catch((): WorkoutVariantRow[] => [])
+  const workoutVariants = await fetchWorkoutVariants(undefined, undefined, { globalRecency: true }).catch((): WorkoutVariantRow[] => [])
 
   // #404: "Your run" = the run's library membership (created + adopted), not the old
   // run_group_id ownership check. Only meaningful for a signed-in leader with a

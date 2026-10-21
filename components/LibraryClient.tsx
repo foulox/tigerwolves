@@ -64,7 +64,10 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
   const [showAbbrev, setShowAbbrev] = useState(false)
   const [flagSheetFor, setFlagSheetFor] = useState<number | null>(null)
   const [showAllRuns, setShowAllRuns] = useState(false)
-  const [sortField, setSortField] = useState<SortField>('recent')
+  // #461-followup: default to A–Z, not 'recent'. The last-ran sort EXCLUDES never-ran rows
+  // (variantSort), so defaulting to it hid most of the catalog whenever last-ran was sparse.
+  // A–Z shows every workout up front; the leader can switch to Last ran deliberately.
+  const [sortField, setSortField] = useState<SortField>('az')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [distRange, setDistRange] = useState<DistRange>(null)
