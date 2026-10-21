@@ -167,12 +167,16 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
     }
   }
 
+  function resetDistanceAxis() {
+    setDistRange(null)
+    if (sortField === 'distance') { setSortField('recent'); setSortDir(DEFAULT_DIR.recent) }
+  }
+
   function setcat(c: string | null) {
     const next = withCategory(filters, c)
     setCategory(next.category); setTypeFilter(next.type)
     if (c !== 'Long' && c !== 'Easy') {
-      setDistRange(null)
-      if (sortField === 'distance') { setSortField('recent'); setSortDir(DEFAULT_DIR.recent) }
+      resetDistanceAxis()
     }
   }
 
@@ -181,6 +185,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
     setShowAllRuns(next.showAllRuns)
     setCategory(next.category)
     setTypeFilter(next.type)
+    resetDistanceAxis()
   }
 
   return (
@@ -256,7 +261,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
       <FilterSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        onClear={() => { setCategory(null); setTypeFilter(null); setRaceFilter(null); setShowAllRuns(false); setDistRange(null) }}
+        onClear={() => { setCategory(null); setTypeFilter(null); setRaceFilter(null); setShowAllRuns(false); resetDistanceAxis() }}
       >
         {runId && (
           <div>
@@ -365,7 +370,8 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
           }
 
           const isExpanded = expandedFamily === row.familyId
-          const familyCreatorGroupId = (row.base ?? row.variants[0])?.runGroupId ?? null
+          const headRow = row.base ?? row.variants[0]
+          const familyCreatorGroupId = headRow?.runGroupId ?? null
           const familyFlagged = row.base?.flagged || row.variants.some(p => p.flagged)
           return (
             <div key={`f-${row.familyId}`} data-tour="library-variations">
@@ -389,7 +395,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                     <span className={SQUARE_LABEL}>
                       {row.total} versions
                     </span>
-                    {(row.base ?? row.variants[0])?.distanceMiles != null && <span className={TYPE_LABEL}>{(row.base ?? row.variants[0])!.distanceMiles!.toFixed(1)} mi</span>}
+                    {headRow?.distanceMiles != null && <span className={TYPE_LABEL}>{headRow.distanceMiles.toFixed(1)} mi</span>}
                     <span className={TYPE_LABEL}>{row.type}</span>
                   </div>
                 </div>
@@ -398,7 +404,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                   {row.lastRan ? `Last ran ${formatDate(row.lastRan)}` : 'Never run'} · tap to {isExpanded ? 'collapse' : 'expand'}
                 </div>
               </button>
-              {adoptControls(row.familyId, familyCreatorGroupId, (row.base ?? row.variants[0])?.category ?? '', row.type)}
+              {adoptControls(row.familyId, familyCreatorGroupId, headRow?.category ?? '', row.type)}
 
               {isExpanded && (
                 <div className="mt-1 ml-2 flex flex-col gap-1">

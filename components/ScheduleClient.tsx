@@ -246,7 +246,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     browseType,
   }
   const distSummary = showDistance ? distanceRangeSummary(distRange) : ''
-  const filterCount = scheduleFilterCount(scheduleFilters) + (distRange ? 1 : 0)
+  const filterCount = scheduleFilterCount(scheduleFilters) + (showDistance && distRange ? 1 : 0)
   const filterSummary = [scheduleFilterSummary(scheduleFilters), distSummary].filter(Boolean).join(' · ')
 
   const displayRows = useMemo<PlanDisplayRow[]>(() => {
@@ -634,7 +634,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 <FilterSheet
                   open={sheetOpen}
                   onClose={() => setSheetOpen(false)}
-                  onClear={() => { setShowAllRuns(false); setBrowseCategory(null); setBrowseType(null); setBrowseTypeCleared(false); setYourRunBrowseType(null); setDistRange(null) }}
+                  onClear={() => { setShowAllRuns(false); setBrowseCategory(null); setBrowseType(null); setBrowseTypeCleared(false); setYourRunBrowseType(null); setDistRange(null); if (sortField === 'distance') { setSortField('recent'); setSortDir(DEFAULT_DIR.recent) } }}
                 >
                   {runConfig.runGroupId != null && (
                     <div>

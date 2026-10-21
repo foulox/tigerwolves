@@ -193,7 +193,7 @@ export const CURATED_FAMILIES: FamilyFixture[] = [
 export const CURATED_DOVES_ROUTES: { name: string; distTime: string; mapLink: string; distanceMiles: number }[] = [
   { name: 'All The Water Fountains', distTime: '9.4 miles', mapLink: 'https://www.strava.com/routes/3506443192297552740', distanceMiles: 9.4 },
   { name: 'Roosevelt Island', distTime: '11.25 miles', mapLink: 'https://www.strava.com/routes/24312406', distanceMiles: 11.25 },
-  { name: 'Coney Island Out-and-Back', distTime: '14.0 miles', mapLink: 'https://www.strava.com/routes/coney-island-oab', distanceMiles: 14.0 },
+  { name: 'Coney Island Out-and-Back', distTime: '14.0 miles', mapLink: 'https://www.strava.com/routes/coney-island-oab', distanceMiles: 14.0 }, // placeholder route URL — e2e fixture only, link not followed
 ]
 
 // The three REAL run ids the e2e/unit suites seed — the single source of truth for
