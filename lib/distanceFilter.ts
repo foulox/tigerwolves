@@ -18,3 +18,13 @@ export function applyDistanceRange<T extends { distanceMiles: number | null }>(r
 export function distanceRangeSummary(range: DistRange): string {
   return range ? `${range.min.toFixed(1)}–${range.max.toFixed(1)} mi` : ''
 }
+
+// A set range is meaningful only while it still fits inside the current bounds. When the
+// candidate pool shifts — a Library category switch (Long/Easy have different spans) or a
+// text search narrowing the results — distanceBounds recomputes but the stored range does
+// not. A range left outside the new bounds would silently drop every row and push the
+// slider thumbs off the track; treat such a stale range as inactive (show all) instead.
+export function activeRange(range: DistRange, bounds: { min: number; max: number } | null): DistRange {
+  if (!range || !bounds) return null
+  return range.min >= bounds.min && range.max <= bounds.max ? range : null
+}

@@ -38,8 +38,11 @@ export function sortCountLabel(field: SortField, dir: SortDir): string {
 
 // 'recent' is a last-ran ordering, so never-ran rows (lastRan == null) are NOT part
 // of it — they are excluded. This fixes the bug where null coerced to '0' floated
-// never-run workouts to the top of "Least recent". 'rating' and 'az' keep every row.
-// Direction flips a stable base ordering by reversing it.
+// never-run workouts to the top of "Least recent". 'rating', 'az', and 'distance'
+// keep every row (distance puts nulls last in both directions). 'distance' is the
+// exception that handles direction inline in its comparator (early return) rather
+// than via the post-sort reverse at the bottom; all others use that reverse.
+// Direction flips a stable base ordering by reversing it (for 'rating', 'az', 'recent').
 export function sortVariants(
   rows: WorkoutVariantRow[],
   field: SortField,

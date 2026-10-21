@@ -24,7 +24,7 @@ import FiltersButton from '@/components/FiltersButton'
 import FilterSheet from '@/components/FilterSheet'
 import { scheduleFilterCount, scheduleFilterSummary, type ScheduleFilters } from '@/lib/scheduleFilters'
 import DistanceSlider from '@/components/DistanceSlider'
-import { distanceBounds, applyDistanceRange, distanceRangeSummary, type DistRange } from '@/lib/distanceFilter'
+import { distanceBounds, applyDistanceRange, distanceRangeSummary, activeRange, type DistRange } from '@/lib/distanceFilter'
 
 
 type PlanStandaloneRow = { kind: 'standalone'; workout: WorkoutVariantRow }
@@ -229,11 +229,17 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   // #461: distance bounds from the picker source (before distance filter).
   const distBounds = useMemo(() => distanceBounds(pickerSource), [pickerSource])
 
+  // A stored range is only meaningful while it still fits inside the current bounds. When
+  // the pool shifts (text search, scope change), distBounds recomputes but distRange doesn't —
+  // treat a stale range as inactive (show all) to prevent a silently empty list and off-track
+  // slider thumbs. effectiveRange is null when !showDistance, so applyDistanceRange is a no-op.
+  const effectiveRange = showDistance ? activeRange(distRange, distBounds) : null
+
   // #241: sort through the shared sort model — recent / A–Z / rating, with direction.
-  // #461: for non-workout your-run mode, apply the distance range before sorting.
+  // #461: for non-workout your-run mode, apply the effective distance range before sorting.
   const rankedSource = useMemo(
-    () => sortVariants(showDistance ? applyDistanceRange(pickerSource, distRange) : pickerSource, sortField, sortDir, voteData),
-    [pickerSource, distRange, showDistance, sortField, sortDir, voteData],
+    () => sortVariants(applyDistanceRange(pickerSource, effectiveRange), sortField, sortDir, voteData),
+    [pickerSource, effectiveRange, sortField, sortDir, voteData],
   )
 
   const effectiveBrowseType = !showAllRuns && isWorkout && !browseTypeCleared
@@ -245,8 +251,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     browseCategory,
     browseType,
   }
-  const distSummary = showDistance ? distanceRangeSummary(distRange) : ''
-  const filterCount = scheduleFilterCount(scheduleFilters) + (showDistance && distRange ? 1 : 0)
+  const distSummary = effectiveRange ? distanceRangeSummary(effectiveRange) : ''
+  const filterCount = scheduleFilterCount(scheduleFilters) + (effectiveRange ? 1 : 0)
   const filterSummary = [scheduleFilterSummary(scheduleFilters), distSummary].filter(Boolean).join(' · ')
 
   const displayRows = useMemo<PlanDisplayRow[]>(() => {
@@ -292,6 +298,14 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     return effectiveSelections.some(s => workoutKey(s) === workoutKey(w))
   }
 
+  // Mirrors LibraryClient.resetDistanceAxis — clears the stored range and, if
+  // distance sort is active, resets to the default sort (distance sort without
+  // a distance context makes no sense).
+  function resetDistanceAxis() {
+    setDistRange(null)
+    if (sortField === 'distance') { setSortField('recent'); setSortDir(DEFAULT_DIR.recent) }
+  }
+
   function changeWeek(idx: number) {
     setWeekIndex(idx)
     setSelectedWorkouts([])
@@ -309,8 +323,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     // #241: sort is a browse filter too — reset on a week change so a "Top rated"
     // view doesn't silently carry into the next week's list.
     setSortField('recent'); setSortDir('asc')
-    // #461: reset distance range on week change.
-    setDistRange(null)
+    // #461: reset distance axis on week change.
+    resetDistanceAxis()
     setPlanTab('post')
     setLeaderPickerOpen(false)
     setLocalLeader(null)
@@ -329,10 +343,9 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
     // #241: reset sort on a scope round-trip too.
-    // #461: also reset distance sort if switching away from non-workout your-run mode.
+    // #461: also reset distance axis if switching away from non-workout your-run mode.
     setSortField('recent'); setSortDir('asc')
-    // #461: reset distance range on scope change.
-    setDistRange(null)
+    resetDistanceAxis()
     setPickerSearch('')
     setShowCount(3)
   }
@@ -634,7 +647,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                 <FilterSheet
                   open={sheetOpen}
                   onClose={() => setSheetOpen(false)}
-                  onClear={() => { setShowAllRuns(false); setBrowseCategory(null); setBrowseType(null); setBrowseTypeCleared(false); setYourRunBrowseType(null); setDistRange(null); if (sortField === 'distance') { setSortField('recent'); setSortDir(DEFAULT_DIR.recent) } }}
+                  onClear={() => { setShowAllRuns(false); setBrowseCategory(null); setBrowseType(null); setBrowseTypeCleared(false); setYourRunBrowseType(null); resetDistanceAxis() }}
                 >
                   {runConfig.runGroupId != null && (
                     <div>
@@ -650,7 +663,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                   {showDistance && distBounds && (
                     <div>
                       <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Distance</p>
-                      <DistanceSlider bounds={distBounds} value={distRange ?? distBounds} onChange={setDistRange} />
+                      <DistanceSlider bounds={distBounds} value={effectiveRange ?? distBounds} onChange={setDistRange} />
                     </div>
                   )}
 

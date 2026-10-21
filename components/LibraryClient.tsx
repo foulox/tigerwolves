@@ -22,7 +22,7 @@ import {
   type LibraryFilters,
 } from '@/lib/libraryFilters'
 import DistanceSlider from '@/components/DistanceSlider'
-import { distanceBounds, applyDistanceRange, distanceRangeSummary, type DistRange } from '@/lib/distanceFilter'
+import { distanceBounds, applyDistanceRange, distanceRangeSummary, activeRange, type DistRange } from '@/lib/distanceFilter'
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -112,13 +112,24 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
 
   // Model C: the facet state assembled into one object the shared helpers operate on.
   const filters: LibraryFilters = { category, type: typeFilter, race: raceFilter, showAllRuns }
-  const distSummary = isDistanceCategory ? distanceRangeSummary(distRange) : ''
-  const filterSummary = [activeFilterSummary(filters), distSummary].filter(Boolean).join(' · ')
-  const filterCount = activeFilterCount(filters) + (distRange ? 1 : 0)
 
-  const filteredBase = applyLibraryFilters(visibleVariants, filters, search)
+  const filteredBase = useMemo(
+    () => applyLibraryFilters(visibleVariants, filters, search),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleVariants, category, typeFilter, raceFilter, showAllRuns, search],
+  )
   // bounds come from the category-filtered candidates (before the distance filter)
   const distBounds = useMemo(() => distanceBounds(filteredBase), [filteredBase])
+
+  // A stored range is only meaningful while it still fits inside the current bounds. When
+  // the category switches (Long↔Easy have different spans) or a text search narrows the
+  // pool, distBounds recomputes but distRange doesn't — treat a stale range as inactive
+  // (show all) to prevent a silently empty list and off-track slider thumbs.
+  const effectiveRange = isDistanceCategory ? activeRange(distRange, distBounds) : null
+
+  const distSummary = effectiveRange ? distanceRangeSummary(effectiveRange) : ''
+  const filterSummary = [activeFilterSummary(filters), distSummary].filter(Boolean).join(' · ')
+  const filterCount = activeFilterCount(filters) + (effectiveRange ? 1 : 0)
 
   // #322: in "Your run" mode the type-filter options are the run's allowlist
   // (∩ types present); "All runs" mode shows every present type as before. An
@@ -129,7 +140,9 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
     : Array.from(new Set(presentTypes)).sort()
   // All ordering (recent/az/rating/distance) is owned by sortVariants (#536); the first-seen
   // family grouping below preserves whatever order sortVariants returns.
-  const distanceFiltered = isDistanceCategory ? applyDistanceRange(filteredBase, distRange) : filteredBase
+  // effectiveRange is null outside the distance context (non-Long/Easy category), so
+  // applyDistanceRange is a no-op there — no isDistanceCategory ternary needed.
+  const distanceFiltered = applyDistanceRange(filteredBase, effectiveRange)
   const neverRanHidden = sortField === 'recent' ? distanceFiltered.filter(w => w.lastRan == null).length : 0
   const filtered = sortVariants(distanceFiltered, sortField, sortDir, voteData)
 
@@ -286,7 +299,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
         {isDistanceCategory && distBounds && (
           <div>
             <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Distance</p>
-            <DistanceSlider bounds={distBounds} value={distRange ?? distBounds} onChange={setDistRange} />
+            <DistanceSlider bounds={distBounds} value={effectiveRange ?? distBounds} onChange={setDistRange} />
           </div>
         )}
 
