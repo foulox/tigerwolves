@@ -114,7 +114,12 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   // non-Workout case.
   const isWorkout = isWorkoutKind(runConfig.kind)
   const runCategory = kindToCategory(runConfig.kind)
-  const showDistance = !showAllRuns && !isWorkout
+  // #461: distance axis for non-workout your-run picking. #539: also in All-runs
+  // borrow mode — the cross-run pool spans kinds, so a Workout run (e.g. TigerWolves)
+  // can filter borrowed routes by distance. Your-run Workout mode stays sliderless.
+  // The slider render and Distance sort are *additionally* gated on distBounds being
+  // non-null (no distance data in the pool → no distance axis; e.g. All-runs Quality-only).
+  const showDistance = !isWorkout || showAllRuns
 
   const scheduledTypes = entry ? entry.workoutType.split(' or ').map(t => t.trim()) : []
   const effectiveType = activeType ?? scheduledTypes[0] ?? ''
@@ -236,7 +241,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   const effectiveRange = showDistance ? activeRange(distRange, distBounds) : null
 
   // #241: sort through the shared sort model — recent / A–Z / rating, with direction.
-  // #461: for non-workout your-run mode, apply the effective distance range before sorting.
+  // #461/#539: whenever the distance axis is active (non-workout your-run mode, or
+  // All-runs borrow mode with distance data), apply the effective distance range before sorting.
   const rankedSource = useMemo(
     () => sortVariants(applyDistanceRange(pickerSource, effectiveRange), sortField, sortDir, voteData),
     [pickerSource, effectiveRange, sortField, sortDir, voteData],
@@ -343,8 +349,14 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
     // #241: reset sort on a scope round-trip too.
-    // #461: also reset distance axis if switching away from non-workout your-run mode.
-    setSortField('recent'); setSortDir('asc')
+    // #539: "Last ran" excludes never-ran workouts (lib/variantSort.ts), and borrowed
+    // cross-run workouts are never-ran from this run's view — so defaulting All-runs to
+    // "Last ran" renders the whole borrowable pool invisible. Default All-runs to A–Z
+    // (which keeps every row); keep "Last ran" for Your run, where last-ran is meaningful.
+    const defaultField = all ? 'az' : 'recent'
+    setSortField(defaultField); setSortDir(DEFAULT_DIR[defaultField])
+    // #461/#539: reset the distance axis on any scope toggle — either scope may have had
+    // an active range (All-runs now has the slider too), so a stale range mustn't carry over.
     resetDistanceAxis()
     setPickerSearch('')
     setShowCount(3)
@@ -633,7 +645,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                       { value: 'recent' as const, label: SORT_LABELS.recent },
                       { value: 'az' as const, label: SORT_LABELS.az },
                       { value: 'rating' as const, label: SORT_LABELS.rating },
-                      ...(showDistance ? [{ value: 'distance' as const, label: SORT_LABELS.distance }] : []),
+                      ...(showDistance && distBounds ? [{ value: 'distance' as const, label: SORT_LABELS.distance }] : []),
                     ]}
                     onChange={(f) => { setSortField(f); setSortDir(DEFAULT_DIR[f]) }}
                     onDirectionChange={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
@@ -659,7 +671,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     </div>
                   )}
 
-                  {/* #461: Distance slider for non-workout your-run mode */}
+                  {/* #461: Distance slider for non-workout your-run mode. #539: also All-runs
+                      borrow mode — gated on distBounds, so it hides when the pool has no distances. */}
                   {showDistance && distBounds && (
                     <div>
                       <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Distance</p>
