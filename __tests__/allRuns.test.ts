@@ -171,7 +171,7 @@ describe('directoryRunToCard — recurrence passthrough', () => {
     expect(card.cadenceLabel).toContain('2nd')
   })
   it('defaults to empty occurrences and null label when omitted', () => {
-    const card = directoryRunToCard({ ...base, occurrenceDates: [], cadenceLabel: null })
+    const card = directoryRunToCard({ ...base })
     expect(card.occurrenceDates).toEqual([])
     expect(card.cadenceLabel).toBeNull()
   })

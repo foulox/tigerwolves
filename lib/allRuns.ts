@@ -37,9 +37,9 @@ export type DirectoryRunInput = {
   emoji: string | null
   distance: string | null
   status: RunStatus
-  // #448: optional so existing callers (AllRunsClient line 148) that pass a plain
-  // DirectoryRun still compile. The page enriches these before passing; Task 4
-  // will widen AllRunsClient's prop type to always-populated.
+  // #448: optional; callers that don't deal with recurrence can omit them.
+  // directoryRunToCard supplies defaults (?? [] / ?? null) so DirectoryCard
+  // always has them populated.
   occurrenceDates?: string[]
   cadenceLabel?: string | null
 }
