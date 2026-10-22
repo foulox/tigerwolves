@@ -819,11 +819,14 @@ export type DirectoryRun = {
   emoji: string | null
   status: string
   distance: string | null
+  rrule: string | null
+  rrule_dtstart: string | null
 }
 
 export async function getDirectoryRuns(): Promise<DirectoryRun[]> {
   const rows = await sql`
-    SELECT id, name, day_of_week, meeting_time, meeting_location, kind, emoji, status, distance
+    SELECT id, name, day_of_week, meeting_time, meeting_location, kind, emoji, status, distance,
+           rrule, rrule_dtstart::text AS rrule_dtstart
     FROM runs ORDER BY id
   `
   return rows.map(r => ({
@@ -836,6 +839,8 @@ export async function getDirectoryRuns(): Promise<DirectoryRun[]> {
     emoji: (r.emoji as string | null) ?? null,
     status: (r.status as string | null) ?? 'live',
     distance: (r.distance as string | null) ?? null,
+    rrule: (r.rrule as string | null) ?? null,
+    rrule_dtstart: (r.rrule_dtstart as string | null) ?? null,
   }))
 }
 

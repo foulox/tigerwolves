@@ -4,6 +4,9 @@ import HeaderControls from '@/components/HeaderControls'
 import AllRunsClient from '@/components/AllRunsClient'
 import { getDirectoryRuns, getFollowedRunIds, getLeaderRun } from '@/lib/db'
 import { shouldShowIntro } from '@/lib/allRunsIntro'
+import { occurrencesBetween, describeRecurrence } from '@/lib/recurrence'
+import { directoryWindowYmds } from '@/lib/allRuns'
+import * as Sentry from '@sentry/nextjs'
 
 export const metadata = { title: 'All Runs — NBR' }
 
@@ -25,7 +28,28 @@ export default async function AllRunsPage() {
   }
   // Draft runs are shown to everyone (incl. logged-out) as inert cards — cardAffordance
   // gates interactivity, not visibility. The run PAGE stays gated (draft 404s non-managers).
-  const visibleRuns = dbRuns
+  const windowYmds = directoryWindowYmds(serverDate)
+  const windowStart = windowYmds[0]
+  const windowEnd = windowYmds[windowYmds.length - 1]
+
+  const enrichedRuns = dbRuns.map(r => {
+    const rec = { rrule: r.rrule, dtstart: r.rrule_dtstart, dayOfWeek: r.day_of_week }
+    try {
+      return {
+        ...r,
+        occurrenceDates: occurrencesBetween(rec, windowStart, windowEnd),
+        cadenceLabel: describeRecurrence(rec),
+      }
+    } catch (err) {
+      // A stored rule rrule.js can't parse must not 500 the directory — log and
+      // fall back to the weekly default so the run still places on its day_of_week.
+      Sentry.captureException(err)
+      const fallback = { rrule: null, dtstart: null, dayOfWeek: r.day_of_week }
+      return { ...r, occurrenceDates: occurrencesBetween(fallback, windowStart, windowEnd), cadenceLabel: null }
+    }
+  })
+
+  const visibleRuns = enrichedRuns
   const showIntro = shouldShowIntro(isLoggedIn, followedIds.length)
 
   return (
