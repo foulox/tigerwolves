@@ -10,6 +10,21 @@ import {
 
 export { formatMeetingTimeShort } from './runProfile'
 
+// #448: the 7 YMD strings the All Runs directory window spans, starting "today".
+// Mirrors AllRunsClient's day layout so server-expanded occurrences line up with
+// the day blocks the client renders. Pure string arithmetic — no Date tz drift.
+export function directoryWindowYmds(serverDate: string): string[] {
+  const [y, m, d] = serverDate.split('-').map(Number)
+  const out: string[] = []
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(Date.UTC(y, m - 1, d + i))
+    out.push(
+      `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`,
+    )
+  }
+  return out
+}
+
 // #365: input shape for directoryRunToCard. Field names and nullability match
 // the `runs` DB table. Task 4 will align lib/db.ts's DirectoryRun to this.
 export type DirectoryRunInput = {
@@ -22,11 +37,20 @@ export type DirectoryRunInput = {
   emoji: string | null
   distance: string | null
   status: RunStatus
+  // #448: optional; callers that don't deal with recurrence can omit them.
+  // directoryRunToCard supplies defaults (?? [] / ?? null) so DirectoryCard
+  // always has them populated.
+  occurrenceDates?: string[]
+  cadenceLabel?: string | null
 }
 
 export type RunStatus = 'unclaimed' | 'draft' | 'live'
 
-export type DirectoryCard = NBRRun & { status: RunStatus }
+export type DirectoryCard = NBRRun & {
+  status: RunStatus
+  occurrenceDates: string[]
+  cadenceLabel: string | null
+}
 
 // #365: Synthesize a DirectoryCard from a DB run row. Maps the run's
 // kind/day/time to the card fields, adds `distance` (pass-through) and
@@ -49,6 +73,8 @@ export function directoryRunToCard(run: DirectoryRunInput): DirectoryCard {
     distance: run.distance ?? '',
     category,
     status: run.status,
+    occurrenceDates: run.occurrenceDates ?? [],
+    cadenceLabel: run.cadenceLabel ?? null,
   }
 }
 

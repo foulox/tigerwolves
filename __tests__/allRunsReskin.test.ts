@@ -29,6 +29,22 @@ describe('All Runs reskin — chrome/surface/neutral/active (#488)', () => {
   })
 })
 
+describe('All Runs — recurrence placement & cadence label (#448)', () => {
+  test('day-block placement gates on occurrence membership', () => {
+    expect(src).toContain("occurrenceDates.includes(")
+  })
+  test('old card.day === day placement clause is gone', () => {
+    expect(src).not.toContain('card.day === day')
+  })
+  test('cadence label element is rendered conditionally', () => {
+    expect(src).toContain('data-testid="cadence-label"')
+    expect(src).toContain('card.cadenceLabel')
+  })
+  test('local YMD helper exists', () => {
+    expect(src).toContain('function toYmdLocal')
+  })
+})
+
 describe('All Runs reskin — color-coding collapsed (#488)', () => {
   test('AM/PM start-time colors are gone (uniform time color)', () => {
     expect(src).not.toContain('#f97316') // AM orange

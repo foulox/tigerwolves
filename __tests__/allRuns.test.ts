@@ -1,5 +1,6 @@
-import { describe, test, expect } from 'vitest'
-import { formatMeetingTimeShort, directoryRunToCard, cardAffordance, adminCardControls } from '../lib/allRuns'
+import { describe, test, it, expect } from 'vitest'
+import { formatMeetingTimeShort, directoryRunToCard, cardAffordance, adminCardControls, directoryWindowYmds } from '../lib/allRuns'
+import { occurrencesBetween } from '../lib/recurrence'
 import {
   KIND_TO_NBR_CATEGORY,
   NBR_CATEGORY_TO_KIND,
@@ -142,6 +143,51 @@ describe('adminCardControls', () => {
       .toMatchObject({ canManage: true, canSetUp: false, canRemove: false })
     expect(adminCardControls({ status: 'live' }, viewer({ isAdmin: true })))
       .toMatchObject({ canManage: true, canSetUp: false, canRemove: false })
+  })
+})
+
+describe('directoryWindowYmds', () => {
+  it('returns 7 consecutive YMDs starting at serverDate', () => {
+    expect(directoryWindowYmds('2026-10-20')).toEqual([
+      '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23',
+      '2026-10-24', '2026-10-25', '2026-10-26',
+    ])
+  })
+})
+
+describe('directoryRunToCard — recurrence passthrough', () => {
+  const base = {
+    id: 'second-friday-donut-run', name: 'Second Friday Donut Run',
+    day_of_week: 'Friday', meeting_time: '7:30am', meeting_location: 'X',
+    kind: 'Food', emoji: null, distance: '3–4 mi', status: 'unclaimed' as const,
+  }
+  it('carries occurrenceDates and cadenceLabel onto the card', () => {
+    const card = directoryRunToCard({
+      ...base,
+      occurrenceDates: ['2026-10-09'],
+      cadenceLabel: 'every month on the 2nd Friday',
+    })
+    expect(card.occurrenceDates).toEqual(['2026-10-09'])
+    expect(card.cadenceLabel).toContain('2nd')
+  })
+  it('defaults to empty occurrences and null label when omitted', () => {
+    const card = directoryRunToCard({ ...base })
+    expect(card.occurrenceDates).toEqual([])
+    expect(card.cadenceLabel).toBeNull()
+  })
+})
+
+describe('malformed stored rule — directory fallback contract', () => {
+  it('occurrencesBetween throws on a rule rrule.js cannot parse', () => {
+    // 'FREQ=NONSENSE' → freq index -1 → `new RRule` throws. A reliably-rejected input.
+    expect(() =>
+      occurrencesBetween({ rrule: 'FREQ=NONSENSE', dtstart: '2020-01-03', dayOfWeek: 'Friday' }, '2026-10-19', '2026-10-25'),
+    ).toThrow()
+  })
+  it('the weekly-default fallback still places the run on its day_of_week', () => {
+    expect(
+      occurrencesBetween({ rrule: null, dtstart: null, dayOfWeek: 'Friday' }, '2026-10-19', '2026-10-25'),
+    ).toEqual(['2026-10-23'])
   })
 })
 
