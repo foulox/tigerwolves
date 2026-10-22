@@ -114,7 +114,12 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   // non-Workout case.
   const isWorkout = isWorkoutKind(runConfig.kind)
   const runCategory = kindToCategory(runConfig.kind)
-  const showDistance = !showAllRuns && !isWorkout
+  // #461: distance axis for non-workout your-run picking. #539: also in All-runs
+  // borrow mode — the cross-run pool spans kinds, so a Workout run (e.g. TigerWolves)
+  // can filter borrowed routes by distance. Your-run Workout mode stays sliderless.
+  // The slider render and Distance sort are *additionally* gated on distBounds being
+  // non-null (no distance data in the pool → no distance axis; e.g. All-runs Quality-only).
+  const showDistance = !isWorkout || showAllRuns
 
   const scheduledTypes = entry ? entry.workoutType.split(' or ').map(t => t.trim()) : []
   const effectiveType = activeType ?? scheduledTypes[0] ?? ''
@@ -633,7 +638,7 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                       { value: 'recent' as const, label: SORT_LABELS.recent },
                       { value: 'az' as const, label: SORT_LABELS.az },
                       { value: 'rating' as const, label: SORT_LABELS.rating },
-                      ...(showDistance ? [{ value: 'distance' as const, label: SORT_LABELS.distance }] : []),
+                      ...(showDistance && distBounds ? [{ value: 'distance' as const, label: SORT_LABELS.distance }] : []),
                     ]}
                     onChange={(f) => { setSortField(f); setSortDir(DEFAULT_DIR[f]) }}
                     onDirectionChange={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
@@ -659,7 +664,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
                     </div>
                   )}
 
-                  {/* #461: Distance slider for non-workout your-run mode */}
+                  {/* #461: Distance slider for non-workout your-run mode. #539: also All-runs
+                      borrow mode — gated on distBounds, so it hides when the pool has no distances. */}
                   {showDistance && distBounds && (
                     <div>
                       <p className="font-display uppercase tracking-[0.18em] text-[9px] font-semibold text-muted mb-2">Distance</p>
