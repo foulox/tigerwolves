@@ -7,10 +7,8 @@ import { Check } from 'lucide-react'
 import * as Sentry from '@sentry/nextjs'
 import FeedbackDrawer from './FeedbackDrawer'
 import RunEditorDrawer from './RunEditorDrawer'
-import type { DirectoryRun } from '@/lib/db'
-import type { DirectoryCard, ViewerContext } from '@/lib/allRuns'
+import type { DirectoryCard, ViewerContext, DirectoryRunInput } from '@/lib/allRuns'
 import { directoryRunToCard, cardAffordance, adminCardControls } from '@/lib/allRuns'
-import type { RunStatus } from '@/lib/allRuns'
 import { toggleRunFollow } from '@/app/actions'
 import { setUpRun, removeDirectoryRun } from '@/app/admin/actions'
 import { KIND_TO_NBR_CATEGORY } from '@/lib/runProfile'
@@ -55,8 +53,18 @@ function nextOccurrence(base: Date, targetJsDay: number): Date {
   return offsetDate(base, diff)
 }
 
+// #448: Format a Date by local components to match directoryWindowYmds' YMDs.
+// AllRunsClient builds dates from `serverDate+'T00:00:00'` (local-midnight), so
+// local getFullYear/getMonth/getDate reads back the same calendar day the server emitted.
+function toYmdLocal(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 type Props = {
-  runs: DirectoryRun[]
+  runs: DirectoryRunInput[]
   viewer: { isLoggedIn: boolean; isAdmin: boolean; owningLeaderRunId: string | null }
   initialFollowedIds: string[]
   // ISO date string from the server (e.g. "2026-09-05") — used as the stable
@@ -143,10 +151,8 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
   // Interpret serverDate as midnight local time — intentional, see page.tsx comment.
   const today = new Date(`${serverDate}T00:00:00`)
 
-  // Build cards once from DB runs; cast status since DirectoryRun.status is string.
-  const cards: DirectoryCard[] = runs.map(r =>
-    directoryRunToCard({ ...r, status: r.status as RunStatus })
-  )
+  // Build cards once from enriched runs (status already RunStatus, occurrenceDates/cadenceLabel populated by page.tsx).
+  const cards: DirectoryCard[] = runs.map(r => directoryRunToCard(r))
 
   // Build the viewer context each render, incorporating current follow state.
   const viewerCtx: ViewerContext = {
@@ -334,7 +340,7 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
           const dayCards = cards
             .filter(card => {
               const a = cardAffordance(card, viewerCtx)
-              return a.visible && card.day === day && matchesFilter(card)
+              return a.visible && card.occurrenceDates.includes(toYmdLocal(date)) && matchesFilter(card)
             })
             .sort((a, b) => a.startHour - b.startHour)
 
@@ -412,6 +418,14 @@ export default function AllRunsClient({ runs, viewer, initialFollowedIds, server
                         >
                           {card.category}
                         </span>
+                        {card.cadenceLabel && (
+                          <span
+                            data-testid="cadence-label"
+                            className="self-start text-[11px] font-semibold text-muted"
+                          >
+                            {card.cadenceLabel}
+                          </span>
+                        )}
                       </div>
                     </>
                   )

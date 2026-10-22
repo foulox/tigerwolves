@@ -6,6 +6,7 @@ import { getDirectoryRuns, getFollowedRunIds, getLeaderRun } from '@/lib/db'
 import { shouldShowIntro } from '@/lib/allRunsIntro'
 import { occurrencesBetween, describeRecurrence } from '@/lib/recurrence'
 import { directoryWindowYmds } from '@/lib/allRuns'
+import type { RunStatus } from '@/lib/allRuns'
 import * as Sentry from '@sentry/nextjs'
 
 export const metadata = { title: 'All Runs — NBR' }
@@ -37,6 +38,7 @@ export default async function AllRunsPage() {
     try {
       return {
         ...r,
+        status: r.status as RunStatus,
         occurrenceDates: occurrencesBetween(rec, windowStart, windowEnd),
         cadenceLabel: describeRecurrence(rec),
       }
@@ -45,7 +47,7 @@ export default async function AllRunsPage() {
       // fall back to the weekly default so the run still places on its day_of_week.
       Sentry.captureException(err)
       const fallback = { rrule: null, dtstart: null, dayOfWeek: r.day_of_week }
-      return { ...r, occurrenceDates: occurrencesBetween(fallback, windowStart, windowEnd), cadenceLabel: null }
+      return { ...r, status: r.status as RunStatus, occurrenceDates: occurrencesBetween(fallback, windowStart, windowEnd), cadenceLabel: null }
     }
   })
 
