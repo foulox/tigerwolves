@@ -349,9 +349,14 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
     // #241: reset sort on a scope round-trip too.
+    // #539: "Last ran" excludes never-ran workouts (lib/variantSort.ts), and borrowed
+    // cross-run workouts are never-ran from this run's view — so defaulting All-runs to
+    // "Last ran" renders the whole borrowable pool invisible. Default All-runs to A–Z
+    // (which keeps every row); keep "Last ran" for Your run, where last-ran is meaningful.
+    const defaultField = all ? 'az' : 'recent'
+    setSortField(defaultField); setSortDir(DEFAULT_DIR[defaultField])
     // #461/#539: reset the distance axis on any scope toggle — either scope may have had
     // an active range (All-runs now has the slider too), so a stale range mustn't carry over.
-    setSortField('recent'); setSortDir('asc')
     resetDistanceAxis()
     setPickerSearch('')
     setShowCount(3)

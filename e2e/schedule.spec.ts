@@ -190,6 +190,29 @@ test('All runs mode: Distance slider + Distance sort appear when the pool has di
   await expect(page.getByRole('menuitem', { name: 'Distance', exact: true })).toBeVisible()
 })
 
+// #539 (follow-up): toggling All runs used to reset the sort to "Last ran", which
+// filters out every never-ran workout (lib/variantSort.ts). Borrowed cross-run
+// workouts are never-ran from this run's view, so an All-runs + Easy filter showed an
+// empty list even though the distance slider advertised data. Switching to All runs
+// now defaults the sort to A–Z so the borrowable pool is actually visible without the
+// leader hunting for the right sort. Non-mutating: no plan state is changed.
+test('All runs mode: cross-run (never-ran) workouts are visible without changing the sort (#539)', async ({ page }) => {
+  await page.goto('/schedule?week=2')
+  await page.waitForLoadState('load')
+
+  // Flip to All runs and narrow to Easy — the only Easy workouts are other runs'
+  // (MMER's McCarren Easy Loop), all never-ran from TigerWolves' view.
+  await openFilters(page)
+  await page.getByRole('button', { name: 'All runs', exact: true }).click()
+  // The Category "Easy" pill renders before the Type "Easy" pill in the sheet.
+  await page.getByRole('button', { name: 'Easy', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Show results', exact: true }).click()
+
+  // Under the old "Last ran" default this list was empty; defaulting to A–Z surfaces it.
+  await expect(page.locator('button').filter({ hasText: 'McCarren Easy Loop' }).first()).toBeVisible()
+  await expect(page.getByText('No workouts match these filters.')).toHaveCount(0)
+})
+
 test.describe('redirect: /plan → /schedule', () => {
   test('GET /plan?week=0 lands on /schedule?week=0', async ({ page }) => {
     await page.goto('/plan?week=0')
