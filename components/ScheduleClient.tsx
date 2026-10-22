@@ -241,7 +241,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
   const effectiveRange = showDistance ? activeRange(distRange, distBounds) : null
 
   // #241: sort through the shared sort model — recent / A–Z / rating, with direction.
-  // #461: for non-workout your-run mode, apply the effective distance range before sorting.
+  // #461/#539: whenever the distance axis is active (non-workout your-run mode, or
+  // All-runs borrow mode with distance data), apply the effective distance range before sorting.
   const rankedSource = useMemo(
     () => sortVariants(applyDistanceRange(pickerSource, effectiveRange), sortField, sortDir, voteData),
     [pickerSource, effectiveRange, sortField, sortDir, voteData],
@@ -348,7 +349,8 @@ export default function ScheduleClient({ upcoming, variants, initialWeekIndex = 
     // "Hills" selection made in "Your run" silently persists across a scope round-trip.
     setActiveType(null)
     // #241: reset sort on a scope round-trip too.
-    // #461: also reset distance axis if switching away from non-workout your-run mode.
+    // #461/#539: reset the distance axis on any scope toggle — either scope may have had
+    // an active range (All-runs now has the slider too), so a stale range mustn't carry over.
     setSortField('recent'); setSortDir('asc')
     resetDistanceAxis()
     setPickerSearch('')
