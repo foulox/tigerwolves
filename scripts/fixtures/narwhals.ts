@@ -145,16 +145,18 @@ export async function seedNarwhals(
         ? (existingFamily[0].id as number)
         : ((
             await sql`
-              INSERT INTO workout_families (name, category, type, run_group_id, map_link)
-              VALUES (${route.name}, 'Long', 'Long', ${groupId}, ${route.mapLink})
+              INSERT INTO workout_families (name, category, type, run_group_id, map_link, distance_miles)
+              VALUES (${route.name}, 'Long', 'Long', ${groupId}, ${route.mapLink}, ${route.distMiles})
               RETURNING id
             `
           )[0].id as number)
 
     if (existingFamily.length > 0) {
+      // distance_miles drives the non-workout distance slider + filter (#461); without
+      // it the routes don't widen the slider bounds and get filtered out entirely.
       await sql`
         UPDATE workout_families
-        SET category = 'Long', type = 'Long', map_link = ${route.mapLink}
+        SET category = 'Long', type = 'Long', map_link = ${route.mapLink}, distance_miles = ${route.distMiles}
         WHERE id = ${familyId}
       `
     }
