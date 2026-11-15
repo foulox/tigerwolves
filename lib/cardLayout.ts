@@ -77,6 +77,18 @@ export function resolveCardLayout(
   return { upfront: resolveSection(w, t.upfront), expanded: resolveSection(w, t.expanded) }
 }
 
+// #543: In the cross-run Library, a route must be displayed the way its *home*
+// run wants — the run whose run_group owns it — not the viewing leader's run.
+// Returns that run's template (keyed by run_group_id), or null when the group is
+// unknown or has no template, so resolveCardLayout falls back to the default.
+export function templateForGroup(
+  runGroupId: number | null,
+  templatesByGroup: Record<number, CardTemplate | null>,
+): CardTemplate | null {
+  if (runGroupId == null) return null
+  return templatesByGroup[runGroupId] ?? null
+}
+
 export function parseCardTemplate(raw: unknown): CardTemplate | null {
   if (!raw || typeof raw !== 'object') return null
   const t = raw as Record<string, unknown>
