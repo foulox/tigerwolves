@@ -13,7 +13,7 @@ import { resolveWorkoutType } from '../lib/cycle'
 // Tests that depend on the e2e seed data (fetchSchedule/fetchRaces/dbSetScheduleWorkout),
 // or that WRITE, only run against the test-data branch — never a fresh local DB (where the
 // e2e seed hasn't run) or production. Module-scoped so every describe.skipIf below sees it.
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 describe('database connection and schema', () => {

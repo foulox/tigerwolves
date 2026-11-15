@@ -25,7 +25,7 @@ describe('isSeedAllowed', () => {
 // dev-instance id. Linking must match on email, repoint clerk_user_id, and create
 // NO second row. Test-data-gated like the other DB tests.
 
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 describe.skipIf(!onTestData)('ensureLeaderLink dedupes a forked prod row by email (test-data)', () => {

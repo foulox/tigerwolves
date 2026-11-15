@@ -41,7 +41,7 @@ import { DEFAULT_CARD_TEMPLATE } from '../lib/cardLayout'
 // These tests write run_leaders/runs rows, so they only run against the test-data
 // branch — never production (which is what .env.local's DATABASE_URL points at
 // during a local `npm run test:unit`). CI sets DATABASE_URL to test-data.
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 const LEADER_A = 'user_authtest_A_310' // leads tigerwolves

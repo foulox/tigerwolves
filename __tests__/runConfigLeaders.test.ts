@@ -50,7 +50,7 @@ import { leadsAnyActiveRun } from '../lib/db'
 // Test-data-only DB tests gated with describe.skipIf(!onTestData). CI sets
 // DATABASE_URL to the test-data branch; local dev has no DATABASE_URL and the
 // module fails to load off-test-data (same documented behavior as runConfigAuth.test.ts).
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 /** Set currentUser mock to a user with the given publicMetadata. */

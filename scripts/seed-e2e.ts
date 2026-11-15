@@ -7,7 +7,7 @@ import { CURATED_FAMILIES, CURATED_DOVES_ROUTES } from './fixtures/curatedWorkou
 // Neon branch does NOT change this compute-endpoint host — the guard value is
 // stable across the rename.) Update this only if the branch is ever recreated
 // (see CLAUDE.md Tooling Notes for how to fetch the current connection string).
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 
 // Guards the KV flush the same way TEST_DATA_HOST guards the DB wipe: only the
 // dedicated CI-only Upstash instance may be flushed, never Preview/production KV.

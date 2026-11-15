@@ -7,7 +7,7 @@ import { slugifyRunName } from '../lib/runIdentity'
 // the test-data branch (where CI seeds a known set); off-test-data it skips, matching
 // the adminRunsData.test.ts pattern — a plain `npx vitest run` locally does not hit
 // a live DB.
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 describe.skipIf(!onTestData)('every run id follows slugify(name)', () => {
