@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { WorkoutVariantRow, CardTemplate } from '@/lib/data'
 import { ABBREVIATIONS, RACE_TYPES } from '@/lib/data'
 import WorkoutCardBody from '@/components/WorkoutCardBody'
+import { templateForGroup } from '@/lib/cardLayout'
 import DeleteWorkoutButton from '@/components/DeleteWorkoutButton'
 import ReactionPicker from '@/components/ReactionPicker'
 import WorkoutFlagSheet, { FlagBadge } from '@/components/WorkoutFlagSheet'
@@ -54,7 +55,7 @@ type DisplayRow = StandaloneRow | FamilyRow
 // ledRuns/runGroupNames drive the adopt affordances (AC5/AC6) and the "adopted from
 // <creator>" label; run_group_id is kept only as creator credit.
 type LedRun = { id: string; name: string; kind: string; workoutTypes: string[] }
-export default function LibraryClient({ variants, isLeader, isAdmin = false, voteData = {}, runId, allowedTypes, runGroupId, libraryFamilyIds = [], ledRuns = [], runGroupNames = {}, cardTemplate = null }: { variants: WorkoutVariantRow[]; isLeader: boolean; isAdmin?: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runGroupId?: number | null; libraryFamilyIds?: number[]; ledRuns?: LedRun[]; runGroupNames?: Record<number, string>; cardTemplate?: CardTemplate | null }) {
+export default function LibraryClient({ variants, isLeader, isAdmin = false, voteData = {}, runId, allowedTypes, runGroupId, libraryFamilyIds = [], ledRuns = [], runGroupNames = {}, cardTemplatesByGroup = {} }: { variants: WorkoutVariantRow[]; isLeader: boolean; isAdmin?: boolean; voteData?: Record<string, VoteData | null>; runId?: string; allowedTypes?: string[]; runGroupId?: number | null; libraryFamilyIds?: number[]; ledRuns?: LedRun[]; runGroupNames?: Record<number, string>; cardTemplatesByGroup?: Record<number, CardTemplate | null> }) {
   const [category, setCategory] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [raceFilter, setRaceFilter] = useState<string | null>(null)
@@ -362,7 +363,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                   </div>
                 </div>
                 {w.label && <p className="text-xs text-muted mt-0.5">{w.label}</p>}
-                <WorkoutCardBody workout={w} layout={cardTemplate} expanded={expandedNotes === w.id} onToggle={() => setExpandedNotes(expandedNotes === w.id ? null : w.id)} />
+                <WorkoutCardBody workout={w} layout={templateForGroup(w.runGroupId, cardTemplatesByGroup)} expanded={expandedNotes === w.id} onToggle={() => setExpandedNotes(expandedNotes === w.id ? null : w.id)} />
                 <div className="flex justify-end mt-2">
                   <ReactionPicker
                     workoutId={workoutVoteId(w.name, w.label ?? '')}
@@ -443,7 +444,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                           )}
                         </div>
                       </div>
-                      <WorkoutCardBody workout={row.base} layout={cardTemplate} expanded={expandedNotes === row.base.id} onToggle={() => setExpandedNotes(expandedNotes === row.base!.id ? null : row.base!.id)} />
+                      <WorkoutCardBody workout={row.base} layout={templateForGroup(row.base.runGroupId, cardTemplatesByGroup)} expanded={expandedNotes === row.base.id} onToggle={() => setExpandedNotes(expandedNotes === row.base!.id ? null : row.base!.id)} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
                           workoutId={workoutVoteId(row.base.name, row.base.label ?? '')}
@@ -473,7 +474,7 @@ export default function LibraryClient({ variants, isLeader, isAdmin = false, vot
                         </div>
                       </div>
                       <div className="text-sm font-semibold text-ink font-display">{p.label}</div>
-                      <WorkoutCardBody workout={p} layout={cardTemplate} expanded={expandedNotes === p.id} onToggle={() => setExpandedNotes(expandedNotes === p.id ? null : p.id)} />
+                      <WorkoutCardBody workout={p} layout={templateForGroup(p.runGroupId, cardTemplatesByGroup)} expanded={expandedNotes === p.id} onToggle={() => setExpandedNotes(expandedNotes === p.id ? null : p.id)} />
                       <div className="flex justify-end mt-2">
                         <ReactionPicker
                           workoutId={workoutVoteId(p.name, p.label ?? '')}

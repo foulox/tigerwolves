@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { hasValue, resolveCardLayout, parseCardTemplate } from '../lib/cardLayout'
+import { hasValue, resolveCardLayout, parseCardTemplate, templateForGroup } from '../lib/cardLayout'
 import type { WorkoutVariantRow, CardTemplate } from '../lib/data'
 
 // Minimal fixture with every placeable value PRESENT; override per test.
@@ -123,5 +123,54 @@ describe('parseCardTemplate', () => {
     expect(parseCardTemplate('{}')).toBeNull()
     expect(parseCardTemplate({ version: 1 })).toBeNull()               // missing arrays
     expect(parseCardTemplate({ version: 1, upfront: 'x', expanded: [], hidden: [] })).toBeNull()
+  })
+})
+
+describe('templateForGroup (#543 — resolve by the route\'s home run)', () => {
+  const showsMap: CardTemplate = { version: 1, upfront: [{ fields: [{ key: 'mapLink', align: 'right' }] }], expanded: [], hidden: [] }
+  const hidesMap: CardTemplate = { version: 1, upfront: [{ fields: [{ key: 'description', align: 'left' }] }], expanded: [], hidden: [] }
+
+  test('returns the home run\'s template for a known run_group', () => {
+    const map: Record<number, CardTemplate | null> = { 5: showsMap, 1: hidesMap }
+    expect(templateForGroup(5, map)).toBe(showsMap)
+    expect(templateForGroup(1, map)).toBe(hidesMap)
+  })
+
+  test('unknown run_group or null id → null (resolver falls back to default)', () => {
+    expect(templateForGroup(99, { 5: showsMap })).toBeNull()
+    expect(templateForGroup(null, { 5: showsMap })).toBeNull()
+  })
+
+  test('a group explicitly mapped to null → null (default), not an error', () => {
+    expect(templateForGroup(5, { 5: null })).toBeNull()
+  })
+})
+
+describe('library renders each route by its home run, not the viewer (#543)', () => {
+  const flat = (r: ReturnType<typeof resolveCardLayout>) =>
+    [...r.upfront, ...r.expanded].flatMap(row => [...row.left, ...row.right].map(f => f.key))
+
+  // A workout run (e.g. TigerWolves) whose template omits route fields.
+  const workoutRunTemplate: CardTemplate = {
+    version: 1,
+    upfront: [{ fields: [{ key: 'description', align: 'left' }] }], // no mapLink / routeNarrative
+    expanded: [],
+    hidden: ['mapLink', 'routeNarrative', 'mapImage', 'distance'],
+  }
+
+  test('a route whose home run hides route fields does not render them, even for a different viewer', () => {
+    const route = { ...full, runGroupId: 1, mapLink: 'http://map', routeNarrative: 'turn left' }
+    const byGroup: Record<number, CardTemplate | null> = { 1: workoutRunTemplate }
+    const keys = flat(resolveCardLayout(route, templateForGroup(route.runGroupId, byGroup)))
+    expect(keys).not.toContain('mapLink')
+    expect(keys).not.toContain('routeNarrative')
+  })
+
+  test('a route whose home run has no template falls back to default → map + turn-by-turn show', () => {
+    const route = { ...full, runGroupId: 5, mapLink: 'http://map', routeNarrative: 'turn left' }
+    const byGroup: Record<number, CardTemplate | null> = { 5: null } // e.g. Narwhals (null card_template)
+    const keys = flat(resolveCardLayout(route, templateForGroup(route.runGroupId, byGroup)))
+    expect(keys).toContain('mapLink')
+    expect(keys).toContain('routeNarrative')
   })
 })

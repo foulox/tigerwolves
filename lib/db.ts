@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 import { unstable_cache } from 'next/cache'
-import type { ScheduleEntry, Race, RunGroup, WorkoutVariantRow, RunConfig, RunLeader, AwayPeriod } from './data'
+import type { ScheduleEntry, Race, RunGroup, WorkoutVariantRow, RunConfig, RunLeader, AwayPeriod, CardTemplate } from './data'
 import { weekOfMonth } from './data'
 import { resolveWorkoutType } from './cycle'
 import type { WorkoutVariantInput } from './workoutVariant'
@@ -252,6 +252,18 @@ export async function resolveOrCreateRunGroup(
     RETURNING id
   `
   return inserted[0].id as number
+}
+
+// #543: map each run_group_id to its run's card template, so the cross-run
+// Library can display every route the way its home run wants (templateForGroup).
+// A run with a null card_template maps to null → resolveCardLayout's default.
+export async function fetchRunCardTemplatesByGroup(): Promise<Record<number, CardTemplate | null>> {
+  const rows = await sql`SELECT run_group_id, card_template FROM runs WHERE run_group_id IS NOT NULL`
+  const out: Record<number, CardTemplate | null> = {}
+  for (const r of rows) {
+    out[r.run_group_id as number] = parseCardTemplate(r.card_template)
+  }
+  return out
 }
 
 export async function getLeaderRun(clerkUserId: string): Promise<RunConfig | null> {

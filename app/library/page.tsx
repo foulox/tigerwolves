@@ -1,5 +1,5 @@
 import { currentUser } from '@clerk/nextjs/server'
-import { fetchWorkoutVariants, getLeaderRun, getRunLibraryFamilyIds, getLeaderRuns, fetchRunGroups } from '@/lib/db'
+import { fetchWorkoutVariants, getLeaderRun, getRunLibraryFamilyIds, getLeaderRuns, fetchRunGroups, fetchRunCardTemplatesByGroup } from '@/lib/db'
 import LibraryClient from '@/components/LibraryClient'
 import Header from '@/components/Header'
 import { getVoteData, workoutVoteId } from '@/lib/votes'
@@ -55,10 +55,12 @@ export default async function LibraryPage() {
   // affordance + the multi-run "which run?" picker; runGroupNames labels a route's
   // creator ("adopted from <creator>").
   const isRealLeaderRun = !!(leaderRun && runConfig.runGroupId != null)
-  const [libraryFamilyIds, ledRuns, runGroups] = await Promise.all([
+  const [libraryFamilyIds, ledRuns, runGroups, cardTemplatesByGroup] = await Promise.all([
     isRealLeaderRun ? getRunLibraryFamilyIds(runConfig.id) : Promise.resolve<number[]>([]),
     user && isLeader ? getLeaderRuns(user.id) : Promise.resolve<Array<{ id: string; name: string; kind: string; workoutTypes: string[] }>>([]),
     fetchRunGroups(),
+    // #543: each route displays by its home run's template, not the viewer's.
+    fetchRunCardTemplatesByGroup(),
   ])
   const runGroupNames: Record<number, string> = Object.fromEntries(runGroups.map(g => [g.id, g.name]))
 
@@ -77,7 +79,7 @@ export default async function LibraryPage() {
         libraryFamilyIds={libraryFamilyIds}
         ledRuns={ledRuns}
         runGroupNames={runGroupNames}
-        cardTemplate={runConfig.cardTemplate}
+        cardTemplatesByGroup={cardTemplatesByGroup}
       />
     </div>
   )
