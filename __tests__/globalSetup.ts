@@ -12,7 +12,7 @@
 // skipIf(!onTestData). The import is dynamic so scripts/seed-e2e.ts's module-level
 // "refuse unless test-data" guard only evaluates when we're actually on test-data —
 // a static import would throw here on any non-test-data run.
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 
 export async function setup() {
   const url = process.env.DATABASE_URL ?? ''

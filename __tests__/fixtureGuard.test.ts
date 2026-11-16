@@ -90,7 +90,7 @@ describe('migrate-426 idempotency (AC4)', () => {
   })
 
   // Test-data-gated integration: actually apply it twice against a sandbox row.
-  const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+  const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
   const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
   describe.skipIf(!onTestData)('applies twice with no drift (test-data)', () => {

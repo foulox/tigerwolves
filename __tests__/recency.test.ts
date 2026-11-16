@@ -7,7 +7,7 @@ import type { WorkoutVariantRow } from '../lib/data'
 // tests (they write) — same guard as db.test.ts/adoptRoute.test.ts. The pure sort test
 // runs anywhere. Fixtures are fully self-provisioned + torn down; they never touch shared
 // rows. Yesterday/today/tomorrow are computed once so the ≤-today cutoff is deterministic.
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 // ── AC5: recency sort (pure — runs without a DB) ──────────────────────────────

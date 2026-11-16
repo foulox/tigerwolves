@@ -125,7 +125,7 @@ describe('recency sort orders stalest-first for the Doves library (AC4)', () => 
 })
 
 // ── AC1/AC3 + #411 map_link: the seed writes it all, idempotently (test-data) ────
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 describe.skipIf(!onTestData)('seedMourningDoves writes the library + membership + last_ran (test-data)', () => {

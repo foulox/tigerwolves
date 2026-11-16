@@ -17,7 +17,7 @@ import { sql } from '../lib/db'
 import { toggleRunFollow } from '../app/actions'
 import { setRunStatus } from '../app/run-config/actions'
 
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 function signInAs(clerkId: string | null) {

@@ -7,7 +7,7 @@ import { CURATED_FAMILIES, CURATED_DOVES_ROUTES } from './fixtures/curatedWorkou
 // Neon branch does NOT change this compute-endpoint host — the guard value is
 // stable across the rename.) Update this only if the branch is ever recreated
 // (see CLAUDE.md Tooling Notes for how to fetch the current connection string).
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 
 // Guards the KV flush the same way TEST_DATA_HOST guards the DB wipe: only the
 // dedicated CI-only Upstash instance may be flushed, never Preview/production KV.
@@ -231,20 +231,24 @@ export async function seedE2E(): Promise<void> {
     '👀 See every workout between now and the NYC Marathon in the app',
     '🗳️ React to let us know what you like — and what you don\'t',
   ].join('\n')
+  // status is forced live: on a test-data branch forked from production (#545) the
+  // run pre-exists with prod's status, so an upsert that omits status would leave
+  // it — breaking status-dependent e2e specs. Force the fixture state explicitly.
   await sql`
-    INSERT INTO runs (id, name, emoji, day_of_week, meeting_time, meeting_location, closing_notes, post_header, leader_intro)
+    INSERT INTO runs (id, name, emoji, day_of_week, meeting_time, meeting_location, closing_notes, post_header, leader_intro, status)
     VALUES (
       'tuesday-morning-tigerwolves', 'Tuesday Morning Tigerwolves', '🐯🐺', 'Tuesday', '6:30 AM',
       'Tom Stofka Garden, aka "Da Bins"',
       'Bag Drop: Sorry, Not available',
       ${tigerWolvesPostHeader},
-      'Run Leaders:'
+      'Run Leaders:', 'live'
     )
     ON CONFLICT (id) DO UPDATE SET
       meeting_location = EXCLUDED.meeting_location,
       closing_notes = EXCLUDED.closing_notes,
       post_header = EXCLUDED.post_header,
-      leader_intro = EXCLUDED.leader_intro
+      leader_intro = EXCLUDED.leader_intro,
+      status = EXCLUDED.status
   `
 
   // #330: a second platform run (MMER, Monday) so All Runs has a run the
@@ -254,15 +258,16 @@ export async function seedE2E(): Promise<void> {
   // resolves, and a schedule + leader below — so My Week shows a real cross-run,
   // kind-driven (Easy/route) card alongside TigerWolves' Workout card.
   await sql`
-    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind, run_group_id)
+    INSERT INTO runs (id, name, emoji, description, day_of_week, meeting_time, meeting_location, kind, run_group_id, status)
     VALUES (
       'monday-morning-easy-run', 'Monday Morning Easy Run', '🌅',
       'North Brooklyn Runners'' Monday morning easy run.',
-      'Monday', '6:45 AM', 'McCarren Park', 'Easy', ${mmerGroupId}
+      'Monday', '6:45 AM', 'McCarren Park', 'Easy', ${mmerGroupId}, 'live'
     )
     ON CONFLICT (id) DO UPDATE SET
       kind = EXCLUDED.kind,
-      run_group_id = EXCLUDED.run_group_id
+      run_group_id = EXCLUDED.run_group_id,
+      status = EXCLUDED.status
   `
 
   // #331: MMER's Easy workout — an Easy/route-kind family so the My Week card

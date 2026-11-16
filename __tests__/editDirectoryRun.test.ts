@@ -10,7 +10,7 @@ import { currentUser } from '@clerk/nextjs/server'
 import { sql } from '../lib/db'
 import { editDirectoryRun, addDirectoryRun } from '../app/admin/actions'
 
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 const PREFIX = 'test-edit-413'
 function signInAs(id: string, meta: { role?: string; admin?: boolean } = {}) {

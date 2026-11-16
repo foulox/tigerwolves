@@ -4,7 +4,7 @@ import { sql, getFollowerCounts, getActiveLeadersByRun } from '../lib/db'
 // DB-touching tests: only run against the test-data E2E-wipe branch.
 // These skip locally (where DATABASE_URL points at production) and only execute
 // in CI. That is expected and correct — see CLAUDE.md "Test-run reality".
-const TEST_DATA_HOST = 'ep-fragrant-sunset-atmdps9n-pooler.c-9.us-east-1.aws.neon.tech'
+const TEST_DATA_HOST = 'ep-fancy-pine-at1l45nm-pooler.c-9.us-east-1.aws.neon.tech'
 const onTestData = (process.env.DATABASE_URL ?? '').includes(TEST_DATA_HOST)
 
 describe.skipIf(!onTestData)('getFollowerCounts and getActiveLeadersByRun (test-data)', () => {
