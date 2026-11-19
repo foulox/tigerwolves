@@ -7,7 +7,7 @@ import HeaderControls from '@/components/HeaderControls'
 import BackButton from '@/components/BackButton'
 import GroupRunClient from '@/components/GroupRunClient'
 import RunFollowToggle from '@/components/RunFollowToggle'
-import { getVoteData, workoutVoteId } from '@/lib/votes'
+import { getVoteData, slotVoteKey } from '@/lib/votes'
 
 // Group Run page (#329). Readable by anyone — logged-out visitors,
 // runners, and non-owning leaders all see it read-only. Only the owning leader
@@ -79,9 +79,13 @@ export default async function PerRunPage({ params }: { params: Promise<{ id: str
     resolveWorkoutVariant(workoutVariants, entry.workoutName, entry.selectedVariations)
   )
 
-  const workoutIds = [...upcomingWorkouts, ...pastWorkouts]
-    .filter(w => w !== null)
-    .map(w => workoutVoteId(w!.name, w!.label ?? ''))
+  // #549: key votes per slot, falling back to the raw planned name when a slot's
+  // workout_name no longer resolves to a library variant — so those slots still
+  // load (and can cast) votes instead of silently dropping the ReactionPicker.
+  const workoutIds = [
+    ...upcoming.map((e, i) => slotVoteKey(e.workoutName, upcomingWorkouts[i])),
+    ...past.map((e, i) => slotVoteKey(e.workoutName, pastWorkouts[i])),
+  ].filter((k): k is string => k !== null)
   const voteData = await getVoteData(workoutIds)
 
   const subtitleParts = [runConfig.dayOfWeek, runConfig.meetingTime].filter(Boolean)

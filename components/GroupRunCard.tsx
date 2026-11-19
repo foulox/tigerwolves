@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Flag } from 'lucide-react'
 import type { ScheduleEntry, WorkoutVariantRow } from '@/lib/data'
 import { formatDateMedium } from '@/lib/postBuilder'
-import { workoutVoteId } from '@/lib/votes'
+import { slotVoteKey } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import ReactionPicker from '@/components/ReactionPicker'
 import WorkoutFlagSheet, { FlagBadge, FlagGhostButton, FlagWorkoutDrawer } from '@/components/WorkoutFlagSheet'
@@ -36,6 +36,12 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
   const hasWorkout = workout !== null
   const compact = kind ? compactCardFields(kind, entry, workout) : null
   const filteredVariations = entry.selectedVariations.filter(v => v !== '')
+  // #549: vote identity for the slot. Prefers the resolved variant, but falls back
+  // to the raw planned name so a slot whose workout_name no longer resolves to a
+  // library variant still shows a working ReactionPicker. Null only for a slot with
+  // no planned workout at all.
+  const voteKey = slotVoteKey(entry.workoutName, workout)
+  const voteName = workout?.name ?? entry.workoutName ?? ''
   const cardTestId = isPast ? `past-card-${index}` : `schedule-card-${index}`
   const detailTestId = isPast ? `past-detail-${index}` : `schedule-detail-${index}`
 
@@ -137,11 +143,11 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
         </div>
         <div className="flex items-center justify-between gap-2 mt-2">
           <div className="text-sm min-w-0 truncate text-muted">Led by {entry.leader}</div>
-          {workout && (
+          {voteKey && (
             <div className="shrink-0" onClick={(e) => e.stopPropagation()} data-tour={isNext ? 'schedule-reactions' : undefined}>
               <ReactionPicker
-                workoutId={workoutVoteId(workout.name, workout.label ?? '')}
-                workoutName={workout.name}
+                workoutId={voteKey}
+                workoutName={voteName}
                 initialVoteData={voteData ?? null}
                 muted={isPast}
               />
@@ -164,9 +170,10 @@ export default function GroupRunCard({ entry, workout, index, isLeader, voteData
             <ChipRow label="Variations" chips={filteredVariations} />
           )}
           <div className="flex items-center justify-between gap-2">
+            {/* This panel only renders when hasWorkout, so voteKey is non-null here. */}
             <ReactionPicker
-              workoutId={workoutVoteId(workout.name, workout.label ?? '')}
-              workoutName={workout.name}
+              workoutId={voteKey!}
+              workoutName={voteName}
               initialVoteData={voteData ?? null}
               muted={isPast}
             />
