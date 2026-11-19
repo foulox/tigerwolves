@@ -41,7 +41,7 @@ vi.mock('@clerk/nextjs/server', () => ({
   currentUser: currentUserMock,
 }))
 
-import { getVoteData } from '../lib/votes'
+import { getVoteData, slotVoteKey } from '../lib/votes'
 import { POST } from '../app/api/vote/route'
 
 function makeRequest(body: unknown) {
@@ -192,5 +192,23 @@ describe('getVoteData', () => {
     const result = await getVoteData([])
     expect(result).toEqual({})
     expect(mgetMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('slotVoteKey', () => {
+  it('uses the resolved variant name+label when the workout resolves', () => {
+    expect(slotVoteKey('K Bridge Hills', { name: 'Hills', label: 'K Bridge' })).toBe('Hills||K Bridge')
+  })
+
+  it('uses an empty label when the resolved variant has a null label', () => {
+    expect(slotVoteKey('Straight Tempo', { name: 'Straight Tempo', label: null })).toBe('Straight Tempo||')
+  })
+
+  it('falls back to the raw planned name when the workout does not resolve', () => {
+    expect(slotVoteKey('Intervals - 5x4min', null)).toBe('Intervals - 5x4min||')
+  })
+
+  it('returns null for a slot with no planned workout name', () => {
+    expect(slotVoteKey(null, null)).toBeNull()
   })
 })

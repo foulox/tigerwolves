@@ -2,7 +2,7 @@
 
 import { useState, useRef, useLayoutEffect, useEffect } from 'react'
 import type { ScheduleEntry, WorkoutVariantRow } from '@/lib/data'
-import { workoutVoteId } from '@/lib/votes'
+import { slotVoteKey } from '@/lib/votes'
 import type { VoteData } from '@/lib/votes'
 import GroupRunCard from '@/components/GroupRunCard'
 
@@ -126,6 +126,7 @@ export default function GroupRunClient({ past, pastWorkouts, upcoming, upcomingW
 
       {past.map((entry, i) => {
         const workout = pastWorkouts[i]
+        const voteKey = slotVoteKey(entry.workoutName, workout)
         return (
           <GroupRunCard
             key={`past-${entry.date}-${entry.workoutName ?? ''}`}
@@ -135,7 +136,7 @@ export default function GroupRunClient({ past, pastWorkouts, upcoming, upcomingW
             isLeader={isLeader}
             isPast
             kind={kind}
-            voteData={workout ? (voteData[workoutVoteId(workout.name, workout.label ?? '')] ?? null) : null}
+            voteData={voteKey ? (voteData[voteKey] ?? null) : null}
           />
         )
       })}
@@ -145,6 +146,7 @@ export default function GroupRunClient({ past, pastWorkouts, upcoming, upcomingW
       )}
       {upcoming.map((entry, i) => {
         const workout = upcomingWorkouts[i]
+        const voteKey = slotVoteKey(entry.workoutName, workout)
         const key = `upcoming-${entry.date}-${entry.workoutName ?? ''}`
         const card = (
           <GroupRunCard
@@ -153,7 +155,7 @@ export default function GroupRunClient({ past, pastWorkouts, upcoming, upcomingW
             index={i}
             isLeader={isLeader}
             kind={kind}
-            voteData={workout ? (voteData[workoutVoteId(workout.name, workout.label ?? '')] ?? null) : null}
+            voteData={voteKey ? (voteData[voteKey] ?? null) : null}
           />
         )
         if (i !== 0) return <div key={key}>{card}</div>
